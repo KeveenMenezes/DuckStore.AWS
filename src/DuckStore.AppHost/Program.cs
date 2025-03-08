@@ -1,17 +1,18 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
+//Create DataBase 
+var catalogDb = builder.AddPostgres("catalogDb");
+
 // Services
-var identityApi = builder.AddProject<Projects.DuckStore_AppHost>("identity-api", launchProfileName)
+var catalogApi = builder.AddProject<Projects.Catalog_API>(
+    "catalog-api", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
-    .WithReference(identityDb);
+    .WithReference(catalogDb);
 
-builder.Build().RunAsync();
+await builder.Build().RunAsync();
 
-static bool ShouldUseHttpForEndpoints()
-{
-    const string EnvVarName = "ESHOP_USE_HTTP_ENDPOINTS";
-    var envValue = Environment.GetEnvironmentVariable(EnvVarName);
-
+static string GetHttpForEndpoints() =>
     // Attempt to parse the environment variable value; return true if it's exactly "1".
-    return int.TryParse(envValue, out int result) && result == 1;
-}
+    int.TryParse(
+        Environment.GetEnvironmentVariable("ESHOP_USE_HTTP_ENDPOINTS"),
+        out int result) && result == 1 ? "http" : "https";

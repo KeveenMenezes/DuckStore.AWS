@@ -1,11 +1,11 @@
-using HealthChecks.UI.Client;
-using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
-var assembly = typeof(Program).Assembly;
+builder.AddServiceDefaults();
 
+builder.AddNpgsqlDataSource("catalogDb");
+
+var assembly = typeof(Program).Assembly;
 builder.Services
     .AddCors(options =>
     {
@@ -26,11 +26,9 @@ builder.Services
         config.AddOpenBehavior(typeof(LoggingBehavior<,>));
     })
     .AddValidatorsFromAssembly(assembly)
-    .AddMarten(opts =>
-    {
-        opts.Connection(builder.Configuration.GetConnectionString("Database")!);
-    })
-    .UseLightweightSessions();
+    .AddMarten(opts => { })
+    .UseLightweightSessions()
+    .UseNpgsqlDataSource();
 
 if (builder.Environment.IsDevelopment())
 {
