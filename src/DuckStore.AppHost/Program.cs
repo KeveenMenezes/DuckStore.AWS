@@ -9,7 +9,7 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
     .WithExternalHttpEndpoints()
     .WithReference(catalogDb);
 
-builder.AddNpmApp("angular-shop-web", "../DuckStore.WebApps")
+builder.AddNpmApp("angularapi", "../DuckStore.WebApps/Shopping.AG")
     .WithReference(catalogApi)
     .WaitFor(catalogApi)
     .WithHttpEndpoint(env: "PORT")
