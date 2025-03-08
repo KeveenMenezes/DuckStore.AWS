@@ -1,0 +1,49 @@
+@Catalog = https://localhost:5050/api
+
+### Create a new product
+POST {{Catalog}}/products
+Content-Type: application/json
+
+{
+    "name": "Teste 2",
+    "description": "Product Description",
+    "imageUrl": "image.jpg",
+    "price": 99.99,
+    "categories": ["A1", "C2", "A4"]
+}
+
+### Get all products
+GET {{Catalog}}/products?pageIndex=1&pageSize=2
+Accept: application/json
+
+### Get product by id
+GET {{Catalog}}/products/b5de0839-2ca2-4206-910d-f3fb319f9555
+
+### Get product by category
+GET {{Catalog}}/products/category/A2
+
+### Update product
+PUT {{Catalog}}/products
+Content-Type: application/json
+
+{
+    "id": "00026be0-e357-4413-afbb-c7b50339cae6",
+    "name": "Teste 2",
+    "description": "Product Description",
+    "imageUrl": "https://m.media-amazon.com/images/I/61m0TICF-pL._AC_UF894,1000_QL80_.jpg",
+    "price": 99.99,
+    "categories": [
+        "A1",
+        "C2",
+        "A4"
+    ]
+}
+
+### Delete product
+DELETE {{Catalog}}/products/e1549a96-3bc8-43ea-88be-7c98da4aa189
+
+
+### HealthCheck
+GET {{Catalog}}/health
+Accept: application/json
+
