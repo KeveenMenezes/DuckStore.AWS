@@ -34,9 +34,8 @@ if (builder.Environment.IsDevelopment())
 {
     builder.Services.InitializeMartenWith<CatagoInitialData>();
 }
-
 builder.Services.AddHealthChecks()
-    .AddNpgSql(builder.Configuration.GetConnectionString("Database")!);
+    .AddNpgSql(builder.Configuration.GetConnectionString("catalogDb")!);
 
 var app = builder.Build();
 // Configure the HTTP request pipeline.

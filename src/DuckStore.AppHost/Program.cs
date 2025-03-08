@@ -9,6 +9,13 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
     .WithExternalHttpEndpoints()
     .WithReference(catalogDb);
 
+builder.AddNpmApp("angular", "../DuckStore.WebApps")
+    .WithReference(catalogApi)
+    .WaitFor(catalogApi)
+    .WithHttpEndpoint(env: "PORT")
+    .WithExternalHttpEndpoints()
+    .PublishAsDockerFile();
+
 await builder.Build().RunAsync();
 
 static string GetHttpForEndpoints() =>
