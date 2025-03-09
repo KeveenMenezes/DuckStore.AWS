@@ -1,11 +1,17 @@
+const catalogApiUrl =
+  process.env["services__catalogapi__https__0"] ||
+  process.env["services__catalogapi__http__0"] ||
+  "http://localhost:5050";
+
+const isDevelopment = process.env["NODE_ENV"] === "development";
+
 module.exports = {
-  "/api": {
-    target:
-      process.env["services__catalog-api__https__0"] ||
-      process.env["services__catalog-api__http__0"],
-    secure: process.env["NODE_ENV"] !== "development",
-    pathRewrite: {
-      "^/api": "",
+  "/catalogapi": {
+    target: catalogApiUrl,
+    secure: !isDevelopment,
+    changeOrigin: true,
+      pathRewrite: {
+      "^/catalogapi": "",
     },
   },
 };

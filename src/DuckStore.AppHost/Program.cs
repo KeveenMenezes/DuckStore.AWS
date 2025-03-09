@@ -5,15 +5,16 @@ var catalogDb = builder.AddPostgres("catalogDb");
 
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
-    "catalog-api", GetHttpForEndpoints())
+    "catalogapi", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(catalogDb)
-    .WithReference(catalogDb);
+    .WithReference(catalogDb)
+    .WithHttpsHealthCheck("/health");
 
-builder.AddNpmApp("shopping-view", "../DuckStore.WebApp.ANG")
+builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")
     .WithReference(catalogApi)
     .WaitFor(catalogApi)
-    .WithHttpsEndpoint(env: "PORT")
+    .WithHttpEndpoint(env: "PORT")
     .WithExternalHttpEndpoints()
     .PublishAsDockerFile();
 

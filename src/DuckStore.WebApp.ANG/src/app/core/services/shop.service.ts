@@ -7,12 +7,11 @@ import { Pagination } from '../../shared/models/pagination';
   providedIn: 'root',
 })
 export class ShopService {
-  private readonly baseUrl = 'https://localhost:5050/api/';
   private readonly http = inject(HttpClient);
 
   getProductPagination(pageIndex: number, pageSize: number) {
     return this.http.get<Pagination<Product>>(
-      `${this.baseUrl}products/${pageIndex}/${pageSize}`
+      `catalogapi/api/products?pageIndex=${pageIndex}&pageSize=${pageSize}`
     );
   }
 }

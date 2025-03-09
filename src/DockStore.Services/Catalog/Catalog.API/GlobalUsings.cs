@@ -11,5 +11,6 @@ global using HealthChecks.UI.Client;
 global using Mapster;
 global using Marten;
 global using Marten.Pagination;
+global using Marten.Schema;
 global using MediatR;
 global using Microsoft.AspNetCore.Diagnostics.HealthChecks;
