@@ -11,6 +11,10 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
     .WithReference(catalogDb)
     .WithHttpsHealthCheck("/health");
 
+var basketApi = builder.AddProject<Projects.Basket_API>(
+    "basketapi", GetHttpForEndpoints())
+    .WithExternalHttpEndpoints();
+
 builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")
     .WithReference(catalogApi)
     .WaitFor(catalogApi)

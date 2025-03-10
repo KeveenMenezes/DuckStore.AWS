@@ -7,16 +7,6 @@ builder.AddNpgsqlDataSource("catalogDb");
 
 var assembly = typeof(Program).Assembly;
 builder.Services
-    .AddCors(options =>
-    {
-        options.AddPolicy("AllowAngularApp",
-            policy =>
-            {
-                policy.WithOrigins("https://localhost:4200")
-                    .AllowAnyHeader()
-                    .AllowAnyMethod();
-            });
-    })
     .AddExceptionHandler<CustomExceptionHandler>()
     .AddCarter()
     .AddMediatR(config =>

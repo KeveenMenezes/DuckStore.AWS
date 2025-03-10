@@ -19,6 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\DockStore.Services\Basket\Basket.API\Basket.API.csproj" />
     <ProjectReference Include="..\DockStore.Services\Catalog\Catalog.API\Catalog.API.csproj" />
   </ItemGroup>
 
