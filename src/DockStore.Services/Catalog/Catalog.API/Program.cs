@@ -31,7 +31,6 @@ var app = builder.Build();
 // Configure the HTTP request pipeline.
 
 app.UsePathBase("/api");
-app.UseCors("AllowAngularApp");
 app.MapCarter();
 app.UseExceptionHandler(options => { });
 app.UseHealthChecks(

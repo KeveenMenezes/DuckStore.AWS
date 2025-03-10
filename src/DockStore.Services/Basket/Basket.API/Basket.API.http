@@ -1,6 +1,5 @@
-@Basket.API_HostAddress = http://localhost:5199
+@Basket = https://localhost:5051/api
 
-###GET {{Basket.API_HostAddress}}/catalogforecast/
-###Accept: application/json
 
-###
+### Create a new product
+GET {{Basket}}/basket/swn

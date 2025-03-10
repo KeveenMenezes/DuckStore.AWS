@@ -18,9 +18,11 @@ Accept: application/json
 
 ### Get product by id
 GET {{Catalog}}/products/b5de0839-2ca2-4206-910d-f3fb319f9555
+Accept: application/json
 
 ### Get product by category
 GET {{Catalog}}/products/category/A2
+Accept: application/json
 
 ### Update product
 PUT {{Catalog}}/products
@@ -41,7 +43,7 @@ Content-Type: application/json
 
 ### Delete product
 DELETE {{Catalog}}/products/e1549a96-3bc8-43ea-88be-7c98da4aa189
-
+Accept: application/json
 
 ### HealthCheck
 GET {{Catalog}}/health
