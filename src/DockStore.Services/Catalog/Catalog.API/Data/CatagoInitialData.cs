@@ -19,7 +19,7 @@ public class CatagoInitialData : IInitialData
     private static IEnumerable<Product> GetPreconfiguredProducts() =>
         [
             new(
-                Guid.NewGuid(),
+                new Guid("6cd2ae29-decf-4898-800d-5ecb9884f46c"),
                 "Description 1",
                 "product-1.png",
                 "http://externalcatalogbaseurltobereplaced/api/pic/1",

@@ -1,7 +1,7 @@
 namespace Basket.API.Basket.GetBasket;
 
 //public record GetBasketRequest(string UserName);
-public record GetBasketResponse(ShoppingCard Card);
+public record GetBasketResponse(ShoppingCart Cart);
 
 public class GetBasketEndpoint : ICarterModule
 {
@@ -9,13 +9,13 @@ public class GetBasketEndpoint : ICarterModule
     {
         app.MapGet(
             "/basket/{userName}",
-            async (string userName,ISender sender,CancellationToken cancellationToken) =>
+            async (string userName, ISender sender, CancellationToken cancellationToken) =>
         {
             var result = await sender.Send(new GetBasketQuery(userName), cancellationToken);
 
             var response = result.Adapt<GetBasketResponse>();
 
-            return Results.Ok(response.Card);
+            return Results.Ok(response.Cart);
         })
         .WithName("GetBasket")
         .Produces<GetBasketResponse>(StatusCodes.Status200OK)
