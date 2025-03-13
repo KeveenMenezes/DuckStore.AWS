@@ -31,6 +31,3 @@ public class GetProductsEndpoint : ICarterModule
         .WithDescription("Get all products");
     }
 }
-
-
-
