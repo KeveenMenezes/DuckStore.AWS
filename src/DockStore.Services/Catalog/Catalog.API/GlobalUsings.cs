@@ -1,4 +1,4 @@
-global using BuildingBlocks.Behaviors;
+﻿global using BuildingBlocks.Behaviors;
 global using BuildingBlocks.CQRS;
 global using BuildingBlocks.Exceptions.Handler;
 global using BuildingBlocks.ServiceDefaults;
@@ -14,3 +14,5 @@ global using Marten.Pagination;
 global using Marten.Schema;
 global using MediatR;
 global using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+
+

@@ -1,4 +1,4 @@
-namespace Catalog.API.Products.DeleteProduct;
+﻿namespace Catalog.API.Products.DeleteProduct;
 
 public record DeleteProductCommand(Guid Id)
     : ICommand<DeleteProductResult>;
@@ -26,3 +26,6 @@ internal class DeleteProductHandler
         return new DeleteProductResult(true);
     }
 }
+
+
+

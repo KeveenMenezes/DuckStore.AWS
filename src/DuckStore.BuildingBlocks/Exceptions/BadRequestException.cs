@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Exceptions;
+﻿namespace BuildingBlocks.Exceptions;
 
 public class BadRequestException : Exception
 {
@@ -13,3 +13,6 @@ public class BadRequestException : Exception
 
     public string? Details { get; }
 }
+
+
+

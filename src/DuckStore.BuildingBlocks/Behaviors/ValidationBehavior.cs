@@ -1,4 +1,4 @@
-using BuildingBlocks.CQRS;
+﻿using BuildingBlocks.CQRS;
 using FluentValidation;
 using MediatR;
 
@@ -32,3 +32,5 @@ public class ValidationBehavior<TRequest, TResponse>
         return await next();
     }
 }
+
+

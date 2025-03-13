@@ -1,4 +1,4 @@
-namespace Basket.API.Models;
+﻿namespace Basket.API.Models;
 
 public class ShopppingClassItem
 {
@@ -8,3 +8,6 @@ public class ShopppingClassItem
     public Guid ProductId { get; set; }
     public required string ProductName { get; set; }
 }
+
+
+

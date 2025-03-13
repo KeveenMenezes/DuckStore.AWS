@@ -1,4 +1,4 @@
-namespace Catalog.API.Models;
+﻿namespace Catalog.API.Models;
 
 public class Product(
     Guid id,
@@ -29,3 +29,6 @@ public class Product(
         Categories = categories;
     }
 }
+
+
+

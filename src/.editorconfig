@@ -1,8 +1,8 @@
-###############################
+﻿###############################
 # Core EditorConfig Options   #
 ###############################
-root = true
 # All files
+root = true
 [*]
 indent_style = space
 
@@ -16,15 +16,18 @@ indent_size = 2
 
 # Code files
 [*.{cs,csx,vb,vbx}]
-indent_size = 4
-insert_final_newline = true
 charset = utf-8-bom
+indent_size = 4
+trim_trailing_whitespace = true
+insert_final_newline = true
 ###############################
 # .NET Coding Conventions     #
 ###############################
 [*.{cs,vb}]
 # Organize usings
 dotnet_sort_system_directives_first = true
+# remove duplicates lines emptys
+dotnet_remove_extra_blank_lines = true
 # this. preferences
 dotnet_style_qualification_for_field = false:silent
 dotnet_style_qualification_for_property = false:silent
@@ -70,6 +73,7 @@ dotnet_diagnostic.CS8618.severity = silent
 # C# Coding Conventions       #
 ###############################
 [*.cs]
+[*.cs]
 # var preferences
 csharp_style_var_for_built_in_types = true:silent
 csharp_style_var_when_type_is_apparent = true:silent
@@ -99,7 +103,9 @@ csharp_style_inlined_variable_declaration = true:suggestion
 # C# Formatting Rules         #
 ###############################
 # New line preferences
+csharp_space_between_empty_method_braces = false
 csharp_new_line_before_open_brace = all
+csharp_preserve_single_line_statements = true
 csharp_new_line_before_else = true
 csharp_new_line_before_catch = true
 csharp_new_line_before_finally = true

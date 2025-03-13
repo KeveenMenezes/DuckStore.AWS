@@ -1,4 +1,4 @@
-namespace Basket.API.Basket.GetBasket;
+﻿namespace Basket.API.Basket.GetBasket;
 
 //public record GetBasketRequest(string UserName);
 public record GetBasketResponse(ShoppingCart Cart);
@@ -24,3 +24,5 @@ public class GetBasketEndpoint : ICarterModule
         .WithDescription("Get all products in the basket for name");
     }
 }
+
+

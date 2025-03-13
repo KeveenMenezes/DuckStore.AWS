@@ -1,4 +1,4 @@
-namespace Catalog.API.Products.GetProductById;
+﻿namespace Catalog.API.Products.GetProductById;
 
 public record GetProductByIdQuery(Guid Id) :
     IQuery<GetProductByIdResult>;
@@ -17,3 +17,6 @@ internal class GetProductByIdQueryHandler(
         return new GetProductByIdResult(product);
     }
 }
+
+
+

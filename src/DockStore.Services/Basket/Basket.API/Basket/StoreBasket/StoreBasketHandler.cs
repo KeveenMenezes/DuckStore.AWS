@@ -1,4 +1,4 @@
-namespace Basket.API.Basket.StoreBasket;
+﻿namespace Basket.API.Basket.StoreBasket;
 
 public record StoreBasketCommand(ShoppingCart Cart)
     : ICommand<StoreBasketResult>;
@@ -32,3 +32,6 @@ public class StoreBasketCommandHandler : ICommandHandler<StoreBasketCommand, Sto
         return new StoreBasketResult("swd");
     }
 }
+
+
+

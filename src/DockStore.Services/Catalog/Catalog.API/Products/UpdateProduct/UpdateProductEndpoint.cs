@@ -1,4 +1,4 @@
-
+﻿
 namespace Catalog.API.Products.UpdateProduct;
 
 public record UpdateProductRequest(
@@ -35,3 +35,6 @@ public class UpdateProductEndpoint : ICarterModule
         .WithDescription("Update product");
     }
 }
+
+
+

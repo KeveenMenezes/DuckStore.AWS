@@ -1,4 +1,4 @@
-namespace Catalog.API.Products.CreateProduct;
+﻿namespace Catalog.API.Products.CreateProduct;
 
 public record CreateProductRequest(
     string Name,
@@ -32,3 +32,6 @@ public class CreateProductEndpoint : ICarterModule
         .WithDescription("Create Product");
     }
 }
+
+
+

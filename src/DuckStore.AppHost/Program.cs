@@ -1,4 +1,4 @@
-var builder = DistributedApplication.CreateBuilder(args);
+﻿var builder = DistributedApplication.CreateBuilder(args);
 
 //Create DataBase 
 var catalogDb = builder.AddPostgres("catalogDb");
@@ -29,3 +29,5 @@ static string GetHttpForEndpoints() =>
     int.TryParse(
         Environment.GetEnvironmentVariable("ESHOP_USE_HTTP_ENDPOINTS"),
         out int result) && result == 1 ? "http" : "https";
+
+

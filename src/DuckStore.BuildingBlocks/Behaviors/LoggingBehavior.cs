@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using MediatR;
 using Microsoft.Extensions.Logging;
 
@@ -39,7 +39,9 @@ public class LoggingBehavior<TRequest, TResponse>
             Response={Response}
             ResquestData={RequestData}",
             typeof(TRequest).Name, typeof(TResponse).Name, request);
-        
+
         return response;
     }
 }
+
+

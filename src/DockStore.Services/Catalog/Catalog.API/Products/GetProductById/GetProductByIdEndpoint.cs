@@ -1,4 +1,4 @@
-namespace Catalog.API.Products.GetProductById;
+﻿namespace Catalog.API.Products.GetProductById;
 
 public record GetProductByIdResponse(Product Product);
 
@@ -26,3 +26,6 @@ public class GetProductByIdEndpoint : ICarterModule
         .WithDescription("Get product by its unique identifier.");
     }
 }
+
+
+

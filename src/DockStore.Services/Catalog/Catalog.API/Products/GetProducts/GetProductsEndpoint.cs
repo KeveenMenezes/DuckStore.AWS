@@ -1,4 +1,4 @@
-namespace Catalog.API.Products.GetProducts;
+﻿namespace Catalog.API.Products.GetProducts;
 
 public record GetProductsRequest(int? PageIndex = 1, int? PageSize = 10);
 
@@ -31,3 +31,6 @@ public class GetProductsEndpoint : ICarterModule
         .WithDescription("Get all products");
     }
 }
+
+
+

@@ -1,4 +1,4 @@
-namespace Catalog.API.Products.UpdateProduct;
+﻿namespace Catalog.API.Products.UpdateProduct;
 
 public record UpdateProductCommand(
     Guid Id,
@@ -53,3 +53,5 @@ internal class UpdateProductCommandHandler
         return new UpdateProductResult(product.Id);
     }
 }
+
+

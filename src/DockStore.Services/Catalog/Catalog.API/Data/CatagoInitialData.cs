@@ -1,4 +1,4 @@
-namespace Catalog.API.Data;
+﻿namespace Catalog.API.Data;
 
 public class CatagoInitialData : IInitialData
 {
@@ -34,3 +34,6 @@ public class CatagoInitialData : IInitialData
                 ["A", "B"]),
         ];
 }
+
+
+
