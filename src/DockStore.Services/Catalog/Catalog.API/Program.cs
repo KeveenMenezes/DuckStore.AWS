@@ -22,8 +22,9 @@ builder.Services
 
 if (builder.Environment.IsDevelopment())
 {
-    builder.Services.InitializeMartenWith<CatagoInitialData>();
+    builder.Services.InitializeMartenWith<CatalogInitialData>();
 }
+
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("catalogDb")!);
 
@@ -41,6 +42,3 @@ app.UseHealthChecks(
     });
 
 await app.RunAsync();
-
-
-

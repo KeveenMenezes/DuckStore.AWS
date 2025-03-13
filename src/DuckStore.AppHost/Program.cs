@@ -1,7 +1,8 @@
 ﻿var builder = DistributedApplication.CreateBuilder(args);
 
-//Create DataBase 
+//Create DataBase
 var catalogDb = builder.AddPostgres("catalogDb");
+var basketDb = builder.AddPostgres("basketDb");
 
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
@@ -13,21 +14,26 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
 
 var basketApi = builder.AddProject<Projects.Basket_API>(
     "basketapi", GetHttpForEndpoints())
-    .WithExternalHttpEndpoints();
-
-builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")
-    .WithReference(catalogApi)
-    .WaitFor(catalogApi)
-    .WithHttpsEndpoint(env: "PORT")
     .WithExternalHttpEndpoints()
+    .WaitFor(basketDb)
+    .WaitFor(catalogApi)
+    .WithReference(basketDb)
+    .WithReference(catalogApi)
+    .WithHttpsHealthCheck("/health");
+
+// Web app
+builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")
+    .WithExternalHttpEndpoints()
+    .WaitFor(catalogApi)
+    .WaitFor(basketApi)
+    .WithReference(catalogApi)
+    .WithReference(basketApi)
+    .WithHttpsEndpoint(env: "PORT")
     .PublishAsDockerFile();
 
 await builder.Build().RunAsync();
 
 static string GetHttpForEndpoints() =>
-    // Attempt to parse the environment variable value; return true if it's exactly "1".
     int.TryParse(
         Environment.GetEnvironmentVariable("ESHOP_USE_HTTP_ENDPOINTS"),
         out int result) && result == 1 ? "http" : "https";
-
-

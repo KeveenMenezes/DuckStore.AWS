@@ -1,6 +1,6 @@
 ﻿namespace Catalog.API.Data;
 
-public class CatagoInitialData : IInitialData
+public class CatalogInitialData : IInitialData
 {
     public async Task Populate(IDocumentStore store, CancellationToken cancellation)
     {
@@ -34,6 +34,3 @@ public class CatagoInitialData : IInitialData
                 ["A", "B"]),
         ];
 }
-
-
-
