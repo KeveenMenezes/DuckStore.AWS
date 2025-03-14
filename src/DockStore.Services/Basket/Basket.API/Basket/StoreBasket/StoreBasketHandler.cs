@@ -20,18 +20,13 @@ public class StoreBasketCommandValidator
     }
 }
 
-public class StoreBasketCommandHandler : ICommandHandler<StoreBasketCommand, StoreBasketResult>
+public class StoreBasketCommandHandler(IBasketRepository repository)
+    : ICommandHandler<StoreBasketCommand, StoreBasketResult>
 {
     public async Task<StoreBasketResult> Handle(StoreBasketCommand command, CancellationToken cancellationToken)
     {
-        var cart = command.Cart;
+        await repository.StoreCart(command.Cart, cancellationToken);
 
-        //TODO: store basket in database (use marten upsert or insert)
-        //TODO: update the cache
-
-        return new StoreBasketResult("swd");
+        return new StoreBasketResult(command.Cart.UserName);
     }
 }
-
-
-

@@ -23,10 +23,8 @@ builder.Services
     .UseLightweightSessions()
     .UseNpgsqlDataSource();
 
-if (builder.Environment.IsDevelopment())
-{
-    //builder.Services.InitializeMartenWith<BasketIni>();
-}
+//Injection dependence
+builder.Services.AddScoped<IBasketRepository, BasketRepository>();
 
 builder.Services.AddHealthChecks()
     .AddNpgSql(builder.Configuration.GetConnectionString("basketDb")!);

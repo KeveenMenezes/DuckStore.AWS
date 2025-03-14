@@ -15,7 +15,7 @@ public class GetBasketEndpoint : ICarterModule
 
             var response = result.Adapt<GetBasketResponse>();
 
-            return Results.Ok(response.Cart);
+            return Results.Ok(response);
         })
         .WithName("GetBasket")
         .Produces<GetBasketResponse>(StatusCodes.Status200OK)
@@ -24,5 +24,3 @@ public class GetBasketEndpoint : ICarterModule
         .WithDescription("Get all products in the basket for name");
     }
 }
-
-
