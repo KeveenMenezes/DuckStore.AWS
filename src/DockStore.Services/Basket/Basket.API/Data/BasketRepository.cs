@@ -26,6 +26,3 @@ public class BasketRepository(IDocumentSession session)
         await session.SaveChangesAsync(cancellationToken);
     }
 }
-
-
-

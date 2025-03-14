@@ -8,11 +8,11 @@
 
   <ItemGroup>
     <PackageReference Include="Aspire.NpgSql" />
-    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" />
-    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" />
+    <PackageReference Include="Aspire.StackExchange.Redis" />
+
     <PackageReference Include="Marten" />
     <PackageReference Include="Carter" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="Scrutor" />
   </ItemGroup>
 
   <ItemGroup>

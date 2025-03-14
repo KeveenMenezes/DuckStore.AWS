@@ -25,3 +25,6 @@ Content-Type: application/json
 
 ### Delete a basket
 DELETE {{Basket}}/basket/swn
+
+### Health check
+GET {{Basket}}/health

@@ -1,6 +1,7 @@
 ﻿var builder = DistributedApplication.CreateBuilder(args);
 
 //Create DataBase
+var redis = builder.AddRedis("redis");
 var catalogDb = builder.AddPostgres("catalogDb");
 var basketDb = builder.AddPostgres("basketDb");
 
@@ -15,11 +16,13 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
 var basketApi = builder.AddProject<Projects.Basket_API>(
     "basketapi", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
+    .WaitFor(redis)
     .WaitFor(basketDb)
-    .WaitFor(catalogApi)
+    .WithReference(redis)
     .WithReference(basketDb)
     .WithReference(catalogApi)
     .WithHttpsHealthCheck("/health");
+redis.WithParentRelationship(basketApi);
 
 // Web app
 builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")

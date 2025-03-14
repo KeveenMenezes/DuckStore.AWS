@@ -6,6 +6,3 @@ public interface IBasketRepository
     Task<ShoppingCart> StoreCart(ShoppingCart cart, CancellationToken cancellationToken);
     Task DeleteBasket(string userName, CancellationToken cancellationToken);
 }
-
-
-
