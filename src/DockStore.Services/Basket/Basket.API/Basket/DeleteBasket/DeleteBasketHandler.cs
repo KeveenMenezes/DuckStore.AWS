@@ -3,8 +3,7 @@
 public record DeleteBasketCommand(string UserName) : ICommand<DeleteBasketResult>;
 public record DeleteBasketResult(bool IsSuccess);
 
-public class DeleteBasketCommandValidator
-    : AbstractValidator<DeleteBasketCommand>
+public class DeleteBasketCommandValidator : AbstractValidator<DeleteBasketCommand>
 {
     public DeleteBasketCommandValidator()
     {

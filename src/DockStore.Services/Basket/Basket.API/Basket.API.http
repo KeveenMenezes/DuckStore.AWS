@@ -1,21 +1,19 @@
 @Basket = https://localhost:5051/api
 
-
 ### Create a new basket
 GET {{Basket}}/basket/swn
 
-
-### Post a new basket 
+### Post a new basket
 Post {{Basket}}/basket
 Content-Type: application/json
 
 {
-    "card":
+    "cart":
     {
-        "userName": "Teste 2",
+        "userName": "swn",
         "items": [
             {
-                "qantity": 1, 
+                "qantity": 1,
                 "color": "blue",
                 "price": "12.99",
                 "productId": "6cd2ae29-decf-4898-800d-5ecb9884f46c",
@@ -24,3 +22,6 @@ Content-Type: application/json
         ]
     }
 }
+
+### Delete a basket
+DELETE {{Basket}}/basket/swn
