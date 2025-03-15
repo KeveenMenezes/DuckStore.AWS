@@ -17,6 +17,3 @@ public class ShoppingCart
 
     public decimal TotalPrice => Items.Sum(x => x.Price * x.Qantity);
 }
-
-
-

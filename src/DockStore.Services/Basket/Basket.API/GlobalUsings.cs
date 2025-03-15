@@ -10,3 +10,5 @@ global using FluentValidation;
 global using Mapster;
 global using Marten;
 global using MediatR;
+global using System.Text.Json;
+global using StackExchange.Redis;

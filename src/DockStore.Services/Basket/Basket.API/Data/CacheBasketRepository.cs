@@ -1,7 +1,4 @@
-﻿using StackExchange.Redis;
-using System.Text.Json;
-
-namespace Basket.API.Data;
+﻿namespace Basket.API.Data;
 
 public class CacheBasketRepository(
     IBasketRepository basketRepository,
