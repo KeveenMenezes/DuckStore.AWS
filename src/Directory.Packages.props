@@ -14,6 +14,7 @@
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <PackageVersion Include="Carter" Version="9.0.0" />
+    <PackageVersion Include="Grpc.AspNetCore" Version="2.70.0" />
     <PackageVersion Include="Mapster" Version="7.4.0" />
     <PackageVersion Include="Marten" Version="7.37.1" />
     <PackageVersion Include="MediatR" Version="12.4.1" />
