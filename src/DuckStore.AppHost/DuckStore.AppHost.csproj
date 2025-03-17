@@ -17,11 +17,13 @@
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Aspire.Hosting.NodeJs" />
     <PackageReference Include="Aspire.Hosting.Redis" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Sqlite" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\DockStore.Services\Basket\Basket.API\Basket.API.csproj" />
     <ProjectReference Include="..\DockStore.Services\Catalog\Catalog.API\Catalog.API.csproj" />
+    <ProjectReference Include="..\DockStore.Services\Discount\Discount.Grpc\Discount.Grpc.csproj" />
   </ItemGroup>
 
   <Target Name="RestoreNpm" BeforeTargets="Build" Condition=" '$(DesignTimeBuild)' != 'true' ">
