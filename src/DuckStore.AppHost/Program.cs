@@ -1,4 +1,8 @@
-﻿var builder = DistributedApplication.CreateBuilder(args);
+﻿using DuckStore.AppHost.Extensions;
+
+var builder = DistributedApplication.CreateBuilder(args);
+
+builder.AddForwardedHeaders();
 
 //Create DataBase
 var redis = builder.AddRedis("redis").WithRedisInsight();

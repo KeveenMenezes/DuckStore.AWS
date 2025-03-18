@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="Aspire.NpgSql" />
     <PackageReference Include="Aspire.StackExchange.Redis" />
-
+    <PackageReference Include="Grpc.AspNetCore" />
     <PackageReference Include="Marten" />
     <PackageReference Include="Carter" />
     <PackageReference Include="Scrutor" />
@@ -17,6 +17,12 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\DuckStore.BuildingBlocks\BuildingBlocks.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Protobuf Include="..\..\Discount\Discount.Grpc\Protos\discount.proto" GrpcServices="Client">
+      <Link>Protos\discount.proto</Link>
+    </Protobuf>
   </ItemGroup>
 
 </Project>

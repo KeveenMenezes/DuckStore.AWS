@@ -6,6 +6,10 @@ builder.AddServiceDefaults();
 builder.AddNpgsqlDataSource("basketDb");
 builder.AddRedisClient("redis");
 
+// HTTP and GRPC client registrations
+builder.Services.AddGrpcClient<DiscountProtoService.DiscountProtoServiceClient>(
+    o => o.Address = new("http://discountapi"));
+
 var assembly = typeof(Program).Assembly;
 builder.Services
     .AddExceptionHandler<CustomExceptionHandler>()
