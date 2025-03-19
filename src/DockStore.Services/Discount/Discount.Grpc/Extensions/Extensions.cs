@@ -2,14 +2,13 @@ using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
 
-namespace Discount.Grpc.Data;
+namespace Discount.Grpc.Extensions;
 
 public static class Extensions
 {
     public static IHostApplicationBuilder AddServiceDefaults(this IHostApplicationBuilder builder)
     {
         builder.AddBasicServiceDefaults();
-
 
         builder.Services.ConfigureHttpClientDefaults(http =>
         {
@@ -87,6 +86,7 @@ public static class Extensions
     {
         using var scope = app.ApplicationServices.CreateAsyncScope();
         using var dbContext = scope.ServiceProvider.GetRequiredService<DiscountContext>();
+
         dbContext.Database.MigrateAsync();
 
         return app;

@@ -10,14 +10,14 @@ Content-Type: application/json
 {
     "cart":
     {
-        "userName": "swn",
+        "userName": "Iphone",
         "items": [
             {
                 "qantity": 1,
                 "color": "blue",
-                "price": "12.99",
+                "price": "5599.99",
                 "productId": "6cd2ae29-decf-4898-800d-5ecb9884f46c",
-                "productName": "test"
+                "productName": "IPhone X"
             }
         ]
     }

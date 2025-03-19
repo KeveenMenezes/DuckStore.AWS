@@ -5,7 +5,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 builder.AddForwardedHeaders();
 
 //Create DataBase
-var redis = builder.AddRedis("redis").WithRedisInsight();
+var redis = builder.AddRedis("redis");
 var discountDb = builder.AddSqlite("discountDb");
 var catalogDb = builder.AddPostgres("catalogDb");
 var basketDb = builder.AddPostgres("basketDb");
@@ -18,21 +18,23 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
     .WithReference(catalogDb)
     .WithHttpsHealthCheck("/health");
 
+var discountapi = builder.AddProject<Projects.Discount_Grpc>(
+    "discountapi", GetHttpForEndpoints())
+    .WithExternalHttpEndpoints()
+    .WaitFor(discountDb)
+    .WithReference(discountDb);
+
 var basketApi = builder.AddProject<Projects.Basket_API>(
     "basketapi", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(redis)
     .WaitFor(basketDb)
+    .WaitFor(discountapi)
     .WithReference(redis)
     .WithReference(basketDb)
+    .WithReference(discountapi)
     .WithHttpsHealthCheck("/health");
 redis.WithParentRelationship(basketApi);
-
-builder.AddProject<Projects.Discount_Grpc>(
-    "discountapi", GetHttpForEndpoints())
-    .WithExternalHttpEndpoints()
-    .WaitFor(discountDb)
-    .WithReference(discountDb);
 
 // Web app
 builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")
