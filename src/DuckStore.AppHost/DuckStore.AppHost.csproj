@@ -12,6 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.SqlServer" />
     <PackageReference Include="Aspire.Npgsql" />
     <PackageReference Include="Aspire.Hosting.AppHost" />
     <PackageReference Include="Aspire.Hosting.PostgreSQL" />
@@ -24,6 +25,7 @@
     <ProjectReference Include="..\DockStore.Services\Basket\Basket.API\Basket.API.csproj" />
     <ProjectReference Include="..\DockStore.Services\Catalog\Catalog.API\Catalog.API.csproj" />
     <ProjectReference Include="..\DockStore.Services\Discount\Discount.Grpc\Discount.Grpc.csproj" />
+    <ProjectReference Include="..\DockStore.Services\Ordering\Ordering.API\Ordering.API.csproj" />
   </ItemGroup>
 
   <Target Name="RestoreNpm" BeforeTargets="Build" Condition=" '$(DesignTimeBuild)' != 'true' ">

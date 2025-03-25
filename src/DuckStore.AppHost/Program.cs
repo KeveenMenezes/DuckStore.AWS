@@ -7,8 +7,10 @@ builder.AddForwardedHeaders();
 //Create DataBase
 var redis = builder.AddRedis("redis");
 var discountDb = builder.AddSqlite("discountDb");
+var orderingDb = builder.AddSqlServer("orderingDb");
 var catalogDb = builder.AddPostgres("catalogDb");
 var basketDb = builder.AddPostgres("basketDb");
+
 
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
@@ -35,6 +37,13 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WithReference(discountapi)
     .WithHttpsHealthCheck("/health");
 redis.WithParentRelationship(basketApi);
+
+var orderingApi = builder.AddProject<Projects.Ordering_API>(
+    "orderapi", GetHttpForEndpoints())
+    .WithExternalHttpEndpoints()
+    .WaitFor(orderingDb)
+    .WithReference(orderingDb)
+    .WithHttpsHealthCheck("/health");
 
 // Web app
 builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")
