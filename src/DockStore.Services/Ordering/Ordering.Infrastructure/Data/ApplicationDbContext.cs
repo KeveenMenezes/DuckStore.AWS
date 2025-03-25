@@ -1,7 +1,6 @@
 using System.Reflection;
-using Microsoft.EntityFrameworkCore;
 
-namespace Ordering.Infrastructure;
+namespace Ordering.Infrastructure.Data;
 
 public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
     : DbContext(options)

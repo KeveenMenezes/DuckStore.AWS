@@ -1,5 +1,3 @@
-using Ordering.Domain.ValueObjects;
-
 namespace Ordering.Infrastructure.Data.Configuration;
 
 public class CustomerConfiguration : IEntityTypeConfiguration<Customer>
