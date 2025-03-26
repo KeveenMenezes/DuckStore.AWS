@@ -38,12 +38,16 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WithHttpsHealthCheck("/health");
 redis.WithParentRelationship(basketApi);
 
-var orderingApi = builder.AddProject<Projects.Ordering_API>(
+builder.AddProject<Projects.Ordering_API>(
     "orderapi", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(orderingDb)
     .WithReference(orderingDb)
     .WithHttpsHealthCheck("/health");
+
+builder.AddProject<Projects.Ordering_MigrationService>("ordering-migration")
+    .WaitFor(orderingDb)
+    .WithReference(orderingDb);
 
 // Web app
 builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")

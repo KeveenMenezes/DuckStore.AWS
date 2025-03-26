@@ -22,10 +22,15 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageJsons Include="..\DuckStore.WebApp.ANG\package.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\DockStore.Services\Basket\Basket.API\Basket.API.csproj" />
     <ProjectReference Include="..\DockStore.Services\Catalog\Catalog.API\Catalog.API.csproj" />
     <ProjectReference Include="..\DockStore.Services\Discount\Discount.Grpc\Discount.Grpc.csproj" />
     <ProjectReference Include="..\DockStore.Services\Ordering\Ordering.API\Ordering.API.csproj" />
+    <ProjectReference Include="..\DockStore.Services\Ordering\Ordering.MigrationService\Ordering.MigrationService.csproj" />
   </ItemGroup>
 
   <Target Name="RestoreNpm" BeforeTargets="Build" Condition=" '$(DesignTimeBuild)' != 'true' ">

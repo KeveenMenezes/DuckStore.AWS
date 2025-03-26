@@ -35,6 +35,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ordering.Domain", "DockStor
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ordering.Infrastructure", "DockStore.Services\Ordering\Ordering.Infrastructure\Ordering.Infrastructure.csproj", "{F971A69E-476A-42E7-920F-A203A5175EA3}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ordering.MigrationService", "DockStore.Services\Ordering\Ordering.MigrationService\Ordering.MigrationService.csproj", "{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -153,6 +155,18 @@ Global
 		{F971A69E-476A-42E7-920F-A203A5175EA3}.Release|x64.Build.0 = Release|Any CPU
 		{F971A69E-476A-42E7-920F-A203A5175EA3}.Release|x86.ActiveCfg = Release|Any CPU
 		{F971A69E-476A-42E7-920F-A203A5175EA3}.Release|x86.Build.0 = Release|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Debug|x64.Build.0 = Debug|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Debug|x86.Build.0 = Debug|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Release|x64.ActiveCfg = Release|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Release|x64.Build.0 = Release|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Release|x86.ActiveCfg = Release|Any CPU
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -167,6 +181,7 @@ Global
 		{D5A740C4-78F8-4E36-9F0F-79365C05A713} = {3BAACA43-EC64-C367-9FAA-9C38067293A8}
 		{310145F9-A1A0-4A5A-A928-D4CEA02EA388} = {3BAACA43-EC64-C367-9FAA-9C38067293A8}
 		{F971A69E-476A-42E7-920F-A203A5175EA3} = {3BAACA43-EC64-C367-9FAA-9C38067293A8}
+		{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3} = {3BAACA43-EC64-C367-9FAA-9C38067293A8}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1148B637-1009-4DE0-9724-4727C73FAA45}
