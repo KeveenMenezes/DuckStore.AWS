@@ -16,18 +16,6 @@ public class Worker(
         using var activity = s_activitySource.StartActivity(
             "Migrating database", ActivityKind.Client);
 
-        var environment = Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT");
-
-        if (!string.Equals(
-            environment,
-            Environments.Development,
-            StringComparison.OrdinalIgnoreCase))
-        {
-            activity?.AddTag("SkipMigration", "Environment is not Development");
-            hostApplicationLifetime.StopApplication();
-            return;
-        }
-
         try
         {
             using var scope = serviceProvider.CreateScope();

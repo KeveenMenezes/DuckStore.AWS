@@ -1,17 +1,20 @@
 using BuildingBlocks.ServiceDefaults;
-using Ordering.Infrastructure.Data;
+using Ordering.Infrastructure;
 using Ordering.MigrationService;
 
 var builder = Host.CreateApplicationBuilder(args);
+// Add services to the container.
 
-builder.AddServiceDefaults();
+if (builder.Environment.IsDevelopment())
+{
+    builder.AddServiceDefaults();
 
-builder.Services.AddHostedService<Worker>();
-
-builder.Services.AddOpenTelemetry()
-    .WithTracing(tracing => tracing.AddSource(Worker.ActivitySourceName));
-
-builder.AddSqlServerDbContext<ApplicationDbContext>("orderingDb");
+    builder.Services
+        .AddInfrastructureServices(builder.Configuration)
+        .AddHostedService<Worker>();
+}
 
 var host = builder.Build();
+// Configure the HTTP request pipeline.
+
 await host.RunAsync();
