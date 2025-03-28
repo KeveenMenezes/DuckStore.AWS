@@ -2,16 +2,21 @@ namespace Ordering.Infrastructure.Interceptors;
 
 public class AuditableEntityInterceptor : SaveChangesInterceptor
 {
-    public override int SavedChanges(SaveChangesCompletedEventData eventData, int result)
+    public override InterceptionResult<int> SavingChanges(
+        DbContextEventData eventData,
+        InterceptionResult<int> result)
     {
         UpdateEntities(eventData.Context);
-        return base.SavedChanges(eventData, result);
+        return base.SavingChanges(eventData, result);
     }
 
-    public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData eventData, int result, CancellationToken cancellationToken = default)
+    public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+        DbContextEventData eventData,
+        InterceptionResult<int> result,
+        CancellationToken cancellationToken = default)
     {
         UpdateEntities(eventData.Context);
-        return base.SavedChangesAsync(eventData, result, cancellationToken);
+        return base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 
     private static void UpdateEntities(DbContext? context)
@@ -25,9 +30,9 @@ public class AuditableEntityInterceptor : SaveChangesInterceptor
                 entity.Entity.CreatedAt = DateTime.UtcNow;
             }
 
-            if (entity.State == EntityState.Added
-                || entity.State == EntityState.Modified
-                || entity.HasChangedOwnedEntities())
+            if (entity.State == EntityState.Added ||
+                entity.State == EntityState.Modified ||
+                entity.HasChangedOwnedEntities())
             {
                 entity.Entity.LastModified = DateTime.UtcNow;
                 entity.Entity.LastModifiedBy = "system";

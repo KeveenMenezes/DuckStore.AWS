@@ -24,7 +24,6 @@ public class Worker(
             await RunMigrationAsync(dbContext, stoppingToken);
 
             await SeedAsync(dbContext);
-
         }
         catch (Exception ex)
         {
