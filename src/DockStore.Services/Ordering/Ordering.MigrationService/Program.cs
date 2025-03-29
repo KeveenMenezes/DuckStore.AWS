@@ -1,4 +1,5 @@
 using BuildingBlocks.ServiceDefaults;
+using Ordering.Application;
 using Ordering.Infrastructure;
 using Ordering.MigrationService;
 
@@ -10,6 +11,7 @@ if (builder.Environment.IsDevelopment())
     builder.AddServiceDefaults();
 
     builder.Services
+        .AddApplicationServices()
         .AddInfrastructureServices(builder.Configuration)
         .AddHostedService<Worker>();
 }

@@ -46,6 +46,7 @@ builder.AddProject<Projects.Ordering_API>(
     "orderapi", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(orderingDb)
+    .WithReference(orderingMigration)
     .WithReference(orderingDb)
     .WithHttpsHealthCheck("/health");
 
