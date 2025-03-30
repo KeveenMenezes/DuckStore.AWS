@@ -5,11 +5,11 @@ var builder = DistributedApplication.CreateBuilder(args);
 builder.AddForwardedHeaders();
 
 //Create DataBase
-var redis = builder.AddRedis("redis");
-var discountDb = builder.AddSqlite("discountDb");
+var redis = builder.AddRedis("redis").WithExplicitStart();
+var discountDb = builder.AddSqlite("discountDb").WithExplicitStart();
+var catalogDb = builder.AddPostgres("catalogDb").WithExplicitStart();
+var basketDb = builder.AddPostgres("basketDb").WithExplicitStart();
 var orderingDb = builder.AddSqlServer("orderingDb");
-var catalogDb = builder.AddPostgres("catalogDb");
-var basketDb = builder.AddPostgres("basketDb");
 
 
 // Services
@@ -18,13 +18,15 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
     .WithExternalHttpEndpoints()
     .WaitFor(catalogDb)
     .WithReference(catalogDb)
-    .WithHttpsHealthCheck("/health");
+    .WithHttpsHealthCheck("/health")
+    .WithExplicitStart();
 
 var discountapi = builder.AddProject<Projects.Discount_Grpc>(
     "discountapi", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(discountDb)
-    .WithReference(discountDb);
+    .WithReference(discountDb)
+    .WithExplicitStart();
 
 var basketApi = builder.AddProject<Projects.Basket_API>(
     "basketapi", GetHttpForEndpoints())
@@ -35,7 +37,8 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WithReference(redis)
     .WithReference(basketDb)
     .WithReference(discountapi)
-    .WithHttpsHealthCheck("/health");
+    .WithHttpsHealthCheck("/health")
+    .WithExplicitStart();
 redis.WithParentRelationship(basketApi);
 
 var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("ordering-migration")
@@ -58,7 +61,8 @@ builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")
     .WithReference(catalogApi)
     .WithReference(basketApi)
     .WithHttpsEndpoint(env: "PORT")
-    .PublishAsDockerFile();
+    .PublishAsDockerFile()
+    .WithExplicitStart();
 
 await builder.Build().RunAsync();
 

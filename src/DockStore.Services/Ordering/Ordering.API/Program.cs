@@ -1,12 +1,9 @@
-using Ordering.Infrastructure.Data;
-
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.AddServiceDefaults();
 
 builder.Services
-
     .AddApplicationServices()
     .AddInfrastructureServices(builder.Configuration)
     .AddApiServices();

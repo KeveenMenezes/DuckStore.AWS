@@ -13,7 +13,13 @@ public class OrderCoreError
     {
     }
 
-    public static OrderCoreError OrderIdNotEmpty => new(
-        "OrderIdNotEmpty.",
-        "OrderId cannot be empty.");
+    public static OrderCoreError OrderIdNotEmpty =>
+        new(
+            "OrderIdNotEmpty.",
+            "OrderId cannot be empty.");
+
+    public static OrderCoreError OrderNotFound(Guid orderId) =>
+        new(
+            "OrderNotFound",
+            $"Order with id {orderId} was not found.");
 }

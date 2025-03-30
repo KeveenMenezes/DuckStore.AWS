@@ -35,46 +35,46 @@ public class Worker(
     }
 
     private static async Task RunMigrationAsync(
-        ApplicationDbContext dbContext, CancellationToken cancellationToken)
+        ApplicationDbContext db, CancellationToken cancellationToken)
     {
-        var strategy = dbContext.Database.CreateExecutionStrategy();
+        var strategy = db.Database.CreateExecutionStrategy();
         await strategy.ExecuteAsync(async () =>
         {
-            await dbContext.Database.MigrateAsync(cancellationToken);
+            await db.Database.MigrateAsync(cancellationToken);
         });
     }
 
-    private static async Task SeedAsync(ApplicationDbContext dbContext)
+    private static async Task SeedAsync(ApplicationDbContext db)
     {
-        await SeedCustomerAsync(dbContext);
-        await SeedProductAsync(dbContext);
-        await SeedOrdersWithItemsAsync(dbContext);
+        await SeedCustomerAsync(db);
+        await SeedProductAsync(db);
+        await SeedOrdersWithItemsAsync(db);
     }
 
-    private static async Task SeedCustomerAsync(ApplicationDbContext dbContext)
+    private static async Task SeedCustomerAsync(ApplicationDbContext db)
     {
-        if (!await dbContext.Customers.AnyAsync())
+        if (!await db.Customers.AnyAsync())
         {
-            await dbContext.Customers.AddRangeAsync(InitialData.Customers);
-            await dbContext.SaveChangesAsync();
+            await db.Customers.AddRangeAsync(InitialData.Customers);
+            await db.SaveChangesAsync();
         }
     }
 
-    private static async Task SeedProductAsync(ApplicationDbContext dbContext)
+    private static async Task SeedProductAsync(ApplicationDbContext db)
     {
-        if (!await dbContext.Products.AnyAsync())
+        if (!await db.Products.AnyAsync())
         {
-            await dbContext.Products.AddRangeAsync(InitialData.Products);
-            await dbContext.SaveChangesAsync();
+            await db.Products.AddRangeAsync(InitialData.Products);
+            await db.SaveChangesAsync();
         }
     }
 
-    private static async Task SeedOrdersWithItemsAsync(ApplicationDbContext dbContext)
+    private static async Task SeedOrdersWithItemsAsync(ApplicationDbContext db)
     {
-        if (!await dbContext.Orders.AnyAsync())
+        if (!await db.Orders.AnyAsync())
         {
-            await dbContext.Orders.AddRangeAsync(InitialData.OrdersWithItems);
-            await dbContext.SaveChangesAsync();
+            await db.Orders.AddRangeAsync(InitialData.OrdersWithItems);
+            await db.SaveChangesAsync();
         }
     }
 }
