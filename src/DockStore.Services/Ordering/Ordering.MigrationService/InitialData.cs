@@ -68,14 +68,14 @@ internal static class InitialData
                 "5555555555554444",
                 "12/28",
                 "355",
-                1);
+                Domain.Enums.PaymentMethod.Credit);
 
             var payment2 = Payment.Of(
                 "john",
                 "8885555555554444",
                 "06/30",
                 "222",
-                2);
+                Domain.Enums.PaymentMethod.Debit);
 
             var order1 = Order.Create(
                 OrderId.Of(Guid.NewGuid()),

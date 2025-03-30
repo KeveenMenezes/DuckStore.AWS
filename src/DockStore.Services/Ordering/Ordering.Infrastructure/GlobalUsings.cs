@@ -9,4 +9,5 @@ global using Ordering.Domain.Models;
 global using Ordering.Domain.ValueObjects;
 global using Ordering.Infrastructure.Data;
 global using Ordering.Infrastructure.Interceptors;
-
+global using Ordering.Domain.Abstractions.Repositories;
+global using Ordering.Infrastructure.RepositoryAdapters;

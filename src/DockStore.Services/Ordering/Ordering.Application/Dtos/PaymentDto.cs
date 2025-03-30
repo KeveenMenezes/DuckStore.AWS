@@ -6,9 +6,3 @@ public record PaymentDto(
     string Expiration,
     string Cvv,
     PaymentMethod PaymentMethod);
-
-public enum PaymentMethod
-{
-    Debit = 1,
-    Credit = 2,
-}

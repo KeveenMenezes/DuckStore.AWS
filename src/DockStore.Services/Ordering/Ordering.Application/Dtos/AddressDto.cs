@@ -7,4 +7,4 @@ public record AddressDto(
     string AddressLine,
     string Country,
     string State,
-    string ZipCodde);
+    string ZipCode);
