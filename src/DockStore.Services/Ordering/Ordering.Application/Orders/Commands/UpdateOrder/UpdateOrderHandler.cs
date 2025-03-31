@@ -1,5 +1,3 @@
-using Ordering.Domain.Exceptions;
-
 namespace Ordering.Application.Orders.Commands.UpdateOrder;
 
 public class UpdateOrderHandler(
