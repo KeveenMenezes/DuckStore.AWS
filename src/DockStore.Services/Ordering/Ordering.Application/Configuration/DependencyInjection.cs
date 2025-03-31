@@ -2,7 +2,7 @@ using System.Reflection;
 using BuildingBlocks.Behaviors;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Ordering.Application;
+namespace Ordering.Application.Configuration;
 
 public static class DependencyInjection
 {
