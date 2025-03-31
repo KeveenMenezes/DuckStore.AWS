@@ -5,4 +5,6 @@ public interface IOrderRepository : IRepository<Order>
     IAsyncEnumerable<Order> GetOrdersByNameAsync(
         string name, CancellationToken cancellationToken = default);
 
+    IAsyncEnumerable<Order> GetOrdersByCustomerAsync(
+        Guid customerId, CancellationToken cancellationToken = default);
 }
