@@ -2,9 +2,11 @@ namespace Ordering.Domain.Abstractions.Repositories;
 
 public interface IOrderRepository : IRepository<Order>
 {
-    IAsyncEnumerable<Order> GetOrdersByNameAsync(
-        string name, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<Order> GetOrdersPaginationAsync(int pageIndex, int pageSize);
 
-    IAsyncEnumerable<Order> GetOrdersByCustomerAsync(
-        Guid customerId, CancellationToken cancellationToken = default);
+    IAsyncEnumerable<Order> GetOrdersByNameAsync(string name);
+
+    IAsyncEnumerable<Order> GetOrdersByCustomerAsync(Guid customerId);
+
+    Task<long> GetTotalCountOrders(CancellationToken cancellationToken = default);
 }

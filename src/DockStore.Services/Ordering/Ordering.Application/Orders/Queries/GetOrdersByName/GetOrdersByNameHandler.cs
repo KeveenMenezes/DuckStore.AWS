@@ -7,9 +7,8 @@ public class GetOrdersByNameHandler(
     public async Task<GetOrdersByNameResult> Handle(
         GetOrdersByNameQuery query, CancellationToken cancellationToken)
     {
-        var orders = orderRepository.GetOrdersByNameAsync(
-            query.Name, cancellationToken);
+        var orders = orderRepository.GetOrdersByNameAsync(query.Name);
 
-        return new GetOrdersByNameResult(orders.ToOrderDtoList());
+        return new GetOrdersByNameResult(orders.ToOrderDtoList(cancellationToken));
     }
 }

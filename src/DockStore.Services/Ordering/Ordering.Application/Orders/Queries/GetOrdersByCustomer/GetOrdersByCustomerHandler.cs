@@ -7,8 +7,8 @@ public class GetOrdersByCustomerHandler(IOrderRepository orderRepository)
         GetOrdersByCustomerQuery request, CancellationToken cancellationToken)
     {
         var orders = orderRepository.GetOrdersByCustomerAsync(
-            request.CustomerId, cancellationToken);
+            request.CustomerId);
 
-        return new GetOrdersByCustomerResult(orders.ToOrderDtoList());
+        return new GetOrdersByCustomerResult(orders.ToOrderDtoList(cancellationToken));
     }
 }

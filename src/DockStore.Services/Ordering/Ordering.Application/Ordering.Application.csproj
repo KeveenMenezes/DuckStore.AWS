@@ -10,9 +10,4 @@
     <ProjectReference Include="..\..\..\DuckStore.BuildingBlocks\BuildingBlocks.csproj" />
     <ProjectReference Include="..\Ordering.Domain\Ordering.Domain.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <PackageReference Include="System.Linq.Async" />
-  </ItemGroup>
-
 </Project>
