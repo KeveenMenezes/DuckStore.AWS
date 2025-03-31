@@ -5,7 +5,8 @@ public record CreateOrderCommand(OrderDto Order)
 
 public record CreateOrderResult(Guid Id);
 
-public class CreateOrderCommandValidator : AbstractValidator<CreateOrderCommand>
+public class CreateOrderCommandValidator
+    : AbstractValidator<CreateOrderCommand>
 {
     public CreateOrderCommandValidator()
     {
