@@ -1,4 +1,3 @@
-using System.Reflection;
 using BuildingBlocks.Behaviors;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -8,12 +7,14 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplicationServices(this IServiceCollection services)
     {
+        var assembly = typeof(DependencyInjection).Assembly;
         services.AddMediatR(config =>
-        {
-            config.RegisterServicesFromAssembly(Assembly.GetExecutingAssembly());
-            config.AddBehavior(typeof(ValidationBehavior<,>));
-            config.AddBehavior(typeof(LoggingBehavior<,>));
-        });
+            {
+                config.RegisterServicesFromAssembly(assembly);
+                config.AddOpenBehavior(typeof(ValidationBehavior<,>));
+                config.AddOpenBehavior(typeof(LoggingBehavior<,>));
+            })
+            .AddValidatorsFromAssembly(assembly);
 
         return services;
     }
