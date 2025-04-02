@@ -11,7 +11,6 @@ var catalogDb = builder.AddPostgres("catalogDb").WithExplicitStart();
 var basketDb = builder.AddPostgres("basketDb").WithExplicitStart();
 var orderingDb = builder.AddSqlServer("orderingDb");
 
-
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
     "catalogapi", GetHttpForEndpoints())

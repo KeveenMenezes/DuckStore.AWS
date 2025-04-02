@@ -1,5 +1,3 @@
-using Ordering.Domain.Enums;
-
 namespace Ordering.Infrastructure.Data.Configuration;
 
 public class OrderConfiguration : IEntityTypeConfiguration<Order>

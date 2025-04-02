@@ -1,4 +1,5 @@
 using Ordering.Application.Configuration;
+using Ordering.Infrastructure.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.

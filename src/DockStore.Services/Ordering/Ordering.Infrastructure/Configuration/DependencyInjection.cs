@@ -1,4 +1,4 @@
-namespace Ordering.Infrastructure;
+namespace Ordering.Infrastructure.Configuration;
 
 public static class DependencyInjection
 {
@@ -18,5 +18,4 @@ public static class DependencyInjection
 
         return services;
     }
-
 }

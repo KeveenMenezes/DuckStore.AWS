@@ -1,5 +1,3 @@
-using MediatR;
-
 namespace Ordering.Infrastructure.Interceptors;
 
 public class DispatchDomainEventsInterceptor(
@@ -42,5 +40,4 @@ public class DispatchDomainEventsInterceptor(
             await mediator.Publish(domainEvent);
         }
     }
-
 }
