@@ -33,6 +33,9 @@ builder.Services
 builder.Services.AddScoped<IBasketRepository, BasketRepository>();
 builder.Services.Decorate<IBasketRepository, CacheBasketRepository>();
 
+//Async Communication Services
+builder.Services.AddMessageBroker(builder.Configuration);
+
 var app = builder.Build();
 // Configure the HTTP request pipeline.
 
