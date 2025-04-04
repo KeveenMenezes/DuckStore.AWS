@@ -13,7 +13,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\DuckStore.BuildingBlocks\BuildingBlocks.csproj" />
+    <ProjectReference Include="..\..\..\DuckStore.BuildingBlocks\BuildingBlocks\BuildingBlocks.csproj" />
   </ItemGroup>
 
 </Project>
