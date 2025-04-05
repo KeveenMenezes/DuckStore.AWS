@@ -12,7 +12,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.Hosting.RabbitMQ" />
     <PackageReference Include="Aspire.Hosting.SqlServer" />
     <PackageReference Include="Aspire.Npgsql" />
     <PackageReference Include="Aspire.Hosting.AppHost" />
@@ -27,11 +26,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DockStore.Services\Basket\Basket.API\Basket.API.csproj" />
-    <ProjectReference Include="..\DockStore.Services\Catalog\Catalog.API\Catalog.API.csproj" />
-    <ProjectReference Include="..\DockStore.Services\Discount\Discount.Grpc\Discount.Grpc.csproj" />
-    <ProjectReference Include="..\DockStore.Services\Ordering\Ordering.API\Ordering.API.csproj" />
-    <ProjectReference Include="..\DockStore.Services\Ordering\Ordering.MigrationService\Ordering.MigrationService.csproj" />
+    <ProjectReference Include="..\DuckStore.Services\Basket\Basket.API\Basket.API.csproj" />
+    <ProjectReference Include="..\DuckStore.Services\Catalog\Catalog.API\Catalog.API.csproj" />
+    <ProjectReference Include="..\DuckStore.Services\Discount\Discount.Grpc\Discount.Grpc.csproj" />
+    <ProjectReference Include="..\DuckStore.Services\Ordering\Ordering.API\Ordering.API.csproj" />
+    <ProjectReference Include="..\DuckStore.Services\Ordering\Ordering.MigrationService\Ordering.MigrationService.csproj" />
   </ItemGroup>
 
   <Target Name="RestoreNpm" BeforeTargets="Build" Condition=" '$(DesignTimeBuild)' != 'true' ">
