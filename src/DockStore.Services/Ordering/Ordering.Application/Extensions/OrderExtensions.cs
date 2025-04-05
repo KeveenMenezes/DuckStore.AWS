@@ -32,7 +32,7 @@ public static class OrderExtensions
                     order.Payment.CardName!,
                     order.Payment.CardNumber,
                     order.Payment.Expiration,
-                    order.Payment.CVV,
+                    order.Payment.Cvv,
                     order.Payment.PaymentMethod),
                 Status: order.Status,
                 OrderItems: [.. order.OrderItems
@@ -72,7 +72,7 @@ public static class OrderExtensions
                 order.Payment.CardName!,
                 order.Payment.CardNumber,
                 order.Payment.Expiration,
-                order.Payment.CVV,
+                order.Payment.Cvv,
                 order.Payment.PaymentMethod),
             Status: order.Status,
             OrderItems: [.. order.OrderItems
