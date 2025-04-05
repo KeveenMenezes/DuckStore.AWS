@@ -1,0 +1,77 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "build",
+                "${workspaceFolder}/DuckStore.sln",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            }
+        },
+        {
+            "label": "publish",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "publish",
+                "${workspaceFolder}/DuckStore.sln",
+                "/property:GenerateFullPaths=true",
+                "/consoleloggerparameters:NoSummary;ForceNoAlign"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "watch",
+            "command": "dotnet",
+            "type": "process",
+            "args": [
+                "watch",
+                "run",
+                "--project",
+                "${workspaceFolder}/DuckStore.sln"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "docker-compose up",
+            "type": "shell",
+            "command": "docker-compose",
+            "args": [
+                "-f",
+                "src/docker-compose.yml",
+                "-f",
+                "src/docker-compose.override.yml",
+                "up",
+                "-d",
+                "--build"
+            ]
+        },
+        {
+            "label": "docker-compose down",
+            "type": "shell",
+            "command": "docker-compose",
+            "args": [
+                "-f",
+                "src/docker-compose.yml",
+                "-f",
+                "src/docker-compose.override.yml",
+                "down"
+            ],
+            "problemMatcher": []
+        },
+        {
+            "label": "build and docker-compose up",
+            "dependsOn": ["dotnet build", "docker-compose up"],
+            "dependsOrder": "sequence"
+        }
+    ]
+}
