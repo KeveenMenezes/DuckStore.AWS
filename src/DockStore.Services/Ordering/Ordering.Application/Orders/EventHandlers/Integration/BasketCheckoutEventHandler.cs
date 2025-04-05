@@ -7,7 +7,6 @@ public class BasketCheckoutEventHandler(
     ILogger<BasketCheckoutEventHandler> logger)
     : IConsumer<BasketCheckoutEvent>
 {
-
     public async Task Consume(ConsumeContext<BasketCheckoutEvent> context)
     {
         logger.LogInformation(
@@ -48,6 +47,7 @@ public class BasketCheckoutEventHandler(
             Payment: paymentDto,
             Status: OrderStatus.Pending,
             OrderItems:
+            // TODO: incluir dados da OrderItem
             [
                 new OrderItemDto(
                     orderId,

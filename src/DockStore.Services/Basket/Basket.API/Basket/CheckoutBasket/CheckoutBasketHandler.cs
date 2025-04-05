@@ -24,7 +24,8 @@ public class CheckoutBasketCommandHandler(
     IBasketRepository basketRepository, IPublishEndpoint publishEndpoint)
     : ICommandHandler<CheckoutBasketCommand, CheckoutBasketResult>
 {
-    public async Task<CheckoutBasketResult> Handle(CheckoutBasketCommand command, CancellationToken cancellationToken)
+    public async Task<CheckoutBasketResult> Handle(
+        CheckoutBasketCommand command, CancellationToken cancellationToken)
     {
         var basket = await basketRepository.GetBasket(
             command.BasketCheckoutDto.UserName, cancellationToken);
@@ -38,7 +39,8 @@ public class CheckoutBasketCommandHandler(
 
         await publishEndpoint.Publish(eventMessage, cancellationToken);
 
-        await basketRepository.DeleteBasket(command.BasketCheckoutDto.UserName, cancellationToken);
+        await basketRepository.DeleteBasket(
+            command.BasketCheckoutDto.UserName, cancellationToken);
 
         return new CheckoutBasketResult(true);
     }
