@@ -4,28 +4,31 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddForwardedHeaders();
 
-//Create DataBase
-var redis = builder.AddRedis("redis").WithExplicitStart();
-var discountDb = builder.AddSqlite("discountDb").WithExplicitStart();
-var catalogDb = builder.AddPostgres("catalogDb").WithExplicitStart();
-var basketDb = builder.AddPostgres("basketDb").WithExplicitStart();
+// DataBase
+var redis = builder.AddRedis("redis");
+var discountDb = builder.AddSqlite("discountDb");
+var catalogDb = builder.AddPostgres("catalogDb");
+var basketDb = builder.AddPostgres("basketDb");
 var orderingDb = builder.AddSqlServer("orderingDb");
+
+// Message Broker
+var rabbitmq = builder.AddRabbitMQ("messaging");
 
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
     "catalogapi", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(catalogDb)
+    .WaitFor(rabbitmq)
     .WithReference(catalogDb)
-    .WithHttpsHealthCheck("/health")
-    .WithExplicitStart();
+    .WithReference(rabbitmq)
+    .WithHttpsHealthCheck("/health");
 
 var discountapi = builder.AddProject<Projects.Discount_Grpc>(
     "discountapi", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(discountDb)
-    .WithReference(discountDb)
-    .WithExplicitStart();
+    .WithReference(discountDb);
 
 var basketApi = builder.AddProject<Projects.Basket_API>(
     "basketapi", GetHttpForEndpoints())
@@ -33,11 +36,14 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WaitFor(redis)
     .WaitFor(basketDb)
     .WaitFor(discountapi)
+    .WaitFor(catalogApi)
+    .WaitFor(rabbitmq)
     .WithReference(redis)
     .WithReference(basketDb)
     .WithReference(discountapi)
-    .WithHttpsHealthCheck("/health")
-    .WithExplicitStart();
+    .WithReference(catalogApi)
+    .WithReference(rabbitmq)
+    .WithHttpsHealthCheck("/health");
 redis.WithParentRelationship(basketApi);
 
 var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("ordering-migration")
@@ -60,8 +66,7 @@ builder.AddNpmApp("shopping", "../DuckStore.WebApp.ANG")
     .WithReference(catalogApi)
     .WithReference(basketApi)
     .WithHttpsEndpoint(env: "PORT")
-    .PublishAsDockerFile()
-    .WithExplicitStart();
+    .PublishAsDockerFile();
 
 await builder.Build().RunAsync();
 

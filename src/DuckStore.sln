@@ -15,6 +15,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "SolutionItems", "SolutionIt
 		.gitignore = .gitignore
 		Directory.Packages.props = Directory.Packages.props
 		nuget.config = nuget.config
+		docker-compose.yml = docker-compose.yml
+		docker-compose.override.yml = docker-compose.override.yml
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Catalog.API", "DockStore.Services\Catalog\Catalog.API\Catalog.API.csproj", "{812A24A4-9BE7-480C-A185-D894470B3D20}"
