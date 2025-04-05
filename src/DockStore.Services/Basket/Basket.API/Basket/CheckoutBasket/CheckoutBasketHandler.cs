@@ -1,6 +1,3 @@
-using BuildingBlocks.Messaging.Events;
-using MassTransit;
-
 namespace Basket.API.Basket.CheckoutBasket;
 
 public record CheckoutBasketCommand(BasketCheckoutDto BasketCheckoutDto)
@@ -24,23 +21,24 @@ public class CheckoutBasketCommandValidator
 }
 
 public class CheckoutBasketCommandHandler(
-    IBasketRepository repository, IPublishEndpoint publishEndpoint)
+    IBasketRepository basketRepository, IPublishEndpoint publishEndpoint)
     : ICommandHandler<CheckoutBasketCommand, CheckoutBasketResult>
 {
     public async Task<CheckoutBasketResult> Handle(CheckoutBasketCommand command, CancellationToken cancellationToken)
     {
-        var basket = await repository.GetBasket(command.BasketCheckoutDto.UserName, cancellationToken);
+        var basket = await basketRepository.GetBasket(
+            command.BasketCheckoutDto.UserName, cancellationToken);
+
         if (basket == null)
         {
             return new CheckoutBasketResult(false);
         }
 
         var eventMessage = command.BasketCheckoutDto.Adapt<BasketCheckoutEvent>();
-        eventMessage.TotalPrice = basket.TotalPrice;
 
         await publishEndpoint.Publish(eventMessage, cancellationToken);
 
-        await repository.DeleteBasket(command.BasketCheckoutDto.UserName, cancellationToken);
+        await basketRepository.DeleteBasket(command.BasketCheckoutDto.UserName, cancellationToken);
 
         return new CheckoutBasketResult(true);
     }

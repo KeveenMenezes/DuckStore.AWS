@@ -10,7 +10,7 @@ builder.AddServiceDefaults();
 builder.Services
     .AddCarter()
     .AddExceptionHandler<CustomExceptionHandler>()
-    .AddApplicationServices()
+    .AddApplicationServices(builder.Configuration)
     .AddInfrastructureServices(builder.Configuration);
 
 var app = builder.Build();
