@@ -1,0 +1,309 @@
+{
+  "$schema": "https://json.schemastore.org/aspire-8.0.json",
+  "resources": {
+    "redis": {
+      "type": "container.v0",
+      "connectionString": "{redis.bindings.tcp.host}:{redis.bindings.tcp.port}",
+      "image": "docker.io/library/redis:7.4",
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 6379
+        }
+      }
+    },
+    "catalogDb": {
+      "type": "container.v0",
+      "connectionString": "Host={catalogDb.bindings.tcp.host};Port={catalogDb.bindings.tcp.port};Username=postgres;Password={catalogDb-password.value}",
+      "image": "docker.io/library/postgres:17.2",
+      "env": {
+        "POSTGRES_HOST_AUTH_METHOD": "scram-sha-256",
+        "POSTGRES_INITDB_ARGS": "--auth-host=scram-sha-256 --auth-local=scram-sha-256",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "{catalogDb-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 5432
+        }
+      }
+    },
+    "basketDb": {
+      "type": "container.v0",
+      "connectionString": "Host={basketDb.bindings.tcp.host};Port={basketDb.bindings.tcp.port};Username=postgres;Password={basketDb-password.value}",
+      "image": "docker.io/library/postgres:17.2",
+      "env": {
+        "POSTGRES_HOST_AUTH_METHOD": "scram-sha-256",
+        "POSTGRES_INITDB_ARGS": "--auth-host=scram-sha-256 --auth-local=scram-sha-256",
+        "POSTGRES_USER": "postgres",
+        "POSTGRES_PASSWORD": "{basketDb-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 5432
+        }
+      }
+    },
+    "orderingDb": {
+      "type": "container.v0",
+      "connectionString": "Server={orderingDb.bindings.tcp.host},{orderingDb.bindings.tcp.port};User ID=sa;Password={orderingDb-password.value};TrustServerCertificate=true",
+      "image": "mcr.microsoft.com/mssql/server:2022-latest",
+      "env": {
+        "ACCEPT_EULA": "Y",
+        "MSSQL_SA_PASSWORD": "{orderingDb-password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 1433
+        }
+      }
+    },
+    "username": {
+      "type": "parameter.v0",
+      "value": "{username.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "password": {
+      "type": "parameter.v0",
+      "value": "{password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "messageBroker": {
+      "type": "container.v0",
+      "connectionString": "amqp://{username.value}:{password.value}@{messageBroker.bindings.tcp.host}:{messageBroker.bindings.tcp.port}",
+      "image": "docker.io/library/rabbitmq:4.0-management",
+      "env": {
+        "RABBITMQ_DEFAULT_USER": "{username.value}",
+        "RABBITMQ_DEFAULT_PASS": "{password.value}"
+      },
+      "bindings": {
+        "tcp": {
+          "scheme": "tcp",
+          "protocol": "tcp",
+          "transport": "tcp",
+          "targetPort": 5672
+        },
+        "management": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 15672
+        }
+      }
+    },
+    "catalogapi": {
+      "type": "project.v0",
+      "path": "../Services/Catalog/Catalog.API/Catalog.API.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{catalogapi.bindings.http.targetPort}",
+        "ConnectionStrings__catalogDb": "{catalogDb.connectionString}",
+        "ConnectionStrings__messageBroker": "{messageBroker.connectionString}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        }
+      }
+    },
+    "discountapi": {
+      "type": "project.v0",
+      "path": "../Services/Discount/Discount.Grpc/Discount.Grpc.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{discountapi.bindings.http.targetPort}",
+        "ConnectionStrings__discountDb": "{discountDb.connectionString}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http2",
+          "external": true
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http2",
+          "external": true
+        }
+      }
+    },
+    "basketapi": {
+      "type": "project.v0",
+      "path": "../Services/Basket/Basket.API/Basket.API.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{basketapi.bindings.http.targetPort}",
+        "ConnectionStrings__redis": "{redis.connectionString}",
+        "ConnectionStrings__basketDb": "{basketDb.connectionString}",
+        "services__discountapi__http__0": "{discountapi.bindings.http.url}",
+        "services__discountapi__https__0": "{discountapi.bindings.https.url}",
+        "services__catalogapi__http__0": "{catalogapi.bindings.http.url}",
+        "services__catalogapi__https__0": "{catalogapi.bindings.https.url}",
+        "ConnectionStrings__messageBroker": "{messageBroker.connectionString}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        }
+      }
+    },
+    "ordering-migration": {
+      "type": "project.v0",
+      "path": "../Services/Ordering/Ordering.MigrationService/Ordering.MigrationService.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ConnectionStrings__orderingDb": "{orderingDb.connectionString}",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true"
+      }
+    },
+    "orderapi": {
+      "type": "project.v0",
+      "path": "../Services/Ordering/Ordering.API/Ordering.API.csproj",
+      "env": {
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES": "true",
+        "OTEL_DOTNET_EXPERIMENTAL_OTLP_RETRY": "in_memory",
+        "ASPNETCORE_FORWARDEDHEADERS_ENABLED": "true",
+        "HTTP_PORTS": "{orderapi.bindings.http.targetPort}",
+        "ConnectionStrings__orderingDb": "{orderingDb.connectionString}"
+      },
+      "bindings": {
+        "http": {
+          "scheme": "http",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        },
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http",
+          "external": true
+        }
+      }
+    },
+    "shopping": {
+      "type": "container.v1",
+      "build": {
+        "context": "../WebApps/WebApp.ANG",
+        "dockerfile": "../WebApps/WebApp.ANG/Dockerfile"
+      },
+      "env": {
+        "NODE_ENV": "development",
+        "services__catalogapi__http__0": "{catalogapi.bindings.http.url}",
+        "services__catalogapi__https__0": "{catalogapi.bindings.https.url}",
+        "services__basketapi__http__0": "{basketapi.bindings.http.url}",
+        "services__basketapi__https__0": "{basketapi.bindings.https.url}",
+        "PORT": "{shopping.bindings.https.targetPort}"
+      },
+      "bindings": {
+        "https": {
+          "scheme": "https",
+          "protocol": "tcp",
+          "transport": "http",
+          "targetPort": 8000
+        }
+      }
+    },
+    "catalogDb-password": {
+      "type": "parameter.v0",
+      "value": "{catalogDb-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22
+            }
+          }
+        }
+      }
+    },
+    "basketDb-password": {
+      "type": "parameter.v0",
+      "value": "{basketDb-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22
+            }
+          }
+        }
+      }
+    },
+    "orderingDb-password": {
+      "type": "parameter.v0",
+      "value": "{orderingDb-password.inputs.value}",
+      "inputs": {
+        "value": {
+          "type": "string",
+          "secret": true,
+          "default": {
+            "generate": {
+              "minLength": 22,
+              "minLower": 1,
+              "minUpper": 1,
+              "minNumeric": 1
+            }
+          }
+        }
+      }
+    }
+  }
+}
