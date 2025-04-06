@@ -2,7 +2,6 @@
 // Add services to the container.
 
 builder.AddServiceDefaults();
-
 builder.AddNpgsqlDataSource("catalogDb");
 
 var assembly = typeof(Program).Assembly;

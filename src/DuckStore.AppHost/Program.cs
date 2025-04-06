@@ -11,12 +11,23 @@ var catalogDb = builder.AddPostgres("catalogDb");
 var basketDb = builder.AddPostgres("basketDb");
 var orderingDb = builder.AddSqlServer("orderingDb");
 
+// Messaging
+var rabbitmq = builder
+    .AddRabbitMQ(
+        "messageBroker",
+        builder.AddParameter("username", secret: true),
+        builder.AddParameter("password", secret: true),
+        5672)
+    .WithManagementPlugin();
+
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
     "catalogapi", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(catalogDb)
+    .WaitFor(rabbitmq)
     .WithReference(catalogDb)
+    .WithReference(rabbitmq)
     .WithHttpsHealthCheck("/health");
 
 var discountapi = builder.AddProject<Projects.Discount_Grpc>(
@@ -32,10 +43,12 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WaitFor(basketDb)
     .WaitFor(discountapi)
     .WaitFor(catalogApi)
+    .WaitFor(rabbitmq)
     .WithReference(redis)
     .WithReference(basketDb)
     .WithReference(discountapi)
     .WithReference(catalogApi)
+    .WithReference(rabbitmq)
     .WithHttpsHealthCheck("/health");
 redis.WithParentRelationship(basketApi);
 

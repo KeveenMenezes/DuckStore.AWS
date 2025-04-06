@@ -1,10 +1,7 @@
-using BuildingBlocks.Exceptions.Handler;
-using Ordering.Application.Configuration;
-using Ordering.Infrastructure.Configuration;
-
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
+builder.AddRabbitMQClient("messageBroker");
 builder.AddServiceDefaults();
 
 builder.Services

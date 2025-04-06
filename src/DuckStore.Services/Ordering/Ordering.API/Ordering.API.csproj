@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="Carter" />
+    <PackageReference Include="Aspire.RabbitMQ.Client.v7" />
   </ItemGroup>
 
 </Project>

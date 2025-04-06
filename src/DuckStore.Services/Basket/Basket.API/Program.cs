@@ -1,8 +1,10 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using System.Reflection;
+
+var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.AddServiceDefaults();
-
+builder.AddRabbitMQClient("messageBroker");
 builder.AddNpgsqlDataSource("basketDb");
 builder.AddRedisClient("redis");
 
@@ -34,7 +36,8 @@ builder.Services.AddScoped<IBasketRepository, BasketRepository>();
 builder.Services.Decorate<IBasketRepository, CacheBasketRepository>();
 
 //Async Communication Services
-builder.Services.AddMessageBroker(builder.Configuration);
+builder.Services.AddMessageBroker(
+    builder.Configuration, Assembly.GetExecutingAssembly());
 
 var app = builder.Build();
 // Configure the HTTP request pipeline.
