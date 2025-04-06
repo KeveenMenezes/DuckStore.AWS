@@ -16,22 +16,22 @@ services:
 
   catalog.api:
     build:
-      context: ./DuckStore.Services/Catalog/Catalog.API
+      context: ./Services/Catalog/Catalog.API
       dockerfile: Dockerfile
 
   basket.api:
     build:
-      context: ./DuckStore.Services/Basket/Basket.API
+      context: ./Services/Basket/Basket.API
       dockerfile: Dockerfile
 
   discount.grpc:
     build:
-      context: ./DuckStore.Services/Discount/Discount.Grpc
+      context: ./Services/Discount/Discount.Grpc
       dockerfile: Dockerfile
 
   ordering.api:
     build:
-      context: ./DuckStore.Services/Ordering/Ordering.API
+      context: ./Services/Ordering/Ordering.API
       dockerfile: Dockerfile
 
 volumes:

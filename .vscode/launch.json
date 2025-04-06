@@ -1,15 +1,16 @@
 {
     "version": "0.2.0",
     "configurations": [
+        
         {
             "name": "Docker Compose",
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build and docker-compose up",
             "postDebugTask": "docker-compose down",
-            "program": "${workspaceFolder}/src/DuckStore.Services/Catalog/Catalog.API/bin/Debug/net9.0/Catalog.API.dll",
+            "program": "${workspaceFolder}/src/Services/Catalog/Catalog.API/bin/Debug/net9.0/Catalog.API.dll",
             "args": [],
-            "cwd": "${workspaceFolder}/src/DuckStore.Services/Catalog/Catalog.API",
+            "cwd": "${workspaceFolder}/src/Services/Catalog/Catalog.API",
             "stopAtEntry": false,
             "env": {
                 "ASPNETCORE_ENVIRONMENT": "Development"
