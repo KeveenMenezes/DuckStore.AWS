@@ -11,6 +11,10 @@ var catalogDb = builder.AddPostgres("catalogDb");
 var basketDb = builder.AddPostgres("basketDb");
 var orderingDb = builder.AddSqlServer("orderingDb");
 
+var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("ordering-migration")
+    .WaitFor(orderingDb)
+    .WithReference(orderingDb);
+
 // Messaging
 var rabbitmq = builder
     .AddRabbitMQ(
@@ -52,11 +56,7 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WithHttpsHealthCheck("/health");
 redis.WithParentRelationship(basketApi);
 
-var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("ordering-migration")
-    .WaitFor(orderingDb)
-    .WithReference(orderingDb);
-
-builder.AddProject<Projects.Ordering_API>(
+var orderingApi = builder.AddProject<Projects.Ordering_API>(
     "ordering-api", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(orderingDb)
@@ -64,7 +64,14 @@ builder.AddProject<Projects.Ordering_API>(
     .WithReference(orderingDb)
     .WithHttpsHealthCheck("/health");
 
-// Web app
+// Reverse proxies
+builder.AddProject<Projects.YarpApiGateway>(
+    "yarp-api-gateway", GetHttpForEndpoints())
+    .WithReference(catalogApi)
+    .WithReference(orderingApi)
+    .WithReference(basketApi);
+
+// Apps
 builder.AddNpmApp("shopping-web", "../WebApps/WebApp.ANG")
     .WithExternalHttpEndpoints()
     .WaitFor(catalogApi)
@@ -76,7 +83,4 @@ builder.AddNpmApp("shopping-web", "../WebApps/WebApp.ANG")
 
 await builder.Build().RunAsync();
 
-static string GetHttpForEndpoints() =>
-    int.TryParse(
-        Environment.GetEnvironmentVariable("ESHOP_USE_HTTP_ENDPOINTS"),
-        out int result) && result == 1 ? "http" : "https";
+static string GetHttpForEndpoints() => "http";

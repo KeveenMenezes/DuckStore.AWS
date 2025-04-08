@@ -1,0 +1,86 @@
+@Ordering = https://localhost:5054/ordering-service
+
+### Get all orders
+GET {{Ordering}}
+Accept: application/json
+
+### Get paginated orders
+GET {{Ordering}}?PageIndex=0&PageSize=4
+Accept: application/json
+
+### Get orders by customer ID
+GET {{Ordering}}/customer/58c49479-ec65-4de2-86e7-033c546291aa
+Accept: application/json
+
+### Get order by order number
+GET {{Ordering}}/ORD_1
+Accept: application/json
+
+### Delete an order by ID
+DELETE {{Ordering}}/1
+Accept: application/json
+
+### Update an order by ID
+PUT {{Ordering}}/1
+Content-Type: application/json
+Accept: application/json
+
+{
+    "id": 1,
+    "customerId": 1,
+    "orderDate": "2023-10-01T00:00:00Z",
+    "status": "Shipped",
+    "totalAmount": 100.00
+}
+
+@Catalog = https://localhost:5054/catalog-service/api
+
+### Create a new product
+POST {{Catalog}}/products
+Content-Type: application/json
+
+{
+    "name": "Teste 2",
+    "description": "Product Description",
+    "imageUrl": "image.jpg",
+    "price": 99.99,
+    "categories": ["A1", "C2", "A4"]
+}
+
+### Get all products
+GET {{Catalog}}/products?pageIndex=1&pageSize=2
+Accept: application/json
+
+### Get product by id
+GET {{Catalog}}/products/6cd2ae29-decf-4898-800d-5ecb9884f46c
+Accept: application/json
+
+### Get product by category
+GET {{Catalog}}/products/category/A2
+Accept: application/json
+
+### Update product
+PUT {{Catalog}}/products
+Content-Type: application/json
+
+{
+    "id": "00026be0-e357-4413-afbb-c7b50339cae6",
+    "name": "Teste 2",
+    "description": "Product Description",
+    "imageUrl": "https://m.media-amazon.com/images/I/61m0TICF-pL._AC_UF894,1000_QL80_.jpg",
+    "price": 99.99,
+    "categories": [
+        "A1",
+        "C2",
+        "A4"
+    ]
+}
+
+### Delete product
+DELETE {{Catalog}}/products/e1549a96-3bc8-43ea-88be-7c98da4aa189
+Accept: application/json
+
+### HealthCheck
+GET {{Catalog}}/health
+Accept: application/json
+
