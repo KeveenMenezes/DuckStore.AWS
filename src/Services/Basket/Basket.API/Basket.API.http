@@ -10,7 +10,7 @@ Content-Type: application/json
 {
     "cart":
     {
-        "userName": "Iphone",
+        "userName": "swn3",
         "items": [
             {
                 "qantity": 1,
@@ -35,11 +35,11 @@ Content-Type: application/json
 
 {
     "basketCheckoutDto": {
-        "userName": "Iphone",
+        "userName": "swn3",
         "customerId": "58c49479-ec65-4de2-86e7-033c546291aa",
         "totalPrice": 150.75,
-        "firstName": "John",
-        "lastName": "Doe",
+        "firstName": "swn",
+        "lastName": "swn",
         "emailAddress": "johndoe@example.com",
         "addressLine": "123 Main Street",
         "country": "USA",

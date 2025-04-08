@@ -4,7 +4,8 @@ public class DiscountService
     (DiscountContext dbContext, ILogger<DiscountService> logger)
     : DiscountProtoService.DiscountProtoServiceBase
 {
-    public override async Task<CouponModel> GetDiscount(GetDiscountRequest request, ServerCallContext context)
+    public override async Task<CouponModel> GetDiscount(
+        GetDiscountRequest request, ServerCallContext context)
     {
         var coupon = await dbContext
             .Coupons
@@ -19,7 +20,8 @@ public class DiscountService
         return couponModel;
     }
 
-    public override async Task<CouponModel> CreateDiscount(CreateDiscountRequest request, ServerCallContext context)
+    public override async Task<CouponModel> CreateDiscount(
+        CreateDiscountRequest request, ServerCallContext context)
     {
         var coupon = request.Coupon.Adapt<Coupon>() ??
             throw new RpcException(new Status(
@@ -37,7 +39,8 @@ public class DiscountService
         return couponModel;
     }
 
-    public override async Task<CouponModel> UpdateDiscount(UpdateDiscountRequest request, ServerCallContext context)
+    public override async Task<CouponModel> UpdateDiscount(
+        UpdateDiscountRequest request, ServerCallContext context)
     {
         var coupon = request.Coupon.Adapt<Coupon>() ??
             throw new RpcException(new Status(
@@ -55,7 +58,8 @@ public class DiscountService
         return couponModel;
     }
 
-    public override async Task<DeleteDiscountResponse> DeleteDiscount(DeleteDiscountRequest request, ServerCallContext context)
+    public override async Task<DeleteDiscountResponse> DeleteDiscount(
+        DeleteDiscountRequest request, ServerCallContext context)
     {
         var coupon = await dbContext
             .Coupons

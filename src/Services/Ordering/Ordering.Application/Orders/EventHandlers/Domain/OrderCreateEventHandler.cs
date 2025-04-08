@@ -10,7 +10,7 @@ public class OrderCreateEventHandler(
     {
         logger.LogInformation("Domain Event handled: {DomaiEvent}", domain.GetType().Name);
 
-        if (await featureManager.IsEnabledAsync("OrderCreatedDomainEvent"))
+        if (await featureManager.IsEnabledAsync("OrderFullfilment"))
         {
             await publishEndpoint.Publish(domain.order.ToOrderDto(), cancellationToken);
         }

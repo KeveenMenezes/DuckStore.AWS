@@ -5,7 +5,7 @@ GET {{Ordering}}
 Accept: application/json
 
 ### Get paginated orders
-GET {{Ordering}}?PageIndex=1&PageSize=10
+GET {{Ordering}}?PageIndex=0&PageSize=4
 Accept: application/json
 
 ### Get orders by customer ID
