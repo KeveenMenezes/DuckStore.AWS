@@ -6,7 +6,6 @@ builder.AddRabbitMQClient("messageBroker");
 builder.AddNpgsqlDataSource("basketDb");
 builder.AddRedisClient("redis");
 
-//TODO: adicionar hostname na rede interna do Docker, permitindo comunicação via DNS usando o nome do serviço.
 // HTTP and GRPC client registrations
 builder.Services.AddGrpcClient<DiscountProtoService.DiscountProtoServiceClient>(
     o => o.Address = new(builder.Configuration["Services:DiscountUrl"]!));

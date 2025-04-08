@@ -22,7 +22,7 @@ var rabbitmq = builder
 
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
-    "catalogapi", GetHttpForEndpoints())
+    "catalog-api", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(catalogDb)
     .WaitFor(rabbitmq)
@@ -30,23 +30,23 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
     .WithReference(rabbitmq)
     .WithHttpsHealthCheck("/health");
 
-var discountapi = builder.AddProject<Projects.Discount_Grpc>(
-    "discountapi", GetHttpForEndpoints())
+var discountApi = builder.AddProject<Projects.Discount_Grpc>(
+    "discount-api", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(discountDb)
     .WithReference(discountDb);
 
 var basketApi = builder.AddProject<Projects.Basket_API>(
-    "basketapi", GetHttpForEndpoints())
+    "basket-api", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(redis)
     .WaitFor(basketDb)
-    .WaitFor(discountapi)
+    .WaitFor(discountApi)
     .WaitFor(catalogApi)
     .WaitFor(rabbitmq)
     .WithReference(redis)
     .WithReference(basketDb)
-    .WithReference(discountapi)
+    .WithReference(discountApi)
     .WithReference(catalogApi)
     .WithReference(rabbitmq)
     .WithHttpsHealthCheck("/health");
@@ -57,7 +57,7 @@ var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("
     .WithReference(orderingDb);
 
 builder.AddProject<Projects.Ordering_API>(
-    "orderapi", GetHttpForEndpoints())
+    "ordering-api", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WaitFor(orderingDb)
     .WithReference(orderingMigration)
@@ -65,7 +65,7 @@ builder.AddProject<Projects.Ordering_API>(
     .WithHttpsHealthCheck("/health");
 
 // Web app
-builder.AddNpmApp("shopping", "../WebApps/WebApp.ANG")
+builder.AddNpmApp("shopping-web", "../WebApps/WebApp.ANG")
     .WithExternalHttpEndpoints()
     .WaitFor(catalogApi)
     .WaitFor(basketApi)
