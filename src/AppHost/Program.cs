@@ -16,6 +16,7 @@ var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("
     .WithReference(orderingDb);
 
 // Messaging
+//TODO: incluir a conexão nas suas refenencias.
 var rabbitmq = builder
     .AddRabbitMQ(
         "messageBroker",
@@ -53,13 +54,15 @@ redis.WithParentRelationship(basketApi);
 
 var orderingApi = builder.AddProject<Projects.Ordering_API>(
     "ordering-api")
+    .WaitFor(orderingMigration)
     .WaitFor(orderingDb)
-    .WithReference(orderingMigration)
+    .WaitFor(rabbitmq)
     .WithReference(orderingDb)
+    .WithReference(rabbitmq)
     .WithHttpsHealthCheck("/health");
 
 // Reverse proxies
-builder.AddProject<Projects.YarpApiGateway>(
+var yarpApiGateway = builder.AddProject<Projects.YarpApiGateway>(
     "yarp-api-gateway", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WithReference(catalogApi)
@@ -69,10 +72,7 @@ builder.AddProject<Projects.YarpApiGateway>(
 // Apps
 builder.AddNpmApp("shopping-web", "../WebApps/WebApp.ANG")
     .WithExternalHttpEndpoints()
-    .WaitFor(catalogApi)
-    .WaitFor(basketApi)
-    .WithReference(catalogApi)
-    .WithReference(basketApi)
+    .WithReference(yarpApiGateway)
     .WithHttpsEndpoint(env: "PORT")
     .PublishAsDockerFile();
 
