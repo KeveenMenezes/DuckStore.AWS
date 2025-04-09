@@ -84,3 +84,58 @@ Accept: application/json
 GET {{Catalog}}/health
 Accept: application/json
 
+
+@Basket =  https://localhost:5054/basket-service
+
+### Create a new basket
+GET {{Basket}}/basket/swn3
+
+### Post a new basket
+POST {{Basket}}/basket
+Content-Type: application/json
+
+{
+    "cart":
+    {
+        "userName": "swn3",
+        "items": [
+            {
+                "qantity": 1,
+                "color": "blue",
+                "price": "5599.99",
+                "productId": "5334c996-8457-4cf0-815c-ed2b77c4ff61",
+                "productName": "IPhone X"
+            }
+        ]
+    }
+}
+
+### Delete a basket
+DELETE {{Basket}}/basket/swn
+
+### Health check
+GET {{Basket}}/health
+
+### Checkout 
+POST {{Basket}}/basket/checkout
+Content-Type: application/json
+
+{
+    "basketCheckoutDto": {
+        "userName": "swn3",
+        "customerId": "58c49479-ec65-4de2-86e7-033c546291aa",
+        "totalPrice": 150.75,
+        "firstName": "swn",
+        "lastName": "swn",
+        "emailAddress": "johndoe@example.com",
+        "addressLine": "123 Main Street",
+        "country": "USA",
+        "state": "CA",
+        "zipCode": "90001",
+        "cardName": "John Doe",
+        "cardNumber": "1234567890123456",
+        "expiration": "12/25",
+        "cvv": "123",
+        "paymentMethod": 1
+    }
+}

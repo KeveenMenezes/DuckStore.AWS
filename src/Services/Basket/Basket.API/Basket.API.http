@@ -1,4 +1,4 @@
-@Basket = https://localhost:5051/api
+@Basket = https://localhost:5051
 
 ### Create a new basket
 GET {{Basket}}/basket/swn
