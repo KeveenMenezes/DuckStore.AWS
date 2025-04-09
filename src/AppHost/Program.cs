@@ -26,8 +26,7 @@ var rabbitmq = builder
 
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
-    "catalog-api", GetHttpForEndpoints())
-    .WithExternalHttpEndpoints()
+    "catalog-api")
     .WaitFor(catalogDb)
     .WaitFor(rabbitmq)
     .WithReference(catalogDb)
@@ -36,13 +35,11 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
 
 var discountApi = builder.AddProject<Projects.Discount_Grpc>(
     "discount-api", GetHttpForEndpoints())
-    .WithExternalHttpEndpoints()
     .WaitFor(discountDb)
     .WithReference(discountDb);
 
 var basketApi = builder.AddProject<Projects.Basket_API>(
-    "basket-api", GetHttpForEndpoints())
-    .WithExternalHttpEndpoints()
+    "basket-api")
     .WaitFor(redis)
     .WaitFor(basketDb)
     .WaitFor(discountApi)
@@ -57,8 +54,7 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
 redis.WithParentRelationship(basketApi);
 
 var orderingApi = builder.AddProject<Projects.Ordering_API>(
-    "ordering-api", GetHttpForEndpoints())
-    .WithExternalHttpEndpoints()
+    "ordering-api")
     .WaitFor(orderingDb)
     .WithReference(orderingMigration)
     .WithReference(orderingDb)
@@ -67,6 +63,7 @@ var orderingApi = builder.AddProject<Projects.Ordering_API>(
 // Reverse proxies
 builder.AddProject<Projects.YarpApiGateway>(
     "yarp-api-gateway", GetHttpForEndpoints())
+    .WithExternalHttpEndpoints()
     .WithReference(catalogApi)
     .WithReference(orderingApi)
     .WithReference(basketApi);
@@ -83,4 +80,4 @@ builder.AddNpmApp("shopping-web", "../WebApps/WebApp.ANG")
 
 await builder.Build().RunAsync();
 
-static string GetHttpForEndpoints() => "http";
+static string GetHttpForEndpoints() => "https";

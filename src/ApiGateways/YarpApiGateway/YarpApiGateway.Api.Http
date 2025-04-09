@@ -1,4 +1,4 @@
-@Ordering = https://localhost:5054/ordering-service
+@Ordering = https://localhost:5054/ordering-service/orders
 
 ### Get all orders
 GET {{Ordering}}
@@ -33,7 +33,7 @@ Accept: application/json
     "totalAmount": 100.00
 }
 
-@Catalog = https://localhost:5054/catalog-service/api
+@Catalog = https://localhost:5054/catalog-service
 
 ### Create a new product
 POST {{Catalog}}/products

@@ -1,10 +1,17 @@
+using BuildingBlocks.ServiceDefaults;
 using Microsoft.AspNetCore.RateLimiting;
+using YarpApiGateway;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
-builder.Services.AddReverseProxy()
-    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"));
+builder.AddServiceDefaults();
+
+builder.Services
+    .AddApplicationServices()
+    .AddReverseProxy()
+    .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
+    .AddServiceDiscoveryDestinationResolver();
 
 builder.Services.AddRateLimiter(rateLimiterOptions =>
 {
@@ -18,8 +25,8 @@ builder.Services.AddRateLimiter(rateLimiterOptions =>
 var app = builder.Build();
 // Configure the HTTP request pipeline.
 
+app.MapDefaultEndpoints();
 app.UseRateLimiter();
-
 app.MapReverseProxy();
 
-app.Run();
+await app.RunAsync();
