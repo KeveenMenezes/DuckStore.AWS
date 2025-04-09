@@ -1,6 +1,5 @@
 using BuildingBlocks.ServiceDefaults;
 using Microsoft.AspNetCore.RateLimiting;
-using YarpApiGateway;
 
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
@@ -8,7 +7,6 @@ var builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 builder.Services
-    .AddApplicationServices()
     .AddReverseProxy()
     .LoadFromConfig(builder.Configuration.GetSection("ReverseProxy"))
     .AddServiceDiscoveryDestinationResolver();

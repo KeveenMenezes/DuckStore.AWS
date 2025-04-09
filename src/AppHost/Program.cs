@@ -43,12 +43,10 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WaitFor(redis)
     .WaitFor(basketDb)
     .WaitFor(discountApi)
-    .WaitFor(catalogApi)
     .WaitFor(rabbitmq)
     .WithReference(redis)
     .WithReference(basketDb)
     .WithReference(discountApi)
-    .WithReference(catalogApi)
     .WithReference(rabbitmq)
     .WithHttpsHealthCheck("/health");
 redis.WithParentRelationship(basketApi);

@@ -8,7 +8,7 @@ builder.AddRedisClient("redis");
 
 // HTTP and GRPC client registrations
 builder.Services.AddGrpcClient<DiscountProtoService.DiscountProtoServiceClient>(
-    o => o.Address = new(builder.Configuration["Services:DiscountUrl"]!));
+    o => o.Address = new("http://discount-api"));
 
 var assembly = typeof(Program).Assembly;
 builder.Services
