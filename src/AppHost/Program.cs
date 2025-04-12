@@ -17,7 +17,7 @@ var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("
 
 // Messaging
 //TODO: incluir a conexão nas suas refenencias.
-var rabbitmq = builder
+var rabbitMq = builder
     .AddRabbitMQ(
         "messageBroker",
         builder.AddParameter("username", secret: true),
@@ -29,9 +29,9 @@ var rabbitmq = builder
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
     "catalog-api")
     .WaitFor(catalogDb)
-    .WaitFor(rabbitmq)
+    .WaitFor(rabbitMq)
     .WithReference(catalogDb)
-    .WithReference(rabbitmq)
+    .WithReference(rabbitMq)
     .WithHttpsHealthCheck("/health");
 
 var discountApi = builder.AddProject<Projects.Discount_Grpc>(
@@ -44,11 +44,11 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WaitFor(redis)
     .WaitFor(basketDb)
     .WaitFor(discountApi)
-    .WaitFor(rabbitmq)
+    .WaitFor(rabbitMq)
     .WithReference(redis)
     .WithReference(basketDb)
     .WithReference(discountApi)
-    .WithReference(rabbitmq)
+    .WithReference(rabbitMq)
     .WithHttpsHealthCheck("/health");
 redis.WithParentRelationship(basketApi);
 
@@ -56,9 +56,9 @@ var orderingApi = builder.AddProject<Projects.Ordering_API>(
     "ordering-api")
     .WaitFor(orderingMigration)
     .WaitFor(orderingDb)
-    .WaitFor(rabbitmq)
+    .WaitFor(rabbitMq)
     .WithReference(orderingDb)
-    .WithReference(rabbitmq)
+    .WithReference(rabbitMq)
     .WithHttpsHealthCheck("/health");
 
 // Reverse proxies
@@ -70,11 +70,20 @@ var yarpApiGateway = builder.AddProject<Projects.YarpApiGateway>(
     .WithReference(basketApi);
 
 // Apps
-builder.AddNpmApp("shopping-web", "../WebApps/WebApp.ANG")
+builder.AddNpmApp("shopping-web-spa", "../WebApps/Shopping.Web.SPA")
     .WithExternalHttpEndpoints()
     .WithReference(yarpApiGateway)
     .WithHttpsEndpoint(env: "PORT")
     .PublishAsDockerFile();
+
+builder.AddProject<Projects.Shopping_Web_Server>(
+    "shopping-web-server", GetHttpForEndpoints())
+    .WithExternalHttpEndpoints()
+    .WithReference(basketApi)
+    .WithReference(catalogApi)
+    .WithReference(orderingApi)
+    .WithReference(rabbitMq)
+    .WaitFor(rabbitMq);
 
 await builder.Build().RunAsync();
 

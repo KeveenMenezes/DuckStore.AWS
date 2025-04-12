@@ -33,6 +33,7 @@
     <ProjectReference Include="..\Services\Discount\Discount.Grpc\Discount.Grpc.csproj" />
     <ProjectReference Include="..\Services\Ordering\Ordering.API\Ordering.API.csproj" />
     <ProjectReference Include="..\Services\Ordering\Ordering.MigrationService\Ordering.MigrationService.csproj" />
+    <ProjectReference Include="..\WebApps\Shopping.Web.Server\Shopping.Web.Server.csproj" />
   </ItemGroup>
 
   <Target Name="RestoreNpm" BeforeTargets="Build" Condition=" '$(DesignTimeBuild)' != 'true' ">
