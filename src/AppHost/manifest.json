@@ -237,8 +237,8 @@
     "shopping": {
       "type": "container.v1",
       "build": {
-        "context": "../WebApps/WebApp.ANG",
-        "dockerfile": "../WebApps/WebApp.ANG/Dockerfile"
+        "context": "../WebApps/Shopping.Web.SPA",
+        "dockerfile": "../WebApps/Shopping.Web.SPA/Dockerfile"
       },
       "env": {
         "NODE_ENV": "development",

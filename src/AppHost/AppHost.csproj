@@ -23,7 +23,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageJsons Include="..\WebApps\WebApp.ANG\package.json" />
+    <PackageJsons Include="..\WebApps\Shopping.Web.SPA\package.json" />
   </ItemGroup>
 
   <ItemGroup>

@@ -29,9 +29,7 @@ var rabbitMq = builder
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
     "catalog-api")
     .WaitFor(catalogDb)
-    .WaitFor(rabbitMq)
     .WithReference(catalogDb)
-    .WithReference(rabbitMq)
     .WithHttpsHealthCheck("/health");
 
 var discountApi = builder.AddProject<Projects.Discount_Grpc>(
