@@ -4,20 +4,37 @@
     "type": "split",
     "children": [
       {
-        "id": "76766b30c52cb104",
+        "id": "db9e8d09d1aec32d",
         "type": "tabs",
         "children": [
           {
-            "id": "969212232e928838",
+            "id": "ff88c4da4cd7714a",
             "type": "leaf",
             "state": {
-              "type": "graph",
-              "state": {},
-              "icon": "lucide-git-fork",
-              "title": "Graph view"
+              "type": "markdown",
+              "state": {
+                "file": "Aprendizado do APP DuckStore.md",
+                "mode": "source",
+                "source": false
+              },
+              "icon": "lucide-file",
+              "title": "Aprendizado do APP DuckStore"
+            }
+          },
+          {
+            "id": "c7c6c5cfe585c67a",
+            "type": "leaf",
+            "state": {
+              "type": "excalidraw",
+              "state": {
+                "file": "Excalidraw/Apresentacao.md"
+              },
+              "icon": "excalidraw-icon",
+              "title": "Apresentacao"
             }
           }
-        ]
+        ],
+        "currentTab": 1
       }
     ],
     "direction": "vertical"
@@ -158,19 +175,52 @@
       "canvas:Create new canvas": false,
       "daily-notes:Open today's daily note": false,
       "templates:Insert template": false,
-      "command-palette:Open command palette": false
+      "command-palette:Open command palette": false,
+      "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "969212232e928838",
+  "active": "e30450b3e81c803b",
   "lastOpenFiles": [
     "Aprendizado do APP DuckStore.md",
-    "Backing Services.md",
-    "Banco de Dados Orientado a Documentos.md",
-    "Microserviços.md",
     "PostgreSQL.md",
-    "Mediator.md",
-    "Marten.md",
-    "CQRS.md",
-    "Aspire.md"
+    "Excalidraw/Apresentacao.md",
+    "Excalidraw/Drawing 2025-04-12 21.09.51.excalidraw.md",
+    "Excalidraw/Drawing 2025-04-12 21.00.39.excalidraw.md",
+    "MassTransit.png",
+    "rabbitmq-logo.png",
+    "Blazor.png",
+    "SqlServer.png",
+    "SqlLite.png",
+    "redis-plain-icon.png",
+    "postgresql-logo-png-transparent.png",
+    "Excalidraw/Scripts/Downloaded/Invert colors.svg",
+    "Excalidraw/Scripts/Downloaded/Invert colors.md",
+    "Excalidraw/Scripts/Downloaded/Mindmap format.svg",
+    "Excalidraw/Scripts/Downloaded/Mindmap format.md",
+    "Excalidraw/Scripts/Downloaded/Fixed horizontal distance between centers.svg",
+    "Excalidraw/Scripts/Downloaded/Fixed horizontal distance between centers.md",
+    "Excalidraw/Scripts/Downloaded/Expand rectangles vertically.md",
+    "Excalidraw/Scripts/Downloaded/Expand rectangles vertically keep text centered.md",
+    "Excalidraw/Scripts/Downloaded/Expand rectangles horizontally.md",
+    "Excalidraw/Scripts/Downloaded/Expand rectangles horizontally keep text centered.md",
+    "Excalidraw/Scripts/Downloaded/Darken background color.md",
+    "Excalidraw/Scripts/Downloaded/Deconstruct selected elements into new drawing.md",
+    "Excalidraw/Scripts/Downloaded/Copy Selected Element Styles to Global.md",
+    "Excalidraw/Scripts/Downloaded/Convert text to link with folder and alias.md",
+    "Excalidraw/Scripts/Downloaded/Convert selected text elements to sticky notes.md",
+    "Excalidraw/Scripts/Downloaded/Convert freedraw to line.md",
+    "Excalidraw/Scripts/Downloaded/Connect elements.md",
+    "Excalidraw/Scripts/Downloaded/Concatenate lines.md",
+    "Excalidraw/Scripts/Downloaded/Change shape of selected elements.md",
+    "Excalidraw/Scripts/Downloaded/Box Selected Elements.md",
+    "Excalidraw/Scripts/Downloaded/Box Each Selected Groups.md",
+    "Excalidraw/Scripts/Downloaded/Boolean Operations.md",
+    "Excalidraw/Scripts/Downloaded/Add Connector Point.md",
+    "Excalidraw/Scripts/Downloaded/Add Link to Existing File and Open.md",
+    "Excalidraw/Scripts/Downloaded",
+    "Excalidraw/Scripts",
+    "Excalidraw",
+    "Untitled 1.canvas",
+    "Untitled.canvas"
   ]
 }
