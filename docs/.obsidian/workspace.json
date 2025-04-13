@@ -91,7 +91,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "725d15d90e09fe41",
@@ -179,8 +180,17 @@
       "obsidian-excalidraw-plugin:New drawing": false
     }
   },
-  "active": "e30450b3e81c803b",
+  "active": "c7c6c5cfe585c67a",
   "lastOpenFiles": [
+    "Yarp.svg",
+    "entity_framework-removebg-preview.png",
+    "Aspire.svg",
+    "FluentValidation.png",
+    "Mapster.png",
+    "Pasted Image 20250412234908_648.png",
+    "Mediatr.png",
+    "Marten.png",
+    "grpc-icon-color.png",
     "Aprendizado do APP DuckStore.md",
     "PostgreSQL.md",
     "Excalidraw/Apresentacao.md",
@@ -188,16 +198,8 @@
     "Excalidraw/Drawing 2025-04-12 21.00.39.excalidraw.md",
     "MassTransit.png",
     "rabbitmq-logo.png",
-    "Blazor.png",
-    "SqlServer.png",
-    "SqlLite.png",
-    "redis-plain-icon.png",
-    "postgresql-logo-png-transparent.png",
-    "Excalidraw/Scripts/Downloaded/Invert colors.svg",
     "Excalidraw/Scripts/Downloaded/Invert colors.md",
-    "Excalidraw/Scripts/Downloaded/Mindmap format.svg",
     "Excalidraw/Scripts/Downloaded/Mindmap format.md",
-    "Excalidraw/Scripts/Downloaded/Fixed horizontal distance between centers.svg",
     "Excalidraw/Scripts/Downloaded/Fixed horizontal distance between centers.md",
     "Excalidraw/Scripts/Downloaded/Expand rectangles vertically.md",
     "Excalidraw/Scripts/Downloaded/Expand rectangles vertically keep text centered.md",
@@ -216,7 +218,6 @@
     "Excalidraw/Scripts/Downloaded/Box Each Selected Groups.md",
     "Excalidraw/Scripts/Downloaded/Boolean Operations.md",
     "Excalidraw/Scripts/Downloaded/Add Connector Point.md",
-    "Excalidraw/Scripts/Downloaded/Add Link to Existing File and Open.md",
     "Excalidraw/Scripts/Downloaded",
     "Excalidraw/Scripts",
     "Excalidraw",
