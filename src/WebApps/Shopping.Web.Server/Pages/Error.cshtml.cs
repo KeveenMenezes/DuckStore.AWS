@@ -1,6 +1,4 @@
 using System.Diagnostics;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace Shopping.Web.Server.Pages;
 

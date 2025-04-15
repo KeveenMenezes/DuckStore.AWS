@@ -1,6 +1,8 @@
 global using System.Net;
 global using BuildingBlocks.Pagination;
 global using BuildingBlocks.ServiceDefaults;
+global using Microsoft.AspNetCore.Mvc;
+global using Microsoft.AspNetCore.Mvc.RazorPages;
 global using Refit;
 global using Shopping.Web.Server.Models.Basket;
 global using Shopping.Web.Server.Models.Catalog;
