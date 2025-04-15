@@ -10,4 +10,8 @@
     <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks\BuildingBlocks.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Refit.HttpClientFactory" />
+  </ItemGroup>
+
 </Project>
