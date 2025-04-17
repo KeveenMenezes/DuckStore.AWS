@@ -1,6 +1,4 @@
 ﻿using BuildingBlocks.CQRS;
-using FluentValidation;
-using MediatR;
 
 namespace BuildingBlocks.Behaviors;
 

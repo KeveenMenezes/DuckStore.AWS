@@ -1,5 +1,3 @@
-using MediatR;
-
 namespace BuildingBlocks.CQRS;
 
 public interface IQueryStream<out TResponse> : IStreamRequest<TResponse>

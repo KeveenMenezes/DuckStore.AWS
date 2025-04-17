@@ -10,4 +10,8 @@
     <PackageReference Include="MediatR" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Using Include="MediatR" />
+  </ItemGroup>
+
 </Project>
