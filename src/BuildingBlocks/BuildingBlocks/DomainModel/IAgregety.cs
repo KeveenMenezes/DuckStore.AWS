@@ -1,4 +1,4 @@
-namespace Ordering.Domain.Abstractions;
+namespace BuildingBlocks.DomainModel;
 
 public interface IAggregate<T> : IAggregate, IEntity<T>
 {

@@ -1,4 +1,4 @@
-namespace Ordering.Domain.Abstractions;
+namespace BuildingBlocks.DomainModel;
 
 public abstract class Entity<T> : IEntity<T>
 {

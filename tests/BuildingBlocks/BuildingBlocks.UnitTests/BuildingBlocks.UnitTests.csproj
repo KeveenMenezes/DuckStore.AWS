@@ -15,9 +15,4 @@
     <PackageReference Include="Moq" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Using Include="xunit" />
-    <Using Include="Moq" />
-  </ItemGroup>
-
 </Project>

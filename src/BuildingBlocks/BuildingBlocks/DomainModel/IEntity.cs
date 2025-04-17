@@ -1,4 +1,4 @@
-namespace Ordering.Domain.Abstractions;
+namespace BuildingBlocks.DomainModel;
 
 public interface IEntity<T> : IEntity
 {

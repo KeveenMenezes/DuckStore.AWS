@@ -24,15 +24,12 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="MediatR" />
     <Using Include="FluentValidation" />
     <Using Include="FluentValidation.AspNetCore" />
-    <Using Include="FluentValidation.DependencyInjectionExtensions" />
     <Using Include="Mapster" />
     <Using Include="MediatR" />
     <Using Include="Microsoft.Extensions.Http.Resilience" />
     <Using Include="Microsoft.Extensions.ServiceDiscovery" />
-    <Using Include="Microsoft.FeatureManagement.AspNetCore" />
     <Using Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <Using Include="OpenTelemetry.Extensions.Hosting" />
     <Using Include="OpenTelemetry.Instrumentation.AspNetCore" />

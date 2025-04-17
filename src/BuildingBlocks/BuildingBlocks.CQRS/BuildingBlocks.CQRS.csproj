@@ -7,11 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks\BuildingBlocks.csproj" />
+    <PackageReference Include="MediatR" />
   </ItemGroup>
 
   <ItemGroup>
-    <Using Include="BuildingBlocks.DomainModel" />
+    <Using Include="MediatR" />
   </ItemGroup>
 
 </Project>
