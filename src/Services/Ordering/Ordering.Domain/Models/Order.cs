@@ -2,8 +2,6 @@ namespace Ordering.Domain.Models;
 
 public class Order : Aggregate<OrderId>
 {
-    private Order() { }
-
     public static Order Create(
         OrderId id,
         CustomerId customerId,

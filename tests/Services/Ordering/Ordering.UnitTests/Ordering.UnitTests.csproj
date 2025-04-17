@@ -9,14 +9,23 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Using Include="Xunit" />
-    <Using Include="Moq" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="Moq.AutoMock" />
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Using Include="Xunit" />
+    <Using Include="Moq" />
+    <Using Include="Moq.AutoMock" />
+  </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\..\..\src\Services\Ordering\Ordering.Application\Ordering.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\Services\Ordering\Ordering.Domain\Ordering.Domain.csproj" />
-    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.UnitTests\BuildingBlocks.UnitTests.csproj" />
   </ItemGroup>
 
 </Project>

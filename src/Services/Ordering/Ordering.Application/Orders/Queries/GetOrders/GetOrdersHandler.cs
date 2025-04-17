@@ -10,15 +10,14 @@ public class GetOrdersHandler(
         var pageIndex = query.PaginationRequest.PageIndex;
         var pageSize = query.PaginationRequest.PageSize;
 
-        var totalCount = await orderRepository.GetTotalCountOrders(cancellationToken);
-
-        var orders = orderRepository.GetOrdersPaginationAsync(pageIndex, pageSize);
+        var totalCountTask = orderRepository.GetTotalCountOrders(cancellationToken);
+        var ordersStream = orderRepository.GetOrdersPaginationStream(pageIndex, pageSize);
 
         return new GetOrdersResult(
             new PaginatedResult<OrderDto>(
                 pageIndex,
                 pageSize,
-                totalCount,
-                orders.ToOrderDtoList(cancellationToken)));
+                await totalCountTask,
+                ordersStream.ToOrderDtoList(cancellationToken)));
     }
 }

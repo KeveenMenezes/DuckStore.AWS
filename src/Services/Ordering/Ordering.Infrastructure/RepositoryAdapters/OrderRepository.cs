@@ -19,7 +19,7 @@ public class OrderRepository(ApplicationDbContext dbContext)
             .Where(o => o.CustomerId == CustomerId.Of(customerId))
             .AsAsyncEnumerable();
 
-    public IAsyncEnumerable<Order> GetOrdersPaginationAsync(
+    public IAsyncEnumerable<Order> GetOrdersPaginationStream(
         int pageIndex, int pageSize) =>
         _dbContext.Orders
             .OrderBy(o => o.OrderName.Value)
