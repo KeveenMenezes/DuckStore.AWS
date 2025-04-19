@@ -41,6 +41,29 @@ public class GetOrdersHandlerTests
         Assert.NotEmpty(result.Orders.Data);
     }
 
+    [Fact]
+    public async Task Handle_ShouldNotReturnPaginatedResult_WhenNotValidQueryProvided()
+    {
+        // Arrange
+        var query = new GetOrdersQuery(
+            new PaginationRequest { PageIndex = 1, PageSize = 5 });
+
+        _orderRepository
+            .Setup(repo => repo.GetTotalCountOrders(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        _orderRepository
+            .Setup(repo => repo.GetOrdersPaginationStream(It.IsAny<int>(), It.IsAny<int>()))
+            .Returns(GetOrdersStreamMockAsync(0));
+
+        // Act
+        var result = await _handler.Handle(query, CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result);
+        Assert.Empty(result.Orders.Data);
+    }
+
     private static async IAsyncEnumerable<Order> GetOrdersStreamMockAsync(int count = 10)
     {
         for (var i = 1; i <= count; i++)
