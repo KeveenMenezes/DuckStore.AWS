@@ -26,6 +26,3 @@ public class GetProductByIdEndpoint : ICarterModule
         .WithDescription("Get product by its unique identifier.");
     }
 }
-
-
-

@@ -1,5 +1,3 @@
-using Ordering.Domain.ValueObjects;
-
 namespace Ordering.UnitTests.Application.Queries;
 
 public class GetOrdersHandlerTests
@@ -28,7 +26,7 @@ public class GetOrdersHandlerTests
 
         _orderRepository
             .Setup(repo => repo.GetOrdersPaginationStream(It.IsAny<int>(), It.IsAny<int>()))
-            .Returns(GetOrdersStreamMockAsync());
+            .Returns(OrderingDataTests.GetOrdersStreamMockAsync());
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -54,7 +52,7 @@ public class GetOrdersHandlerTests
 
         _orderRepository
             .Setup(repo => repo.GetOrdersPaginationStream(It.IsAny<int>(), It.IsAny<int>()))
-            .Returns(GetOrdersStreamMockAsync(0));
+            .Returns(OrderingDataTests.GetOrdersStreamMockAsync(0));
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -62,53 +60,5 @@ public class GetOrdersHandlerTests
         // Assert
         Assert.NotNull(result);
         Assert.Empty(result.Orders.Data);
-    }
-
-    private static async IAsyncEnumerable<Order> GetOrdersStreamMockAsync(int count = 10)
-    {
-        for (var i = 1; i <= count; i++)
-        {
-            yield return OrderWithItems(i);
-            await Task.Yield();
-        }
-    }
-
-    private static Order OrderWithItems(int version)
-    {
-        var address = Address.Of(
-            $"{version}firstName",
-            $"{version}lastName",
-            $"{version}@gmail.com",
-            $"Bahcelievler No: {version}",
-            "Turkey",
-            "Istanbul",
-            "38050");
-
-        var payment = Payment.Of(
-            $"{version}card",
-            "5555555555554444",
-            "12/28",
-            "123",
-            Domain.Enums.PaymentMethod.Credit);
-
-        var order = Order.Create(
-            OrderId.Of(Guid.NewGuid()),
-            CustomerId.Of(Guid.NewGuid()),
-            OrderName.Of($"ORD_{version}"),
-            shippingAddress: address,
-            billingAddress: address,
-            payment);
-
-        order.Add(
-            ProductId.Of(Guid.NewGuid()),
-            2 * version,
-            20 * version);
-
-        order.Add(
-            ProductId.Of(Guid.NewGuid()),
-            1 * version,
-            10 * version);
-
-        return order;
     }
 }
