@@ -35,9 +35,4 @@
     <ProjectReference Include="..\..\..\..\src\Services\Ordering\Ordering.Domain\Ordering.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Application\Commands\CreateOrder\" />
-    <Folder Include="TestResults\" />
-  </ItemGroup>
-
 </Project>
