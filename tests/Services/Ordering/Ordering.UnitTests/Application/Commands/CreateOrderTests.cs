@@ -19,7 +19,7 @@ public class CreateOrderTests
     public async Task Handle_ShouldCreateOrderSuccessfully()
     {
         // Arrange
-        var command = new CreateOrderCommand(OrderDtoDataTests.CreateOrderDtoWithItems());
+        var command = new CreateOrderCommand(OrderDtoDataTests.CreateOrderDtoWithValidItems());
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -39,7 +39,7 @@ public class CreateOrderTests
     {
         // Arrange
         var command = new CreateOrderCommand(
-            OrderDtoDataTests.CreateOrderDtoWithItems());
+            OrderDtoDataTests.CreateOrderDtoWithValidItems());
 
         // Act
         var result = _validator.TestValidate(command);
@@ -59,7 +59,7 @@ public class CreateOrderTests
     {
         // Arrange
         var command = new CreateOrderCommand(
-            OrderDtoDataTests.CreateOrderDtoInvalidItems());
+            OrderDtoDataTests.CreateOrderDtoWithInvalidItems());
 
         // Act
         var result = _validator.TestValidate(command);
@@ -89,7 +89,7 @@ public class CreateOrderTests
     {
         //Arrange
         var command = new CreateOrderCommand(
-            OrderDtoDataTests.CreateOrderDtoInvalidItems());
+            OrderDtoDataTests.CreateOrderDtoWithInvalidItems());
 
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         command = new CreateOrderCommand(

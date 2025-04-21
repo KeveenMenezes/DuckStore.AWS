@@ -11,7 +11,7 @@ public static class OrderDataTests
         }
     }
 
-    private static Order CreateOrderWithItems(int version)
+    public static Order CreateOrderWithItems(int? version = null)
     {
         var address = Address.Of(
             $"{version}firstName",
@@ -27,7 +27,7 @@ public static class OrderDataTests
             "5555555555554444",
             "12/28",
             "123",
-            Domain.Enums.PaymentMethod.Credit);
+            PaymentMethod.Credit);
 
         var order = Order.Create(
             OrderId.Of(Guid.NewGuid()),
@@ -39,13 +39,13 @@ public static class OrderDataTests
 
         order.Add(
             ProductId.Of(Guid.NewGuid()),
-            2 * version,
-            20 * version);
+            2 * (version ?? 1),
+            20 * (version ?? 1));
 
         order.Add(
             ProductId.Of(Guid.NewGuid()),
-            1 * version,
-            10 * version);
+            1 * (version ?? 1),
+            10 * (version ?? 1));
 
         return order;
     }

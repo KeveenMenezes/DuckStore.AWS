@@ -2,9 +2,9 @@ namespace Ordering.UnitTests.DataTests;
 
 public static class OrderDtoDataTests
 {
-    public static OrderDto CreateOrderDtoWithItems() =>
+    public static OrderDto CreateOrderDtoWithValidItems(Guid? orderId = null) =>
         new(
-            Guid.NewGuid(),
+            orderId ?? Guid.NewGuid(),
             Guid.NewGuid(),
             "Test Order",
             new AddressDto(
@@ -38,7 +38,7 @@ public static class OrderDtoDataTests
                     50)
             ]);
 
-    public static OrderDto CreateOrderDtoInvalidItems() =>
+    public static OrderDto CreateOrderDtoWithInvalidItems() =>
         new(
             Guid.Empty,
             Guid.Empty,
