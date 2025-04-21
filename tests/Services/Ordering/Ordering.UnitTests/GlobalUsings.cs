@@ -1,8 +1,12 @@
 global using BuildingBlocks.Pagination;
+global using Ordering.Application.Dtos;
+global using Ordering.Application.Orders.Commands.CreateOrder;
 global using Ordering.Application.Orders.Queries.GetOrders;
 global using Ordering.Application.Orders.Queries.GetOrdersByCustomer;
 global using Ordering.Application.Orders.Queries.GetOrdersByName;
 global using Ordering.Domain.Abstractions.Repositories;
+global using Ordering.Domain.Enums;
 global using Ordering.Domain.Models;
 global using Ordering.Domain.ValueObjects;
 global using Ordering.UnitTests.DataTests;
+global using FluentValidation.TestHelper;

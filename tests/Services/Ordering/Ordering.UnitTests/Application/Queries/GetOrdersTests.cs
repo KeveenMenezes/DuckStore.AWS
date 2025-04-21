@@ -1,12 +1,12 @@
 namespace Ordering.UnitTests.Application.Queries;
 
-public class GetOrdersHandlerTests
+public class GetOrdersTests
 {
     private readonly AutoMocker _autoMocker;
     private readonly Mock<IOrderRepository> _orderRepository;
     private readonly GetOrdersHandler _handler;
 
-    public GetOrdersHandlerTests()
+    public GetOrdersTests()
     {
         _autoMocker = new AutoMocker();
         _orderRepository = _autoMocker.GetMock<IOrderRepository>();
@@ -26,7 +26,7 @@ public class GetOrdersHandlerTests
 
         _orderRepository
             .Setup(repo => repo.GetOrdersPaginationStream(It.IsAny<int>(), It.IsAny<int>()))
-            .Returns(OrderingDataTests.GetOrdersStreamMockAsync());
+            .Returns(OrderDataTests.GetOrdersStreamMockAsync());
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -52,7 +52,7 @@ public class GetOrdersHandlerTests
 
         _orderRepository
             .Setup(repo => repo.GetOrdersPaginationStream(It.IsAny<int>(), It.IsAny<int>()))
-            .Returns(OrderingDataTests.GetOrdersStreamMockAsync(0));
+            .Returns(OrderDataTests.GetOrdersStreamMockAsync(0));
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);

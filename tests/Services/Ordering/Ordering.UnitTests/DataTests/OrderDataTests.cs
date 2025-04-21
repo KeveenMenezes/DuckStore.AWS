@@ -1,6 +1,6 @@
 namespace Ordering.UnitTests.DataTests;
 
-public static class OrderingDataTests
+public static class OrderDataTests
 {
     public static async IAsyncEnumerable<Order> GetOrdersStreamMockAsync(int count = 10)
     {
