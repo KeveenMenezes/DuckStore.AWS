@@ -1,10 +1,3 @@
-using BuildingBlocks.Messaging.Events;
-using BuildingBlocks.UnitTests;
-using MassTransit;
-using MediatR;
-using Microsoft.Extensions.Logging;
-using Ordering.Application.Orders.EventHandlers.Integration;
-
 namespace Ordering.UnitTests.Application.EventHandlers.Integration;
 
 public class BasketCheckoutEventTests
