@@ -37,6 +37,7 @@
 
   <ItemGroup>
     <Folder Include="Application\Commands\CreateOrder\" />
+    <Folder Include="TestResults\" />
   </ItemGroup>
 
 </Project>

@@ -87,10 +87,14 @@ public class CreateOrderTests
     [Fact]
     public void Validator_ShouldHaveError_WhenOrderDtoInvalidPayment()
     {
+        //Arrange
         var command = new CreateOrderCommand(
             OrderDtoDataTests.CreateOrderDtoInvalidItems());
+
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
         command = new CreateOrderCommand(
             command.Order with { Payment = null });
+#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
 
         // Act
         var result = _validator.TestValidate(command);
