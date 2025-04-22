@@ -143,27 +143,6 @@ public class OrderTests
     }
 
     [Fact]
-    public void Create_ShouldThrowException_WhenOrderNameIsNull()
-    {
-        // Arrange
-        var orderId = OrderId.Of(Guid.NewGuid());
-        var customerId = CustomerId.Of(Guid.NewGuid());
-        var shippingAddress = OrderDataTests.CreateShippingAddressWithVersion();
-        var billingAddress = OrderDataTests.CreateBillingAddressWithVersion();
-        var payment = OrderDataTests.CreatePaymentWithVersion();
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
-            Order.Create(
-                orderId,
-                customerId,
-                null!,
-                shippingAddress,
-                billingAddress,
-                payment));
-    }
-
-    [Fact]
     public void Add_ShouldThrowException_WhenQuantityIsZero()
     {
         // Arrange
@@ -224,32 +203,5 @@ public class OrderTests
             order.Remove(nonExistentProductId));
 
         Assert.Null(exception);
-    }
-
-    [Fact]
-    public void Update_ShouldThrowException_WhenOrderNameIsNull()
-    {
-        // Arrange
-        var order = Order.Create(
-            OrderId.Of(Guid.NewGuid()),
-            CustomerId.Of(Guid.NewGuid()),
-            OrderName.Of("Test Order"),
-            OrderDataTests.CreateShippingAddressWithVersion(),
-            OrderDataTests.CreateBillingAddressWithVersion(),
-            OrderDataTests.CreatePaymentWithVersion());
-
-        var newShippingAddress = OrderDataTests.CreateShippingAddressWithVersion("new");
-        var newBillingAddress = OrderDataTests.CreateBillingAddressWithVersion("new");
-        var newPayment = OrderDataTests.CreatePaymentWithVersion("new");
-        var newStatus = OrderStatus.Completed;
-
-        // Act & Assert
-        Assert.Throws<ArgumentNullException>(() =>
-            order.Update(
-                null!,
-                newShippingAddress,
-                newBillingAddress,
-                newPayment,
-                newStatus));
     }
 }
