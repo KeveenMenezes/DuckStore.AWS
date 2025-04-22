@@ -10,29 +10,10 @@ public class Order : Aggregate<OrderId>
         Address billingAddress,
         Payment payment)
     {
-        ValidateId(id?.Value);
-        ValidateId(customerId?.Value);
-        ArgumentException.ThrowIfNullOrWhiteSpace(orderName?.Value);
-
-        if (shippingAddress is null)
-        {
-            throw new OrderCoreException(OrderCoreError.ShippingAddressNotNull);
-        }
-
-        if (billingAddress is null)
-        {
-            throw new OrderCoreException(OrderCoreError.BillingAddressNotNull);
-        }
-
-        if (payment is null)
-        {
-            throw new OrderCoreException(OrderCoreError.PaymentNotNull);
-        }
-
         var order = new Order
         {
-            Id = id!,
-            CustomerId = customerId!,
+            Id = id,
+            CustomerId = customerId,
             OrderName = orderName,
 
             ShippingAddress = shippingAddress,
@@ -54,21 +35,6 @@ public class Order : Aggregate<OrderId>
         Payment payment,
         OrderStatus status)
     {
-        if (shippingAddress is null)
-        {
-            throw new OrderCoreException(OrderCoreError.ShippingAddressNotNull);
-        }
-
-        if (billingAddress is null)
-        {
-            throw new OrderCoreException(OrderCoreError.BillingAddressNotNull);
-        }
-
-        if (payment is null)
-        {
-            throw new OrderCoreException(OrderCoreError.PaymentNotNull);
-        }
-
         OrderName = orderName;
         ShippingAddress = shippingAddress;
         BillingAddress = billingAddress;
@@ -80,14 +46,8 @@ public class Order : Aggregate<OrderId>
 
     public void Add(ProductId productId, int quantity, decimal price)
     {
-
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(price);
-
-        if (productId is null)
-        {
-            throw new ArgumentNullException(nameof(productId), "ProductId cannot be null.");
-        }
 
         var orderItem = new OrderItem(Id, productId, quantity, price);
         _orderItems.Add(orderItem);
@@ -95,13 +55,9 @@ public class Order : Aggregate<OrderId>
 
     public void Remove(ProductId productId)
     {
-        if (productId is null)
-        {
-            throw new ArgumentNullException(nameof(productId), "ProductId cannot be null.");
-        }
-
         var orderItem = _orderItems.FirstOrDefault(x => x.ProductId == productId) ??
-            throw new InvalidOperationException("The product does not exist in the order.");
+            throw new OrderCoreException(
+                OrderCoreError.ProductNotInOrder(productId.Value));
 
         _orderItems.Remove(orderItem);
     }
@@ -119,13 +75,5 @@ public class Order : Aggregate<OrderId>
     {
         get => OrderItems.Sum(x => x.Price * x.Quantity);
         private set { /* Required for mapping */ }
-    }
-
-    private static void ValidateId(Guid? value)
-    {
-        if (value is null || value == Guid.Empty)
-        {
-            throw new ArgumentOutOfRangeException(nameof(value), "Id cannot be null or empty.");
-        }
     }
 }

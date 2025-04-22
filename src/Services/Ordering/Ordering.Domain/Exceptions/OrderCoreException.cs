@@ -1,5 +1,4 @@
 namespace Ordering.Domain.Exceptions;
-
 public class OrderCoreException(OrderCoreError coreError)
     : CoreException(coreError)
 {
