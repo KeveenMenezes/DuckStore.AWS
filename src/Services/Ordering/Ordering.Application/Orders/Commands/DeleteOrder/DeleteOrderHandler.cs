@@ -1,3 +1,5 @@
+using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+
 namespace Ordering.Application.Orders.Commands.DeleteOrder;
 
 public class DeleteOrderHandler(

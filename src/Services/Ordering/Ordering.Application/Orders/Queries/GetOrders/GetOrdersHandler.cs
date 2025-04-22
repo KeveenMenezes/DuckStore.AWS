@@ -1,3 +1,5 @@
+using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+
 namespace Ordering.Application.Orders.Queries.GetOrders;
 
 public class GetOrdersHandler(

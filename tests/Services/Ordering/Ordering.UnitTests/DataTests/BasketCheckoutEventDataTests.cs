@@ -1,5 +1,3 @@
-using BuildingBlocks.Messaging.Events;
-
 namespace Ordering.UnitTests.DataTests;
 
 public static class BasketCheckoutEventDataTests

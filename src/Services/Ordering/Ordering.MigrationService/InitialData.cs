@@ -1,5 +1,5 @@
-using Ordering.Domain.Models;
-using Ordering.Domain.ValueObjects;
+using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
+using Ordering.Domain.AggregatesModel.OrderAggregate.ValueObjects;
 
 namespace Ordering.MigrationService;
 

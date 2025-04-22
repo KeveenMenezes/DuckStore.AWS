@@ -1,3 +1,5 @@
+using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+
 namespace Ordering.Infrastructure.Configuration;
 
 public static class DependencyInjection

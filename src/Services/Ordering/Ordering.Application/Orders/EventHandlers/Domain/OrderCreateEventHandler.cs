@@ -1,3 +1,5 @@
+using Ordering.Domain.AggregatesModel.OrderAggregate.Events;
+
 namespace Ordering.Application.Orders.EventHandlers.Domain;
 
 public class OrderCreateEventHandler(

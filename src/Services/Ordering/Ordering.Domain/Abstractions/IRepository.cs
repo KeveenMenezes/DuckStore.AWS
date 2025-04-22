@@ -1,4 +1,4 @@
-namespace Ordering.Domain.Abstractions.Repositories;
+namespace Ordering.Domain.Abstractions;
 
 public interface IRepository<T> where T : IAggregate
 {

@@ -1,4 +1,4 @@
-namespace Ordering.Domain.ValueObjects;
+namespace Ordering.Domain.AggregatesModel.OrderAggregate.ValueObjects;
 
 public record CustomerId
 {

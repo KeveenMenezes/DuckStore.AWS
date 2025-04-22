@@ -1,3 +1,5 @@
+using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
+
 namespace Ordering.Application.Extensions;
 
 public static class OrderExtensions

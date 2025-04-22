@@ -1,4 +1,4 @@
-namespace Ordering.Domain.Abstractions.Repositories;
+namespace Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 public interface IOrderRepository : IRepository<Order>
 {

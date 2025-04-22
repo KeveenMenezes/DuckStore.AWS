@@ -1,3 +1,5 @@
+using Ordering.Domain.AggregatesModel.OrderAggregate.Events;
+
 namespace Ordering.UnitTests.Application.EventHandlers.Domain;
 
 public class OrderCreateEventHandlerTests

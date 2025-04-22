@@ -1,4 +1,5 @@
 using Ordering.Application.Orders.Commands.UpdateOrder;
+using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 namespace Ordering.UnitTests.Application.Commands;
 

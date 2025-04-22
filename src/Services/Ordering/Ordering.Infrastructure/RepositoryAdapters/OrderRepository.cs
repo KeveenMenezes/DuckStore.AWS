@@ -1,3 +1,7 @@
+using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
+using Ordering.Domain.AggregatesModel.OrderAggregate.ValueObjects;
+
 namespace Ordering.Infrastructure.RepositoryAdapters;
 
 public class OrderRepository(ApplicationDbContext dbContext)

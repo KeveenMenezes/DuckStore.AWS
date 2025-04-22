@@ -1,4 +1,4 @@
-namespace Ordering.Domain.Models;
+namespace Ordering.Domain.AggregatesModel.OrderAggregate.Models;
 
 public class Customer : Entity<CustomerId>
 {

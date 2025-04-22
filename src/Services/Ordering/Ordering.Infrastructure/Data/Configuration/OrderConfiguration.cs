@@ -1,3 +1,6 @@
+using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
+using Ordering.Domain.AggregatesModel.OrderAggregate.ValueObjects;
+
 namespace Ordering.Infrastructure.Data.Configuration;
 
 public class OrderConfiguration : IEntityTypeConfiguration<Order>

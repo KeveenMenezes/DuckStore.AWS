@@ -1,3 +1,5 @@
+using Ordering.Domain.Abstractions;
+
 namespace Ordering.Infrastructure.RepositoryAdapters;
 
 public class Repository<T>(ApplicationDbContext db)
