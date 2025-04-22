@@ -8,6 +8,10 @@ public class OrderItem : Entity<OrderItemId>
         int quantity,
         decimal price)
     {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(quantity);
+
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(price);
+
         Id = OrderItemId.Of(Guid.NewGuid());
         OrderId = orderId;
         ProductId = productId;
