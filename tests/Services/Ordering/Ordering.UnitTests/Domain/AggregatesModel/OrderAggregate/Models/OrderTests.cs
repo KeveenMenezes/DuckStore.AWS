@@ -185,7 +185,7 @@ public class OrderTests
     }
 
     [Fact]
-    public void Remove_ShouldNotThrowException_WhenProductIdDoesNotExist()
+    public void Remove_ShouldThrowException_WhenProductIdDoesNotExist()
     {
         // Arrange
         var order = Order.Create(
@@ -202,6 +202,6 @@ public class OrderTests
         var exception = Record.Exception(() =>
             order.Remove(nonExistentProductId));
 
-        Assert.Null(exception);
+        Assert.NotNull(exception);
     }
 }
