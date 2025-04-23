@@ -79,9 +79,7 @@ builder.AddProject<Projects.Shopping_Web_Server>(
     .WithExternalHttpEndpoints()
     .WithReference(basketApi)
     .WithReference(catalogApi)
-    .WithReference(orderingApi)
-    .WithReference(rabbitMq)
-    .WaitFor(rabbitMq);
+    .WithReference(orderingApi);
 
 await builder.Build().RunAsync();
 
