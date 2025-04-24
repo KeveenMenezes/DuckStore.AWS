@@ -1,19 +1,23 @@
 namespace Ordering.Domain.Exceptions;
 
-public class ProductCoreException(ProductCoreError coreError)
-    : CoreException(coreError)
-{
-}
+public class ProductNotFoundBadRequestException(Guid productId)
+    : NotFoundException(
+        "ProductId",
+        productId);
 
-public class ProductCoreError
-    : CoreExceptionModel
-{
-    private ProductCoreError(string key, string message, Exception? innerException = null)
-        : base(key, message, innerException)
-    {
-    }
+public  class ProductIdBadRequestException(Guid productId)
+    : BadRequestException(
+        "ProductId",
+        productId);
 
-    public static ProductCoreError ProductIdNotEmpty => new(
-        "ProductIdNotEmpty.",
-        "ProductId cannot be empty.");
-}
+public class ProductNotInOrderBadRequestException(Guid productId)
+    : BadRequestException(
+        "ProductId",
+        productId,
+        $"The product with id {productId} does not exist in the order.");
+
+public class DuplicateProductInOrderDomainException(Guid productId)
+    : DomainException(
+        "ProductId",
+        productId,
+        $"The product with id {productId} is already added to the order.");

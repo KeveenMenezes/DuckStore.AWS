@@ -1,18 +1,5 @@
 ﻿namespace BuildingBlocks.Exceptions;
 
-public class BadRequestException : Exception
-{
-    public BadRequestException(string message) : base(message)
-    {
-    }
-
-    public BadRequestException(string message, string details) : base(message)
-    {
-        Details = details;
-    }
-
-    public string? Details { get; }
-}
-
-
-
+public class BadRequestException(
+    string name, object value, string? message = null)
+    : Exception($"The input \"{name}\" with value \"{value ?? "null"}\" is invalid{(string.IsNullOrWhiteSpace(message) ? "." : $": {message}")}");

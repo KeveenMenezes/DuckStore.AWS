@@ -9,7 +9,7 @@ public record CustomerId
     {
         if (value == Guid.Empty)
         {
-            throw new CustomerCoreException(CustomerCoreError.CustomerIdNotEmpty);
+            throw new CustomerIdBadRequestException(value);
         }
 
         return new CustomerId(value);

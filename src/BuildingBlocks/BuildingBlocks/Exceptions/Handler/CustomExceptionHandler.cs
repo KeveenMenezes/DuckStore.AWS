@@ -11,7 +11,7 @@ public class CustomExceptionHandler
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
         logger.LogError(
-            "Error Message: {exceptionMessage}, Time of occurrence {time}",
+            "Error Message: {ExceptionMessage}, Time of occurrence {Time}",
             exception.Message, DateTime.UtcNow);
 
         (string Detail, string Title, int StatusCode) = exception switch
@@ -33,6 +33,12 @@ public class CustomExceptionHandler
                 exception.Message,
                 exception.GetType().Name,
                 StatusCodes.Status400BadRequest
+            ),
+            DomainException =>
+            (
+                exception.Message,
+                exception.GetType().Name,
+                StatusCodes.Status422UnprocessableEntity
             ),
             InternalServerException =>
             (

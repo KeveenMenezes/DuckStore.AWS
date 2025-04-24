@@ -8,7 +8,7 @@ public record OrderId
     {
         if (value == Guid.Empty)
         {
-            throw new OrderCoreException(OrderCoreError.OrderIdNotEmpty);
+            throw new OrderIdBadRequestException(value);
         }
 
         return new OrderId(value);
