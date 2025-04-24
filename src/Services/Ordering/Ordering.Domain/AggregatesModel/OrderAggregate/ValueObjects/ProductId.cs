@@ -9,7 +9,7 @@ public record ProductId
     {
         if (value == Guid.Empty)
         {
-            throw new ProductCoreException(ProductCoreError.ProductIdNotEmpty);
+            throw new ProductIdBadRequestException(value);
         }
 
         return new ProductId(value);

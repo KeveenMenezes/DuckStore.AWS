@@ -13,7 +13,7 @@ public class UpdateOrderHandler(
         CancellationToken cancellationToken)
     {
         var order = await orderRepository.GetByIdAsync(command.Order.Id, cancellationToken) ??
-            throw new OrderCoreException(OrderCoreError.OrderNotFound(command.Order.Id));
+            throw new OrderNotFoundBadRequestException(command.Order.Id);
 
         UpdateOrderWithNewValues(order, command.Order);
 

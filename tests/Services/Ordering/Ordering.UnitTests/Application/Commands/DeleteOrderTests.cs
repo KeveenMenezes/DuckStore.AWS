@@ -58,7 +58,7 @@ public class DeleteOrderTests
         var command = new DeleteOrderCommand(orderId);
 
         // Act & Assert
-        await Assert.ThrowsAsync<OrderCoreException>(() => _handler.Handle(command, CancellationToken.None));
+        await Assert.ThrowsAsync<OrderNotFoundBadRequestException>(() => _handler.Handle(command, CancellationToken.None));
     }
 
     [Fact]

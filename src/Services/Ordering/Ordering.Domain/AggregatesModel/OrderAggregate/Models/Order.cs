@@ -54,8 +54,7 @@ public class Order : Aggregate<OrderId>
     public void Remove(ProductId productId)
     {
         var orderItem = _orderItems.FirstOrDefault(x => x.ProductId == productId) ??
-            throw new OrderCoreException(
-                OrderCoreError.ProductNotInOrder(productId.Value));
+            throw new ProductNotInOrderBadRequestException(productId.Value);
 
         _orderItems.Remove(orderItem);
     }

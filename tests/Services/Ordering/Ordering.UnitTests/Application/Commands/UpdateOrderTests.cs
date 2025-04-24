@@ -57,7 +57,7 @@ public class UpdateOrderTests
 #pragma warning restore CS8600 // Converting null literal or possible null value to non-nullable type.
 
         // Act & Assert
-        await Assert.ThrowsAsync<OrderCoreException>(() => _handler.Handle(command, CancellationToken.None));
+        await Assert.ThrowsAsync<OrderNotFoundBadRequestException>(() => _handler.Handle(command, CancellationToken.None));
     }
 
     [Fact]
