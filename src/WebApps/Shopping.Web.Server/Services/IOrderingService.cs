@@ -1,4 +1,4 @@
-namespace Shopping.Web.Server.Services;
+﻿namespace Shopping.Web.Server.Services;
 
 public interface IOrderingService
 {

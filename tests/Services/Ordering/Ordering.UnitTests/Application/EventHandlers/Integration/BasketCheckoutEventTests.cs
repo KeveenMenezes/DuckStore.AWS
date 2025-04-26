@@ -1,4 +1,4 @@
-namespace Ordering.UnitTests.Application.EventHandlers.Integration;
+﻿namespace Ordering.UnitTests.Application.EventHandlers.Integration;
 
 public class BasketCheckoutEventTests
 {

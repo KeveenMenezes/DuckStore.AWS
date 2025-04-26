@@ -1,4 +1,4 @@
-namespace Discount.Grpc.Services;
+﻿namespace Discount.Grpc.Services;
 
 public class DiscountService
     (DiscountContext dbContext, ILogger<DiscountService> logger)

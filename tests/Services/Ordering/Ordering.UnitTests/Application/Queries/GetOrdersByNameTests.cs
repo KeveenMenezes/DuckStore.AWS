@@ -1,4 +1,4 @@
-using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+﻿using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 namespace Ordering.UnitTests.Application.Queries;
 

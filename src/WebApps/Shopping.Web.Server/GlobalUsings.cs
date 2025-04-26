@@ -1,4 +1,4 @@
-global using System.Net;
+﻿global using System.Net;
 global using BuildingBlocks.Pagination;
 global using BuildingBlocks.ServiceDefaults;
 global using Microsoft.AspNetCore.Mvc;

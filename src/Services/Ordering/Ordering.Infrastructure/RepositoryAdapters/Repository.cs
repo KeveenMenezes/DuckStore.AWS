@@ -1,4 +1,4 @@
-using Ordering.Domain.Abstractions;
+﻿using Ordering.Domain.Abstractions;
 
 namespace Ordering.Infrastructure.RepositoryAdapters;
 

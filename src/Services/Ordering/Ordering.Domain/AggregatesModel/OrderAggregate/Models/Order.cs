@@ -1,4 +1,4 @@
-namespace Ordering.Domain.AggregatesModel.OrderAggregate.Models;
+﻿namespace Ordering.Domain.AggregatesModel.OrderAggregate.Models;
 
 public class Order : Aggregate<OrderId>
 {

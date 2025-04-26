@@ -1,11 +1,11 @@
-namespace Ordering.Domain.Exceptions;
+﻿namespace Ordering.Domain.Exceptions;
 
 public class ProductNotFoundBadRequestException(Guid productId)
     : NotFoundException(
         "ProductId",
         productId);
 
-public  class ProductIdBadRequestException(Guid productId)
+public class ProductIdBadRequestException(Guid productId)
     : BadRequestException(
         "ProductId",
         productId);

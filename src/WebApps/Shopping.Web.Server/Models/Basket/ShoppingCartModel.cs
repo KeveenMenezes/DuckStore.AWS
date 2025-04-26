@@ -1,4 +1,4 @@
-namespace Shopping.Web.Server.Models.Basket;
+﻿namespace Shopping.Web.Server.Models.Basket;
 
 public class ShoppingCartModel
 {

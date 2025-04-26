@@ -1,4 +1,4 @@
-using Ordering.Application.Orders.Commands.DeleteOrder;
+﻿using Ordering.Application.Orders.Commands.DeleteOrder;
 
 namespace Ordering.API.Endpoints;
 

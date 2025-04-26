@@ -1,4 +1,4 @@
-namespace Shopping.Web.Server.Models.Catalog;
+﻿namespace Shopping.Web.Server.Models.Catalog;
 
 public class ProductModel
 {

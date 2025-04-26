@@ -1,4 +1,4 @@
-namespace Ordering.Infrastructure.Interceptors;
+﻿namespace Ordering.Infrastructure.Interceptors;
 
 public class DispatchDomainEventsInterceptor(
     IMediator mediator)

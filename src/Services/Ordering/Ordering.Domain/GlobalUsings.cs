@@ -1,4 +1,4 @@
-global using BuildingBlocks.Exceptions;
+﻿global using BuildingBlocks.Exceptions;
 global using Ordering.Domain.Abstractions;
 global using Ordering.Domain.AggregatesModel.OrderAggregate.Events;
 global using Ordering.Domain.AggregatesModel.OrderAggregate.Models;

@@ -1,4 +1,4 @@
-using BuildingBlocks.ServiceDefaults;
+﻿using BuildingBlocks.ServiceDefaults;
 using Microsoft.EntityFrameworkCore;
 using Ordering.Infrastructure.Data;
 using Ordering.MigrationService;

@@ -1,4 +1,4 @@
-namespace Ordering.Application.Dtos;
+﻿namespace Ordering.Application.Dtos;
 
 public record OrderDto(
     Guid Id,

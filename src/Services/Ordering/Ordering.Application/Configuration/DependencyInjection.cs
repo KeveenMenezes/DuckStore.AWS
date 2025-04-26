@@ -1,4 +1,4 @@
-namespace Ordering.Application.Configuration;
+﻿namespace Ordering.Application.Configuration;
 
 public static class DependencyInjection
 {

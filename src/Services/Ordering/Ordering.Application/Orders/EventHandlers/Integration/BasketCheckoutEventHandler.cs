@@ -1,4 +1,4 @@
-namespace Ordering.Application.Orders.EventHandlers.Integration;
+﻿namespace Ordering.Application.Orders.EventHandlers.Integration;
 
 public class BasketCheckoutEventHandler(
     ISender sender,

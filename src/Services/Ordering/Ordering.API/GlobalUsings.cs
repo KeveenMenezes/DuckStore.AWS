@@ -1,4 +1,4 @@
-global using BuildingBlocks.Exceptions.Handler;
+﻿global using BuildingBlocks.Exceptions.Handler;
 global using BuildingBlocks.ServiceDefaults;
 global using Carter;
 global using Mapster;

@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Exceptions;
+﻿namespace BuildingBlocks.Exceptions;
 
 public class DomainException(
     string name, object value, string? message = null)

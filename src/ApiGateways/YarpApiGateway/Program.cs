@@ -1,4 +1,4 @@
-using BuildingBlocks.ServiceDefaults;
+﻿using BuildingBlocks.ServiceDefaults;
 using Microsoft.AspNetCore.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);

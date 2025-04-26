@@ -1,4 +1,4 @@
-global using BuildingBlocks.Messaging.Events;
+﻿global using BuildingBlocks.Messaging.Events;
 global using BuildingBlocks.Pagination;
 global using BuildingBlocks.UnitTests;
 global using FluentValidation.TestHelper;
@@ -14,8 +14,8 @@ global using Ordering.Application.Orders.EventHandlers.Integration;
 global using Ordering.Application.Orders.Queries.GetOrders;
 global using Ordering.Application.Orders.Queries.GetOrdersByCustomer;
 global using Ordering.Application.Orders.Queries.GetOrdersByName;
+global using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
+global using Ordering.Domain.AggregatesModel.OrderAggregate.ValueObjects;
 global using Ordering.Domain.Enums;
 global using Ordering.Domain.Exceptions;
 global using Ordering.UnitTests.DataTests;
-global using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
-global using Ordering.Domain.AggregatesModel.OrderAggregate.ValueObjects;

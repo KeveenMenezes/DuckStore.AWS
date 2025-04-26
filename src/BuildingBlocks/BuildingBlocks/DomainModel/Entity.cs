@@ -1,4 +1,4 @@
-namespace BuildingBlocks.DomainModel;
+﻿namespace BuildingBlocks.DomainModel;
 
 public abstract class Entity<T> : IEntity<T>
 {

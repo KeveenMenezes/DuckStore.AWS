@@ -1,4 +1,4 @@
-namespace BuildingBlocks.DomainModel;
+﻿namespace BuildingBlocks.DomainModel;
 
 public interface IAggregate<T> : IAggregate, IEntity<T>
 {

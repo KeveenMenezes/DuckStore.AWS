@@ -1,4 +1,4 @@
-using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
+﻿using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
 
 namespace Ordering.Application.Extensions;
 

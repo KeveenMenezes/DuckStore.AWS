@@ -1,4 +1,4 @@
-global using System.Reflection;
+﻿global using System.Reflection;
 global using System.Runtime.CompilerServices;
 global using BuildingBlocks.Behaviors;
 global using BuildingBlocks.CQRS;

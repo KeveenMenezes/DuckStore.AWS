@@ -1,4 +1,4 @@
-namespace Ordering.Domain.Exceptions;
+﻿namespace Ordering.Domain.Exceptions;
 
 public class OrderNotFoundBadRequestException(Guid orderId)
     : NotFoundException(

@@ -1,4 +1,4 @@
-using Aspire.Hosting.Lifecycle;
+﻿using Aspire.Hosting.Lifecycle;
 
 namespace AppHost.Extensions;
 

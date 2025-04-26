@@ -1,4 +1,4 @@
-using Ordering.Domain.AggregatesModel.OrderAggregate.Events;
+﻿using Ordering.Domain.AggregatesModel.OrderAggregate.Events;
 
 namespace Ordering.Application.Orders.EventHandlers.Domain;
 

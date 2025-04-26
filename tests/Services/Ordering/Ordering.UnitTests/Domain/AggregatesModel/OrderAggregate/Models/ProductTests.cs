@@ -1,4 +1,4 @@
-namespace Ordering.UnitTests.Domain.AggregatesModel.OrderAggregate.Models;
+﻿namespace Ordering.UnitTests.Domain.AggregatesModel.OrderAggregate.Models;
 
 public class ProductTests
 {

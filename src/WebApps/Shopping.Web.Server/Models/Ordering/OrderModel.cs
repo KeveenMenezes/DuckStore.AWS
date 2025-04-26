@@ -1,4 +1,4 @@
-namespace Shopping.Web.Server.Models.Ordering;
+﻿namespace Shopping.Web.Server.Models.Ordering;
 
 public record OrderModel(
     Guid Id,

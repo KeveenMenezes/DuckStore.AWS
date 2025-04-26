@@ -1,4 +1,4 @@
-namespace Ordering.UnitTests.Domain.AggregatesModel.OrderAggregate.ValueObjects;
+﻿namespace Ordering.UnitTests.Domain.AggregatesModel.OrderAggregate.ValueObjects;
 
 public class AddressTests
 {

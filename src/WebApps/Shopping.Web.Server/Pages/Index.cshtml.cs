@@ -1,4 +1,4 @@
-namespace Shopping.Web.Server.Pages;
+﻿namespace Shopping.Web.Server.Pages;
 
 public class IndexModel(ILogger<IndexModel> logger) : PageModel
 {
