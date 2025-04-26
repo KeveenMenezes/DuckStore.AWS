@@ -7,4 +7,3 @@ global using Refit;
 global using Shopping.Web.Server.Models.Basket;
 global using Shopping.Web.Server.Models.Catalog;
 global using Shopping.Web.Server.Models.Ordering;
-global using Shopping.Web.Server.Services;
