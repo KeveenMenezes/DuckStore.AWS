@@ -1,0 +1,22 @@
+#!/bin/sh
+
+# Obtém a lista de arquivos C# modificados no índice (staged)
+files=$(git diff --cached --name-only --diff-filter=ACM | grep '\.cs$')
+
+# Se não houver arquivos C# modificados, sai do hook
+if [ -z "$files" ]; then
+  exit 0
+fi
+
+# Formata os arquivos modificados no contexto do projeto ou solução
+echo "Formatando arquivos modificados..."
+dotnet format DuckStore.sln --include $files
+
+# Verifica o código de saída do comando anterior
+if [ $? -ne 0 ]; then
+  echo "O código foi formatado. Verifique e execute 'git add' novamente para incluir as alterações."
+  exit 1
+fi
+
+# Continua com o commit se todos os arquivos estiverem formatados
+exit 0
