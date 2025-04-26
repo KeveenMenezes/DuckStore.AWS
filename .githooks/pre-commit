@@ -8,15 +8,21 @@ if [ -z "$files" ]; then
   exit 0
 fi
 
-# Verifica se os arquivos estão formatados corretamente
-echo "Verificando formatação dos arquivos modificados..."
-dotnet format DuckStore.sln --include $files --verify-no-changes
+# Formata os arquivos modificados
+echo "Formatando arquivos modificados..."
+for file in $files; do
+  # Executa o dotnet format no arquivo específico
+  dotnet format DuckStore.sln --include "$file"
+  
+  # Verifica se o comando dotnet format foi bem-sucedido
+  if [ $? -ne 0 ]; then
+    echo "Erro ao formatar o arquivo: $file"
+    exit 1
+  fi
 
-# Verifica o código de saída do comando anterior
-if [ $? -ne 0 ]; then
-  echo "Erro: O código não está formatado corretamente. Execute 'dotnet format' e 'git add' novamente para corrigir."
-  exit 1
-fi
+  # Re-adiciona o arquivo formatado ao índice
+  git add "$file"
+done
 
 # Continua com o commit se todos os arquivos estiverem formatados
 exit 0
