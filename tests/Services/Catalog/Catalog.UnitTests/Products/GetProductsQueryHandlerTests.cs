@@ -39,7 +39,7 @@ public class GetProductsQueryHandlerTests
             session.Query<Product>())
                 .Returns(
                     MartenMockExtensions
-                        .CreateMartenQueryableMock(products).Object);
+                        .CreateMartenQueryableMock(products));
 
         var query = new GetProductsQuery(1, 2);
 
@@ -65,7 +65,7 @@ public class GetProductsQueryHandlerTests
             session.Query<Product>())
                 .Returns(
                     MartenMockExtensions
-                        .CreateMartenQueryableMock(products).Object);
+                        .CreateMartenQueryableMock(products));
 
         var query = new GetProductsQuery(1, 2);
 

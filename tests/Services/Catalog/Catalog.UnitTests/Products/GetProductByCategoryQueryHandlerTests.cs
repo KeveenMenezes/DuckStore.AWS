@@ -42,7 +42,7 @@ public class GetProductByCategoryQueryHandlerTests
             session.Query<Product>())
                 .Returns(
                     MartenMockExtensions
-                        .CreateMartenQueryableMock(products).Object);
+                        .CreateMartenQueryableMock(products));
 
         var query = new GetProductByCategoryQuery(category);
 
@@ -67,7 +67,7 @@ public class GetProductByCategoryQueryHandlerTests
 
         _sessionMock.Setup(session =>
             session.Query<Product>())
-                .Returns(MartenMockExtensions.CreateMartenQueryableMock(products).Object);
+                .Returns(MartenMockExtensions.CreateMartenQueryableMock(products));
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
