@@ -22,7 +22,7 @@ public class CreateProductCommandValidator : AbstractValidator<CreateProductComm
     }
 }
 
-internal class CreateProductCommandHandler
+public class CreateProductCommandHandler
     (IDocumentSession session)
     : ICommandHandler<CreateProductCommand, CreateProductResult>
 {

@@ -30,7 +30,7 @@ public class UpdateProductCommandValidator : AbstractValidator<UpdateProductComm
     }
 }
 
-internal class UpdateProductCommandHandler
+public class UpdateProductCommandHandler
     (IDocumentSession session)
     : ICommandHandler<UpdateProductCommand, UpdateProductResult>
 {
