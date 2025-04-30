@@ -100,7 +100,7 @@ Content-Type: application/json
         "userName": "swn3",
         "items": [
             {
-                "qantity": 1,
+                "quantity": 1,
                 "color": "blue",
                 "price": "5599.99",
                 "productId": "5334c996-8457-4cf0-815c-ed2b77c4ff61",
