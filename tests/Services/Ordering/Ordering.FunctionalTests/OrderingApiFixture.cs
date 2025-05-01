@@ -1,20 +1,34 @@
-﻿using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Hosting;
-using Microsoft.VisualStudio.TestPlatform.TestHost;
+﻿namespace Ordering.FunctionalTests;
 
-namespace Ordering.FunctionalTests;
-
-public sealed class OrderingApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
+public sealed class OrderingApiFixture : IAsyncLifetime
 {
-    private readonly IHost _app;
+    private DistributedApplication _app;
+    public HttpClient HttpClient => _app.CreateHttpClient("ordering-api");
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
-        throw new NotImplementedException();
+        Environment.SetEnvironmentVariable("ASPIRE_ALLOW_UNSECURED_TRANSPORT", "true");
+
+        var appHost = await DistributedApplicationTestingBuilder
+            .CreateAsync<Projects.Ordering_API>(
+            [
+                "--environment=Testing"
+            ],
+            configureBuilder: (appOptions, hostSettings) =>
+            {
+                appOptions.DisableDashboard = true;
+            });
+
+        _app = await appHost.BuildAsync();
+
+        await _app.StartAsync();
     }
 
-    Task IAsyncLifetime.DisposeAsync()
+    public async Task DisposeAsync()
     {
-        throw new NotImplementedException();
+        if (_app != null)
+            await _app
+                .DisposeAsync()
+                .ConfigureAwait(false);
     }
 }
