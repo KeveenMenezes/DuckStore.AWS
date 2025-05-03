@@ -3,7 +3,8 @@ using Microsoft.Extensions.Hosting;
 
 namespace Ordering.FunctionalTests;
 
-public sealed class OrderingApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
+public sealed class OrderingApiFixture
+    : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private readonly IHost _app;
 
