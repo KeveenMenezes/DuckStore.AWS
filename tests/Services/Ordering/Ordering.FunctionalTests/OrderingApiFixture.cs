@@ -1,9 +1,5 @@
-﻿#pragma warning disable CS8601 // Possible null reference assignment.
-
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Hosting;
-using Microsoft.VisualStudio.TestPlatform.TestHost;
 
 namespace Ordering.FunctionalTests;
 
@@ -24,9 +20,7 @@ public sealed class OrderingApiFixture : WebApplicationFactory<Program>, IAsyncL
 
         var appBuilder = DistributedApplication.CreateBuilder(options);
 
-        _orderingDb = appBuilder.AddSqlServer("orderingDb");
-
-        _orderingDbConnectionString = _orderingDb.Resource.GetConnectionStringAsync().GetAwaiter().GetResult();
+        _orderingDb = appBuilder.AddSqlServer("OrderingDb");
         _app = appBuilder.Build();
     }
 

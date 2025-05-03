@@ -16,4 +16,8 @@
     <PackageReference Include="Aspire.RabbitMQ.Client.v7" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="Ordering.FunctionalTests" />
+  </ItemGroup>
+
 </Project>
