@@ -1,34 +1,65 @@
-﻿namespace Ordering.FunctionalTests;
+﻿#pragma warning disable CS8601 // Possible null reference assignment.
 
-public sealed class OrderingApiFixture : IAsyncLifetime
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.VisualStudio.TestPlatform.TestHost;
+
+namespace Ordering.FunctionalTests;
+
+public sealed class OrderingApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    private DistributedApplication _app;
-    public HttpClient HttpClient => _app.CreateHttpClient("ordering-api");
+    private readonly IHost _app;
+
+    private readonly IResourceBuilder<SqlServerServerResource> _orderingDb;
+    private string _orderingDbConnectionString;
+
+    public OrderingApiFixture()
+    {
+        var options = new DistributedApplicationOptions
+        {
+            AssemblyName = typeof(OrderingApiFixture).Assembly.FullName,
+            DisableDashboard = true
+        };
+
+        var appBuilder = DistributedApplication.CreateBuilder(options);
+
+        _orderingDb = appBuilder.AddSqlServer("orderingDb");
+
+        _orderingDbConnectionString = _orderingDb.Resource.GetConnectionStringAsync().GetAwaiter().GetResult();
+        _app = appBuilder.Build();
+    }
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        builder.ConfigureHostConfiguration(config =>
+        {
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                { $"ConnectionStrings:{_orderingDb.Resource.Name}", _orderingDbConnectionString }
+            });
+        });
+
+        return base.CreateHost(builder);
+    }
+
+    public new async Task DisposeAsync()
+    {
+        await base.DisposeAsync();
+        await _app.StopAsync();
+        if (_app is IAsyncDisposable asyncDisposable)
+        {
+            await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+        }
+        else
+        {
+            _app.Dispose();
+        }
+    }
 
     public async Task InitializeAsync()
     {
-        Environment.SetEnvironmentVariable("ASPIRE_ALLOW_UNSECURED_TRANSPORT", "true");
-
-        var appHost = await DistributedApplicationTestingBuilder
-            .CreateAsync<Projects.Ordering_API>(
-            [
-                "--environment=Testing"
-            ],
-            configureBuilder: (appOptions, hostSettings) =>
-            {
-                appOptions.DisableDashboard = true;
-            });
-
-        _app = await appHost.BuildAsync();
-
         await _app.StartAsync();
-    }
-
-    public async Task DisposeAsync()
-    {
-        if (_app != null)
-            await _app
-                .DisposeAsync()
-                .ConfigureAwait(false);
+        _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync();
     }
 }

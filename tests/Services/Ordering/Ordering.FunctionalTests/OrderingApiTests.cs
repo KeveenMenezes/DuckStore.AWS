@@ -1,13 +1,24 @@
-﻿namespace Ordering.FunctionalTests;
+﻿using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.VisualStudio.TestPlatform.TestHost;
 
-public class OrderingApiTests(OrderingApiFixture fixture)
-    : IClassFixture<OrderingApiFixture>
+namespace Ordering.FunctionalTests;
+
+public class OrderingApiTests : IClassFixture<OrderingApiFixture>
 {
+    private readonly WebApplicationFactory<Program> _webApplicationFactory;
+    private readonly HttpClient _httpClient;
+
+    public OrderingApiTests(OrderingApiFixture fixture)
+    {
+        _webApplicationFactory = fixture;
+        _httpClient = _webApplicationFactory.CreateDefaultClient();
+    }
+
     [Fact]
     public async Task HealthEndpoint_Should_ReturnSuccess()
     {
         // Act
-        var response = await fixture.HttpClient.GetAsync("/orders/health");
+        var response = await _httpClient.GetAsync("/orders/health");
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -17,7 +28,7 @@ public class OrderingApiTests(OrderingApiFixture fixture)
     public async Task GetOrders_Should_ReturnOrdersList()
     {
         // Act
-        var response = await fixture.HttpClient.GetAsync("/orders");
+        var response = await _httpClient.GetAsync("/orders");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -35,7 +46,7 @@ public class OrderingApiTests(OrderingApiFixture fixture)
             System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json"));
 
         // Act
-        var response = await fixture.HttpClient.PostAsync("/orders", content);
+        var response = await _httpClient.PostAsync("/orders", content);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -48,7 +59,7 @@ public class OrderingApiTests(OrderingApiFixture fixture)
         var orderId = 1;
 
         // Act
-        var response = await fixture.HttpClient.GetAsync($"/orders/{orderId}");
+        var response = await _httpClient.GetAsync($"/orders/{orderId}");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -63,7 +74,7 @@ public class OrderingApiTests(OrderingApiFixture fixture)
         var orderId = 100;
 
         // Act
-        var response = await fixture.HttpClient.DeleteAsync($"/orders/{orderId}");
+        var response = await _httpClient.DeleteAsync($"/orders/{orderId}");
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
