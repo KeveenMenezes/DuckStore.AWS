@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Hosting;
 
 namespace Ordering.FunctionalTests;
@@ -22,6 +23,7 @@ public sealed class OrderingApiFixture
         var appBuilder = DistributedApplication.CreateBuilder(options);
 
         _orderingDb = appBuilder.AddSqlServer("OrderingDb");
+        appBuilder.AddRabbitMQ("RabbitMq");
         _app = appBuilder.Build();
     }
 
@@ -31,7 +33,7 @@ public sealed class OrderingApiFixture
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { $"ConnectionStrings:{_orderingDb.Resource.Name}", _orderingDbConnectionString }
+                { $"ConnectionStrings:{_orderingDb.Resource.Name}", _orderingDbConnectionString },
             });
         });
 
