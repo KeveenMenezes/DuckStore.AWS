@@ -56,6 +56,7 @@ public sealed class OrderingApiFixture
     public async Task InitializeAsync()
     {
         await _app.StartAsync();
-        _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync();
+        _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync() ??
+            throw new InvalidOperationException("Connection string cannot be null.");
     }
 }
