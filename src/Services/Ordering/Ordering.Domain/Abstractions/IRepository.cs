@@ -1,4 +1,6 @@
-﻿namespace Ordering.Domain.Abstractions;
+﻿using BuildingBlocks.Core.DomainModel;
+
+namespace Ordering.Domain.Abstractions;
 
 public interface IRepository<T> where T : IAggregate
 {

@@ -1,6 +1,4 @@
-﻿using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
-
-namespace Ordering.UnitTests.Application.Commands;
+﻿namespace Ordering.UnitTests.Application.Commands;
 
 public class CreateOrderTests
 {

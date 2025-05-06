@@ -1,4 +1,4 @@
-﻿namespace BuildingBlocks.Pagination;
+﻿namespace BuildingBlocks.Core.Pagination;
 
 public class PaginatedResult<TEntity>
     (int pageIndex, int pageSize, long count, IAsyncEnumerable<TEntity> data)

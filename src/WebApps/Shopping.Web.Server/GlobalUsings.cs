@@ -1,6 +1,5 @@
 ﻿global using System.Net;
-global using BuildingBlocks.Pagination;
-global using BuildingBlocks.ServiceDefaults;
+global using BuildingBlocks.Core.Pagination;
 global using Microsoft.AspNetCore.Mvc;
 global using Microsoft.AspNetCore.Mvc.RazorPages;
 global using Refit;

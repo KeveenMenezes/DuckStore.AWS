@@ -1,4 +1,7 @@
-﻿var builder = WebApplication.CreateBuilder(args);
+﻿using BuildingBlocks.ServiceDefaults.Behaviors;
+using BuildingBlocks.ServiceDefaults.ExceptionHandler;
+
+var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.AddServiceDefaults();

@@ -1,6 +1,4 @@
-﻿using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
-
-namespace Ordering.Application.Orders.Queries.GetOrders;
+﻿namespace Ordering.Application.Orders.Queries.GetOrders;
 
 public class GetOrdersHandler(
     IOrderRepository orderRepository)

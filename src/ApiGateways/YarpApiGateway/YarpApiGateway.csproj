@@ -12,7 +12,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks\BuildingBlocks.Core.csproj" />
+    <ProjectReference Include="..\..\BuildingBlocks\BuildingBlocks.ServiceDefaults\BuildingBlocks.ServiceDefaults.csproj" />
   </ItemGroup>
-
 </Project>

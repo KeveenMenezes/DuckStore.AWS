@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Diagnostics;
+﻿using BuildingBlocks.Core.Exceptions;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 
-namespace BuildingBlocks.Exceptions.Handler;
+namespace BuildingBlocks.ServiceDefaults.ExceptionHandler;
+
 public class CustomExceptionHandler
     (ILogger<CustomExceptionHandler> logger)
     : IExceptionHandler
@@ -14,7 +16,7 @@ public class CustomExceptionHandler
             "Error Message: {ExceptionMessage}, Time of occurrence {Time}",
             exception.Message, DateTime.UtcNow);
 
-        (string Detail, string Title, int StatusCode) = exception switch
+        (var Detail, var Title, var StatusCode) = exception switch
         {
             NotFoundException =>
             (

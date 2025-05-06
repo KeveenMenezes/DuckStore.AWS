@@ -1,4 +1,6 @@
-﻿namespace Ordering.Infrastructure.Interceptors;
+﻿using BuildingBlocks.Core.DomainModel;
+
+namespace Ordering.Infrastructure.Interceptors;
 
 public class AuditableEntityInterceptor : SaveChangesInterceptor
 {

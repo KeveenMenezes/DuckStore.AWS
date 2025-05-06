@@ -1,8 +1,4 @@
-﻿using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
-using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
-using Ordering.Domain.AggregatesModel.OrderAggregate.ValueObjects;
-
-namespace Ordering.Application.Orders.Commands.UpdateOrder;
+﻿namespace Ordering.Application.Orders.Commands.UpdateOrder;
 
 public class UpdateOrderHandler(
     IOrderRepository orderRepository)

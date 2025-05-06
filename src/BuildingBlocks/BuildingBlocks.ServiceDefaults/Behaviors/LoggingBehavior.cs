@@ -1,7 +1,7 @@
 ﻿using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-namespace BuildingBlocks.Behaviors;
+namespace BuildingBlocks.ServiceDefaults.Behaviors;
 
 public class LoggingBehavior<TRequest, TResponse>
     (ILogger<LoggingBehavior<TRequest, TResponse>> logger)
@@ -42,5 +42,3 @@ public class LoggingBehavior<TRequest, TResponse>
         return response;
     }
 }
-
-

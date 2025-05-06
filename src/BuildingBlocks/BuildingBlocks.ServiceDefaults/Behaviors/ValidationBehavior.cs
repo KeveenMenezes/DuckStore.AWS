@@ -1,6 +1,6 @@
-﻿using BuildingBlocks.CQRS;
+﻿using BuildingBlocks.Core.CQRS;
 
-namespace BuildingBlocks.Behaviors;
+namespace BuildingBlocks.ServiceDefaults.Behaviors;
 
 public class ValidationBehavior<TRequest, TResponse>
     (IEnumerable<IValidator<TRequest>> validators)

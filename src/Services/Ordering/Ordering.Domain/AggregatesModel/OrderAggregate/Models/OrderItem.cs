@@ -1,4 +1,6 @@
-﻿namespace Ordering.Domain.AggregatesModel.OrderAggregate.Models;
+﻿using BuildingBlocks.Core.DomainModel;
+
+namespace Ordering.Domain.AggregatesModel.OrderAggregate.Models;
 
 public class OrderItem : Entity<OrderItemId>
 {

@@ -1,4 +1,7 @@
-﻿namespace Ordering.Application.Configuration;
+﻿using BuildingBlocks.ServiceDefaults.Behaviors;
+using Microsoft.FeatureManagement;
+
+namespace Ordering.Application.Configuration;
 
 public static class DependencyInjection
 {

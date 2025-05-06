@@ -1,4 +1,4 @@
-﻿namespace BuildingBlocks.CQRS;
+﻿namespace BuildingBlocks.Core.CQRS;
 
 public interface IStreamQueryHandler<in TQueryStream, TResponse>
     : IStreamRequestHandler<TQueryStream, TResponse>

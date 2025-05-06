@@ -1,4 +1,5 @@
-﻿using Ordering.Domain.AggregatesModel.OrderAggregate.Events;
+﻿using Microsoft.FeatureManagement;
+using Ordering.Domain.AggregatesModel.OrderAggregate.Events;
 
 namespace Ordering.Application.Orders.EventHandlers.Domain;
 

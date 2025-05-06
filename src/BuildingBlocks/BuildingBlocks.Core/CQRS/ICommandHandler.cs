@@ -1,4 +1,4 @@
-﻿namespace BuildingBlocks.CQRS;
+﻿namespace BuildingBlocks.Core.CQRS;
 
 public interface ICommandHandler<in TCommand>
     : ICommandHandler<TCommand, Unit>

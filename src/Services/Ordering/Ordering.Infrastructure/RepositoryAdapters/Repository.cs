@@ -1,4 +1,5 @@
-﻿using Ordering.Domain.Abstractions;
+﻿using BuildingBlocks.Core.DomainModel;
+using Ordering.Domain.Abstractions;
 
 namespace Ordering.Infrastructure.RepositoryAdapters;
 

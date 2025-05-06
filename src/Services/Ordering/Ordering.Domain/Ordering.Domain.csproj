@@ -7,11 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks\BuildingBlocks.Core.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Core\BuildingBlocks.Core.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Using Include="BuildingBlocks.DomainModel" />
-  </ItemGroup>
-
 </Project>
