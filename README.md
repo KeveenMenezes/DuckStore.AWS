@@ -29,6 +29,13 @@ Cada serviço é responsável por uma funcionalidade específica, como gerenciam
 ## 🛠️ Tecnologias Utilizadas
 
 - **C# e .NET**: Linguagem e framework principal para desenvolvimento.
+- **Aspire**: Framework para simplificar a criação de APIs e serviços.
+- **Angular**: Framework para desenvolvimento de front-end.
+- **Blazor**: Framework para desenvolvimento de interfaces web interativas.
+- **YARP**: Proxy reverso para roteamento de requisições.
+- **Entity Framework Core**: ORM para manipulação de dados.
+- **SQLite**: Banco de dados leve para persistência local.
+- **SQL Server**: Banco de dados relacional robusto para persistência de dados.
 - **RabbitMQ**: Mensageria para comunicação assíncrona entre microsserviços.
 - **PostgreSQL**: Banco de dados relacional para persistência de dados.
 - **Redis**: Cache distribuído para melhorar a performance.
@@ -37,6 +44,8 @@ Cada serviço é responsável por uma funcionalidade específica, como gerenciam
 - **FluentValidation**: Validação de dados.
 - **Carter**: Framework minimalista para APIs.
 - **gRPC**: Comunicação eficiente entre serviços.
+- **OpenTelemetry**: Observabilidade e rastreamento distribuído.
+- **Mapster**: Biblioteca para mapeamento de objetos.
 
 ---
 
