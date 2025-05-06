@@ -6,7 +6,7 @@ DuckStore é uma aplicação de e-commerce moderna e escalável, projetada para 
 
 ## 📜 Conceito
 
-O DuckStore é um exemplo de e-commerce que permite aos usuários gerenciar carrinhos de compras, aplicar descontos e realizar transações de forma eficiente. Ele simula um ambiente real de comércio eletrônico, integrando serviços como banco de dados, cache, mensageria e APIs externas.
+É um exemplo de e-commerce que permite aos usuários gerenciar carrinhos de compras, aplicar descontos e realizar transações de forma eficiente. Ele simula um ambiente real de comércio eletrônico, integrando serviços como banco de dados, cache, mensageria e APIs externas.
 
 #### 🖼️ Design Inspirations
 
@@ -18,11 +18,15 @@ O DuckStore é um exemplo de e-commerce que permite aos usuários gerenciar carr
 
 ## 📐 Arquitetura
 
-A arquitetura do DuckStore é baseada em microsserviços, com comunicação assíncrona entre os serviços. Abaixo está uma visão geral da arquitetura:
+A arquitetura do DuckStore é baseada em microsserviços, com comunicação assíncrona entre os serviços. Cada serviço segue os princípios de **Vertical Slice Architecture**, **Ports and Adapters (Clean Architecture)** e **três camadas**.
+
+A comunicação entre os serviços é feita utilizando o **RabbitMQ** como broker de mensagens, garantindo integração assíncrona e desacoplada. Essa abordagem permite maior escalabilidade, flexibilidade e facilidade de manutenção.
+
+Abaixo está uma visão geral da arquitetura:
 
 ![Arquitetura do DuckStore](./docs/img/architecture.png)
 
-Cada serviço é responsável por uma funcionalidade específica, como gerenciamento de carrinho, descontos e processamento de pedidos. A comunicação entre os serviços é feita utilizando RabbitMQ como broker de mensagens.
+Cada serviço é responsável por uma funcionalidade específica, como gerenciamento de carrinho, descontos e processamento de pedidos, seguindo os princípios de modularidade e separação de responsabilidades.
 
 ---
 
