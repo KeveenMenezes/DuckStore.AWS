@@ -18,7 +18,7 @@ DuckStore é uma aplicação de e-commerce moderna e escalável, projetada para 
 
 ## 📐 Arquitetura
 
-A arquitetura do DuckStore é baseada em microsserviços, com comunicação assíncrona entre os serviços. Cada serviço segue os princípios de **Vertical Slice Architecture**, **Ports and Adapters (Clean Architecture)** e **três camadas**.
+A arquitetura do DuckStore é baseada em microsserviços, com comunicação assíncrona entre os serviços. Cada serviço segue os princípios de **Vertical Slice Architecture**, **Ports and Adapters**, **Clean Architecture** e **três camadas**.
 
 A comunicação entre os serviços é feita utilizando o **RabbitMQ** como broker de mensagens, garantindo integração assíncrona e desacoplada. Essa abordagem permite maior escalabilidade, flexibilidade e facilidade de manutenção.
 
