@@ -35,7 +35,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ordering.Infrastructure", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ordering.MigrationService", "src\Services\Ordering\Ordering.MigrationService\Ordering.MigrationService.csproj", "{CFF9682A-6AB8-4A48-A01B-DE570E4B9AB3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks", "src\BuildingBlocks\BuildingBlocks\BuildingBlocks.csproj", "{A374AA87-E147-4121-A9DA-B0BBDFE45872}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.Core", "src\BuildingBlocks\BuildingBlocks\BuildingBlocks.Core.csproj", "{A374AA87-E147-4121-A9DA-B0BBDFE45872}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.Messaging", "src\BuildingBlocks\BuildingBlocks.Messaging\BuildingBlocks.Messaging.csproj", "{393411BA-7C5B-4793-854B-0B14A88D2C24}"
 EndProject
@@ -70,6 +70,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Basket.UnitTests", "tests\Services\Basket\Basket.UnitTests\Basket.UnitTests.csproj", "{6DC38440-820F-48A7-B3E8-AFA11C42DD9F}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ordering.FunctionalTests", "tests\Services\Ordering\Ordering.FunctionalTests\Ordering.FunctionalTests.csproj", "{2AB8633A-C3D5-40ED-AC57-3FD78C15B747}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BuildingBlocks.ServiceDefaults", "src\BuildingBlocks\BuildingBlocks.Core\BuildingBlocks.ServiceDefaults.csproj", "{729E31BB-4B85-4B2D-B568-5502709561CF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -285,6 +287,18 @@ Global
 		{2AB8633A-C3D5-40ED-AC57-3FD78C15B747}.Release|x64.Build.0 = Release|Any CPU
 		{2AB8633A-C3D5-40ED-AC57-3FD78C15B747}.Release|x86.ActiveCfg = Release|Any CPU
 		{2AB8633A-C3D5-40ED-AC57-3FD78C15B747}.Release|x86.Build.0 = Release|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Debug|x64.Build.0 = Debug|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Debug|x86.Build.0 = Debug|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Release|x64.ActiveCfg = Release|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Release|x64.Build.0 = Release|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Release|x86.ActiveCfg = Release|Any CPU
+		{729E31BB-4B85-4B2D-B568-5502709561CF}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -317,6 +331,7 @@ Global
 		{A9BF49A5-2535-D10E-CD9C-28DD6654F436} = {4353066B-F410-E540-F593-55E469B78A5F}
 		{6DC38440-820F-48A7-B3E8-AFA11C42DD9F} = {A9BF49A5-2535-D10E-CD9C-28DD6654F436}
 		{2AB8633A-C3D5-40ED-AC57-3FD78C15B747} = {835260A9-44FA-23F2-CE4B-654AE0EFFB53}
+		{729E31BB-4B85-4B2D-B568-5502709561CF} = {90298CBA-BD6F-3A0A-69D5-97CAD7B05E7E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {1148B637-1009-4DE0-9724-4727C73FAA45}
