@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Hosting;
 
 namespace Ordering.FunctionalTests;
@@ -56,7 +57,6 @@ public sealed class OrderingApiFixture
     public async Task InitializeAsync()
     {
         await _app.StartAsync();
-        _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync() ??
-            throw new InvalidOperationException("Connection string cannot be null.");
+        _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync();
     }
 }
