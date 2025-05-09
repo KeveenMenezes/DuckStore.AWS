@@ -6,14 +6,14 @@ labels: enhancement
 assignees: ''
 ---
 
-**Descrição**
+**Descrição**  
 Descreva o que você gostaria que fosse implementado.
 
-**Motivação**
+**Motivação**  
 Por que essa funcionalidade é importante? Quais problemas ela resolve?
 
-**Alternativas**
+**Alternativas**  
 Descreva alternativas que você já considerou.
 
-**Informações adicionais**
+**Informações adicionais**  
 Adicione detalhes extras ou exemplos.
