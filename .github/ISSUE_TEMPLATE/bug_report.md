@@ -6,19 +6,19 @@ labels: bug
 assignees: ''
 ---
 
-**Descrição do problema**
+**Descrição do problema**  
 Descreva o problema claramente.
 
-**Passos para reproduzir**
+**Passos para reproduzir**  
 1. Vá até '...'
 2. Clique em '...'
 3. Veja o erro.
 
-**Comportamento esperado**
+**Comportamento esperado**  
 Descreva o comportamento esperado.
 
-**Capturas de tela**
+**Capturas de tela**  
 Se aplicável, adicione capturas de tela para ajudar a entender o problema.
 
-**Informações adicionais**
+**Informações adicionais**  
 Adicione qualquer outra informação relevante.
