@@ -1,5 +1,4 @@
 ﻿using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Hosting;
 
 namespace Ordering.FunctionalTests;
@@ -57,6 +56,7 @@ public sealed class OrderingApiFixture
     public async Task InitializeAsync()
     {
         await _app.StartAsync();
-        _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync();
+        _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync() ??
+            throw new InvalidOperationException("Could not get connection string for OrderingDb");
     }
 }

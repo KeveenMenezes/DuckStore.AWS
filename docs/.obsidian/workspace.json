@@ -1,0 +1,188 @@
+{
+  "main": {
+    "id": "d5168ed9de0f6faa",
+    "type": "split",
+    "children": [
+      {
+        "id": "00ddaa3eb578b55c",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "b08021c068761fce",
+            "type": "leaf",
+            "state": {
+              "type": "graph",
+              "state": {},
+              "icon": "lucide-git-fork",
+              "title": "Graph view"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "vertical"
+  },
+  "left": {
+    "id": "f05d07b45fb2ab05",
+    "type": "split",
+    "children": [
+      {
+        "id": "effe668b010f6200",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "d06c9bb16062d12e",
+            "type": "leaf",
+            "state": {
+              "type": "file-explorer",
+              "state": {
+                "sortOrder": "alphabetical",
+                "autoReveal": false
+              },
+              "icon": "lucide-folder-closed",
+              "title": "Files"
+            }
+          },
+          {
+            "id": "f6b9bd9b69448f06",
+            "type": "leaf",
+            "state": {
+              "type": "search",
+              "state": {
+                "query": "",
+                "matchingCase": false,
+                "explainSearch": false,
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical"
+              },
+              "icon": "lucide-search",
+              "title": "Search"
+            }
+          },
+          {
+            "id": "40573d4dd3c1e0a3",
+            "type": "leaf",
+            "state": {
+              "type": "bookmarks",
+              "state": {},
+              "icon": "lucide-bookmark",
+              "title": "Bookmarks"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "right": {
+    "id": "5cd74fccf9f60f99",
+    "type": "split",
+    "children": [
+      {
+        "id": "cd880e41b3b47110",
+        "type": "tabs",
+        "children": [
+          {
+            "id": "27585ad2cd9492fe",
+            "type": "leaf",
+            "state": {
+              "type": "backlink",
+              "state": {
+                "file": "Obsidian/PostgreSQL.md",
+                "collapseAll": false,
+                "extraContext": false,
+                "sortOrder": "alphabetical",
+                "showSearch": false,
+                "searchQuery": "",
+                "backlinkCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-coming-in",
+              "title": "Backlinks for PostgreSQL"
+            }
+          },
+          {
+            "id": "e7488fd881729087",
+            "type": "leaf",
+            "state": {
+              "type": "outgoing-link",
+              "state": {
+                "file": "Obsidian/PostgreSQL.md",
+                "linksCollapsed": false,
+                "unlinkedCollapsed": true
+              },
+              "icon": "links-going-out",
+              "title": "Outgoing links from PostgreSQL"
+            }
+          },
+          {
+            "id": "f49bf459afe58093",
+            "type": "leaf",
+            "state": {
+              "type": "tag",
+              "state": {
+                "sortOrder": "frequency",
+                "useHierarchy": true,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-tags",
+              "title": "Tags"
+            }
+          },
+          {
+            "id": "f985eddaaf1a97ec",
+            "type": "leaf",
+            "state": {
+              "type": "outline",
+              "state": {
+                "file": "Obsidian/PostgreSQL.md",
+                "followCursor": false,
+                "showSearch": false,
+                "searchQuery": ""
+              },
+              "icon": "lucide-list",
+              "title": "Outline of PostgreSQL"
+            }
+          }
+        ]
+      }
+    ],
+    "direction": "horizontal",
+    "width": 300,
+    "collapsed": true
+  },
+  "left-ribbon": {
+    "hiddenItems": {
+      "switcher:Open quick switcher": false,
+      "graph:Open graph view": false,
+      "canvas:Create new canvas": false,
+      "daily-notes:Open today's daily note": false,
+      "templates:Insert template": false,
+      "command-palette:Open command palette": false
+    }
+  },
+  "active": "b08021c068761fce",
+  "lastOpenFiles": [
+    "Untitled.md",
+    "Untitled 1.canvas",
+    "2025-05-08.md",
+    "Untitled.canvas",
+    "Obsidian/PostgreSQL.md",
+    "Obsidian/Microserviços.md",
+    "Obsidian/Mediator.md",
+    "Obsidian/Marten.md",
+    "Obsidian/CQRS.md",
+    "Obsidian/Banco de Dados Orientado a Documentos.md",
+    "Obsidian/Backing Services.md",
+    "Obsidian/Aspire.md",
+    "Obsidian/Mapster.png",
+    "img/architecture.png",
+    "Obsidian/Verticalslice.png",
+    "Obsidian/Blazor.png",
+    "Obsidian/3 camadas.png"
+  ]
+}
