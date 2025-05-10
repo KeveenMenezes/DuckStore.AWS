@@ -11,7 +11,7 @@ export class ShopService {
 
   getProductPagination(pageIndex: number, pageSize: number) {
     return this.http.get<Pagination<Product>>(
-      `catalogapi/api/products?pageIndex=${pageIndex}&pageSize=${pageSize}`
+      `catalog-service/products?pageIndex=${pageIndex}&pageSize=${pageSize}`
     );
   }
 }
