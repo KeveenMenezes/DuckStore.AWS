@@ -4,21 +4,13 @@
 /// Representa um resultado paginado de uma consulta.
 /// </summary>
 /// <typeparam name="TEntity">O tipo da entidade retornada na paginação.</typeparam>
-public class PaginatedResult<TEntity>(
-    long count,
+public class PaginatedResultAsync<TEntity>(
     long pageNumber,
     long pageSize,
     long totalItemCount,
-    IEnumerable<TEntity> items)
-    : PagedList(
-        count,
-        pageNumber,
-        pageSize,
-        totalItemCount)
+    IAsyncEnumerable<TEntity> items)
+    : PagedList(totalItemCount, pageNumber, pageSize)
     where TEntity : class
 {
-    /// <summary>
-    /// Itens da página atual.
-    /// </summary>
-    public IEnumerable<TEntity> Items { get; } = items;
+    public IAsyncEnumerable<TEntity> Items { get; } = items;
 }

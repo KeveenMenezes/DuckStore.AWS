@@ -3,7 +3,7 @@
 public record GetProductsRequest(int? PageIndex = 1, int? PageSize = 10);
 
 public record GetPagitationProductsResponse(
-    IEnumerable<Product> Products);
+    PaginatedResult<Product> PaginatedProducts);
 
 public class GetProductsEndpoint : ICarterModule
 {
@@ -22,10 +22,10 @@ public class GetProductsEndpoint : ICarterModule
 
             var response = result.Adapt<GetPagitationProductsResponse>();
 
-            return Results.Ok(response.Products);
+            return Results.Ok(response.PaginatedProducts);
         })
         .WithName("GetProducts")
-        .Produces<GetPagitationProductsResponse>(StatusCodes.Status200OK)
+        .Produces<PaginatedResult<Product>>(StatusCodes.Status200OK)
         .ProducesProblem(StatusCodes.Status400BadRequest)
         .WithSummary("Get Products")
         .WithDescription("Get all products");

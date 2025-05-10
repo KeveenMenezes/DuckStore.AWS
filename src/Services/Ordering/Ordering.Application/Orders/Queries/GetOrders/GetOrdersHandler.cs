@@ -14,7 +14,7 @@ public class GetOrdersHandler(
         var ordersStream = orderRepository.GetOrdersPaginationStream(pageIndex, pageSize);
 
         return new GetOrdersResult(
-            new PaginatedResult<OrderDto>(
+            new PaginatedResultAsync<OrderDto>(
                 pageIndex,
                 pageSize,
                 await totalCountTask,

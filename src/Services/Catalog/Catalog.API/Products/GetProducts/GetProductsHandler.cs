@@ -3,7 +3,7 @@
 public record GetProductsQuery(int PageIndex, int PageSize)
     : IQuery<GetProductsResult>;
 
-public record GetProductsResult(IEnumerable<Product> Products);
+public record GetProductsResult(PaginatedResult<Product> PaginatedProducts);
 
 public class GetProductsQueryHandler(IDocumentSession session)
     : IQueryHandler<GetProductsQuery, GetProductsResult>
@@ -11,13 +11,20 @@ public class GetProductsQueryHandler(IDocumentSession session)
     public async Task<GetProductsResult> Handle(
         GetProductsQuery request, CancellationToken cancellationToken)
     {
-        var products = await session
+        var pagedList = await session
             .Query<Product>()
             .ToPagedListAsync(
                 request.PageIndex,
                 request.PageSize,
                 cancellationToken);
 
-        return new GetProductsResult(products);
+        return new GetProductsResult(
+            new PaginatedResult<Product>(
+                pagedList.Count,
+                pagedList.PageSize,
+                pagedList.TotalItemCount,
+                pagedList.PageNumber,
+                pagedList.AsEnumerable())
+        );
     }
 }
