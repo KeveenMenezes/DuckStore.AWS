@@ -37,6 +37,6 @@ public enum OrderStatus
 }
 
 //wrapper classes
-public record GetOrdersResponse(PaginatedResult<OrderModel> Orders);
+public record GetOrdersResponse(PaginatedResultAsync<OrderModel> Orders);
 public record GetOrdersByNameResponse(IEnumerable<OrderModel> Orders);
 public record GetOrdersByCustomerResponse(IEnumerable<OrderModel> Orders);

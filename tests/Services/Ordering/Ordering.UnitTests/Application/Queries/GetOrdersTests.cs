@@ -33,10 +33,10 @@ public class GetOrdersTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(1, result.Orders.PageIndex);
+        Assert.Equal(1, result.Orders.PageNumber);
         Assert.Equal(5, result.Orders.PageSize);
         Assert.Equal(10, result.Orders.Count);
-        Assert.NotEmpty(result.Orders.Data);
+        Assert.NotEmpty(result.Orders.Items);
     }
 
     [Fact]
@@ -59,6 +59,6 @@ public class GetOrdersTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Empty(result.Orders.Data);
+        Assert.Empty(result.Orders.Items);
     }
 }

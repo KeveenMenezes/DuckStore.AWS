@@ -1,21 +1,12 @@
 import { Component, inject, OnInit } from '@angular/core';
 import { ShopService } from '../../core/services/shop.service';
 import { Product } from '../../shared/models/product';
-import { MatCardContent, MatCardModule } from '@angular/material/card';
-import { CurrencyPipe } from '@angular/common';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIcon } from '@angular/material/icon';
+import { ProductItemComponent } from './product-item/product-item.component';
 
 @Component({
   selector: 'app-shop',
   standalone: true,
-  imports: [
-    MatCardModule,
-    MatCardContent,
-    CurrencyPipe,
-    MatButtonModule,
-    MatIcon,
-  ],
+  imports: [ProductItemComponent],
   templateUrl: './shop.component.html',
   styleUrl: './shop.component.scss',
 })
