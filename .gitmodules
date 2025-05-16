@@ -1,0 +1,3 @@
+[submodule "DuckStore.Shopping.Web.SPA"]
+	path = DuckStore.Shopping.Web.SPA
+	url = https://github.com/KeveenMenezes/DuckStore.Shopping.Web.SPA.git
