@@ -1,0 +1,1 @@
+# DuckStore.Shopping.Web.SPA
