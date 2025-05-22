@@ -9,7 +9,7 @@ public class PaginatedResultAsync<TEntity>(
     long pageSize,
     long totalItemCount,
     IAsyncEnumerable<TEntity> items)
-    : PagedList(totalItemCount, pageNumber, pageSize)
+    : PagedList(pageNumber, pageSize, totalItemCount)
     where TEntity : class
 {
     public IAsyncEnumerable<TEntity> Items { get; } = items;

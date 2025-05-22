@@ -1,17 +1,11 @@
 ﻿namespace BuildingBlocks.Core.Pagination;
 
 public class PagedList(
-    long count,
     long pageNumber,
     long pageSize,
     long totalItemCount
 )
 {
-    /// <summary>
-    /// Retorna o número de registros no resultado da consulta paginada
-    /// </sumary>
-    public long Count { get; } = count;
-
     /// <summary>
     /// Número da página atual (começando de 1).
     /// </summary>
