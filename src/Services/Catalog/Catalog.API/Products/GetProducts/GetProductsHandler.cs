@@ -20,10 +20,9 @@ public class GetProductsQueryHandler(IDocumentSession session)
 
         return new GetProductsResult(
             new PaginatedResult<Product>(
-                pagedList.Count,
+                pagedList.PageNumber,
                 pagedList.PageSize,
                 pagedList.TotalItemCount,
-                pagedList.PageNumber,
                 pagedList.AsEnumerable())
         );
     }

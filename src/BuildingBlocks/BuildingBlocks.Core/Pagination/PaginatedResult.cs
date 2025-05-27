@@ -5,13 +5,11 @@
 /// </summary>
 /// <typeparam name="TEntity">O tipo da entidade retornada na paginação.</typeparam>
 public class PaginatedResult<TEntity>(
-    long count,
     long pageNumber,
     long pageSize,
     long totalItemCount,
     IEnumerable<TEntity> items)
     : PagedList(
-        count,
         pageNumber,
         pageSize,
         totalItemCount)
