@@ -13,7 +13,9 @@ public class Product(
     public string Description { get; private set; } = description;
     public string ImageUrl { get; private set; } = imageUrl;
     public decimal Price { get; private set; } = price;
+    // Categories, Types e Brands será um agredado separado, mas por enquanto iremos manter aqui.
     public List<string> Categories { get; private set; } = categories;
+    //Criar Types e Brands
 
     internal void Update(
         string name,
