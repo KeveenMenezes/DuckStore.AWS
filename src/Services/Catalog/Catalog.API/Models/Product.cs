@@ -3,7 +3,7 @@
 public class Product : Aggregate<ProductId>
 {
     public static Product Create(
-    ProductId id,
+    Guid id,
     string name,
     string description,
     string imageUrl,
@@ -26,7 +26,7 @@ public class Product : Aggregate<ProductId>
 
         var product = new Product
         {
-            Id = id,
+            Id = ProductId.Of(id),
             Name = name,
             Description = description,
             ImageUrl = imageUrl,

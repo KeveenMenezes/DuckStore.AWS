@@ -1,4 +1,4 @@
-﻿namespace Catalog.API.Products.UpdateProduct;
+﻿namespace Catalog.API.Features.Products.UpdateProduct;
 
 public record UpdateProductCommand(
     Guid Id,
@@ -6,7 +6,8 @@ public record UpdateProductCommand(
     string Description,
     string ImageUrl,
     decimal Price,
-    List<string> Categories)
+    int Stock,
+    List<Guid> CategoryIds)
     : ICommand<UpdateProductResult>;
 
 public record UpdateProductResult(Guid Id);
@@ -45,13 +46,12 @@ public class UpdateProductCommandHandler
             command.Description,
             command.ImageUrl,
             command.Price,
-            command.Categories);
+            command.Stock,
+            CategoryId.Of(command.CategoryIds));
 
         session.Update(product);
         await session.SaveChangesAsync(cancellationToken);
 
-        return new UpdateProductResult(product.Id);
+        return new UpdateProductResult(product.Id.Value);
     }
 }
-
-

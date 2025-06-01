@@ -1,11 +1,12 @@
-﻿namespace Catalog.API.Products.CreateProduct;
+﻿namespace Catalog.API.Features.Products.CreateProduct;
 
 public record CreateProductRequest(
     string Name,
     string Description,
     string ImageUrl,
     decimal Price,
-    List<string> Categories);
+    int Stock,
+    List<Guid> CategoryIds);
 
 public record CreateProductResponse(Guid Id);
 
@@ -32,6 +33,3 @@ public class CreateProductEndpoint : ICarterModule
         .WithDescription("Create Product");
     }
 }
-
-
-

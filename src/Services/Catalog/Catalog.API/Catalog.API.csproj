@@ -16,8 +16,4 @@
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.ServiceDefaults\BuildingBlocks.ServiceDefaults.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Features/Categories/" />
-  </ItemGroup>
-
 </Project>

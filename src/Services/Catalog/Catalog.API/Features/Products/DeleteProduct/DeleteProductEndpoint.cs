@@ -1,5 +1,4 @@
-﻿
-namespace Catalog.API.Products.DeleteProduct;
+﻿namespace Catalog.API.Features.Products.DeleteProduct;
 
 public record DeleteProductResponse(bool IsSuccess);
 
@@ -24,6 +23,3 @@ public class DeleteProductEndpoint : ICarterModule
         .WithDescription("Deletes a product by its id");
     }
 }
-
-
-

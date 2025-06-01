@@ -1,5 +1,4 @@
-﻿
-namespace Catalog.API.Products.UpdateProduct;
+﻿namespace Catalog.API.Features.Products.UpdateProduct;
 
 public record UpdateProductRequest(
     Guid Id,
@@ -7,7 +6,8 @@ public record UpdateProductRequest(
     string Description,
     string ImageUrl,
     decimal Price,
-    List<string> Categories);
+    int Stock,
+    List<Guid> CategoryIds);
 
 public record UpdateProductResponse(Guid Id);
 
@@ -35,6 +35,3 @@ public class UpdateProductEndpoint : ICarterModule
         .WithDescription("Update product");
     }
 }
-
-
-

@@ -15,4 +15,15 @@ public record CategoryId
 
         return new CategoryId(value);
     }
+
+    public static List<CategoryId> Of(IEnumerable<Guid> values)
+    {
+        if (values == null || !values.Any())
+        {
+            //TODO: Create a specific exception for CategoryId
+            throw new ArgumentException("Values cannot be null or empty.", nameof(values));
+        }
+
+        return [.. values.Select(Of)];
+    }
 }
