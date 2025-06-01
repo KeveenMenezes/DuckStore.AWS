@@ -1,5 +1,6 @@
 namespace Catalog.API.ValueObjects;
 
+[JsonConverter(typeof(ProductAttributeConverter))]
 public record ProductAttribute
 {
     public string Name { get; init; } = default!;

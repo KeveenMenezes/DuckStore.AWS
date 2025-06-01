@@ -1,5 +1,6 @@
 namespace Catalog.API.ValueObjects;
 
+[JsonConverter(typeof(CategoryIdConverter))]
 public record CategoryId
 {
     public Guid Value { get; }
