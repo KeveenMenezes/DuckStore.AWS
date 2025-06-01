@@ -1,33 +1,76 @@
 ﻿namespace Catalog.API.Models;
 
-public class Product(
-    Guid id,
+public class Product : Aggregate<ProductId>
+{
+    public static Product Create(
+    ProductId id,
     string name,
     string description,
     string imageUrl,
     decimal price,
-    List<string> categories)
-{
-    public Guid Id { get; private set; } = id;
-    public string Name { get; private set; } = name;
-    public string Description { get; private set; } = description;
-    public string ImageUrl { get; private set; } = imageUrl;
-    public decimal Price { get; private set; } = price;
-    // Categories, Types e Brands será um agredado separado, mas por enquanto iremos manter aqui.
-    public List<string> Categories { get; private set; } = categories;
-    //Criar Types e Brands
+    List<Category> categories)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentException.ThrowIfNullOrWhiteSpace(imageUrl);
+        ArgumentNullException.ThrowIfNull(categories);
 
-    internal void Update(
+        if (categories.Count == 0)
+            //TODO: Use a custom exception
+            throw new ArgumentException("Categories cannot be empty.", nameof(categories));
+
+
+        if (price <= 0)
+            throw new ArgumentOutOfRangeException(nameof(price), "Price must be greater than zero.");
+
+        var product = new Product
+        {
+            Id = id,
+            Name = name,
+            Description = description,
+            ImageUrl = imageUrl,
+            Price = price,
+            Categories = categories
+        };
+
+        // TODO: Criar o consumidor desse evento
+        product.AddDomainEvent(new ProductCreatedEvent(product));
+
+        return product;
+    }
+
+    public void Update(
         string name,
         string description,
         string imageUrl,
         decimal price,
-        List<string> categories)
+        List<Category> categories)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(description);
+        ArgumentException.ThrowIfNullOrWhiteSpace(imageUrl);
+        ArgumentNullException.ThrowIfNull(categories);
+
+        if (categories.Count == 0)
+            throw new ArgumentException("Categories cannot be empty.", nameof(categories));
+
+        if (price <= 0)
+            throw new ArgumentOutOfRangeException(nameof(price), "Price must be greater than zero.");
+
         Name = name;
         Description = description;
         ImageUrl = imageUrl;
         Price = price;
         Categories = categories;
+
+        AddDomainEvent(new ProductUpdatedEvent(this));
     }
+
+    public string Name { get; private set; } = default!;
+    public string Description { get; private set; } = default!;
+    public string ImageUrl { get; private set; } = default!;
+    public decimal Price { get; private set; } = default!;
+
+    public List<Category> Categories { get; private set; } = default!;
 }
+

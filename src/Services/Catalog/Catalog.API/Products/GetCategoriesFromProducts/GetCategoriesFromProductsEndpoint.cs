@@ -1,8 +1,6 @@
-using System;
-
 namespace Catalog.API.Products.GetCategoriesFromProducts;
 
-public class GetCategoriesFromProductsEndpoint
+public class GetCategoriesFromProductsEndpoint : ICarterModule
 {
     public void AddRoutes(IEndpointRouteBuilder app)
     {

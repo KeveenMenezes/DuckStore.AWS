@@ -1,11 +1,14 @@
 ﻿global using BuildingBlocks.Core.CQRS;
+global using BuildingBlocks.Core.DomainModel;
 global using BuildingBlocks.Core.Exceptions;
 global using BuildingBlocks.Core.Pagination;
 global using BuildingBlocks.ServiceDefaults;
 global using Carter;
 global using Catalog.API.Data;
+global using Catalog.API.Events;
 global using Catalog.API.Exceptions;
 global using Catalog.API.Models;
+global using Catalog.API.ValueObjects;
 global using FluentValidation;
 global using Mapster;
 global using Marten;

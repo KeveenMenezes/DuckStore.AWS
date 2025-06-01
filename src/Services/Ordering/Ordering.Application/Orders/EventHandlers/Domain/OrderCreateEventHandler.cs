@@ -11,7 +11,7 @@ public class OrderCreateEventHandler(
 {
     public async Task Handle(OrderCreatedEvent domain, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Domain Event handled: {DomaiEvent}", domain.GetType().Name);
+        logger.LogInformation(domain.ToString());
 
         if (await featureManager.IsEnabledAsync("OrderFullfilment"))
         {

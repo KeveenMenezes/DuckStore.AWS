@@ -6,9 +6,10 @@ public class OrderUpdateEventHandler(
     ILogger<OrderUpdateEventHandler> logger)
     : INotificationHandler<OrderUpdatedEvent>
 {
-    public Task Handle(OrderUpdatedEvent notification, CancellationToken cancellationToken)
+    public Task Handle(OrderUpdatedEvent domain, CancellationToken cancellationToken)
     {
-        logger.LogInformation("Domain Event handled: {DomaiEvent}", notification.GetType().Name);
+        logger.LogInformation(domain.ToString());
+
         return Task.CompletedTask;
     }
 }
