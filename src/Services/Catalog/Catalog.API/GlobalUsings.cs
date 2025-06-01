@@ -15,3 +15,4 @@ global using Marten;
 global using Marten.Pagination;
 global using Marten.Schema;
 global using MediatR;
+global using Catalog.API.Enums;

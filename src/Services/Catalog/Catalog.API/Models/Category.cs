@@ -4,6 +4,7 @@ public class Category : Entity<CategoryId>
 {
     public string Name { get; private set; } = default!;
     public CategoryId? ParentId { get; private set; } = default!;
+    public List<CategoryId> Path { get; private set; } = default!;
     public bool IsRoot => ParentId is null;
 
     public static Category Create(CategoryId id, string name, CategoryId? parentId = null)

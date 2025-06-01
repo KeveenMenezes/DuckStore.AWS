@@ -8,16 +8,17 @@ public class Product : Aggregate<ProductId>
     string description,
     string imageUrl,
     decimal price,
-    List<Category> categories)
+    int stock,
+    List<CategoryId> categoryIds)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentException.ThrowIfNullOrWhiteSpace(imageUrl);
-        ArgumentNullException.ThrowIfNull(categories);
+        ArgumentNullException.ThrowIfNull(categoryIds);
 
-        if (categories.Count == 0)
+        if (categoryIds.Count == 0)
             //TODO: Use a custom exception
-            throw new ArgumentException("Categories cannot be empty.", nameof(categories));
+            throw new ArgumentException("Categories cannot be empty.", nameof(categoryIds));
 
 
         if (price <= 0)
@@ -30,7 +31,8 @@ public class Product : Aggregate<ProductId>
             Description = description,
             ImageUrl = imageUrl,
             Price = price,
-            Categories = categories
+            Stock = stock,
+            CategoryIds = categoryIds
         };
 
         // TODO: Criar o consumidor desse evento
@@ -44,24 +46,31 @@ public class Product : Aggregate<ProductId>
         string description,
         string imageUrl,
         decimal price,
-        List<Category> categories)
+        int stock,
+        List<CategoryId> categoryIds)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(description);
         ArgumentException.ThrowIfNullOrWhiteSpace(imageUrl);
-        ArgumentNullException.ThrowIfNull(categories);
+        ArgumentNullException.ThrowIfNull(categoryIds);
 
-        if (categories.Count == 0)
-            throw new ArgumentException("Categories cannot be empty.", nameof(categories));
+        if (categoryIds.Count == 0)
+            throw new ArgumentException(
+                "Categories cannot be empty.",
+                nameof(categoryIds));
 
         if (price <= 0)
-            throw new ArgumentOutOfRangeException(nameof(price), "Price must be greater than zero.");
+            throw new ArgumentOutOfRangeException(
+                nameof(price),
+                "Price must be greater than zero.");
 
         Name = name;
         Description = description;
         ImageUrl = imageUrl;
         Price = price;
-        Categories = categories;
+        Stock = stock;
+
+        CategoryIds = categoryIds;
 
         AddDomainEvent(new ProductUpdatedEvent(this));
     }
@@ -71,6 +80,7 @@ public class Product : Aggregate<ProductId>
     public string ImageUrl { get; private set; } = default!;
     public decimal Price { get; private set; } = default!;
 
-    public List<Category> Categories { get; private set; } = default!;
+    //TODO: criar eventos para controle de estoque
+    public int Stock { get; private set; } = default!;
+    public List<CategoryId> CategoryIds { get; private set; } = default!;
 }
-
