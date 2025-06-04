@@ -19,7 +19,6 @@ public class CatalogInitialData : IInitialData
 
     private static IEnumerable<Product> GetPreconfiguredProducts()
     {
-        // Exemplo de CategoryId fictício, ajuste conforme necessário
         var categoryIds = new List<CategoryId>
         {
             CategoryId.Of(Guid.NewGuid()),
