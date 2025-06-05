@@ -48,4 +48,3 @@ Accept: application/json
 ### HealthCheck
 GET {{Catalog}}/health
 Accept: application/json
-

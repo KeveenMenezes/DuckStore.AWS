@@ -1,6 +1,6 @@
 ﻿namespace Catalog.API.Models;
 
-public class Product : Aggregate<ProductId>
+public class Product : IdentifiableAggregate<ProductId, Guid>
 {
     public static Product Create(
     Guid id,

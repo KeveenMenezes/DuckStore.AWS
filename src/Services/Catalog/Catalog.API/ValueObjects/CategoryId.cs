@@ -1,16 +1,13 @@
 namespace Catalog.API.ValueObjects;
 
-[JsonConverter(typeof(CategoryIdConverter))]
-public record CategoryId
+public class CategoryId : ValueObject<Guid>
 {
-    public Guid Value { get; }
-    public CategoryId(Guid value) => Value = value;
+    private CategoryId(Guid value) : base(value) { }
 
     public static CategoryId Of(Guid value)
     {
         if (value == Guid.Empty)
         {
-            // TODO: Create a specific exception for CategoryId
             throw new ArgumentException("CategoryId cannot be empty.", nameof(value));
         }
 

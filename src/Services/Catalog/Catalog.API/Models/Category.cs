@@ -1,6 +1,6 @@
 namespace Catalog.API.Models;
 
-public class Category : Entity<CategoryId>
+public class Category : IdentifiableEntity<CategoryId, Guid>
 {
     public string Name { get; private set; } = default!;
     public CategoryId? ParentId { get; private set; } = default!;

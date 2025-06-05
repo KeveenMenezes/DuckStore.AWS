@@ -1,17 +1,16 @@
 namespace Catalog.API.ValueObjects;
 
-[JsonConverter(typeof(ProductIdConverter))]
-public record ProductId
+public class ProductId : ValueObject<Guid>
 {
-    public Guid Value { get; }
-    public ProductId(Guid value) => Value = value;
+    [JsonConstructor]
+    private ProductId(Guid value) : base(value) { }
 
     public static ProductId Of(Guid value)
     {
         if (value == Guid.Empty)
         {
             // TODO: Create a specific exception for ProductId
-            throw new ArgumentException(" ProductId cannot be empty.", nameof(value));
+            throw new ArgumentException("ProductId cannot be empty.", nameof(value));
         }
 
         return new ProductId(value);

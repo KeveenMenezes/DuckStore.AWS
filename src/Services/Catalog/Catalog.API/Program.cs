@@ -18,7 +18,13 @@ builder.Services
         config.AddOpenBehavior(typeof(LoggingBehavior<,>));
     })
     .AddValidatorsFromAssembly(assembly)
-    .AddMarten(opts => { })
+    .AddMarten(opts =>
+    {
+        opts.UseSystemTextJsonForSerialization(configure: jsonOptions =>
+        {
+            jsonOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+        });
+    })
     .UseLightweightSessions()
     .UseNpgsqlDataSource();
 
