@@ -1,4 +1,7 @@
-﻿using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+﻿using System.Reflection;
+using BuildingBlocks.Messaging.MassTransit;
+using MassTransit;
+using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 namespace Ordering.Infrastructure.Configuration;
 
@@ -8,6 +11,18 @@ public static class DependencyInjection
         this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IOrderRepository, OrderRepository>();
+
+        services.AddMessageBroker(
+                configuration,
+                Assembly.GetExecutingAssembly(),
+                additionalConfig: config =>
+                {
+                    config.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
+                    {
+                        o.UseSqlServer();
+                        o.UseBusOutbox();
+                    });
+                });
 
         services.AddScoped<ISaveChangesInterceptor, AuditableEntityInterceptor>();
         services.AddScoped<ISaveChangesInterceptor, DispatchDomainEventsInterceptor>();

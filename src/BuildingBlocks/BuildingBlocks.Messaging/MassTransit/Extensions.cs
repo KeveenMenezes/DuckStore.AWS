@@ -4,19 +4,22 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace BuildingBlocks.Messaging.MassTransit;
+
 public static class Extentions
 {
     public static IServiceCollection AddMessageBroker(
         this IServiceCollection services,
         IConfiguration configuration,
-        Assembly? assembly = null)
+        Assembly? assembly = null,
+        Action<IBusRegistrationConfigurator>? additionalConfig = null)
     {
         services.AddMassTransit(config =>
         {
             config.SetKebabCaseEndpointNameFormatter();
-
             if (assembly != null)
                 config.AddConsumers(assembly);
+
+            additionalConfig?.Invoke(config);
 
             config.UsingRabbitMq((context, configurator) =>
             {

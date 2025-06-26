@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using MassTransit;
 using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
 
 namespace Ordering.Infrastructure.Data;
@@ -15,5 +16,9 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     {
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.AddInboxStateEntity();
+        modelBuilder.AddOutboxMessageEntity();
+        modelBuilder.AddOutboxStateEntity();
     }
 }
