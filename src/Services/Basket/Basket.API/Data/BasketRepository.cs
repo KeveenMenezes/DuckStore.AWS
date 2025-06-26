@@ -1,5 +1,4 @@
-﻿
-namespace Basket.API.Data;
+﻿namespace Basket.API.Data;
 
 public class BasketRepository(IDocumentSession session)
     : IBasketRepository
@@ -12,17 +11,15 @@ public class BasketRepository(IDocumentSession session)
         return basket;
     }
 
-    public async Task<ShoppingCart> StoreCart(ShoppingCart cart, CancellationToken cancellationToken)
+    public Task<ShoppingCart> StoreCart(ShoppingCart cart, CancellationToken cancellationToken)
     {
         session.Store(cart);
-        await session.SaveChangesAsync(cancellationToken);
-
-        return cart;
+        return Task.FromResult(cart);
     }
 
-    public async Task DeleteBasket(string userName, CancellationToken cancellationToken)
+    public Task DeleteBasket(string userName, CancellationToken cancellationToken)
     {
         session.Delete<ShoppingCart>(userName);
-        await session.SaveChangesAsync(cancellationToken);
+        return Task.CompletedTask;
     }
 }

@@ -11,12 +11,12 @@ public static class DependencyInjection
         var assembly = Assembly.GetExecutingAssembly();
 
         services
-            .AddMessageBroker(configuration, assembly)
             .AddMediatR(config =>
             {
                 config.RegisterServicesFromAssembly(assembly);
                 config.AddOpenBehavior(typeof(ValidationBehavior<,>));
                 config.AddOpenBehavior(typeof(LoggingBehavior<,>));
+                config.AddOpenBehavior(typeof(UnitOfWorkBehavior<,>));
             })
             .AddValidatorsFromAssembly(assembly)
             .AddFeatureManagement(configuration);

@@ -9,7 +9,7 @@ Content-Type: application/json
     "description": "Product Description",
     "imageUrl": "image.jpg",
     "price": 99.99,
-    "categories": ["A1", "C2", "A4"]
+    "categoryIds": ["8a44308f-8d93-42df-8a0f-5e6265b72d0b"]
 }
 
 ### Get all products
@@ -17,7 +17,7 @@ GET {{Catalog}}/products?pageIndex=1&pageSize=2
 Accept: application/json
 
 ### Get product by id
-GET {{Catalog}}/products/6cd2ae29-decf-4898-800d-5ecb9884f46c
+GET {{Catalog}}/products/0cd9d5b8-fee1-4fbe-9bfa-73cea3e8443c
 Accept: application/json
 
 ### Get product by category

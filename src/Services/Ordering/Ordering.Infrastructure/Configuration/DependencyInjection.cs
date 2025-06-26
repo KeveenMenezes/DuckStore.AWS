@@ -1,4 +1,5 @@
 ﻿using System.Reflection;
+using BuildingBlocks.Core.Abstractions;
 using BuildingBlocks.Messaging.MassTransit;
 using MassTransit;
 using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
@@ -10,6 +11,7 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IOrderRepository, OrderRepository>();
 
         services.AddMessageBroker(

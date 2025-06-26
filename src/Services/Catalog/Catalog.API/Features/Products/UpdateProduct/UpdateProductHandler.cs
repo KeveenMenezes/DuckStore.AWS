@@ -50,7 +50,6 @@ public class UpdateProductCommandHandler
             CategoryId.Of(command.CategoryIds));
 
         session.Update(product);
-        await session.SaveChangesAsync(cancellationToken);
 
         return new UpdateProductResult(product.Id.Value);
     }

@@ -10,7 +10,7 @@ public record CreateProductCommand(
     : ICommand<CreateProductResult>;
 
 public record CreateProductResult(
-    ProductId Id);
+    Guid Id);
 
 public class CreateProductCommandValidator : AbstractValidator<CreateProductCommand>
 {
@@ -55,11 +55,8 @@ public class CreateProductCommandHandler
             CategoryId.Of(command.CategoryIds)
         );
 
-        //save to database
         session.Store(product);
-        await session.SaveChangesAsync(cancellationToken);
 
-        //return result
-        return new CreateProductResult(product.Id);
+        return new CreateProductResult(product.Id.Value);
     }
 }

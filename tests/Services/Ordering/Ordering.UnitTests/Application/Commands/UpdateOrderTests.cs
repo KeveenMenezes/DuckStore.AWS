@@ -1,5 +1,4 @@
 ﻿using Ordering.Application.Orders.Commands.UpdateOrder;
-using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 namespace Ordering.UnitTests.Application.Commands;
 
@@ -39,7 +38,7 @@ public class UpdateOrderTests
         Assert.True(result.IsSuccess);
         _orderRepository.Verify(
             repo =>
-                repo.UpdateAsync(order, It.IsAny<CancellationToken>()),
+                repo.Update(order, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

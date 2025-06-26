@@ -1,4 +1,5 @@
-﻿using BuildingBlocks.ServiceDefaults.Behaviors;
+﻿using BuildingBlocks.Core.Abstractions;
+using BuildingBlocks.ServiceDefaults.Behaviors;
 using BuildingBlocks.ServiceDefaults.ExceptionHandler;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -22,6 +23,7 @@ builder.Services
         config.RegisterServicesFromAssembly(assembly);
         config.AddOpenBehavior(typeof(ValidationBehavior<,>));
         config.AddOpenBehavior(typeof(LoggingBehavior<,>));
+        config.AddOpenBehavior(typeof(UnitOfWorkBehavior<,>));
     })
     .AddValidatorsFromAssembly(assembly)
     .AddMarten(opts =>
@@ -32,6 +34,7 @@ builder.Services
     .UseNpgsqlDataSource();
 
 //Injection dependence
+builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 builder.Services.AddScoped<IBasketRepository, BasketRepository>();
 builder.Services.Decorate<IBasketRepository, CacheBasketRepository>();
 

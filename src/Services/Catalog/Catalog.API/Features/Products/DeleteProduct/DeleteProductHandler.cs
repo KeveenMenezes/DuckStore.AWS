@@ -18,12 +18,11 @@ public class DeleteProductHandler
     (IDocumentSession session)
     : ICommandHandler<DeleteProductCommand, DeleteProductResult>
 {
-    public async Task<DeleteProductResult> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
+    public Task<DeleteProductResult> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
     {
         session.Delete<Product>(request.Id);
-        await session.SaveChangesAsync(cancellationToken);
 
-        return new DeleteProductResult(true);
+        return Task.FromResult(new DeleteProductResult(true));
     }
 }
 

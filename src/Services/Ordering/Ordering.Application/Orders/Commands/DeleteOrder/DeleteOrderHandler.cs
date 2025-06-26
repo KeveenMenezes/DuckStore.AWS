@@ -10,7 +10,7 @@ public class DeleteOrderHandler(
         var order = await orderRepository.GetByIdAsync(command.OrderId, cancellationToken) ??
             throw new OrderNotFoundBadRequestException(command.OrderId);
 
-        await orderRepository.DeleteAsync(order, cancellationToken);
+        orderRepository.Delete(order, cancellationToken);
 
         return new DeleteOrderResult(true);
     }

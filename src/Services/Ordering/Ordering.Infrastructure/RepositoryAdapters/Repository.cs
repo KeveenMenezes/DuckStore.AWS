@@ -22,23 +22,15 @@ public class Repository<T>(ApplicationDbContext db)
     public async Task AddAsync(T entity, CancellationToken cancellationToken = default)
     {
         await Entity.AddAsync(entity, cancellationToken);
-        await SaveChangesAsync(cancellationToken);
     }
 
-    public async Task UpdateAsync(T entity, CancellationToken cancellationToken = default)
+    public void Update(T entity, CancellationToken cancellationToken = default)
     {
         Entity.Update(entity);
-        await SaveChangesAsync(cancellationToken);
     }
 
-    public async Task DeleteAsync(T entity, CancellationToken cancellationToken = default)
+    public void Delete(T entity, CancellationToken cancellationToken = default)
     {
         Entity.Remove(entity);
-        await SaveChangesAsync(cancellationToken);
-    }
-
-    public async Task SaveChangesAsync(CancellationToken cancellationToken = default)
-    {
-        await _db.SaveChangesAsync(cancellationToken);
     }
 }

@@ -13,7 +13,7 @@ public class UpdateOrderHandler(
 
         UpdateOrderWithNewValues(order, command.Order);
 
-        await orderRepository.UpdateAsync(order, cancellationToken);
+        orderRepository.Update(order, cancellationToken);
 
         return new UpdateOrderResult(true);
     }

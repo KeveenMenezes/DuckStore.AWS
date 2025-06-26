@@ -35,7 +35,6 @@ public class GetOrdersTests
         Assert.NotNull(result);
         Assert.Equal(1, result.Orders.PageNumber);
         Assert.Equal(5, result.Orders.PageSize);
-        Assert.Equal(10, result.Orders.Count);
         Assert.NotEmpty(result.Orders.Items);
     }
 

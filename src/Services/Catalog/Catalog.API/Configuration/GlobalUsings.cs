@@ -1,5 +1,4 @@
-﻿global using System.Text.Json;
-global using System.Text.Json.Serialization;
+﻿global using System.Text.Json.Serialization;
 global using BuildingBlocks.Core.CQRS;
 global using BuildingBlocks.Core.DomainModel;
 global using BuildingBlocks.Core.Exceptions;
@@ -7,7 +6,6 @@ global using BuildingBlocks.Core.Pagination;
 global using BuildingBlocks.ServiceDefaults;
 global using Carter;
 global using Catalog.API.Data;
-global using Catalog.API.Data.JsonConverteries;
 global using Catalog.API.Enums;
 global using Catalog.API.Events;
 global using Catalog.API.Exceptions;
