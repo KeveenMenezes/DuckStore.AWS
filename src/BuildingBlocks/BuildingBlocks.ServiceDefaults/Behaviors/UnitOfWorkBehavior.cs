@@ -19,9 +19,11 @@ public class UnitOfWorkBehavior<TRequest, TResponse>(
             return await next();
         }
 
+        await unitOfWork.BeginTransactionAsync(cancellationToken);
+
         var response = await next();
 
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        await unitOfWork.CommitTransactionAsync(cancellationToken);
 
         return response;
     }
