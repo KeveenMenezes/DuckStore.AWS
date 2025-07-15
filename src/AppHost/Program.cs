@@ -30,7 +30,7 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
     "catalog-api")
     .WaitFor(catalogDb)
     .WithReference(catalogDb)
-    .WithHttpsHealthCheck("/health");
+    .WithHttpHealthCheck("/health");
 
 var discountApi = builder.AddProject<Projects.Discount_Grpc>(
     "discount-api", GetHttpForEndpoints())
@@ -47,7 +47,7 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WithReference(basketDb)
     .WithReference(discountApi)
     .WithReference(rabbitMq)
-    .WithHttpsHealthCheck("/health");
+    .WithHttpHealthCheck("/health");
 redis.WithParentRelationship(basketApi);
 
 var orderingApi = builder.AddProject<Projects.Ordering_API>(
@@ -57,11 +57,11 @@ var orderingApi = builder.AddProject<Projects.Ordering_API>(
     .WaitFor(rabbitMq)
     .WithReference(orderingDb)
     .WithReference(rabbitMq)
-    .WithHttpsHealthCheck("/health");
+    .WithHttpHealthCheck("/health");
 
 // Reverse proxies
 var yarpApiGateway = builder.AddProject<Projects.YarpApiGateway>(
-    "yarp-api-gateway", GetHttpForEndpoints())
+    "yarp-api-gateway", GetHttpsForEndpoints())
     .WithExternalHttpEndpoints()
     .WithReference(catalogApi)
     .WithReference(orderingApi)
@@ -83,4 +83,5 @@ builder.AddProject<Projects.Shopping_Web_Server>(
 
 await builder.Build().RunAsync();
 
-static string GetHttpForEndpoints() => "https";
+static string GetHttpForEndpoints() => "http";
+static string GetHttpsForEndpoints() => "https";

@@ -36,7 +36,7 @@ public class DeleteOrderTests
         Assert.True(result.IsDeleted);
         _orderRepository.Verify(
             repo =>
-                repo.Delete(order.Object, It.IsAny<CancellationToken>()),
+                repo.DeleteAsync(order.Object, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

@@ -4,19 +4,19 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.2.0" />
-    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="9.2.0" />
-    <PackageVersion Include="Aspire.Hosting.Redis" Version="9.2.0" />
-    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="9.2.0" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="9.2.0" />
-    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="9.2.0" />
-    <PackageVersion Include="Aspire.RabbitMQ.Client.v7" Version="9.2.0" />
-    <PackageVersion Include="Aspire.StackExchange.Redis" Version="9.2.0" />
-    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.2.0" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="9.2.0" />
-    <PackageVersion Include="Aspire.Npgsql" Version="9.2.0" />
-    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="9.2.1" />
-    <PackageVersion Include="CommunityToolkit.Aspire.Microsoft.EntityFrameworkCore.Sqlite" Version="9.2.1" />
+    <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.3.0" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="9.3.1" />
+    <PackageVersion Include="Aspire.Hosting.Redis" Version="9.3.1" />
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="9.3.2" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="9.3.0" />
+    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="9.3.0" />
+    <PackageVersion Include="Aspire.RabbitMQ.Client.v7" Version="9.3.0" />
+    <PackageVersion Include="Aspire.StackExchange.Redis" Version="9.3.0" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.3.1" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="9.3.1" />
+    <PackageVersion Include="Aspire.Npgsql" Version="9.3.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="9.6.0" />
+    <PackageVersion Include="CommunityToolkit.Aspire.Microsoft.EntityFrameworkCore.Sqlite" Version="9.6.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -30,7 +30,7 @@
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <PackageVersion Include="Carter" Version="9.0.0" />
     <PackageVersion Include="Google.Protobuf" Version="3.30.2" />
-    <PackageVersion Include="Grpc.AspNetCore" Version="2.71.0-pre1" />
+    <PackageVersion Include="Grpc.AspNetCore" Version="2.71.0" />
     <PackageVersion Include="Mapster" Version="7.4.0" />
     <PackageVersion Include="Marten" Version="7.37.1" />
     <PackageVersion Include="MassTransit.EntityFrameworkCore" Version="8.5.0" />

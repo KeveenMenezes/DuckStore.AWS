@@ -38,7 +38,7 @@ public class UpdateOrderTests
         Assert.True(result.IsSuccess);
         _orderRepository.Verify(
             repo =>
-                repo.Update(order, It.IsAny<CancellationToken>()),
+                repo.UpdateAsync(order, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

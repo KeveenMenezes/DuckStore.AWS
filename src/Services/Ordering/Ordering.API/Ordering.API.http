@@ -1,4 +1,4 @@
-@Ordering = https://localhost:5053/orders
+@Ordering = http://localhost:5003/orders
 
 ### Get all orders
 GET {{Ordering}}

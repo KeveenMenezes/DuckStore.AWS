@@ -1,7 +1,7 @@
-@Basket = https://localhost:5051
+@Basket = http://localhost:5001
 
 ### Create a new basket
-GET {{Basket}}/basket/swn
+GET {{Basket}}/basket/swn3
 
 ### Post a new basket
 Post {{Basket}}/basket
