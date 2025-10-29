@@ -4,6 +4,7 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Aspire.Hosting.MongoDB" Version="9.5.2" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.3.0" />
     <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="9.3.1" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="9.3.1" />
@@ -29,7 +30,6 @@
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="11.11.0" />
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.0" />
     <PackageVersion Include="Carter" Version="9.0.0" />
-    <PackageVersion Include="Google.Protobuf" Version="3.30.2" />
     <PackageVersion Include="Grpc.AspNetCore" Version="2.71.0" />
     <PackageVersion Include="Mapster" Version="7.4.0" />
     <PackageVersion Include="Marten" Version="7.37.1" />
