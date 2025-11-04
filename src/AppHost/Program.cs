@@ -1,10 +1,11 @@
-﻿using AppHost.Extensions;
+﻿#pragma warning disable CA2252 // Opt in to preview features
+using AppHost.Extensions;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddForwardedHeaders();
 
-// DataBase
+// Database
 var redis = builder.AddRedis("redis");
 var discountDb = builder.AddSqlite("discountDb");
 var catalogDb = builder.AddPostgres("catalogDb");

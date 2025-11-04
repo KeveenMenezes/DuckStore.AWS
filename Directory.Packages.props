@@ -4,6 +4,7 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
+    <PackageVersion Include="Aspire.Hosting.AWS" Version="9.3.0" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="9.5.2" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.3.0" />
     <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="9.3.1" />
