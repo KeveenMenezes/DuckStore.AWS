@@ -19,7 +19,7 @@
     <PackageVersion Include="Aspire.RabbitMQ.Client.v7" Version="9.3.0" />
     <PackageVersion Include="Aspire.StackExchange.Redis" Version="9.3.0" />
     <PackageVersion Include="Aspire.Hosting.AppHost" Version="9.3.1" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="9.3.1" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.1.0" />
     <PackageVersion Include="Aspire.Npgsql" Version="9.3.0" />
     <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.3.9" />
     <PackageVersion Include="AWSSDK.DynamoDBv2" Version="4.0.9.3" />
