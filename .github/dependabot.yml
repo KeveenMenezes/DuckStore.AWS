@@ -1,11 +1,112 @@
 version: 2
+
+registries:
+  nuget-org:
+    type: nuget-feed
+    url: https://api.nuget.org/v3/index.json
+
 updates:
+  # ─── NuGet packages ────────────────────────────────────────────────────────────
   - package-ecosystem: "nuget"
     directory: "/"
+    registries:
+      - nuget-org
     schedule:
       interval: "daily"
+      time: "05:00"
+      timezone: "America/Sao_Paulo"
+    versioning-strategy: increase
+    rebase-strategy: auto
     commit-message:
       prefix: "deps"
+    labels:
+      - "dependencies"
+      - "nuget"
+    groups:
+      aspire:
+        patterns:
+          - "Aspire.*"
+          - "CommunityToolkit.Aspire.*"
+          - "Microsoft.Extensions.ServiceDiscovery*"
+      aws:
+        patterns:
+          - "Amazon.*"
+          - "AWSSDK.*"
+      aspnetcore-healthchecks:
+        patterns:
+          - "AspNetCore.HealthChecks.*"
+      aspnetcore:
+        patterns:
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.FeatureManagement.*"
+          - "Microsoft.Extensions.Features"
+      microsoft-extensions:
+        patterns:
+          - "Microsoft.Extensions.*"
+          - "Microsoft.Bcl.*"
+        exclude-patterns:
+          - "Microsoft.Extensions.ServiceDiscovery*"
+          - "Microsoft.Extensions.Features"
+      entity-framework-core:
+        patterns:
+          - "Microsoft.EntityFrameworkCore.*"
+      fluentui:
+        patterns:
+          - "Microsoft.FluentUI.*"
+      opentelemetry:
+        patterns:
+          - "OpenTelemetry.*"
+      npgsql:
+        patterns:
+          - "Npgsql.*"
+      microsoft-dotnet:
+        patterns:
+          - "Microsoft.DotNet.*"
+      grpc:
+        patterns:
+          - "Grpc.*"
+      masstransit:
+        patterns:
+          - "MassTransit.*"
+      fluent-validation:
+        patterns:
+          - "FluentValidation.*"
+      marten:
+        patterns:
+          - "Marten*"
+      yarp:
+        patterns:
+          - "Yarp.*"
+      testing:
+        patterns:
+          - "xunit*"
+          - "Moq*"
+          - "MockQueryable*"
+          - "coverlet.*"
+          - "Microsoft.NET.Test.Sdk"
+
+  # ─── GitHub Actions ─────────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "friday"
+      time: "05:00"
+      timezone: "America/Sao_Paulo"
+    commit-message:
+      prefix: "[main] "
+    labels:
+      - "area-infrastructure"
+    groups:
+      actions-official:
+        patterns:
+          - "actions/*"
+          - "github/*"
+      actions-third-party:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "actions/*"
+          - "github/*"
     ignore:
-      - dependency-name: "Microsoft.NET.Test.Sdk"
-        versions: ["*"] 
+      - dependency-name: "martincostello*"
