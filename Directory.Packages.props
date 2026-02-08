@@ -8,7 +8,7 @@
     <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.1" />
     <PackageVersion Include="Amazon.Lambda.Core" Version="2.7.1" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.4" />
-    <PackageVersion Include="Aspire.Hosting.AWS" Version="9.3.0" />
+    <PackageVersion Include="Aspire.Hosting.AWS" Version="9.3.2" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="9.5.2" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.3.0" />
     <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="9.3.1" />
