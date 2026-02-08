@@ -4,7 +4,7 @@
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
   </PropertyGroup>
   <ItemGroup>
-    <PackageVersion Include="Amazon.Lambda.Annotations" Version="1.7.0" />
+    <PackageVersion Include="Amazon.Lambda.Annotations" Version="1.8.0" />
     <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.1" />
     <PackageVersion Include="Amazon.Lambda.Core" Version="2.8.0" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.5" />
