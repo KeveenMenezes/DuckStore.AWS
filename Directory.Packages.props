@@ -22,7 +22,7 @@
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="9.3.1" />
     <PackageVersion Include="Aspire.Npgsql" Version="9.3.0" />
     <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.3.9" />
-    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="4.0.9.3" />
+    <PackageVersion Include="AWSSDK.DynamoDBv2" Version="4.0.14" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="9.6.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Microsoft.EntityFrameworkCore.Sqlite" Version="9.6.0" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4">
