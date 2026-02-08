@@ -1,3 +1,5 @@
+using BuildingBlocks.Core.DomainModel;
+
 namespace Ordering.Domain.AggregatesModel.OrderAggregate.Models;
 
 public class Order : Aggregate<OrderId>

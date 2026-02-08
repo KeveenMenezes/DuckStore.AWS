@@ -14,7 +14,7 @@ public static class LoggerMockExtensions
                 level,
                 It.IsAny<EventId>(),
                 It.Is<It.IsAnyType>((v, _) =>
-                    v != null && v.ToString().Contains(expectedMessage)),
+                    v != null && v.ToString()!.Contains(expectedMessage)),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()
             ),

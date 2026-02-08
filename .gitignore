@@ -484,3 +484,4 @@ $RECYCLE.BIN/
 *.swp
 src/WebApps/Shopping.Web.SPA
 src/WebApps/Shopping.Web.SPA
+.aspire/settings.json
