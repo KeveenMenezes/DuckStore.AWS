@@ -18,21 +18,8 @@
               "icon": "excalidraw-icon",
               "title": "Apresentacao"
             }
-          },
-          {
-            "id": "0cb244811678725f",
-            "type": "leaf",
-            "state": {
-              "type": "image",
-              "state": {
-                "file": "Obsidian/img/postgresql-logo-png-transparent.png"
-              },
-              "icon": "lucide-image",
-              "title": "postgresql-logo-png-transparent"
-            }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "vertical"
@@ -64,7 +51,7 @@
             "state": {
               "type": "search",
               "state": {
-                "query": "tag:#excalidraw",
+                "query": "",
                 "matchingCase": false,
                 "explainSearch": false,
                 "collapseAll": false,
@@ -90,7 +77,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 300,
+    "collapsed": true
   },
   "right": {
     "id": "5cd74fccf9f60f99",
@@ -106,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Obsidian/img/postgresql-logo-png-transparent.png",
+                "file": "Obsidian/Excalidraw/Apresentacao.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -116,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for postgresql-logo-png-transparent"
+              "title": "Backlinks for Apresentacao"
             }
           },
           {
@@ -125,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Obsidian/img/postgresql-logo-png-transparent.png",
+                "file": "Obsidian/Excalidraw/Apresentacao.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from postgresql-logo-png-transparent"
+              "title": "Outgoing links from Apresentacao"
             }
           },
           {
@@ -154,13 +142,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Obsidian/img/postgresql-logo-png-transparent.png",
+                "file": "Obsidian/Excalidraw/Apresentacao.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of postgresql-logo-png-transparent"
+              "title": "Outline of Apresentacao"
             }
           },
           {
@@ -178,7 +166,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 480.5
+    "width": 480.5,
+    "collapsed": true
   },
   "left-ribbon": {
     "hiddenItems": {
@@ -194,8 +183,9 @@
       "copilot:Open Copilot Chat": false
     }
   },
-  "active": "1ba1c8739396cf8e",
+  "active": "801bc01702e5b4fd",
   "lastOpenFiles": [
+    "Obsidian/img/postgresql-logo-png-transparent.png",
     "Obsidian/Excalidraw/Apresentacao.md",
     "Excalidraw/Drawing 2026-02-08 18.49.46.excalidraw.md",
     "copilot/copilot-conversations/voce_esta_intregrado_com_qual._conta@20260208_184215.md",
