@@ -20,53 +20,6 @@ Accept: application/json
 DELETE {{Ordering}}/efd4dc3c-1cb6-498e-b89e-f845ec2cee14
 Accept: application/json
 
-### Update an order
-PUT {{Ordering}}
-Content-Type: application/json
-Accept: application/json
-
-{
-    "order": {
-        "id": "efd4dc3c-1cb6-498e-b89e-f845ec2cee14",
-        "customerId": "58c49479-ec65-4de2-86e7-033c546291aa",
-        "orderName": "ORD_1",
-        "shippingAddress": {
-            "firstName": "mehmet",
-            "lastName": "ozkaya",
-            "emailAddress": "mehmet@gmail.com",
-            "addressLine": "Bahcelievler No:4",
-            "country": "Turkey",
-            "state": "Istanbul",
-            "zipCode": "38050"
-        },
-        "billingAddress": {
-            "firstName": "mehmet",
-            "lastName": "ozkaya",
-            "emailAddress": "mehmet@gmail.com",
-            "addressLine": "Bahcelievler No:4",
-            "country": "Turkey",
-            "state": "Istanbul",
-            "zipCode": "38050"
-        },
-        "payment": {
-            "cardName": "mehmet",
-            "cardNumber": "5555555555554444",
-            "expiration": "12/28",
-            "cvv": "355",
-            "paymentMethod": 2
-        },
-        "status": 2,
-        "orderItems": [
-            {
-                "orderId": "efd4dc3c-1cb6-498e-b89e-f845ec2cee14",
-                "productId": "c67d6323-e8b1-4bdf-9a75-b0d0d2e7e914",
-                "quantity": 1,
-                "price": 400.00
-            }
-        ]
-    }
-}
-
 @Catalog = https://localhost:5054/catalog-service
 
 ### Create a new product

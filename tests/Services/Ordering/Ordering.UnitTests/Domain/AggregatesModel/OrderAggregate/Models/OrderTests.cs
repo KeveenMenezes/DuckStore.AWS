@@ -10,7 +10,6 @@ public class OrderTests
         var customerId = CustomerId.Of(Guid.NewGuid());
         var orderName = OrderName.Of("Test Order");
         var shippingAddress = OrderDataTests.CreateShippingAddressWithVersion();
-        var billingAddress = OrderDataTests.CreateBillingAddressWithVersion();
         var payment = OrderDataTests.CreatePaymentWithVersion();
 
         // Act
@@ -19,7 +18,6 @@ public class OrderTests
             customerId,
             orderName,
             shippingAddress,
-            billingAddress,
             payment);
 
         // Assert
@@ -28,7 +26,6 @@ public class OrderTests
         Assert.Equal(customerId, order.CustomerId);
         Assert.Equal(orderName, order.OrderName);
         Assert.Equal(shippingAddress, order.ShippingAddress);
-        Assert.Equal(billingAddress, order.BillingAddress);
         Assert.Equal(payment, order.Payment);
         Assert.Equal(OrderStatus.Pending, order.Status);
         Assert.Empty(order.OrderItems);
@@ -42,7 +39,6 @@ public class OrderTests
         var customerId = CustomerId.Of(Guid.NewGuid());
         var orderName = OrderName.Of("Test Order");
         var shippingAddress = OrderDataTests.CreateShippingAddressWithVersion();
-        var billingAddress = OrderDataTests.CreateBillingAddressWithVersion();
         var payment = OrderDataTests.CreatePaymentWithVersion();
 
         var order = Order.Create(
@@ -50,7 +46,6 @@ public class OrderTests
             customerId,
             orderName,
             shippingAddress,
-            billingAddress,
             payment);
 
         var productId = ProductId.Of(Guid.NewGuid());
@@ -77,7 +72,6 @@ public class OrderTests
         var customerId = CustomerId.Of(Guid.NewGuid());
         var orderName = OrderName.Of("Test Order");
         var shippingAddress = OrderDataTests.CreateShippingAddressWithVersion();
-        var billingAddress = OrderDataTests.CreateBillingAddressWithVersion();
         var payment = OrderDataTests.CreatePaymentWithVersion();
 
         var order = Order.Create(
@@ -85,7 +79,6 @@ public class OrderTests
             customerId,
             orderName,
             shippingAddress,
-            billingAddress,
             payment);
 
         var productId = ProductId.Of(Guid.NewGuid());
@@ -109,7 +102,6 @@ public class OrderTests
         var customerId = CustomerId.Of(Guid.NewGuid());
         var orderName = OrderName.Of("Test Order");
         var shippingAddress = OrderDataTests.CreateShippingAddressWithVersion();
-        var billingAddress = OrderDataTests.CreateBillingAddressWithVersion();
         var payment = OrderDataTests.CreatePaymentWithVersion();
 
         var order = Order.Create(
@@ -117,12 +109,10 @@ public class OrderTests
             customerId,
             orderName,
             shippingAddress,
-            billingAddress,
             payment);
 
         var newOrderName = OrderName.Of("Updated Order");
         var newShippingAddress = OrderDataTests.CreateShippingAddressWithVersion("new");
-        var newBillingAddress = OrderDataTests.CreateBillingAddressWithVersion("new");
         var newPayment = OrderDataTests.CreatePaymentWithVersion("new");
         var newStatus = OrderStatus.Completed;
 
@@ -130,14 +120,12 @@ public class OrderTests
         order.Update(
             newOrderName,
             newShippingAddress,
-            newBillingAddress,
             newPayment,
             newStatus);
 
         // Assert
         Assert.Equal(newOrderName, order.OrderName);
         Assert.Equal(newShippingAddress, order.ShippingAddress);
-        Assert.Equal(newBillingAddress, order.BillingAddress);
         Assert.Equal(newPayment, order.Payment);
         Assert.Equal(newStatus, order.Status);
     }
@@ -151,7 +139,6 @@ public class OrderTests
             CustomerId.Of(Guid.NewGuid()),
             OrderName.Of("Test Order"),
             OrderDataTests.CreateShippingAddressWithVersion(),
-            OrderDataTests.CreateBillingAddressWithVersion(),
             OrderDataTests.CreatePaymentWithVersion());
 
         var productId = ProductId.Of(Guid.NewGuid());
@@ -172,7 +159,6 @@ public class OrderTests
             CustomerId.Of(Guid.NewGuid()),
             OrderName.Of("Test Order"),
             OrderDataTests.CreateShippingAddressWithVersion(),
-            OrderDataTests.CreateBillingAddressWithVersion(),
             OrderDataTests.CreatePaymentWithVersion());
 
         var productId = ProductId.Of(Guid.NewGuid());
@@ -193,7 +179,6 @@ public class OrderTests
             CustomerId.Of(Guid.NewGuid()),
             OrderName.Of("Test Order"),
             OrderDataTests.CreateShippingAddressWithVersion(),
-            OrderDataTests.CreateBillingAddressWithVersion(),
             OrderDataTests.CreatePaymentWithVersion());
 
         var nonExistentProductId = ProductId.Of(Guid.NewGuid());

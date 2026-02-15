@@ -5,7 +5,6 @@ public record OrderModel(
     Guid CustomerId,
     string OrderName,
     AddressModel ShippingAddress,
-    AddressModel BillingAddress,
     PaymentModel Payment,
     OrderStatus Status,
     List<OrderItemModel> OrderItems);

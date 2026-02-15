@@ -82,7 +82,6 @@ internal static class InitialData
                 CustomerId.Of(new Guid("58c49479-ec65-4de2-86e7-033c546291aa")),
                 OrderName.Of("ORD_1"),
                 shippingAddress: address1,
-                billingAddress: address1,
                 payment1);
 
             order1.Add(
@@ -100,7 +99,6 @@ internal static class InitialData
                 CustomerId.Of(new Guid("189dc8dc-990f-48e0-a37b-e6f2b60b9d7d")),
                 OrderName.Of("ORD_2"),
                 shippingAddress: address2,
-                billingAddress: address2,
                 payment2);
 
             order2.Add(

@@ -6,7 +6,7 @@ public class BasketCheckoutDto
     public Guid CustomerId { get; set; }
     public decimal TotalPrice { get; set; }
 
-    // Shipping and BillingAddress
+    // Shipping and ShippingAddress
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string EmailAddress { get; set; } = default!;

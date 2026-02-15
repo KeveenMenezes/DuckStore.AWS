@@ -8,14 +8,14 @@ public class CreateOrderHandler(
         CreateOrderCommand command,
         CancellationToken cancellationToken)
     {
-        var order = CreateNewOrder(command.Order);
+        var order = CreateNewOrder(command);
 
         await orderRepository.AddAsync(order, cancellationToken);
 
         return new CreateOrderResult(order.Id.Value);
     }
 
-    private static Order CreateNewOrder(OrderDto orderDto)
+    private static Order CreateNewOrder(CreateOrderCommand orderDto)
     {
         var shippingAddress = Address.Of(
             orderDto.ShippingAddress.FirstName,
@@ -26,21 +26,11 @@ public class CreateOrderHandler(
             orderDto.ShippingAddress.State,
             orderDto.ShippingAddress.ZipCode);
 
-        var billingAddress = Address.Of(
-            orderDto.BillingAddress.FirstName,
-            orderDto.BillingAddress.LastName,
-            orderDto.BillingAddress.EmailAddress,
-            orderDto.BillingAddress.AddressLine,
-            orderDto.BillingAddress.Country,
-            orderDto.BillingAddress.State,
-            orderDto.BillingAddress.ZipCode);
-
         var newOrder = Order.Create(
             id: OrderId.Of(Guid.NewGuid()),
             customerId: CustomerId.Of(orderDto.CustomerId),
             orderName: OrderName.Of(orderDto.OrderName),
             shippingAddress: shippingAddress,
-            billingAddress: billingAddress,
             payment: Payment.Of(
                 orderDto.Payment.CardName,
                 orderDto.Payment.CardNumber,

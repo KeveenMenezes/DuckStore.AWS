@@ -96,14 +96,6 @@ public class OrderingApiTests : IClassFixture<OrderingApiFixture>
                 "Country",
                 "State",
                 "12345"),
-            new AddressDto(
-                "John",
-                "Doe",
-                "john.doe@example.com",
-                "123 Street",
-                "Country",
-                "State",
-                "12345"),
             new PaymentDto(
                 "CardName",
                 "4111111111111111",

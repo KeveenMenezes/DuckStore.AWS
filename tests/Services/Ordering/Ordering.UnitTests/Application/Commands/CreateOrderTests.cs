@@ -19,7 +19,7 @@ public class CreateOrderTests
     public async Task Handle_ShouldCreateOrderSuccessfully()
     {
         // Arrange
-        var command = new CreateOrderCommand(OrderDtoDataTests.CreateOrderDtoWithValidItems());
+        var command = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems();
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -38,69 +38,103 @@ public class CreateOrderTests
     public void Handle_ShouldNotError_WhenOrderDtoCorrectValues()
     {
         // Arrange
-        var command = new CreateOrderCommand(
-            OrderDtoDataTests.CreateOrderDtoWithValidItems());
+        var command = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems();
 
         // Act
         var result = _validator.TestValidate(command);
 
         // Assert
-        result.ShouldNotHaveValidationErrorFor(x => x.Order.OrderName);
-        result.ShouldNotHaveValidationErrorFor(x => x.Order.CustomerId);
-        result.ShouldNotHaveValidationErrorFor(x => x.Order.OrderItems);
-        result.ShouldNotHaveValidationErrorFor(x => x.Order.Payment);
-        result.ShouldNotHaveValidationErrorFor(x => x.Order.Payment.CardNumber);
-        result.ShouldNotHaveValidationErrorFor(x => x.Order.Payment.PaymentMethod);
-        result.ShouldNotHaveValidationErrorFor(x => x.Order.Status);
+        result.ShouldNotHaveValidationErrorFor(x => x.OrderName);
+        result.ShouldNotHaveValidationErrorFor(x => x.CustomerId);
+        result.ShouldNotHaveValidationErrorFor(x => x.OrderItems);
+        result.ShouldNotHaveValidationErrorFor(x => x.Payment);
+        result.ShouldNotHaveValidationErrorFor(x => x.Payment.CardNumber);
+        result.ShouldNotHaveValidationErrorFor(x => x.Payment.PaymentMethod);
     }
 
     [Fact]
-    public void Validator_ShouldHaveError_WhenOrderDtoInvalidItems()
+    public void Validator_ShouldHaveError_WhenCustomerIdIsEmpty()
     {
         // Arrange
-        var command = new CreateOrderCommand(
-            OrderDtoDataTests.CreateOrderDtoWithInvalidItems());
+        var command = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems() with
+        {
+            CustomerId = Guid.Empty
+        };
 
         // Act
         var result = _validator.TestValidate(command);
 
         // Assert
-        result.ShouldHaveValidationErrorFor(x => x.Order.OrderName)
-            .WithErrorMessage("Name is required");
-
-        result.ShouldHaveValidationErrorFor(x => x.Order.CustomerId)
+        result.ShouldHaveValidationErrorFor(x => x.CustomerId)
             .WithErrorMessage("CustomerId is required");
-
-        result.ShouldHaveValidationErrorFor(x => x.Order.OrderItems)
-            .WithErrorMessage("OrderItems should not be empty");
-
-        result.ShouldHaveValidationErrorFor(x => x.Order.Payment.CardNumber)
-            .WithErrorMessage("Invalid card number");
-
-        result.ShouldHaveValidationErrorFor(x => x.Order.Payment.PaymentMethod)
-            .WithErrorMessage("Invalid payment method");
-
-        result.ShouldHaveValidationErrorFor(x => x.Order.Status)
-            .WithErrorMessage("Invalid order status");
     }
 
     [Fact]
-    public void Validator_ShouldHaveError_WhenOrderDtoInvalidPayment()
+    public void Validator_ShouldHaveError_WhenOrderItemsIsEmpty()
     {
-        //Arrange
-        var command = new CreateOrderCommand(
-            OrderDtoDataTests.CreateOrderDtoWithInvalidItems());
-
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
-        command = new CreateOrderCommand(
-            command.Order with { Payment = null });
-#pragma warning restore CS8625 // Cannot convert null literal to non-nullable reference type.
+        // Arrange
+        var command = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems() with
+        {
+            OrderItems = []
+        };
 
         // Act
         var result = _validator.TestValidate(command);
 
         // Assert
-        result.ShouldHaveValidationErrorFor(x => x.Order.Payment)
-            .WithErrorMessage("Payment is required");
+        result.ShouldHaveValidationErrorFor(x => x.OrderItems)
+            .WithErrorMessage("OrderItems should not be empty");
+    }
+
+    [Fact]
+    public void Validator_ShouldHaveError_WhenCardNumberIsInvalid()
+    {
+        // Arrange
+        var baseCommand = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems();
+        var command = baseCommand with
+        {
+            Payment = baseCommand.Payment with { CardNumber = "invalid" }
+        };
+
+        // Act
+        var result = _validator.TestValidate(command);
+
+        // Assert
+        result.ShouldHaveValidationErrorFor(x => x.Payment.CardNumber)
+            .WithErrorMessage("Invalid card number");
+    }
+
+    [Fact]
+    public void Validator_ShouldHaveError_WhenPaymentMethodIsInvalid()
+    {
+        // Arrange
+        var baseCommand = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems();
+        var command = baseCommand with
+        {
+            Payment = baseCommand.Payment with { PaymentMethod = 0 }
+        };
+
+        // Act
+        var result = _validator.TestValidate(command);
+
+        // Assert
+        result.ShouldHaveValidationErrorFor(x => x.Payment.PaymentMethod)
+            .WithErrorMessage("Invalid payment method");
+    }
+
+    [Fact]
+    public void Validator_ShouldHaveMultipleErrors_WhenMultiplePropertiesAreInvalid()
+    {
+        // Arrange
+        var command = CreateOrderCommandTestsDataTests.CreateOrderDtoWithInvalidItems();
+
+        // Act
+        var result = _validator.TestValidate(command);
+
+        // Assert
+        result.ShouldHaveValidationErrorFor(x => x.CustomerId);
+        result.ShouldHaveValidationErrorFor(x => x.OrderItems);
+        result.ShouldHaveValidationErrorFor(x => x.Payment.CardNumber);
+        result.ShouldHaveValidationErrorFor(x => x.Payment.PaymentMethod);
     }
 }

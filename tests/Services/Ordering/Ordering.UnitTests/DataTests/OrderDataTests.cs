@@ -14,7 +14,6 @@ public static class OrderDataTests
     public static Order CreateOrderWithItems(string? suffix = null)
     {
         var shippingAddress = CreateShippingAddressWithVersion(suffix);
-        var billingAddress = CreateBillingAddressWithVersion(suffix);
         var payment = CreatePaymentWithVersion(suffix);
 
         var order = Order.Create(
@@ -22,7 +21,6 @@ public static class OrderDataTests
             CustomerId.Of(Guid.NewGuid()),
             OrderName.Of($"ORD_{suffix}"),
             shippingAddress,
-            billingAddress,
             payment);
 
         order.Add(
@@ -47,16 +45,6 @@ public static class OrderDataTests
             "TurkeyShipping",
             "IstanbulShipping",
             "38050");
-
-    public static Address CreateBillingAddressWithVersion(string? suffix = null) =>
-        Address.Of(
-            $"{suffix}FirstNameBilling",
-            $"{suffix}LastNameBillinng",
-            $"{suffix}Billing@gmail.com",
-            $"BahcelievlerBilling No: {suffix}",
-            "TurkeyBilling",
-            "IstanbulBilling",
-            "38051");
 
     public static Payment CreatePaymentWithVersion(string? suffix = null) =>
         Payment.Of(

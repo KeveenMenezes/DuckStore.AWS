@@ -32,8 +32,8 @@ public class BasketCheckoutEventTests
         _senderMock.Verify(
             sender => sender.Send(
                 It.Is<CreateOrderCommand>(command =>
-                    command.Order.CustomerId == basketCheckoutEvent.CustomerId &&
-                    command.Order.OrderName == basketCheckoutEvent.UserName),
+                    command.CustomerId == basketCheckoutEvent.CustomerId &&
+                    command.OrderName == basketCheckoutEvent.UserName),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 

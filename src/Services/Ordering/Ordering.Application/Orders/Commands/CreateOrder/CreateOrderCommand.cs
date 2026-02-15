@@ -1,7 +1,13 @@
 ﻿namespace Ordering.Application.Orders.Commands.CreateOrder;
 
-public record CreateOrderCommand(OrderDto Order)
+public record CreateOrderCommand(
+    Guid CustomerId,
+    string OrderName,
+    AddressDto ShippingAddress,
+    PaymentDto Payment,
+    List<CreateOrderItemDto> OrderItems)
     : ICommand<CreateOrderResult>;
+
 
 public record CreateOrderResult(Guid Id);
 
@@ -10,35 +16,24 @@ public class CreateOrderCommandValidator
 {
     public CreateOrderCommandValidator()
     {
-        RuleFor(x => x.Order.OrderName)
-            .NotEmpty()
-            .WithMessage("Name is required");
-
-        RuleFor(x => x.Order.CustomerId)
+        RuleFor(x => x.CustomerId)
             .NotEmpty()
             .WithMessage("CustomerId is required");
 
-        RuleFor(x => x.Order.OrderItems)
+        RuleFor(x => x.OrderItems)
             .NotEmpty()
             .WithMessage("OrderItems should not be empty");
 
-        RuleFor(x => x.Order.Payment)
+        RuleFor(x => x.Payment)
             .NotNull()
             .WithMessage("Payment is required");
 
-        When(x => x.Order.Payment != null, () =>
-        {
-            RuleFor(x => x.Order.Payment.CardNumber)
-                .CreditCard()
-                .WithMessage("Invalid card number");
+        RuleFor(x => x.Payment.CardNumber)
+            .CreditCard()
+            .WithMessage("Invalid card number");
 
-            RuleFor(x => x.Order.Payment.PaymentMethod)
-                .IsInEnum()
-                .WithMessage("Invalid payment method");
-        });
-
-        RuleFor(x => x.Order.Status)
+        RuleFor(x => x.Payment.PaymentMethod)
             .IsInEnum()
-            .WithMessage("Invalid order status");
+            .WithMessage("Invalid payment method");
     }
 }

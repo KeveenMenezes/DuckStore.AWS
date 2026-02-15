@@ -19,16 +19,3 @@ Accept: application/json
 ### Delete an order by ID
 DELETE {{Ordering}}/1
 Accept: application/json
-
-### Update an order by ID
-PUT {{Ordering}}/1
-Content-Type: application/json
-Accept: application/json
-
-{
-    "id": 1,
-    "customerId": 1,
-    "orderDate": "2023-10-01T00:00:00Z",
-    "status": "Shipped",
-    "totalAmount": 100.00
-}

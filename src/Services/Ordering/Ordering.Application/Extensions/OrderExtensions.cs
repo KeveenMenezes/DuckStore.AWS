@@ -20,14 +20,6 @@ public static class OrderExtensions
                     order.ShippingAddress.Country,
                     order.ShippingAddress.State,
                     order.ShippingAddress.ZipCode),
-                BillingAddress: new AddressDto(
-                    order.BillingAddress.FirstName,
-                    order.BillingAddress.LastName,
-                    order.BillingAddress.EmailAddress!,
-                    order.BillingAddress.AddressLine,
-                    order.BillingAddress.Country,
-                    order.BillingAddress.State,
-                    order.BillingAddress.ZipCode),
                 Payment: new PaymentDto(
                     order.Payment.CardName!,
                     order.Payment.CardNumber,
@@ -60,14 +52,6 @@ public static class OrderExtensions
                 order.ShippingAddress.Country,
                 order.ShippingAddress.State,
                 order.ShippingAddress.ZipCode),
-            BillingAddress: new AddressDto(
-                order.BillingAddress.FirstName,
-                order.BillingAddress.LastName,
-                order.BillingAddress.EmailAddress!,
-                order.BillingAddress.AddressLine,
-                order.BillingAddress.Country,
-                order.BillingAddress.State,
-                order.BillingAddress.ZipCode),
             Payment: new PaymentDto(
                 order.Payment.CardName!,
                 order.Payment.CardNumber,
