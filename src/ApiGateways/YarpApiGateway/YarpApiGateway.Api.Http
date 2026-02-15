@@ -17,11 +17,11 @@ GET {{Ordering}}/ORD_1
 Accept: application/json
 
 ### Delete an order by ID
-DELETE {{Ordering}}/1
+DELETE {{Ordering}}/58c49479-ec65-4de2-86e7-033c546291aa
 Accept: application/json
 
 ### Update an order by ID
-PUT {{Ordering}}/1
+PUT {{Ordering}}/58c49479-ec65-4de2-86e7-033c546291aa
 Content-Type: application/json
 Accept: application/json
 

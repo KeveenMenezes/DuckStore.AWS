@@ -26,17 +26,34 @@ var rabbitMq = builder
         5672)
     .WithManagementPlugin();
 
+// Observability
+var elasticsearch = builder.AddElasticsearch("elasticsearch")
+    .WithEnvironment("ES_JAVA_OPTS", "-Xms512m -Xmx512m")
+    .WithEnvironment("xpack.security.enabled", "false")
+    .WithEnvironment("discovery.type", "single-node")
+    .WithDataVolume();
+
+var kibana = builder.AddContainer("kibana", "docker.elastic.co/kibana/kibana", "8.17.3")
+    .WithEnvironment("ELASTICSEARCH_HOSTS", "http://elasticsearch:9200")
+    .WithHttpEndpoint(port: 5601, targetPort: 5601, name: "http")
+    .WithReference(elasticsearch)
+    .WaitFor(elasticsearch);
+
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(
     "catalog-api")
     .WaitFor(catalogDb)
+    .WaitFor(elasticsearch)
     .WithReference(catalogDb)
+    .WithReference(elasticsearch)
     .WithHttpHealthCheck("/health");
 
 var discountApi = builder.AddProject<Projects.Discount_Grpc>(
     "discount-api", GetHttpForEndpoints())
     .WaitFor(discountDb)
-    .WithReference(discountDb);
+    .WaitFor(elasticsearch)
+    .WithReference(discountDb)
+    .WithReference(elasticsearch);
 
 var basketApi = builder.AddProject<Projects.Basket_API>(
     "basket-api")
@@ -44,11 +61,14 @@ var basketApi = builder.AddProject<Projects.Basket_API>(
     .WaitFor(basketDb)
     .WaitFor(discountApi)
     .WaitFor(rabbitMq)
+    .WaitFor(elasticsearch)
     .WithReference(redis)
     .WithReference(basketDb)
     .WithReference(discountApi)
     .WithReference(rabbitMq)
+    .WithReference(elasticsearch)
     .WithHttpHealthCheck("/health");
+
 redis.WithParentRelationship(basketApi);
 
 var orderingApi = builder.AddProject<Projects.Ordering_API>(
@@ -56,8 +76,10 @@ var orderingApi = builder.AddProject<Projects.Ordering_API>(
     .WaitFor(orderingMigration)
     .WaitFor(orderingDb)
     .WaitFor(rabbitMq)
+    .WaitFor(elasticsearch)
     .WithReference(orderingDb)
     .WithReference(rabbitMq)
+    .WithReference(elasticsearch)
     .WithHttpHealthCheck("/health");
 
 // Reverse proxies
@@ -69,18 +91,19 @@ var yarpApiGateway = builder.AddProject<Projects.YarpApiGateway>(
     .WithReference(basketApi);
 
 // Apps
-builder.AddNpmApp("shopping-web-spa", "../WebApps/Shopping.Web.SPA")
-    .WithExternalHttpEndpoints()
-    .WithReference(yarpApiGateway)
-    .WithHttpsEndpoint(env: "PORT")
-    .PublishAsDockerFile();
-
 builder.AddProject<Projects.Shopping_Web_Server>(
     "shopping-web-server", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
     .WithReference(basketApi)
     .WithReference(catalogApi)
     .WithReference(orderingApi);
+
+builder.AddNpmApp("shopping-web-spa", "../WebApps/Shopping.Web.SPA")
+    .WithExternalHttpEndpoints()
+    .WaitFor(yarpApiGateway)
+    .WithReference(yarpApiGateway)
+    .WithHttpsEndpoint(env: "PORT")
+    .PublishAsDockerFile();
 
 await builder.Build().RunAsync();
 

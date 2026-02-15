@@ -32,6 +32,9 @@ public static class Extensions
     {
         builder.ConfigureOpenTelemetry();
 
+        // Single ElasticsearchClient per API — see ADR-0001
+        builder.AddElasticsearchClient(connectionName: "elasticsearch");
+
         return builder;
     }
 

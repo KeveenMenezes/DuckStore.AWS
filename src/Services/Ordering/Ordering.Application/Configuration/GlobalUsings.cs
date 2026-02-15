@@ -3,7 +3,6 @@ global using System.Runtime.CompilerServices;
 global using BuildingBlocks.Core.CQRS;
 global using BuildingBlocks.Core.Pagination;
 global using BuildingBlocks.Messaging.Events;
-global using BuildingBlocks.Messaging.MassTransit;
 global using FluentValidation;
 global using MassTransit;
 global using MediatR;

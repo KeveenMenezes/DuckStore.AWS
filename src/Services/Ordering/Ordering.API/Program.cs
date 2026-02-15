@@ -3,8 +3,9 @@
 var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
-builder.AddRabbitMQClient("messageBroker");
 builder.AddServiceDefaults();
+builder.AddElasticsearch();
+builder.AddRabbitMQClient("messageBroker");
 
 builder.Services
     .AddCarter()
