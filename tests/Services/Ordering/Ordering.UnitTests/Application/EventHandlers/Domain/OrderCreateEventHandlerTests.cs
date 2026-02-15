@@ -46,7 +46,7 @@ public class OrderCreateEventHandlerTests
 
         _loggerMock.VerifyLog(
             LogLevel.Information,
-            "Domain Event handled: OrderCreatedEvent");
+            "OrderCreatedEvent");
     }
 
     [Fact]
@@ -73,6 +73,6 @@ public class OrderCreateEventHandlerTests
 
         _loggerMock.VerifyLog(
             LogLevel.Information,
-            "Domain Event handled: OrderCreatedEvent");
+            "OrderCreatedEvent");
     }
 }

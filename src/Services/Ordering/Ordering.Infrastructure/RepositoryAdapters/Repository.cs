@@ -9,7 +9,7 @@ public class Repository<T>(ApplicationDbContext db)
     private readonly ApplicationDbContext _db = db;
     private DbSet<T> Entity => _db.Set<T>();
 
-    public async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public virtual async Task<T?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
         return await Entity.FindAsync([id], cancellationToken);
     }

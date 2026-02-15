@@ -9,6 +9,11 @@ public class OrderRepository(ApplicationDbContext dbContext)
 {
     private readonly ApplicationDbContext _dbContext = dbContext;
 
+    public override async Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Orders.FindAsync([OrderId.Of(id)], cancellationToken);
+    }
+
     public IAsyncEnumerable<Order> GetOrdersByNameAsync(string name) =>
         _dbContext.Orders
             .Include(o => o.OrderItems)
