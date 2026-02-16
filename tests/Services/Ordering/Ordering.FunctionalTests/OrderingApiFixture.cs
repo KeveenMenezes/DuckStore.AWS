@@ -63,20 +63,10 @@ public sealed class OrderingApiFixture
         await _app.StartAsync();
         _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync() ??
             throw new InvalidOperationException("Could not get connection string for OrderingDb");
-        
-        // Get RabbitMQ connection string using the amqp format
+
         var rabbitMqEndpoint = _rabbitMq.Resource.PrimaryEndpoint ??
             throw new InvalidOperationException("Could not get primary endpoint for RabbitMq");
-        if (rabbitMqEndpoint.Host is null)
-        {
-            throw new InvalidOperationException("RabbitMQ endpoint host not available");
-        }
-        if (rabbitMqEndpoint.Port is null)
-        {
-            throw new InvalidOperationException("RabbitMQ endpoint port not available");
-        }
-        var host = rabbitMqEndpoint.Host;
-        var port = rabbitMqEndpoint.Port;
-        _rabbitMqConnectionString = $"amqp://{host}:{port}";
+
+        _rabbitMqConnectionString = $"amqp://{rabbitMqEndpoint.Host}:{rabbitMqEndpoint.Port}";
     }
 }
