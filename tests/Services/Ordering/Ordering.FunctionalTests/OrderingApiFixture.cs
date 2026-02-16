@@ -63,7 +63,11 @@ public sealed class OrderingApiFixture
         await _app.StartAsync();
         _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync() ??
             throw new InvalidOperationException("Could not get connection string for OrderingDb");
-        _rabbitMqConnectionString = await _rabbitMq.Resource.GetConnectionStringAsync() ??
-            throw new InvalidOperationException("Could not get connection string for RabbitMq");
+        
+        // Get RabbitMQ connection string using the amqp format
+        var rabbitMqEndpoint = _rabbitMq.Resource.PrimaryEndpoint;
+        var host = rabbitMqEndpoint.Host;
+        var port = rabbitMqEndpoint.Port;
+        _rabbitMqConnectionString = $"amqp://{host}:{port}";
     }
 }
