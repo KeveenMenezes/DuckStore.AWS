@@ -1,1 +1,0 @@
-O [CQRS](https://martinfowler.com/bliki/CQRS.html).
