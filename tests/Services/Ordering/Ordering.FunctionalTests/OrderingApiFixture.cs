@@ -65,7 +65,8 @@ public sealed class OrderingApiFixture
             throw new InvalidOperationException("Could not get connection string for OrderingDb");
         
         // Get RabbitMQ connection string using the amqp format
-        var rabbitMqEndpoint = _rabbitMq.Resource.PrimaryEndpoint;
+        var rabbitMqEndpoint = _rabbitMq.Resource.PrimaryEndpoint ??
+            throw new InvalidOperationException("Could not get primary endpoint for RabbitMq");
         var host = rabbitMqEndpoint.Host;
         var port = rabbitMqEndpoint.Port;
         _rabbitMqConnectionString = $"amqp://{host}:{port}";
