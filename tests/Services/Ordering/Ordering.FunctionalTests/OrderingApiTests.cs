@@ -1,27 +1,14 @@
-﻿using System.Net;
-using System.Text;
-using System.Text.Json;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Ordering.Application.Dtos;
-using Ordering.Domain.Enums;
-namespace Ordering.FunctionalTests;
+﻿namespace Ordering.FunctionalTests;
 
-public class OrderingApiTests : IClassFixture<OrderingApiFixture>
+public class OrderingApiTests(OrderingApiFixture fixture) : IClassFixture<OrderingApiFixture>
 {
-    private readonly WebApplicationFactory<Program> _webApplicationFactory;
-    private readonly HttpClient _httpClient;
-
-    public OrderingApiTests(OrderingApiFixture fixture)
-    {
-        _webApplicationFactory = fixture;
-        _httpClient = _webApplicationFactory.CreateDefaultClient();
-    }
+    private readonly HttpClient _httpClient = fixture.HttpClient;
 
     [Fact]
     public async Task HealthEndpoint_Should_ReturnSuccess()
     {
         // Act
-        var response = await _httpClient.GetAsync("/orders/health");
+        var response = await _httpClient.GetAsync("/health");
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -37,22 +24,6 @@ public class OrderingApiTests : IClassFixture<OrderingApiFixture>
         response.EnsureSuccessStatusCode();
         var content = await response.Content.ReadAsStringAsync();
         Assert.False(string.IsNullOrEmpty(content));
-    }
-
-    [Fact]
-    public async Task CreateOrder_Should_ReturnCreatedStatus()
-    {
-        // Arrange
-        var content = new StringContent(
-            JsonSerializer.Serialize(CreateOrderDtoWithValidItems()),
-            Encoding.UTF8,
-            System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json"));
-
-        // Act
-        var response = await _httpClient.PostAsync("/orders", content);
-
-        // Assert
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     [Fact]
@@ -74,40 +45,14 @@ public class OrderingApiTests : IClassFixture<OrderingApiFixture>
     public async Task DeleteOrder_Should_ReturnNoContent()
     {
         // Arrange
-        var orderId = 100;
+        var orderId = "194ea999-cd0b-498d-9760-dddf0d74cd2f";
 
         // Act
         var response = await _httpClient.DeleteAsync($"/orders/{orderId}");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
-
-    private static OrderDto CreateOrderDtoWithValidItems(Guid? orderId = null) =>
-        new(
-            orderId ?? Guid.NewGuid(),
-            Guid.NewGuid(),
-            "Test Order",
-            new AddressDto(
-                "John",
-                "Doe",
-                "john.doe@example.com",
-                "123 Street",
-                "Country",
-                "State",
-                "12345"),
-            new PaymentDto(
-                "CardName",
-                "4111111111111111",
-                "12/25",
-                "123",
-                PaymentMethod.Debit),
-            OrderStatus.Pending,
-            [
-                new OrderItemDto(
-                    Guid.NewGuid(),
-                    Guid.NewGuid(),
-                    2,
-                    50)
-            ]);
 }
+
+

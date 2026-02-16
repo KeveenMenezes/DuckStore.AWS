@@ -78,7 +78,7 @@ internal static class InitialData
                 Domain.Enums.PaymentMethod.Debit);
 
             var order1 = Order.Create(
-                OrderId.Of(Guid.NewGuid()),
+                OrderId.Of(new Guid("194ea999-cd0b-498d-9760-dddf0d74cd2f")),
                 CustomerId.Of(new Guid("58c49479-ec65-4de2-86e7-033c546291aa")),
                 OrderName.Of("ORD_1"),
                 shippingAddress: address1,

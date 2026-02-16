@@ -14,7 +14,7 @@
     <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.0" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.1" />
     <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.1.1" />
     <PackageVersion Include="Aspire.RabbitMQ.Client.v7" Version="9.5.2" />
     <PackageVersion Include="Aspire.StackExchange.Redis" Version="13.1.1" />
@@ -32,7 +32,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
     <PackageVersion Include="Elastic.CommonSchema.Serilog" Version="9.0.0" />
-    <PackageVersion Include="FluentValidation" Version="12.1.0" />
+    <PackageVersion Include="FluentValidation" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.1" />
     <PackageVersion Include="Carter" Version="10.0.0" />
