@@ -9,7 +9,9 @@ public sealed class OrderingApiFixture
     private readonly IHost _app;
 
     private readonly IResourceBuilder<SqlServerServerResource> _orderingDb;
+    private readonly IResourceBuilder<RabbitMQServerResource> _rabbitMq;
     private string _orderingDbConnectionString;
+    private string _rabbitMqConnectionString;
 
     public OrderingApiFixture()
     {
@@ -22,7 +24,7 @@ public sealed class OrderingApiFixture
         var appBuilder = DistributedApplication.CreateBuilder(options);
 
         _orderingDb = appBuilder.AddSqlServer("OrderingDb");
-        appBuilder.AddRabbitMQ("RabbitMq");
+        _rabbitMq = appBuilder.AddRabbitMQ("RabbitMq");
         _app = appBuilder.Build();
     }
 
@@ -32,7 +34,10 @@ public sealed class OrderingApiFixture
         {
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                { $"ConnectionStrings:{_orderingDb.Resource.Name}", _orderingDbConnectionString },
+                { "ConnectionStrings:orderingDb", _orderingDbConnectionString },
+                { "MessageBroker:Host", _rabbitMqConnectionString },
+                { "MessageBroker:UserName", "guest" },
+                { "MessageBroker:Password", "guest" },
             });
         });
 
@@ -58,5 +63,7 @@ public sealed class OrderingApiFixture
         await _app.StartAsync();
         _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync() ??
             throw new InvalidOperationException("Could not get connection string for OrderingDb");
+        _rabbitMqConnectionString = await _rabbitMq.Resource.GetConnectionStringAsync() ??
+            throw new InvalidOperationException("Could not get connection string for RabbitMq");
     }
 }
