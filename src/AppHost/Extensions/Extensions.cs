@@ -1,4 +1,6 @@
-﻿using Aspire.Hosting.Lifecycle;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AppHost.Extensions;
 
@@ -9,23 +11,11 @@ public static class Extensions
     /// </summary>
     public static IDistributedApplicationBuilder AddForwardedHeaders(this IDistributedApplicationBuilder builder)
     {
-        builder.Services.TryAddLifecycleHook<AddForwardHeadersHook>();
-        return builder;
-    }
-
-    private sealed class AddForwardHeadersHook : IDistributedApplicationLifecycleHook
-    {
-        public Task BeforeStartAsync(DistributedApplicationModel appModel, CancellationToken cancellationToken = default)
+        builder.Services.Configure<ForwardedHeadersOptions>(options =>
         {
-            foreach (var p in appModel.GetProjectResources())
-            {
-                p.Annotations.Add(new EnvironmentCallbackAnnotation(context =>
-                {
-                    context.EnvironmentVariables["ASPNETCORE_FORWARDEDHEADERS_ENABLED"] = "true";
-                }));
-            }
-
-            return Task.CompletedTask;
-        }
+            options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            //options.KnownProxies.Add(IPAddress.Parse("IP_DO_PROXY"));
+        });
+        return builder;
     }
 }
