@@ -77,6 +77,9 @@ Accept: application/json
 ### Get basket by username
 GET {{Basket}}/basket/swn3
 
+### Delete a basket
+DELETE {{Basket}}/basket/swn
+
 ### Post a new basket
 POST {{Basket}}/basket
 Content-Type: application/json
@@ -84,7 +87,7 @@ Content-Type: application/json
 {
     "cart":
     {
-        "userName": "swn3",
+        "userName": "swn2",
         "items": [
             {
                 "quantity": 1,
@@ -97,19 +100,13 @@ Content-Type: application/json
     }
 }
 
-### Delete a basket
-DELETE {{Basket}}/basket/swn
-
-### Health check
-GET {{Basket}}/health
-
 ### Checkout 
 POST {{Basket}}/basket/checkout
 Content-Type: application/json
 
 {
     "basketCheckoutDto": {
-        "userName": "swn3",
+        "userName": "swn2",
         "customerId": "58c49479-ec65-4de2-86e7-033c546291aa",
         "totalPrice": 150.75,
         "firstName": "swn",
@@ -120,7 +117,7 @@ Content-Type: application/json
         "state": "CA",
         "zipCode": "90001",
         "cardName": "John Doe",
-        "cardNumber": "1234567890123456",
+        "cardNumber": "4111111111111111",
         "expiration": "12/25",
         "cvv": "123",
         "paymentMethod": 1

@@ -7,6 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Elastic.CommonSchema.Serilog" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.AspNetCore" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
@@ -15,6 +16,7 @@
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" />
     <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
+    <PackageReference Include="OpenTelemetry.Exporter.Console" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
@@ -22,6 +24,10 @@
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <PackageReference Include="Aspire.Elastic.Clients.Elasticsearch" />
+    <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Enrichers.Span" />
+    <PackageReference Include="Serilog.Sinks.Elasticsearch" />
   </ItemGroup>
 
   <ItemGroup>

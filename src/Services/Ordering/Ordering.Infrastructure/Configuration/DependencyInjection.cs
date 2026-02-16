@@ -9,14 +9,16 @@ namespace Ordering.Infrastructure.Configuration;
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(
-        this IServiceCollection services, IConfiguration configuration)
+        this IServiceCollection services,
+        IConfiguration configuration,
+        Assembly? consumerAssembly = null)
     {
         services.AddScoped<IUnitOfWork, UnitOfWork>();
         services.AddScoped<IOrderRepository, OrderRepository>();
 
         services.AddMessageBroker(
                 configuration,
-                Assembly.GetExecutingAssembly(),
+                consumerAssembly,
                 additionalConfig: config =>
                 {
                     config.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>

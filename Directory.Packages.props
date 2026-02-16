@@ -34,6 +34,7 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
+    <PackageVersion Include="Elastic.CommonSchema.Serilog" Version="9.0.0" />
     <PackageVersion Include="FluentValidation" Version="12.1.0" />
     <PackageVersion Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.0" />
     <PackageVersion Include="FluentValidation.AspNetCore" Version="11.3.0" />
@@ -65,17 +66,22 @@
     <PackageVersion Include="MockQueryable.Moq" Version="7.0.3" />
     <PackageVersion Include="Moq" Version="4.20.72" />
     <PackageVersion Include="Moq.AutoMock" Version="3.5.0" />
+    <PackageVersion Include="OpenTelemetry.Exporter.Console" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AWS" Version="1.13.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AWSLambda" Version="1.13.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.15.0-beta.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.15.0-beta.1" />
     <PackageVersion Include="Refit.HttpClientFactory" Version="8.0.0" />
     <PackageVersion Include="Scrutor" Version="6.0.1" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
+    <PackageVersion Include="Serilog.Enrichers.Span" Version="3.1.0" />
+    <PackageVersion Include="Serilog.Sinks.Elasticsearch" Version="10.0.0" />
     <PackageVersion Include="System.Linq.Async" Version="6.0.1" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2">

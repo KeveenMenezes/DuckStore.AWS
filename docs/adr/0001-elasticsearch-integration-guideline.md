@@ -66,7 +66,10 @@ In production, this is injected by the Aspire AppHost.
 | Concern | Data Streams | Rules |
 |---------|-------------|-------|
 | Traces  | `traces-*`  | Handled by OpenTelemetry + Elastic APM — APIs must NOT manually write traces |
-| Logs    | `logs-*`    | Structured JSON, `TraceId` must flow across services |
+| Logs    | `logs-*`    | Structured JSON, `TraceId` must flow across services. Uses daily rollover (`logs-{service}-{date}`) |
+
+**Index Lifecycle Management (ILM):**
+Data streams automatically rollover daily (e.g., `logs-basket-api-2026.02.15`, `logs-basket-api-2026.02.16`). ILM policies automatically delete old logs to prevent excessive disk usage. See [ADR-0002: Elasticsearch Index Lifecycle Management](./0002-elasticsearch-index-lifecycle-management.md) for retention policies.
 
 ### Analytics (Optional)
 
@@ -104,6 +107,7 @@ builder.AddKeyedElasticsearchClient("orders");
 - **Aligned with Elastic production patterns** — index-level separation, not client-level
 - **Centralized connection management** — configuration in one place
 - **No unnecessary client duplication** — shared connection pool
+- **Automatic data lifecycle** — ILM policies manage index retention and cleanup
 
 ## Applies To
 
@@ -113,3 +117,7 @@ All DuckStore APIs:
 - Basket.API
 - Ordering.API
 - Discount.Grpc
+
+## Related Documentation
+
+- [ADR-0002: Elasticsearch Index Lifecycle Management](./0002-elasticsearch-index-lifecycle-management.md) — Data retention and lifecycle policies

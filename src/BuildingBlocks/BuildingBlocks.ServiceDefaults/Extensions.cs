@@ -1,6 +1,8 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Elastic.CommonSchema.Serilog;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Hosting;
@@ -8,6 +10,10 @@ using Microsoft.Extensions.Logging;
 using OpenTelemetry.Logs;
 using OpenTelemetry.Metrics;
 using OpenTelemetry.Trace;
+using Serilog;
+using Serilog.Enrichers.Span;
+using Serilog.Filters;
+using Serilog.Sinks.Elasticsearch;
 
 namespace BuildingBlocks.ServiceDefaults;
 
@@ -44,6 +50,54 @@ public static partial class Extensions
 
         builder.ConfigureOpenTelemetry();
 
+        builder.ConfigureElasticsearchLogging();
+
+        return builder;
+    }
+
+    /// <summary>
+    /// Configures Serilog to write structured logs to Elasticsearch as data streams (<c>logs-*</c>).
+    /// Uses the <c>"elasticsearch"</c> connection string from Aspire configuration.
+    /// Keeps existing logging providers (OpenTelemetry) active via <c>writeToProviders: true</c>.
+    /// <para>
+    /// Aligned with ADR-0001: separation by index/data stream, structured JSON, TraceId flowing.
+    /// </para>
+    /// </summary>
+    public static IHostApplicationBuilder ConfigureElasticsearchLogging(this IHostApplicationBuilder builder)
+    {
+        var elasticsearchUri = builder.Configuration.GetConnectionString("elasticsearch");
+
+        if (string.IsNullOrWhiteSpace(elasticsearchUri))
+            return builder;
+
+        var environment = builder.Environment;
+        var serviceName = environment.ApplicationName.ToLowerInvariant().Replace(".", "-");
+
+        builder.Services.AddSerilog(loggerConfig =>
+        {
+            loggerConfig
+                .ReadFrom.Configuration(builder.Configuration)
+                .Enrich.FromLogContext()
+                .Enrich.WithSpan()
+                .Enrich.WithProperty("Application", environment.ApplicationName)
+                .Enrich.WithProperty("Environment", environment.EnvironmentName)
+                .Enrich.WithProperty("ServiceName", serviceName)
+                .Filter.ByExcluding(Matching.WithProperty<string>(
+                    "RequestPath", p =>
+                        p is "/health" or "/alive"))
+                .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri(elasticsearchUri))
+                {
+                    AutoRegisterTemplate = true,
+                    AutoRegisterTemplateVersion = AutoRegisterTemplateVersion.ESv8,
+                    IndexFormat = $"logs-{serviceName}-{{0:yyyy.MM.dd}}",
+                    NumberOfShards = 1,
+                    NumberOfReplicas = 0,
+                    EmitEventFailure = EmitEventFailureHandling.WriteToSelfLog,
+                    BatchAction = ElasticOpType.Create,
+                    CustomFormatter = new EcsTextFormatter()
+                });
+        }, writeToProviders: true);
+
         return builder;
     }
 
@@ -73,7 +127,9 @@ public static partial class Extensions
 
                 tracing.AddAspNetCoreInstrumentation()
                     .AddGrpcClientInstrumentation()
-                    .AddHttpClientInstrumentation()
+                    .AddSqlClientInstrumentation()
+                    .AddConsoleExporter()
+                    .AddSource("MassTransit")
                     .AddSource("Experimental.Microsoft.Extensions.AI");
             });
 
