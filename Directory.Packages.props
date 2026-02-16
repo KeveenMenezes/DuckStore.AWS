@@ -9,7 +9,6 @@
     <PackageVersion Include="Amazon.Lambda.Core" Version="2.8.1" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.5" />
     <PackageVersion Include="Aspire.Elastic.Clients.Elasticsearch" Version="13.1.0" />
-    <PackageVersion Include="Aspire.Hosting.AWS" Version="9.3.2" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
     <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.1.1" />
@@ -22,7 +21,6 @@
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.1.1" />
     <PackageVersion Include="Aspire.Npgsql" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.Elasticsearch" Version="13.1.0" />
-    <PackageVersion Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.3.22" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="13.1.1" />
     <PackageVersion Include="CommunityToolkit.Aspire.Microsoft.EntityFrameworkCore.Sqlite" Version="9.7.2" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4">

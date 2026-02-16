@@ -98,6 +98,20 @@ builder.AddProject<Projects.Shopping_Web_Server>(
     .WithReference(catalogApi)
     .WithReference(orderingApi);
 
+// AWS Resources (LocalStack for local dev — SQS + DynamoDB)
+var localstack = builder.AddContainer("localstack", "localstack/localstack", "latest")
+    .WithEnvironment("SERVICES", "sqs,dynamodb")
+    .WithEndpoint(port: 4566, targetPort: 4566, name: "gateway");
+
+// Go Notification Service (SQS consumer → DynamoDB)
+// The Go service auto-creates the SQS queue and DynamoDB table when AWS_ENDPOINT_URL is set.
+builder.AddDockerfile("notification-go", "../Services/Notification/Notification.Go")
+    .WithEnvironment("AWS_REGION", "us-east-1")
+    .WithEnvironment("AWS_ENDPOINT_URL", localstack.GetEndpoint("gateway"))
+    .WithEnvironment("SQS_QUEUE_NAME", "duckstore-notifications")
+    .WithEnvironment("DYNAMODB_TABLE", "duckstore-notifications")
+    .WaitFor(localstack);
+
 builder.AddNpmApp("shopping-web-spa", "../WebApps/Shopping.Web.SPA")
     .WithExternalHttpEndpoints()
     .WaitFor(yarpApiGateway)
