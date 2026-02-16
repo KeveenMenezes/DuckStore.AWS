@@ -17,7 +17,6 @@ var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("
     .WithReference(orderingDb);
 
 // Messaging
-//TODO: incluir a conexão nas suas refenencias.
 var rabbitMq = builder
     .AddRabbitMQ(
         "messageBroker",
@@ -33,11 +32,11 @@ var elasticsearch = builder.AddElasticsearch("elasticsearch")
     .WithEnvironment("discovery.type", "single-node")
     .WithDataVolume();
 
-var kibana = builder.AddContainer("kibana", "docker.elastic.co/kibana/kibana", "8.17.3")
+_ = builder.AddContainer("kibana", "docker.elastic.co/kibana/kibana", "8.17.3")
     .WithEnvironment("ELASTICSEARCH_HOSTS", "http://elasticsearch:9200")
     .WithHttpEndpoint(port: 5601, targetPort: 5601, name: "http")
-    .WithReference(elasticsearch)
-    .WaitFor(elasticsearch);
+    .WaitFor(elasticsearch)
+    .WithReference(elasticsearch);
 
 // Services
 var catalogApi = builder.AddProject<Projects.Catalog_API>(

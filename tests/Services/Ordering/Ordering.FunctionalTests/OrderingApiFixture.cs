@@ -1,72 +1,54 @@
-﻿using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.Hosting;
+﻿using Microsoft.Extensions.Logging;
 
 namespace Ordering.FunctionalTests;
 
 public sealed class OrderingApiFixture
-    : WebApplicationFactory<Program>, IAsyncLifetime
+    : IAsyncLifetime
 {
-    private readonly IHost _app;
+    /// <summary>
+    /// Timeout for the full application startup including Docker containers
+    /// (SQL Server, RabbitMQ, Elasticsearch JVM, migrations, etc.).
+    /// </summary>
+    private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(2);
 
-    private readonly IResourceBuilder<SqlServerServerResource> _orderingDb;
-    private readonly IResourceBuilder<RabbitMQServerResource> _rabbitMq;
-    private string _orderingDbConnectionString;
-    private string _rabbitMqConnectionString;
+    private DistributedApplication _app;
 
-    public OrderingApiFixture()
+    public HttpClient HttpClient { get; private set; }
+
+    public Task DisposeAsync()
     {
-        var options = new DistributedApplicationOptions
-        {
-            AssemblyName = typeof(OrderingApiFixture).Assembly.FullName,
-            DisableDashboard = true
-        };
+        HttpClient.Dispose();
+        _app.Dispose();
 
-        var appBuilder = DistributedApplication.CreateBuilder(options);
-
-        _orderingDb = appBuilder.AddSqlServer("OrderingDb");
-        _rabbitMq = appBuilder.AddRabbitMQ("RabbitMq");
-        _app = appBuilder.Build();
-    }
-
-    protected override IHost CreateHost(IHostBuilder builder)
-    {
-        builder.ConfigureHostConfiguration(config =>
-        {
-            config.AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                { "ConnectionStrings:orderingDb", _orderingDbConnectionString },
-                { "MessageBroker:Host", _rabbitMqConnectionString },
-                { "MessageBroker:UserName", "guest" },
-                { "MessageBroker:Password", "guest" },
-            });
-        });
-
-        return base.CreateHost(builder);
-    }
-
-    public new async Task DisposeAsync()
-    {
-        await base.DisposeAsync();
-        await _app.StopAsync();
-        if (_app is IAsyncDisposable asyncDisposable)
-        {
-            await asyncDisposable.DisposeAsync().ConfigureAwait(false);
-        }
-        else
-        {
-            _app.Dispose();
-        }
+        return Task.CompletedTask;
     }
 
     public async Task InitializeAsync()
     {
-        await _app.StartAsync();
-        _orderingDbConnectionString = await _orderingDb.Resource.GetConnectionStringAsync() ??
-            throw new InvalidOperationException("Could not get connection string for OrderingDb");
+        using var cts = new CancellationTokenSource(StartupTimeout);
 
-        var rabbitMqEndpoint = _rabbitMq.Resource.PrimaryEndpoint ??
-            throw new InvalidOperationException("Could not get primary endpoint for RabbitMq");
+        var appHost = await DistributedApplicationTestingBuilder
+            .CreateAsync<Projects.AppHost>(["DcpPublisher:RandomizePorts=false"]);
 
-        _rabbitMqConnectionString = $"amqp://{rabbitMqEndpoint.Host}:{rabbitMqEndpoint.Port}";
+        appHost.Services.AddLogging(logging =>
+        {
+            logging.SetMinimumLevel(LogLevel.Debug);
+            logging.AddFilter(appHost.Environment.ApplicationName, LogLevel.Debug);
+            logging.AddFilter("Aspire.", LogLevel.Debug);
+        });
+
+        appHost.Services.ConfigureHttpClientDefaults(clientBuilder =>
+        {
+            clientBuilder.AddStandardResilienceHandler();
+        });
+
+        _app = await appHost.BuildAsync(cts.Token);
+
+        await _app.StartAsync(cts.Token);
+
+        await _app.ResourceNotifications
+            .WaitForResourceHealthyAsync("ordering-api", cts.Token);
+
+        HttpClient = _app.CreateHttpClient("ordering-api");
     }
 }
