@@ -67,6 +67,14 @@ public sealed class OrderingApiFixture
         // Get RabbitMQ connection string using the amqp format
         var rabbitMqEndpoint = _rabbitMq.Resource.PrimaryEndpoint ??
             throw new InvalidOperationException("Could not get primary endpoint for RabbitMq");
+        if (rabbitMqEndpoint.Host is null)
+        {
+            throw new InvalidOperationException("RabbitMQ endpoint host not available");
+        }
+        if (rabbitMqEndpoint.Port is null)
+        {
+            throw new InvalidOperationException("RabbitMQ endpoint port not available");
+        }
         var host = rabbitMqEndpoint.Host;
         var port = rabbitMqEndpoint.Port;
         _rabbitMqConnectionString = $"amqp://{host}:{port}";
