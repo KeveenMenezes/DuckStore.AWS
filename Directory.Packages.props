@@ -23,7 +23,7 @@
     <PackageVersion Include="Aspire.Hosting.Elasticsearch" Version="13.1.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="13.1.1" />
     <PackageVersion Include="CommunityToolkit.Aspire.Microsoft.EntityFrameworkCore.Sqlite" Version="9.7.2" />
-    <PackageVersion Include="coverlet.collector" Version="6.0.4">
+    <PackageVersion Include="coverlet.collector" Version="8.0.0">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
