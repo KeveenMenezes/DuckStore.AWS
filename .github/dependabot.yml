@@ -15,7 +15,6 @@ updates:
       interval: "daily"
       time: "05:00"
       timezone: "America/Sao_Paulo"
-    versioning-strategy: increase
     rebase-strategy: auto
     commit-message:
       prefix: "deps"
@@ -79,6 +78,36 @@ updates:
           - "Yarp.*"
       testing:
         patterns:
+          - "xunit*"
+          - "Moq*"
+          - "MockQueryable*"
+          - "coverlet.*"
+          - "Microsoft.NET.Test.Sdk"
+      all-other-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "Aspire.*"
+          - "CommunityToolkit.Aspire.*"
+          - "Microsoft.Extensions.ServiceDiscovery*"
+          - "Amazon.*"
+          - "AWSSDK.*"
+          - "AspNetCore.HealthChecks.*"
+          - "Microsoft.AspNetCore.*"
+          - "Microsoft.FeatureManagement.*"
+          - "Microsoft.Extensions.Features"
+          - "Microsoft.Extensions.*"
+          - "Microsoft.Bcl.*"
+          - "Microsoft.EntityFrameworkCore.*"
+          - "Microsoft.FluentUI.*"
+          - "OpenTelemetry.*"
+          - "Npgsql.*"
+          - "Microsoft.DotNet.*"
+          - "Grpc.*"
+          - "MassTransit.*"
+          - "FluentValidation.*"
+          - "Marten*"
+          - "Yarp.*"
           - "xunit*"
           - "Moq*"
           - "MockQueryable*"
