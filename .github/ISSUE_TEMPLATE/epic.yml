@@ -1,0 +1,69 @@
+name: Epic
+description: Descreva uma iniciativa de alto nível que agrupa múltiplas features ou tarefas
+title: "[EPIC] "
+labels: ["epic"]
+body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objetivo
+      description: Descreva o objetivo principal desta Epic.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexto/Problema
+      description: Descreva o contexto ou problema que motivou esta Epic.
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: Escopo
+      description: |
+        Descreva o que está incluído e o que está fora do escopo desta Epic.
+        **Inclui:**
+        **Não inclui:**
+    validations:
+      required: false
+
+  - type: textarea
+    id: deliverables
+    attributes:
+      label: Entregáveis
+      description: Liste as issues relacionadas a esta Epic.
+      placeholder: |
+        - [ ] #123
+        - [ ] #456
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios de aceite
+      description: Liste os critérios que definem quando esta Epic estará completa.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridade
+      options:
+        - Alta
+        - Média
+        - Baixa
+    validations:
+      required: true
+
+  - type: textarea
+    id: risks
+    attributes:
+      label: Dependências/Riscos
+      description: Descreva dependências externas ou riscos associados a esta Epic.
+    validations:
+      required: false

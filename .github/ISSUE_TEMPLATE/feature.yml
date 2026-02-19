@@ -1,0 +1,56 @@
+name: Feature
+description: Solicite uma nova funcionalidade
+title: "[FEATURE] "
+labels: ["feature"]
+body:
+  - type: input
+    id: epic
+    attributes:
+      label: Epic relacionada
+      description: Informe o número da Epic relacionada, se houver (ex: #123)
+      placeholder: "#123"
+    validations:
+      required: false
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problema/Necessidade
+      description: Descreva o problema ou necessidade que essa funcionalidade resolve.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposta de solução
+      description: Descreva a solução ou funcionalidade desejada.
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Critérios de aceite
+      description: Liste os critérios que definem quando essa funcionalidade estará completa.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridade
+      options:
+        - Alta
+        - Média
+        - Baixa
+    validations:
+      required: true
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notas técnicas/Observações
+      description: Adicione detalhes técnicos, restrições ou observações relevantes.
+    validations:
+      required: false

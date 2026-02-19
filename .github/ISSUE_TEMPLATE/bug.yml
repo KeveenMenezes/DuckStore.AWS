@@ -1,0 +1,76 @@
+name: Bug
+description: Reporte um problema no sistema
+title: "[BUG] "
+labels: ["bug"]
+body:
+  - type: input
+    id: epic
+    attributes:
+      label: Epic relacionada
+      description: Informe o número da Epic relacionada, se houver (ex: #123)
+      placeholder: "#123"
+    validations:
+      required: false
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Descrição do bug
+      description: Descreva o problema claramente.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Passos para reproduzir
+      description: Liste os passos necessários para reproduzir o problema.
+      placeholder: |
+        1. Vá até '...'
+        2. Clique em '...'
+        3. Veja o erro.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportamento esperado
+      description: Descreva o comportamento esperado.
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportamento atual
+      description: Descreva o que acontece atualmente.
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Ambiente
+      description: Informe detalhes do ambiente (sistema operacional, versão, navegador, etc.)
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Prioridade
+      options:
+        - Alta
+        - Média
+        - Baixa
+    validations:
+      required: true
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidências (logs/prints/vídeos)
+      description: Adicione logs, capturas de tela ou vídeos que ajudem a entender o problema.
+    validations:
+      required: false
