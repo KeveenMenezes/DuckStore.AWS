@@ -8,6 +8,7 @@
     <PackageVersion Include="Amazon.Lambda.APIGatewayEvents" Version="2.7.3" />
     <PackageVersion Include="Amazon.Lambda.Core" Version="2.8.1" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.5" />
+    <PackageVersion Include="AWSSDK.Core" Version="4.0.3.14" />
     <PackageVersion Include="Aspire.Elastic.Clients.Elasticsearch" Version="13.1.0" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
