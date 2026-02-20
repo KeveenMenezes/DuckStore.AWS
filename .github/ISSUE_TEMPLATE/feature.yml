@@ -7,7 +7,7 @@ body:
     id: epic
     attributes:
       label: Epic relacionada
-      description: Informe o número da Epic relacionada, se houver (ex: #123)
+      description: "Informe o número da Epic relacionada, se houver (ex: #123)"
       placeholder: "#123"
     validations:
       required: false
