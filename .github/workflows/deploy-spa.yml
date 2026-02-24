@@ -1,0 +1,200 @@
+name: Deploy Shopping SPA to S3 + CloudFront
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "src/WebApps/Shopping.Web.SPA/**"
+      - "infra/spa-static-hosting/**"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "production"
+        type: choice
+        options:
+          - production
+          - staging
+      skip_build:
+        description: "Skip Angular build (redeploy existing artifacts)"
+        required: false
+        default: false
+        type: boolean
+      build_run_id:
+        description: "Workflow run ID to download build artifacts from (required when skip_build is true)"
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+  actions: read
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: "20"
+
+jobs:
+  deploy:
+    name: Build & Deploy SPA
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'production' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: src/WebApps/Shopping.Web.SPA/package-lock.json
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy CloudFormation stack
+        working-directory: infra/spa-static-hosting
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
+          STACK_NAME="duckstore-spa-${ENVIRONMENT}"
+
+          # Use real API domain if secret is set, otherwise keep placeholder
+          API_DOMAIN="${{ secrets.API_GATEWAY_DOMAIN }}"
+          API_DOMAIN="${API_DOMAIN:-placeholder.example.com}"
+
+          # Look up Route 53 Hosted Zone ID for thecodeduck.com
+          HOSTED_ZONE_ID=$(aws route53 list-hosted-zones-by-name \
+            --dns-name thecodeduck.com \
+            --query "HostedZones[0].Id" \
+            --output text | sed 's|/hostedzone/||')
+
+          aws cloudformation deploy \
+            --template-file template.yaml \
+            --stack-name "${STACK_NAME}" \
+            --region ${{ env.AWS_REGION }} \
+            --parameter-overrides \
+              Environment="${ENVIRONMENT}" \
+              ApiGatewayOriginDomain="${API_DOMAIN}" \
+              ApiGatewayOriginProtocol="https-only" \
+              CustomDomain="shop.thecodeduck.com" \
+              Route53HostedZoneId="${HOSTED_ZONE_ID}" \
+            --no-fail-on-empty-changeset \
+            --tags \
+              Project=DuckStore \
+              Component=Shopping-SPA \
+              Environment="${ENVIRONMENT}"
+
+      - name: Get stack outputs
+        id: stack
+        run: |
+          ENVIRONMENT="${{ github.event.inputs.environment || 'production' }}"
+          STACK_NAME="duckstore-spa-${ENVIRONMENT}"
+
+          echo "bucket=$(aws cloudformation describe-stacks \
+            --stack-name ${STACK_NAME} \
+            --query "Stacks[0].Outputs[?OutputKey=='S3BucketName'].OutputValue" \
+            --output text)" >> $GITHUB_OUTPUT
+
+          echo "distribution_id=$(aws cloudformation describe-stacks \
+            --stack-name ${STACK_NAME} \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDistributionId'].OutputValue" \
+            --output text)" >> $GITHUB_OUTPUT
+
+          echo "domain=$(aws cloudformation describe-stacks \
+            --stack-name ${STACK_NAME} \
+            --query "Stacks[0].Outputs[?OutputKey=='CloudFrontDomainName'].OutputValue" \
+            --output text)" >> $GITHUB_OUTPUT
+
+          echo "spa_url=$(aws cloudformation describe-stacks \
+            --stack-name ${STACK_NAME} \
+            --query "Stacks[0].Outputs[?OutputKey=='SpaUrl'].OutputValue" \
+            --output text)" >> $GITHUB_OUTPUT
+
+      - name: Install dependencies
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        working-directory: src/WebApps/Shopping.Web.SPA
+        run: npm ci
+
+      - name: Inject CloudFront URL into environment.production.ts
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        working-directory: src/WebApps/Shopping.Web.SPA
+        run: |
+          SPA_URL="${{ steps.stack.outputs.spa_url }}"
+          sed -i "s|redirectUrl: '.*'|redirectUrl: '${SPA_URL}'|" src/environments/environment.production.ts
+          echo "Cognito redirectUrl set to: ${SPA_URL}"
+
+      - name: Build Angular app
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        working-directory: src/WebApps/Shopping.Web.SPA
+        run: npx ng build --configuration production
+
+      - name: Restore environment file
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        working-directory: src/WebApps/Shopping.Web.SPA
+        run: git checkout -- src/environments/environment.production.ts 2>/dev/null || true
+
+      - name: Upload build artifact
+        if: ${{ github.event.inputs.skip_build != 'true' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: spa-dist-${{ github.event.inputs.environment || 'production' }}
+          path: src/WebApps/Shopping.Web.SPA/dist/shopping/browser
+          retention-days: 7
+
+      - name: Validate skip_build inputs
+        if: ${{ github.event.inputs.skip_build == 'true' }}
+        run: |
+          if [ -z "${{ github.event.inputs.build_run_id }}" ]; then
+            echo "::error::build_run_id is required when skip_build is true. Provide the workflow run ID of a previous build to redeploy."
+            exit 1
+          fi
+
+      - name: Download build artifact
+        if: ${{ github.event.inputs.skip_build == 'true' }}
+        uses: actions/download-artifact@v4
+        with:
+          name: spa-dist-${{ github.event.inputs.environment || 'production' }}
+          path: src/WebApps/Shopping.Web.SPA/dist/shopping/browser
+          run-id: ${{ github.event.inputs.build_run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Sync hashed assets to S3 (long cache)
+        run: |
+          aws s3 sync \
+            src/WebApps/Shopping.Web.SPA/dist/shopping/browser \
+            s3://${{ steps.stack.outputs.bucket }} \
+            --delete \
+            --exclude "index.html" \
+            --exclude "*.json" \
+            --cache-control "public,max-age=31536000,immutable"
+
+      - name: Upload index.html (short cache)
+        run: |
+          aws s3 cp \
+            src/WebApps/Shopping.Web.SPA/dist/shopping/browser/index.html \
+            s3://${{ steps.stack.outputs.bucket }}/index.html \
+            --cache-control "public,max-age=60,s-maxage=0,must-revalidate" \
+            --content-type "text/html"
+
+      - name: Invalidate CloudFront cache
+        run: |
+          aws cloudfront create-invalidation \
+            --distribution-id ${{ steps.stack.outputs.distribution_id }} \
+            --paths "/index.html" "/*.json"
+
+      - name: Deployment summary
+        run: |
+          echo "## 🦆 DuckStore SPA Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **URL** | ${{ steps.stack.outputs.spa_url }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **S3 Bucket** | ${{ steps.stack.outputs.bucket }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **CloudFront ID** | ${{ steps.stack.outputs.distribution_id }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Environment** | ${{ github.event.inputs.environment || 'production' }} |" >> $GITHUB_STEP_SUMMARY
