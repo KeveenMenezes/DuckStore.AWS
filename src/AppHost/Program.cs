@@ -115,7 +115,7 @@ builder.AddNpmApp("shopping-web-spa", "../WebApps/Shopping.Web.SPA")
     .WithExternalHttpEndpoints()
     .WaitFor(yarpApiGateway)
     .WithReference(yarpApiGateway)
-    .WithHttpsEndpoint(env: "PORT")
+    .WithEndpoint(port: 4200, targetPort: 4200, scheme: "https", name: "https", env: "PORT", isProxied: false)
     .PublishAsDockerFile();
 
 await builder.Build().RunAsync();
