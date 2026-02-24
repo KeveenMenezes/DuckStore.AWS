@@ -76,6 +76,14 @@ jobs:
             --query "HostedZones[0].Id" \
             --output text | sed 's|/hostedzone/||')
 
+          # If hosted zone not found, deploy without custom domain
+          CUSTOM_DOMAIN="shop.thecodeduck.com"
+          if [[ -z "$HOSTED_ZONE_ID" || "$HOSTED_ZONE_ID" == "None" ]]; then
+            echo "::warning::Could not find Route 53 Hosted Zone for thecodeduck.com — deploying without custom domain."
+            CUSTOM_DOMAIN=""
+            HOSTED_ZONE_ID=""
+          fi
+
           aws cloudformation deploy \
             --template-file template.yaml \
             --stack-name "${STACK_NAME}" \
@@ -84,7 +92,7 @@ jobs:
               Environment="${ENVIRONMENT}" \
               ApiGatewayOriginDomain="${API_DOMAIN}" \
               ApiGatewayOriginProtocol="https-only" \
-              CustomDomain="shop.thecodeduck.com" \
+              CustomDomain="${CUSTOM_DOMAIN}" \
               Route53HostedZoneId="${HOSTED_ZONE_ID}" \
             --no-fail-on-empty-changeset \
             --tags \
