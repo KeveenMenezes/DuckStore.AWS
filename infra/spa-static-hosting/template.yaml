@@ -153,7 +153,7 @@ Resources:
     Properties:
       CachePolicyConfig:
         Name: !Sub "duckstore-api-no-cache-${Environment}"
-        Comment: No caching for API requests — forward all to origin
+        Comment: No caching for API requests — forwards auth headers to origin
         DefaultTTL: 0
         MaxTTL: 0
         MinTTL: 0
@@ -161,7 +161,10 @@ Resources:
           CookiesConfig:
             CookieBehavior: none
           HeadersConfig:
-            HeaderBehavior: none
+            HeaderBehavior: whitelist
+            Headers:
+              - Authorization
+              - Accept
           QueryStringsConfig:
             QueryStringBehavior: all
           EnableAcceptEncodingGzip: true
@@ -175,14 +178,12 @@ Resources:
     Properties:
       OriginRequestPolicyConfig:
         Name: !Sub "duckstore-api-origin-request-${Environment}"
-        Comment: Forward Authorization header and query strings to API Gateway
+        Comment: Forward Content-Type and query strings to API Gateway
         CookiesConfig:
           CookieBehavior: none
         HeadersConfig:
           HeaderBehavior: whitelist
           Headers:
-            - Authorization
-            - Accept
             - Content-Type
         QueryStringsConfig:
           QueryStringBehavior: all
