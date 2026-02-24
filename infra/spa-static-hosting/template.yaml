@@ -146,47 +146,12 @@ Resources:
         SigningProtocol: sigv4
 
   # ──────────────────────────────────────────────
-  # CloudFront Cache Policies
+  # CloudFront Managed Policy IDs for API behaviors
+  #   CachingDisabled:              4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+  #   AllViewerExceptHostHeader:    b689b0a8-53d0-40ab-baf2-68738e2966ac
+  # These replace custom policies — no caching, all headers
+  # (including Authorization) forwarded to the YARP Gateway.
   # ──────────────────────────────────────────────
-  ApiCachePolicy:
-    Type: AWS::CloudFront::CachePolicy
-    Properties:
-      CachePolicyConfig:
-        Name: !Sub "duckstore-api-no-cache-${Environment}"
-        Comment: No caching for API requests — forwards auth headers to origin
-        DefaultTTL: 0
-        MaxTTL: 0
-        MinTTL: 0
-        ParametersInCacheKeyAndForwardedToOrigin:
-          CookiesConfig:
-            CookieBehavior: none
-          HeadersConfig:
-            HeaderBehavior: whitelist
-            Headers:
-              - Authorization
-              - Accept
-          QueryStringsConfig:
-            QueryStringBehavior: all
-          EnableAcceptEncodingGzip: true
-          EnableAcceptEncodingBrotli: true
-
-  # ──────────────────────────────────────────────
-  # CloudFront Origin Request Policy for API
-  # ──────────────────────────────────────────────
-  ApiOriginRequestPolicy:
-    Type: AWS::CloudFront::OriginRequestPolicy
-    Properties:
-      OriginRequestPolicyConfig:
-        Name: !Sub "duckstore-api-origin-request-${Environment}"
-        Comment: Forward Content-Type and query strings to API Gateway
-        CookiesConfig:
-          CookieBehavior: none
-        HeadersConfig:
-          HeaderBehavior: whitelist
-          Headers:
-            - Content-Type
-        QueryStringsConfig:
-          QueryStringBehavior: all
 
   # ──────────────────────────────────────────────
   # CloudFront Response Headers Policy
@@ -351,8 +316,8 @@ Resources:
           - PathPattern: "/catalog-service/*"
             TargetOriginId: ApiGatewayOrigin
             ViewerProtocolPolicy: redirect-to-https
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
             AllowedMethods:
               - GET
               - HEAD
@@ -367,8 +332,8 @@ Resources:
           - PathPattern: "/ordering-service/*"
             TargetOriginId: ApiGatewayOrigin
             ViewerProtocolPolicy: redirect-to-https
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
             AllowedMethods:
               - GET
               - HEAD
@@ -383,8 +348,8 @@ Resources:
           - PathPattern: "/basket-service/*"
             TargetOriginId: ApiGatewayOrigin
             ViewerProtocolPolicy: redirect-to-https
-            CachePolicyId: !Ref ApiCachePolicy
-            OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+            CachePolicyId: 4135ea2d-6df8-44a3-9df3-4b5a84be39ad
+            OriginRequestPolicyId: b689b0a8-53d0-40ab-baf2-68738e2966ac
             AllowedMethods:
               - GET
               - HEAD
