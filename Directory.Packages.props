@@ -12,15 +12,15 @@
     <PackageVersion Include="Aspire.Elastic.Clients.Elasticsearch" Version="13.1.0" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
-    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.1.1" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.SqlServer" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Microsoft.EntityFrameworkCore.SqlServer" Version="13.1.2" />
     <PackageVersion Include="Aspire.RabbitMQ.Client.v7" Version="9.5.2" />
-    <PackageVersion Include="Aspire.StackExchange.Redis" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.1.1" />
-    <PackageVersion Include="Aspire.Npgsql" Version="13.1.1" />
+    <PackageVersion Include="Aspire.StackExchange.Redis" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.1.2" />
+    <PackageVersion Include="Aspire.Npgsql" Version="13.1.2" />
     <PackageVersion Include="Aspire.Hosting.Elasticsearch" Version="13.1.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.Sqlite" Version="13.1.1" />
     <PackageVersion Include="CommunityToolkit.Aspire.Microsoft.EntityFrameworkCore.Sqlite" Version="9.7.2" />
