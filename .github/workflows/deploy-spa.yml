@@ -43,12 +43,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "npm"
@@ -151,7 +151,7 @@ jobs:
 
       - name: Upload build artifact
         if: ${{ github.event.inputs.skip_build != 'true' }}
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: spa-dist-${{ github.event.inputs.environment || 'production' }}
           path: src/WebApps/Shopping.Web.SPA/dist/shopping/browser
@@ -167,7 +167,7 @@ jobs:
 
       - name: Download build artifact
         if: ${{ github.event.inputs.skip_build == 'true' }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: spa-dist-${{ github.event.inputs.environment || 'production' }}
           path: src/WebApps/Shopping.Web.SPA/dist/shopping/browser
