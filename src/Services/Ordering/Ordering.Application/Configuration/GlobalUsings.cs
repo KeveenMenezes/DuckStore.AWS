@@ -4,7 +4,6 @@ global using BuildingBlocks.Core.CQRS;
 global using BuildingBlocks.Core.Pagination;
 global using BuildingBlocks.Messaging.Events;
 global using FluentValidation;
-global using MassTransit;
 global using MediatR;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;

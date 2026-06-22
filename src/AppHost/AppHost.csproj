@@ -1,4 +1,4 @@
-<Project Sdk="Aspire.AppHost.Sdk/13.1.1">
+<Project Sdk="Aspire.AppHost.Sdk/13.4.6">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -10,14 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AWS" />
     <PackageReference Include="Aspire.Hosting.Elasticsearch" />
-    <PackageReference Include="Aspire.Hosting.RabbitMQ" />
-    <PackageReference Include="Aspire.Hosting.SqlServer" />
-    <PackageReference Include="Aspire.Npgsql" />
-    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
     <PackageReference Include="Aspire.Hosting.NodeJs" />
     <PackageReference Include="Aspire.Hosting.Redis" />
-    <PackageReference Include="CommunityToolkit.Aspire.Hosting.Sqlite" />
   </ItemGroup>
 
   <ItemGroup>
@@ -30,7 +26,9 @@
     <ProjectReference Include="..\Services\Catalog\Catalog.API\Catalog.API.csproj" />
     <ProjectReference Include="..\Services\Discount\Discount.Grpc\Discount.Grpc.csproj" />
     <ProjectReference Include="..\Services\Ordering\Ordering.API\Ordering.API.csproj" />
+    <ProjectReference Include="..\Services\Ordering\Ordering.BasketCheckoutConsumer.Lambda\Ordering.BasketCheckoutConsumer.Lambda.csproj" />
     <ProjectReference Include="..\Services\Ordering\Ordering.MigrationService\Ordering.MigrationService.csproj" />
+    <ProjectReference Include="..\Services\Ordering\Ordering.OrderCreatedPublisher.Lambda\Ordering.OrderCreatedPublisher.Lambda.csproj" />
     <ProjectReference Include="..\WebApps\Shopping.Web.Server\Shopping.Web.Server.csproj" />
   </ItemGroup>
 

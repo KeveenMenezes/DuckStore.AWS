@@ -1,6 +1,5 @@
-﻿using BuildingBlocks.ServiceDefaults;
-using Microsoft.EntityFrameworkCore;
-using Ordering.Infrastructure.Data;
+using BuildingBlocks.ServiceDefaults;
+using Ordering.Infrastructure.Configuration;
 using Ordering.MigrationService;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -11,10 +10,7 @@ if (builder.Environment.IsDevelopment())
     builder.AddServiceDefaults();
 
     builder.Services
-        .AddDbContext<ApplicationDbContext>((sp, options) =>
-        {
-            options.UseSqlServer(builder.Configuration.GetConnectionString("orderingDb"));
-        })
+        .AddInfrastructureServices(builder.Configuration)
         .AddHostedService<Worker>();
 }
 

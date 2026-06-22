@@ -6,11 +6,4 @@ public class IdentifiableAggregate<TKey, T> : Aggregate<TKey>
 {
     [JsonIgnore]
     public new IReadOnlyList<IDomainEvent> DomainEvents => base.DomainEvents;
-
-    [Identity]
-    public T AggregateId
-    {
-        get => Id.Value;
-        set { }
-    }
 }

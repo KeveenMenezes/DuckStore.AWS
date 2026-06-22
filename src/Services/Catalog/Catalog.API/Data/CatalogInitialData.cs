@@ -1,20 +1,17 @@
-﻿namespace Catalog.API.Data;
+namespace Catalog.API.Data;
 
-public class CatalogInitialData : IInitialData
+public class CatalogInitialData(IProductRepository productRepository, ICategoryRepository categoryRepository)
 {
-    public async Task Populate(IDocumentStore store, CancellationToken cancellation)
+    public async Task PopulateAsync(CancellationToken cancellationToken = default)
     {
-        using var session = store.LightweightSession();
-
-        if (await session.Query<Product>().AnyAsync(token: cancellation))
-        {
+        if (await productRepository.AnyAsync(cancellationToken))
             return;
-        }
 
-        session.Store(GetPreconfiguredProducts());
-        session.Store(GetPreconfiguredCategories());
+        foreach (var product in GetPreconfiguredProducts())
+            await productRepository.AddAsync(product, cancellationToken);
 
-        await session.SaveChangesAsync(cancellation);
+        foreach (var category in GetPreconfiguredCategories())
+            await categoryRepository.AddAsync(category, cancellationToken);
     }
 
     private static IEnumerable<Product> GetPreconfiguredProducts()

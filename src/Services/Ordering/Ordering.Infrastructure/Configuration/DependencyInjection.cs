@@ -1,7 +1,5 @@
-﻿using System.Reflection;
-using BuildingBlocks.Core.Abstractions;
-using BuildingBlocks.Messaging.MassTransit;
-using MassTransit;
+using Amazon.DynamoDBv2;
+using BuildingBlocks.Messaging.EventBridge;
 using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 namespace Ordering.Infrastructure.Configuration;
@@ -10,32 +8,14 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services,
-        IConfiguration configuration,
-        Assembly? consumerAssembly = null)
+        IConfiguration configuration)
     {
-        services.AddScoped<IUnitOfWork, UnitOfWork>();
+        // DynamoDB Local injeta AWS_ENDPOINT_URL_DYNAMODB; o SDK resolve sozinho.
+        services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
+
         services.AddScoped<IOrderRepository, OrderRepository>();
 
-        services.AddMessageBroker(
-                configuration,
-                consumerAssembly,
-                additionalConfig: config =>
-                {
-                    config.AddEntityFrameworkOutbox<ApplicationDbContext>(o =>
-                    {
-                        o.UseSqlServer();
-                        o.UseBusOutbox();
-                    });
-                });
-
-        services.AddScoped<ISaveChangesInterceptor, AuditableEntityInterceptor>();
-        services.AddScoped<ISaveChangesInterceptor, DispatchDomainEventsInterceptor>();
-
-        services.AddDbContext<ApplicationDbContext>((sp, options) =>
-        {
-            options.AddInterceptors(sp.GetServices<ISaveChangesInterceptor>());
-            options.UseSqlServer(configuration.GetConnectionString("orderingDb"));
-        });
+        services.AddEventBridgeMessaging(configuration);
 
         return services;
     }

@@ -6,16 +6,13 @@ public record GetProductByCategoryQuery(Guid CategoryId) :
 public record GetProductByCategoryResult(IEnumerable<Product> Products);
 
 public class GetProductByCategoryQueryHandler
-    (IDocumentSession session)
+    (IProductRepository productRepository)
     : IQueryHandler<GetProductByCategoryQuery, GetProductByCategoryResult>
 {
     public async Task<GetProductByCategoryResult> Handle(
         GetProductByCategoryQuery request, CancellationToken cancellationToken)
     {
-        var products = await session.Query<Product>()
-            .Where(p =>
-                p.CategoryIds.Contains(CategoryId.Of(request.CategoryId)))
-            .ToListAsync(token: cancellationToken);
+        var products = await productRepository.GetByCategoryAsync(request.CategoryId, cancellationToken);
 
         return new GetProductByCategoryResult(products);
     }

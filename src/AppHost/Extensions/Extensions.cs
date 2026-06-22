@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using Aspire.Hosting.ApplicationModel;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,4 +19,16 @@ public static class Extensions
         });
         return builder;
     }
+
+    /// <summary>
+    /// Região + credenciais dummy para dev local: o DynamoDB Local ignora as credenciais,
+    /// e o cliente EventBridge (bus só na AWS) precisa de uma região para ser construído —
+    /// o publish é best-effort e falha silenciosamente fora da AWS.
+    /// </summary>
+    public static IResourceBuilder<T> WithAwsDevEnvironment<T>(this IResourceBuilder<T> builder)
+        where T : IResourceWithEnvironment =>
+        builder
+            .WithEnvironment("AWS_ACCESS_KEY_ID", "dummy")
+            .WithEnvironment("AWS_SECRET_ACCESS_KEY", "dummy")
+            .WithEnvironment("AWS_REGION", "us-east-1");
 }

@@ -1,3 +1,3 @@
-namespace Catalog.API.Events;
+﻿namespace Catalog.API.Events;
 
 public record ProductUpdatedEvent(Product product) : IDomainEvent;

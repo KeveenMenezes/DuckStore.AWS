@@ -1,29 +1,52 @@
-﻿#pragma warning disable CA2252 // Opt in to preview features
+#pragma warning disable CA2252 // Opt in to preview features
 using AppHost.Extensions;
 
 var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddForwardedHeaders();
 
-// Database
+// Cache
 var redis = builder.AddRedis("redis");
-var discountDb = builder.AddSqlite("discountDb");
-var catalogDb = builder.AddPostgres("catalogDb");
-var basketDb = builder.AddPostgres("basketDb");
-var orderingDb = builder.AddSqlServer("orderingDb");
 
+// Dados: DynamoDB Local (oficial AWS via Aspire.Hosting.AWS) — um por serviço.
+// Cada serviço recebe AWS_ENDPOINT_URL_DYNAMODB via WithReference e o SDK resolve sozinho.
+var catalogDb = builder.AddAWSDynamoDBLocal("catalogDb");
+var basketDb = builder.AddAWSDynamoDBLocal("basketDb");
+var discountDb = builder.AddAWSDynamoDBLocal("discountDb");
+var orderingDb = builder.AddAWSDynamoDBLocal("orderingDb");
+
+const string orderingTableName = "OrderingTable";
+
+// Cria as tabelas do Ordering (single-table + ProcessedIntegrationEvents) e faz o seed.
 var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("ordering-migration")
     .WaitFor(orderingDb)
-    .WithReference(orderingDb);
+    .WithReference(orderingDb)
+    .WithAwsDevEnvironment();
 
-// Messaging
-var rabbitMq = builder
-    .AddRabbitMQ(
-        "messageBroker",
-        builder.AddParameter("username", secret: true),
-        builder.AddParameter("password", secret: true),
-        5672)
-    .WithManagementPlugin();
+// Lambdas (AWS-first): orquestradas localmente pelo emulador do Aspire.Hosting.AWS.
+// EventBridge NÃO é criado localmente (bus só na AWS) — o publish é best-effort.
+builder.AddAWSLambdaServiceEmulator();
+
+// EventBridge → SQS → esta Lambda: o gatilho SQS é AWS-only (sem SQS local).
+// A função fica registrada para deploy/teste de integração na AWS.
+builder.AddAWSLambdaFunction<Projects.Ordering_BasketCheckoutConsumer_Lambda>(
+        "ordering-basket-checkout-consumer",
+        lambdaHandler: "Ordering.BasketCheckoutConsumer.Lambda::Ordering.BasketCheckoutConsumer.Lambda.Function::FunctionHandler")
+    .WaitForCompletion(orderingMigration)
+    .WithReference(orderingDb)
+    .WithAwsDevEnvironment()
+    .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+
+// DynamoDB Streams → esta Lambda: roda LOCAL (DynamoDB Local suporta Streams).
+builder.AddAWSLambdaFunction<Projects.Ordering_OrderCreatedPublisher_Lambda>(
+        "ordering-order-created-publisher",
+        lambdaHandler: "Ordering.OrderCreatedPublisher.Lambda::Ordering.OrderCreatedPublisher.Lambda.Function::FunctionHandler")
+    .WaitForCompletion(orderingMigration)
+    .WithReference(orderingDb)
+    .WithDynamoDBStreamsEventSource(orderingTableName)
+    .WithAwsDevEnvironment()
+    .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
+    .WithEnvironment("FeatureManagement__OrderFullfilment", "true");
 
 // Observability
 var elasticsearch = builder.AddElasticsearch("elasticsearch")
@@ -45,6 +68,7 @@ var catalogApi = builder.AddProject<Projects.Catalog_API>(
     .WaitFor(elasticsearch)
     .WithReference(catalogDb)
     .WithReference(elasticsearch)
+    .WithAwsDevEnvironment()
     .WithHttpHealthCheck("/health");
 
 var discountApi = builder.AddProject<Projects.Discount_Grpc>(
@@ -52,33 +76,34 @@ var discountApi = builder.AddProject<Projects.Discount_Grpc>(
     .WaitFor(discountDb)
     .WaitFor(elasticsearch)
     .WithReference(discountDb)
-    .WithReference(elasticsearch);
+    .WithReference(elasticsearch)
+    .WithAwsDevEnvironment();
 
 var basketApi = builder.AddProject<Projects.Basket_API>(
     "basket-api")
     .WaitFor(redis)
     .WaitFor(basketDb)
     .WaitFor(discountApi)
-    .WaitFor(rabbitMq)
     .WaitFor(elasticsearch)
     .WithReference(redis)
     .WithReference(basketDb)
     .WithReference(discountApi)
-    .WithReference(rabbitMq)
     .WithReference(elasticsearch)
+    .WithAwsDevEnvironment()
+    .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
     .WithHttpHealthCheck("/health");
 
 redis.WithParentRelationship(basketApi);
 
 var orderingApi = builder.AddProject<Projects.Ordering_API>(
     "ordering-api")
-    .WaitFor(orderingMigration)
+    .WaitForCompletion(orderingMigration)
     .WaitFor(orderingDb)
-    .WaitFor(rabbitMq)
     .WaitFor(elasticsearch)
     .WithReference(orderingDb)
-    .WithReference(rabbitMq)
     .WithReference(elasticsearch)
+    .WithAwsDevEnvironment()
+    .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
     .WithHttpHealthCheck("/health");
 
 // Reverse proxies
@@ -97,20 +122,6 @@ builder.AddProject<Projects.Shopping_Web_Server>(
     .WithReference(catalogApi)
     .WithReference(orderingApi);
 
-// AWS Resources (LocalStack for local dev — SQS + DynamoDB)
-var localstack = builder.AddContainer("localstack", "localstack/localstack", "latest")
-    .WithEnvironment("SERVICES", "sqs,dynamodb")
-    .WithEndpoint(port: 4566, targetPort: 4566, name: "gateway");
-
-// Go Notification Service (SQS consumer → DynamoDB)
-// The Go service auto-creates the SQS queue and DynamoDB table when AWS_ENDPOINT_URL is set.
-builder.AddDockerfile("notification-go", "../Services/Notification/Notification.Go")
-    .WithEnvironment("AWS_REGION", "us-east-1")
-    .WithEnvironment("AWS_ENDPOINT_URL", localstack.GetEndpoint("gateway"))
-    .WithEnvironment("SQS_QUEUE_NAME", "duckstore-notifications")
-    .WithEnvironment("DYNAMODB_TABLE", "duckstore-notifications")
-    .WaitFor(localstack);
-
 builder.AddNpmApp("shopping-web-spa", "../WebApps/Shopping.Web.SPA")
     .WithExternalHttpEndpoints()
     .WaitFor(yarpApiGateway)
@@ -119,6 +130,7 @@ builder.AddNpmApp("shopping-web-spa", "../WebApps/Shopping.Web.SPA")
     .PublishAsDockerFile();
 
 await builder.Build().RunAsync();
+return;
 
 static string GetHttpForEndpoints() => "http";
 static string GetHttpsForEndpoints() => "https";

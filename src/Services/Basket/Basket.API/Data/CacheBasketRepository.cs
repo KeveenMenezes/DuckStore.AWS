@@ -1,6 +1,6 @@
 ﻿namespace Basket.API.Data;
 
-public class CacheBasketRepository(
+public abstract class CacheBasketRepository(
     IBasketRepository basketRepository,
     IConnectionMultiplexer distributedCache)
     : IBasketRepository

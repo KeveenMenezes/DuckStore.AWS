@@ -10,9 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
-    <PackageReference Include="Marten" />
     <PackageReference Include="Moq" />
-    <PackageReference Include="MockQueryable.Moq" />
   </ItemGroup>
 
   <ItemGroup>

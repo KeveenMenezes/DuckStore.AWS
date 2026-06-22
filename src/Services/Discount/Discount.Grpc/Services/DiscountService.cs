@@ -1,20 +1,16 @@
-﻿namespace Discount.Grpc.Services;
+namespace Discount.Grpc.Services;
 
-public class DiscountService
-    (DiscountContext dbContext, ILogger<DiscountService> logger)
+public partial class DiscountService
+    (ICouponRepository couponRepository, ILogger<DiscountService> logger)
     : DiscountProtoService.DiscountProtoServiceBase
 {
     public override async Task<CouponModel> GetDiscount(
         GetDiscountRequest request, ServerCallContext context)
     {
-        var coupon = await dbContext
-            .Coupons
-            .FirstOrDefaultAsync(x => x.ProductName == request.ProductName) ??
+        var coupon = await couponRepository.GetByProductNameAsync(request.ProductName, context.CancellationToken) ??
             Coupon.CreateNoDiscountCoupon();
 
-        logger.LogInformation(
-            @"Discount is retrieved for ProductName: {ProductName}, Amout: {Amout}",
-            coupon.ProductName, coupon.Amount);
+        LogDiscountIsRetrievedForProductName(coupon.ProductName, coupon.Amount);
 
         var couponModel = coupon.Adapt<CouponModel>();
         return couponModel;
@@ -28,12 +24,9 @@ public class DiscountService
                 StatusCode.InvalidArgument,
                 "Invalid argument"));
 
-        await dbContext.Coupons.AddAsync(coupon);
-        await dbContext.SaveChangesAsync();
+        await couponRepository.AddAsync(coupon, context.CancellationToken);
 
-        logger.LogInformation(
-            "Discount is successfully created. ProductName: {ProductName}, Amount: {Amount}",
-            coupon.ProductName, coupon.Amount);
+        LogDiscountIsSuccessfullyCreatedProductName(coupon.ProductName, coupon.Amount);
 
         var couponModel = coupon.Adapt<CouponModel>();
         return couponModel;
@@ -47,12 +40,9 @@ public class DiscountService
                 StatusCode.InvalidArgument,
                 "Invalid argument"));
 
-        dbContext.Coupons.Update(coupon);
-        await dbContext.SaveChangesAsync();
+        await couponRepository.UpdateAsync(coupon, context.CancellationToken);
 
-        logger.LogInformation(
-            "Discount is successfully updante. ProductName: {ProductName}, Amount: {Amount}",
-            coupon.ProductName, coupon.Amount);
+        LogDiscountIsSuccessfullyUpdatedProductName(coupon.ProductName, coupon.Amount);
 
         var couponModel = coupon.Adapt<CouponModel>();
         return couponModel;
@@ -61,20 +51,27 @@ public class DiscountService
     public override async Task<DeleteDiscountResponse> DeleteDiscount(
         DeleteDiscountRequest request, ServerCallContext context)
     {
-        var coupon = await dbContext
-            .Coupons
-            .FirstOrDefaultAsync(x => x.ProductName == request.ProductName) ??
-                throw new RpcException(new Status(
-                    StatusCode.NotFound,
-                    $"Discount with ProductName={request.ProductName} is not found."));
+        var coupon = await couponRepository.GetByProductNameAsync(request.ProductName, context.CancellationToken) ??
+            throw new RpcException(new Status(
+                StatusCode.NotFound,
+                $"Discount with ProductName={request.ProductName} is not found."));
 
-        dbContext.Coupons.Remove(coupon);
-        await dbContext.SaveChangesAsync();
+        await couponRepository.DeleteAsync(request.ProductName, context.CancellationToken);
 
-        logger.LogInformation(
-            @"Discount is successfully deleted. ProductName: {ProductName}, Amout: {Amout}",
-            coupon.ProductName, coupon.Amount);
+        LogDiscountIsSuccessfullyDeletedProductName(coupon.ProductName, coupon.Amount);
 
         return new DeleteDiscountResponse { Success = true };
     }
+
+    [LoggerMessage(LogLevel.Information, @"Discount is retrieved for ProductName: {ProductName}, Amount: {Amount}")]
+    partial void LogDiscountIsRetrievedForProductName(string productName, int amount);
+
+    [LoggerMessage(LogLevel.Information, "Discount is successfully update. ProductName: {ProductName}, Amount: {Amount}")]
+    partial void LogDiscountIsSuccessfullyUpdatedProductName(string productName, int amount);
+
+    [LoggerMessage(LogLevel.Information, @"Discount is successfully deleted. ProductName: {ProductName}, Amount: {amount}")]
+    partial void LogDiscountIsSuccessfullyDeletedProductName(string productName, int amount);
+
+    [LoggerMessage(LogLevel.Information, "Discount is successfully created. ProductName: {ProductName}, Amount: {Amount}")]
+    partial void LogDiscountIsSuccessfullyCreatedProductName(string productName, int amount);
 }

@@ -1,16 +1,16 @@
-﻿namespace Catalog.UnitTests.Products;
+namespace Catalog.UnitTests.Products;
 
 public class GetProductByIdQueryHandlerTests
 {
     private readonly AutoMocker _autoMocker;
-    private readonly Mock<IDocumentSession> _sessionMock;
+    private readonly Mock<IProductRepository> _productRepositoryMock;
     private readonly GetProductByIdQueryHandler _handler;
 
     public GetProductByIdQueryHandlerTests()
     {
         _autoMocker = new AutoMocker();
-        _sessionMock = _autoMocker.GetMock<IDocumentSession>();
-        _handler = new GetProductByIdQueryHandler(_sessionMock.Object);
+        _productRepositoryMock = _autoMocker.GetMock<IProductRepository>();
+        _handler = new GetProductByIdQueryHandler(_productRepositoryMock.Object);
     }
 
     [Fact]
@@ -18,15 +18,11 @@ public class GetProductByIdQueryHandlerTests
     {
         // Arrange
         var productId = Guid.NewGuid();
-        var product = new Product(
-            productId,
-            "Product1",
-            "Description1",
-            "http://image1.url",
-            50.0m,
-            ["Category1"]);
+        var product = Product.Create(
+            productId, "Product1", "Description1", "http://image1.url", 50.0m, 1, [CategoryId.Of(Guid.NewGuid())]);
 
-        _sessionMock.Setup(session => session.LoadAsync<Product>(productId, It.IsAny<CancellationToken>()))
+        _productRepositoryMock
+            .Setup(repo => repo.GetByIdAsync(productId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(product);
 
         var query = new GetProductByIdQuery(productId);
@@ -36,7 +32,7 @@ public class GetProductByIdQueryHandlerTests
 
         // Assert
         Assert.NotNull(result);
-        Assert.Equal(productId, result.Product.Id);
+        Assert.Equal(productId, result.Product.Id.Value);
         Assert.Equal("Product1", result.Product.Name);
     }
 
@@ -46,8 +42,9 @@ public class GetProductByIdQueryHandlerTests
         // Arrange
         var productId = Guid.NewGuid();
 
-        _sessionMock.Setup(session => session.LoadAsync<Product>(productId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Product)null);
+        _productRepositoryMock
+            .Setup(repo => repo.GetByIdAsync(productId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Product?)null);
 
         var query = new GetProductByIdQuery(productId);
 

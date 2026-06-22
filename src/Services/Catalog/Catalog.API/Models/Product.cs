@@ -83,4 +83,24 @@ public class Product : IdentifiableAggregate<ProductId, Guid>
     //TODO: criar eventos para controle de estoque
     public int Stock { get; private set; } = default!;
     public List<CategoryId> CategoryIds { get; private set; } = default!;
+
+    // Reconstitui um Product já persistido (sem revalidar regras de criação nem disparar domain events).
+    internal static Product Load(
+        Guid id,
+        string name,
+        string description,
+        string imageUrl,
+        decimal price,
+        int stock,
+        List<CategoryId> categoryIds) =>
+        new()
+        {
+            Id = ProductId.Of(id),
+            Name = name,
+            Description = description,
+            ImageUrl = imageUrl,
+            Price = price,
+            Stock = stock,
+            CategoryIds = categoryIds
+        };
 }

@@ -39,7 +39,7 @@ public class CreateProductCommandValidator : AbstractValidator<CreateProductComm
 }
 
 public class CreateProductCommandHandler
-    (IDocumentSession session)
+    (IProductRepository productRepository)
     : ICommandHandler<CreateProductCommand, CreateProductResult>
 {
     public async Task<CreateProductResult> Handle(
@@ -55,7 +55,7 @@ public class CreateProductCommandHandler
             CategoryId.Of(command.CategoryIds)
         );
 
-        session.Store(product);
+        await productRepository.AddAsync(product, cancellationToken);
 
         return new CreateProductResult(product.Id.Value);
     }

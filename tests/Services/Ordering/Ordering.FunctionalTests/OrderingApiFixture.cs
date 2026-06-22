@@ -7,7 +7,7 @@ public sealed class OrderingApiFixture
 {
     /// <summary>
     /// Timeout for the full application startup including Docker containers
-    /// (SQL Server, RabbitMQ, Elasticsearch JVM, migrations, etc.).
+    /// (PostgreSQL, LocalStack, Elasticsearch JVM, migrations, etc.).
     /// </summary>
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(2);
 

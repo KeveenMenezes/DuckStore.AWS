@@ -7,11 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Aspire.NpgSql" />
-    <PackageReference Include="Aspire.RabbitMQ.Client.v7" />
+    <PackageReference Include="AWSSDK.DynamoDBv2" />
     <PackageReference Include="Aspire.StackExchange.Redis" />
     <PackageReference Include="Grpc.AspNetCore" />
-    <PackageReference Include="Marten" />
     <PackageReference Include="Carter" />
     <PackageReference Include="Scrutor" />
   </ItemGroup>

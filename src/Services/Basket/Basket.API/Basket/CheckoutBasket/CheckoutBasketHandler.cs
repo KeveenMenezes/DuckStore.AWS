@@ -22,7 +22,7 @@ public class CheckoutBasketCommandValidator
 }
 
 public class CheckoutBasketCommandHandler(
-    IBasketRepository basketRepository, IPublishEndpoint publishEndpoint)
+    IBasketRepository basketRepository, IEventPublisher eventPublisher)
     : ICommandHandler<CheckoutBasketCommand, CheckoutBasketResult>
 {
     public async Task<CheckoutBasketResult> Handle(
@@ -38,7 +38,7 @@ public class CheckoutBasketCommandHandler(
 
         var eventMessage = command.BasketCheckoutDto.Adapt<BasketCheckoutEvent>();
 
-        await publishEndpoint.Publish(eventMessage, cancellationToken);
+        await eventPublisher.PublishAsync(eventMessage, cancellationToken);
 
         await basketRepository.DeleteBasket(
             command.BasketCheckoutDto.UserName, cancellationToken);

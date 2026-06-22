@@ -1,4 +1,4 @@
-namespace Catalog.API.Models;
+﻿namespace Catalog.API.Models;
 
 public class Category : IdentifiableEntity<CategoryId, Guid>
 {
@@ -15,9 +15,21 @@ public class Category : IdentifiableEntity<CategoryId, Guid>
         {
             Id = id,
             Name = name,
-            ParentId = parentId
+            ParentId = parentId,
+            Path = []
         };
 
         return category;
     }
+
+    // Reconstitui uma Category já persistida (sem revalidar regras de criação).
+    internal static Category Load(
+        Guid id, string name, Guid? parentId, List<CategoryId> path) =>
+        new()
+        {
+            Id = CategoryId.Of(id),
+            Name = name,
+            ParentId = parentId.HasValue ? CategoryId.Of(parentId.Value) : null,
+            Path = path
+        };
 }

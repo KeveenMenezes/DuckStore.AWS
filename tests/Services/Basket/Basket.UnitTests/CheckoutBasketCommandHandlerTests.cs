@@ -6,9 +6,9 @@ using Basket.API.Basket.CheckoutBasket;
 using Basket.API.Data;
 using Basket.API.Dtos;
 using Basket.API.Models;
+using BuildingBlocks.Messaging.EventBridge;
 using BuildingBlocks.Messaging.Events;
 using FluentValidation.TestHelper;
-using MassTransit;
 
 namespace Basket.UnitTests;
 
@@ -16,7 +16,7 @@ public class CheckoutBasketCommandHandlerTests
 {
     private readonly AutoMocker _autoMocker;
     private readonly Mock<IBasketRepository> _basketRepositoryMock;
-    private readonly Mock<IPublishEndpoint> _publishEndpointMock;
+    private readonly Mock<IEventPublisher> _eventPublisherMock;
     private readonly CheckoutBasketCommandValidator _validator;
     private readonly CheckoutBasketCommandHandler _handler;
 
@@ -24,10 +24,10 @@ public class CheckoutBasketCommandHandlerTests
     {
         _autoMocker = new AutoMocker();
         _basketRepositoryMock = _autoMocker.GetMock<IBasketRepository>();
-        _publishEndpointMock = _autoMocker.GetMock<IPublishEndpoint>();
+        _eventPublisherMock = _autoMocker.GetMock<IEventPublisher>();
         _validator = new CheckoutBasketCommandValidator();
         _handler = new CheckoutBasketCommandHandler(
-            _basketRepositoryMock.Object, _publishEndpointMock.Object);
+            _basketRepositoryMock.Object, _eventPublisherMock.Object);
     }
 
     [Fact]
@@ -69,8 +69,8 @@ public class CheckoutBasketCommandHandlerTests
         Assert.NotNull(result);
         Assert.True(result.IsSuccess);
 
-        _publishEndpointMock.Verify(endpoint =>
-            endpoint.Publish(It.Is<BasketCheckoutEvent>(e =>
+        _eventPublisherMock.Verify(publisher =>
+            publisher.PublishAsync(It.Is<BasketCheckoutEvent>(e =>
                 e.UserName == basketCheckoutDto.UserName &&
                 e.TotalPrice == basketCheckoutDto.TotalPrice), It.IsAny<CancellationToken>()), Times.Once);
 
@@ -102,8 +102,8 @@ public class CheckoutBasketCommandHandlerTests
         Assert.NotNull(result);
         Assert.False(result.IsSuccess);
 
-        _publishEndpointMock.Verify(endpoint =>
-            endpoint.Publish(It.IsAny<BasketCheckoutEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+        _eventPublisherMock.Verify(publisher =>
+            publisher.PublishAsync(It.IsAny<BasketCheckoutEvent>(), It.IsAny<CancellationToken>()), Times.Never);
 
         _basketRepositoryMock.Verify(repo =>
             repo.DeleteBasket(basketCheckoutDto.UserName, It.IsAny<CancellationToken>()), Times.Never);

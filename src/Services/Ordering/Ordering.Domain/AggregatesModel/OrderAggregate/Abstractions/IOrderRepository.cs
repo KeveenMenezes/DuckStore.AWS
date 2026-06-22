@@ -1,7 +1,12 @@
-﻿namespace Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+namespace Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
-public interface IOrderRepository : IRepository<Order>
+public interface IOrderRepository
 {
+    Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+    Task AddAsync(Order order, CancellationToken cancellationToken = default);
+    Task UpdateAsync(Order order, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Order order, CancellationToken cancellationToken = default);
+
     IAsyncEnumerable<Order> GetOrdersPaginationStream(int pageIndex, int pageSize);
 
     IAsyncEnumerable<Order> GetOrdersByNameAsync(string name);

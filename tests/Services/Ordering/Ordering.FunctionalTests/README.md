@@ -3,8 +3,8 @@
 ## Prerequisites
 
 These functional tests require Docker to be running on your machine, as they use .NET Aspire to orchestrate test containers for:
-- SQL Server
-- RabbitMQ
+- PostgreSQL
+- LocalStack (EventBridge, SQS, DynamoDB, Lambda)
 
 ## Running the Tests
 
@@ -15,8 +15,8 @@ dotnet test tests/Services/Ordering/Ordering.FunctionalTests/Ordering.Functional
 ```
 
 The tests will automatically:
-1. Start SQL Server container via Aspire
-2. Start RabbitMQ container via Aspire
+1. Start PostgreSQL container via Aspire
+2. Start LocalStack container via Aspire
 3. Configure the Ordering API to use these test containers
 4. Run the functional tests
 5. Clean up containers after tests complete
@@ -30,9 +30,8 @@ If Docker is not available, these tests will hang or fail during infrastructure 
 ## Test Configuration
 
 The test fixture (`OrderingApiFixture`) automatically configures:
-- **SQL Server Connection**: Retrieved from Aspire's SQL Server test container
-- **RabbitMQ Connection**: Retrieved from Aspire's RabbitMQ test container and formatted as `amqp://host:port`
-- **MessageBroker Settings**: Username and password set to default `guest` credentials
+- **PostgreSQL Connection**: Retrieved from Aspire's PostgreSQL test container
+- **EventBridge Settings**: `ServiceUrl` pointed at the Aspire LocalStack test container, `BusName` set to `duckstore-event-bus`
 
 ## Troubleshooting
 
@@ -51,7 +50,6 @@ The test fixture (`OrderingApiFixture`) automatically configures:
 ## Changes Made to Fix Tests
 
 1. Updated FluentValidation from 12.1.0 to 12.1.1 to resolve dependency conflicts
-2. Added RabbitMQ resource configuration in the test fixture
-3. Added MessageBroker configuration (Host, UserName, Password) for test environment
-4. Fixed connection string name to match infrastructure expectations (`orderingDb` lowercase)
-5. Added necessary Aspire using directives for proper type resolution
+2. Added LocalStack resource configuration in the test fixture (EventBridge replaces RabbitMQ, see ADR-0004)
+3. Fixed connection string name to match infrastructure expectations (`orderingDb` lowercase)
+4. Added necessary Aspire using directives for proper type resolution

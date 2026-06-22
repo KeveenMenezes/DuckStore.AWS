@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Core.DomainModel;
+﻿namespace BuildingBlocks.Core.DomainModel;
 
 public class ValueObject<T>
     : IEquatable<ValueObject<T>>

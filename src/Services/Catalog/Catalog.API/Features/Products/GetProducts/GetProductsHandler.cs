@@ -5,25 +5,15 @@ public record GetProductsQuery(int PageIndex, int PageSize)
 
 public record GetProductsResult(PaginatedResult<Product> PaginatedProducts);
 
-public class GetProductsQueryHandler(IDocumentSession session)
+public class GetProductsQueryHandler(IProductRepository productRepository)
     : IQueryHandler<GetProductsQuery, GetProductsResult>
 {
     public async Task<GetProductsResult> Handle(
         GetProductsQuery request, CancellationToken cancellationToken)
     {
-        var pagedList = await session
-            .Query<Product>()
-            .ToPagedListAsync(
-                request.PageIndex,
-                request.PageSize,
-                cancellationToken);
+        var pagedProducts = await productRepository.GetPagedAsync(
+            request.PageIndex, request.PageSize, cancellationToken);
 
-        return new GetProductsResult(
-            new PaginatedResult<Product>(
-                pagedList.PageNumber,
-                pagedList.PageSize,
-                pagedList.TotalItemCount,
-                pagedList.AsEnumerable())
-        );
+        return new GetProductsResult(pagedProducts);
     }
 }

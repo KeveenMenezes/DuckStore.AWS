@@ -2,23 +2,23 @@
 
 public class BasketCheckoutDto
 {
-    public string UserName { get; set; } = default!;
+    public string UserName { get; init; } = null!;
     public Guid CustomerId { get; set; }
-    public decimal TotalPrice { get; set; }
+    public decimal TotalPrice { get; init; }
 
     // Shipping and ShippingAddress
-    public string FirstName { get; set; } = default!;
-    public string LastName { get; set; } = default!;
-    public string EmailAddress { get; set; } = default!;
-    public string AddressLine { get; set; } = default!;
-    public string Country { get; set; } = default!;
-    public string State { get; set; } = default!;
-    public string ZipCode { get; set; } = default!;
+    public string FirstName { get; set; } = null!;
+    public string LastName { get; set; } = null!;
+    public string EmailAddress { get; set; } = null!;
+    public string AddressLine { get; set; } = null!;
+    public string Country { get; set; } = null!;
+    public string State { get; set; } = null!;
+    public string ZipCode { get; set; } = null!;
 
     // Payment
-    public string CardName { get; set; } = default!;
-    public string CardNumber { get; set; } = default!;
-    public string Expiration { get; set; } = default!;
-    public string Cvv { get; set; } = default!;
+    public string CardName { get; set; } = null!;
+    public string CardNumber { get; set; } = null!;
+    public string Expiration { get; set; } = null!;
+    public string Cvv { get; set; } = null!;
     public int PaymentMethod { get; set; }
 }

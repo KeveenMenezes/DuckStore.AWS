@@ -1,18 +1,18 @@
-﻿namespace Catalog.UnitTests.Products;
+namespace Catalog.UnitTests.Products;
 
 public class CreateProductHandlerTests
 {
     private readonly AutoMocker _autoMocker;
-    private readonly Mock<IDocumentSession> _sessionMock;
+    private readonly Mock<IProductRepository> _productRepositoryMock;
     private readonly CreateProductCommandValidator _validator;
     private readonly CreateProductCommandHandler _handler;
 
     public CreateProductHandlerTests()
     {
         _autoMocker = new AutoMocker();
-        _sessionMock = _autoMocker.GetMock<IDocumentSession>();
+        _productRepositoryMock = _autoMocker.GetMock<IProductRepository>();
         _validator = new CreateProductCommandValidator();
-        _handler = new CreateProductCommandHandler(_sessionMock.Object);
+        _handler = new CreateProductCommandHandler(_productRepositoryMock.Object);
     }
 
     [Fact]
@@ -24,7 +24,8 @@ public class CreateProductHandlerTests
             "Product Description",
             "http://image.url",
             100.0m,
-            ["Category1", "Category2"]);
+            10,
+            [Guid.NewGuid(), Guid.NewGuid()]);
 
         // Act
         var result = await _handler.Handle(command, CancellationToken.None);
@@ -33,11 +34,8 @@ public class CreateProductHandlerTests
         Assert.NotNull(result);
         Assert.NotEqual(Guid.Empty, result.Id);
 
-        _sessionMock.Verify(session =>
-            session.Store(It.IsAny<Product>()), Times.Once);
-
-        _sessionMock.Verify(session =>
-            session.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _productRepositoryMock.Verify(repo =>
+            repo.AddAsync(It.IsAny<Product>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -49,7 +47,8 @@ public class CreateProductHandlerTests
             "Product Description",
             "http://image.url",
             100.0m,
-            ["Category1", "Category2"]);
+            10,
+            [Guid.NewGuid()]);
 
         // Act
         var result = _validator.TestValidate(command);
@@ -59,7 +58,7 @@ public class CreateProductHandlerTests
         result.ShouldNotHaveValidationErrorFor(x => x.Description);
         result.ShouldNotHaveValidationErrorFor(x => x.ImageUrl);
         result.ShouldNotHaveValidationErrorFor(x => x.Price);
-        result.ShouldNotHaveValidationErrorFor(x => x.Categories);
+        result.ShouldNotHaveValidationErrorFor(x => x.CategoryIds);
     }
 
     [Fact]
@@ -71,6 +70,7 @@ public class CreateProductHandlerTests
             "",
             "",
             -10.0m,
+            0,
             []);
 
         // Act
@@ -89,7 +89,7 @@ public class CreateProductHandlerTests
         result.ShouldHaveValidationErrorFor(x => x.Price)
             .WithErrorMessage("Price must be greater than 0");
 
-        result.ShouldHaveValidationErrorFor(x => x.Categories)
+        result.ShouldHaveValidationErrorFor(x => x.CategoryIds)
             .WithErrorMessage("Categories is required");
     }
 }

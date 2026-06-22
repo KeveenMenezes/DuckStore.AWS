@@ -1,18 +1,18 @@
-﻿namespace Catalog.UnitTests.Products;
+namespace Catalog.UnitTests.Products;
 
 public class DeleteProductHandlerTests
 {
     private readonly AutoMocker _autoMocker;
-    private readonly Mock<IDocumentSession> _sessionMock;
+    private readonly Mock<IProductRepository> _productRepositoryMock;
     private readonly DeleteProductCommandValitor _validator;
     private readonly DeleteProductHandler _handler;
 
     public DeleteProductHandlerTests()
     {
         _autoMocker = new AutoMocker();
-        _sessionMock = _autoMocker.GetMock<IDocumentSession>();
+        _productRepositoryMock = _autoMocker.GetMock<IProductRepository>();
         _validator = new DeleteProductCommandValitor();
-        _handler = new DeleteProductHandler(_sessionMock.Object);
+        _handler = new DeleteProductHandler(_productRepositoryMock.Object);
     }
 
     [Fact]
@@ -28,11 +28,8 @@ public class DeleteProductHandlerTests
         Assert.NotNull(result);
         Assert.True(result.IsSuccess);
 
-        _sessionMock.Verify(session =>
-            session.Delete<Product>(command.Id), Times.Once);
-
-        _sessionMock.Verify(session =>
-            session.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        _productRepositoryMock.Verify(repo =>
+            repo.DeleteAsync(command.Id, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

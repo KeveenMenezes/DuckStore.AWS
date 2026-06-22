@@ -3,9 +3,9 @@
 public class Coupon
 {
     public int Id { get; set; }
-    public required string ProductName { get; set; }
-    public required string Description { get; set; }
-    public int Amount { get; set; }
+    public required string ProductName { get; init; }
+    public required string Description { get; init; }
+    public int Amount { get; init; }
 
     public static Coupon CreateNoDiscountCoupon()
     {

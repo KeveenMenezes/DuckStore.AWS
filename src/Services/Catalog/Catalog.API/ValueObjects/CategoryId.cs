@@ -1,4 +1,4 @@
-namespace Catalog.API.ValueObjects;
+﻿namespace Catalog.API.ValueObjects;
 
 public class CategoryId : ValueObject<Guid>
 {

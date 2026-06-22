@@ -1,50 +1,35 @@
-﻿namespace Catalog.UnitTests.Products;
+namespace Catalog.UnitTests.Products;
 
 public class GetProductByCategoryQueryHandlerTests
 {
     private readonly AutoMocker _autoMocker;
-    private readonly Mock<IDocumentSession> _sessionMock;
+    private readonly Mock<IProductRepository> _productRepositoryMock;
     private readonly GetProductByCategoryQueryHandler _handler;
 
     public GetProductByCategoryQueryHandlerTests()
     {
         _autoMocker = new AutoMocker();
-        _sessionMock = _autoMocker.GetMock<IDocumentSession>();
-        _handler = new GetProductByCategoryQueryHandler(_sessionMock.Object);
+        _productRepositoryMock = _autoMocker.GetMock<IProductRepository>();
+        _handler = new GetProductByCategoryQueryHandler(_productRepositoryMock.Object);
     }
 
     [Fact]
     public async Task Handle_ShouldReturnProducts_WhenCategoryExists()
     {
         // Arrange
-        var category = "Category1";
+        var categoryId = Guid.NewGuid();
 
         var products = new List<Product>
         {
-            new(
-                Guid.NewGuid(),
-                "Product1",
-                "Description1",
-                "http://image1.url",
-                50.0m,
-                [category]),
-
-            new(
-                Guid.NewGuid(),
-                "Product2",
-                "Description2",
-                "http://image2.url",
-                100.0m,
-                [category])
+            Product.Create(Guid.NewGuid(), "Product1", "Description1", "http://image1.url", 50.0m, 1, [CategoryId.Of(categoryId)]),
+            Product.Create(Guid.NewGuid(), "Product2", "Description2", "http://image2.url", 100.0m, 1, [CategoryId.Of(categoryId)])
         };
 
-        _sessionMock.Setup(session =>
-            session.Query<Product>())
-                .Returns(
-                    MartenMockExtensions
-                        .CreateMartenQueryableMock(products));
+        _productRepositoryMock
+            .Setup(repo => repo.GetByCategoryAsync(categoryId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(products);
 
-        var query = new GetProductByCategoryQuery(category);
+        var query = new GetProductByCategoryQuery(categoryId);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -60,14 +45,13 @@ public class GetProductByCategoryQueryHandlerTests
     public async Task Handle_ShouldReturnEmpty_WhenCategoryDoesNotExist()
     {
         // Arrange
-        var category = "NonExistentCategory";
-        var products = new List<Product>();
+        var categoryId = Guid.NewGuid();
 
-        var query = new GetProductByCategoryQuery(category);
+        _productRepositoryMock
+            .Setup(repo => repo.GetByCategoryAsync(categoryId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
 
-        _sessionMock.Setup(session =>
-            session.Query<Product>())
-                .Returns(MartenMockExtensions.CreateMartenQueryableMock(products));
+        var query = new GetProductByCategoryQuery(categoryId);
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);

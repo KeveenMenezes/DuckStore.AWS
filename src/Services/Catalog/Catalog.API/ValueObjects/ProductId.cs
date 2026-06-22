@@ -1,4 +1,4 @@
-namespace Catalog.API.ValueObjects;
+﻿namespace Catalog.API.ValueObjects;
 
 public class ProductId : ValueObject<Guid>
 {
@@ -7,12 +7,8 @@ public class ProductId : ValueObject<Guid>
 
     public static ProductId Of(Guid value)
     {
-        if (value == Guid.Empty)
-        {
+        return value == Guid.Empty ? throw
             // TODO: Create a specific exception for ProductId
-            throw new ArgumentException("ProductId cannot be empty.", nameof(value));
-        }
-
-        return new ProductId(value);
+            new ArgumentException("ProductId cannot be empty.", nameof(value)) : new ProductId(value);
     }
 }

@@ -1,25 +1,51 @@
-﻿namespace Basket.API.Data;
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.Model;
 
-public class BasketRepository(IDocumentSession session)
+namespace Basket.API.Data;
+
+public class BasketRepository(IAmazonDynamoDB dynamoDb)
     : IBasketRepository
 {
+    public const string TableName = "ShoppingCarts";
+
     public async Task<ShoppingCart> GetBasket(string userName, CancellationToken cancellationToken)
     {
-        var basket = await session.LoadAsync<ShoppingCart>(userName, cancellationToken) ??
-            throw new BasketNotFoundException(userName);
+        var response = await dynamoDb.GetItemAsync(
+            new GetItemRequest
+            {
+                TableName = TableName,
+                Key = new Dictionary<string, AttributeValue> { ["UserName"] = new(userName) }
+            },
+            cancellationToken);
 
-        return basket;
+        return response.Item.Count == 0 ?
+            throw new BasketNotFoundException(userName) :
+            JsonSerializer.Deserialize<ShoppingCart>(response.Item["Data"].S)!;
     }
 
-    public Task<ShoppingCart> StoreCart(ShoppingCart cart, CancellationToken cancellationToken)
+    public async Task<ShoppingCart> StoreCart(ShoppingCart cart, CancellationToken cancellationToken)
     {
-        session.Store(cart);
-        return Task.FromResult(cart);
+        await dynamoDb.PutItemAsync(
+            new PutItemRequest
+            {
+                TableName = TableName,
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["UserName"] = new(cart.UserName),
+                    ["Data"] = new(JsonSerializer.Serialize(cart))
+                }
+            },
+            cancellationToken);
+
+        return cart;
     }
 
-    public Task DeleteBasket(string userName, CancellationToken cancellationToken)
-    {
-        session.Delete<ShoppingCart>(userName);
-        return Task.CompletedTask;
-    }
+    public Task DeleteBasket(string userName, CancellationToken cancellationToken) =>
+        dynamoDb.DeleteItemAsync(
+            new DeleteItemRequest
+            {
+                TableName = TableName,
+                Key = new Dictionary<string, AttributeValue> { ["UserName"] = new(userName) }
+            },
+            cancellationToken);
 }

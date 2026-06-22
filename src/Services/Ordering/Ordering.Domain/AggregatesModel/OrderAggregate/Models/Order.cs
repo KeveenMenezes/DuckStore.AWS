@@ -57,6 +57,31 @@ public class Order : Aggregate<OrderId>
         _orderItems.Remove(orderItem);
     }
 
+    // Reconstitui um Order já persistido (preserva Status/Id originais, sem disparar domain events).
+    public static Order Load(
+        Guid id,
+        Guid customerId,
+        string orderName,
+        Address shippingAddress,
+        Payment payment,
+        OrderStatus status,
+        IEnumerable<OrderItem> orderItems)
+    {
+        var order = new Order
+        {
+            Id = OrderId.Of(id),
+            CustomerId = CustomerId.Of(customerId),
+            OrderName = OrderName.Of(orderName),
+            ShippingAddress = shippingAddress,
+            Payment = payment,
+            Status = status
+        };
+
+        order._orderItems.AddRange(orderItems);
+
+        return order;
+    }
+
     private readonly List<OrderItem> _orderItems = [];
     public IReadOnlyList<OrderItem> OrderItems => _orderItems.AsReadOnly();
 

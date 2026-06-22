@@ -1,6 +1,6 @@
-﻿using System.Diagnostics;
-using Microsoft.EntityFrameworkCore;
-using Ordering.Infrastructure.Data;
+using System.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
+using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 namespace Ordering.MigrationService;
 
@@ -14,16 +14,16 @@ public class Worker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var activity = s_activitySource.StartActivity(
-            "Migrating database", ActivityKind.Client);
+            "Provisioning DynamoDB tables", ActivityKind.Client);
 
         try
         {
             using var scope = serviceProvider.CreateScope();
-            var dbContext = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-            await RunMigrationAsync(dbContext, stoppingToken);
+            await scope.ServiceProvider.EnsureOrderingTablesCreatedAsync();
 
-            await SeedAsync(dbContext);
+            var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
+            await SeedAsync(orderRepository);
         }
         catch (Exception ex)
         {
@@ -34,47 +34,12 @@ public class Worker(
         hostApplicationLifetime.StopApplication();
     }
 
-    private static async Task RunMigrationAsync(
-        ApplicationDbContext db, CancellationToken cancellationToken)
+    private static async Task SeedAsync(IOrderRepository orderRepository)
     {
-        var strategy = db.Database.CreateExecutionStrategy();
-        await strategy.ExecuteAsync(async () =>
-        {
-            await db.Database.MigrateAsync(cancellationToken);
-        });
-    }
+        if (await orderRepository.GetTotalCountOrders() > 0)
+            return;
 
-    private static async Task SeedAsync(ApplicationDbContext db)
-    {
-        await SeedCustomerAsync(db);
-        await SeedProductAsync(db);
-        await SeedOrdersWithItemsAsync(db);
-    }
-
-    private static async Task SeedCustomerAsync(ApplicationDbContext db)
-    {
-        if (!await db.Customers.AnyAsync())
-        {
-            await db.Customers.AddRangeAsync(InitialData.Customers);
-            await db.SaveChangesAsync();
-        }
-    }
-
-    private static async Task SeedProductAsync(ApplicationDbContext db)
-    {
-        if (!await db.Products.AnyAsync())
-        {
-            await db.Products.AddRangeAsync(InitialData.Products);
-            await db.SaveChangesAsync();
-        }
-    }
-
-    private static async Task SeedOrdersWithItemsAsync(ApplicationDbContext db)
-    {
-        if (!await db.Orders.AnyAsync())
-        {
-            await db.Orders.AddRangeAsync(InitialData.OrdersWithItems);
-            await db.SaveChangesAsync();
-        }
+        foreach (var order in InitialData.OrdersWithItems)
+            await orderRepository.AddAsync(order);
     }
 }

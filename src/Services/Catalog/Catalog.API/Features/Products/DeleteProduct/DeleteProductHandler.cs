@@ -15,14 +15,14 @@ public class DeleteProductCommandValitor : AbstractValidator<DeleteProductComman
 }
 
 public class DeleteProductHandler
-    (IDocumentSession session)
+    (IProductRepository productRepository)
     : ICommandHandler<DeleteProductCommand, DeleteProductResult>
 {
-    public Task<DeleteProductResult> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
+    public async Task<DeleteProductResult> Handle(DeleteProductCommand request, CancellationToken cancellationToken)
     {
-        session.Delete<Product>(request.Id);
+        await productRepository.DeleteAsync(request.Id, cancellationToken);
 
-        return Task.FromResult(new DeleteProductResult(true));
+        return new DeleteProductResult(true);
     }
 }
 

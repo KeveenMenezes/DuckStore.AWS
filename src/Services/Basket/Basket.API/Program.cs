@@ -1,4 +1,4 @@
-﻿using BuildingBlocks.Core.Abstractions;
+﻿using Amazon.DynamoDBv2;
 using BuildingBlocks.ServiceDefaults.Behaviors;
 using BuildingBlocks.ServiceDefaults.ExceptionHandler;
 
@@ -7,13 +7,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.AddServiceDefaults();
 builder.AddElasticsearch();
-builder.AddRabbitMQClient("messageBroker");
-builder.AddNpgsqlDataSource("basketDb");
 builder.AddRedisClient("redis");
 
 // HTTP and GRPC client registrations
 builder.Services.AddGrpcClient<DiscountProtoService.DiscountProtoServiceClient>(
-    o => o.Address = new("http://discount-api"));
+    o => o.Address = new Uri("http://discount-api"));
 
 var assembly = typeof(Program).Assembly;
 builder.Services
@@ -24,27 +22,21 @@ builder.Services
         config.RegisterServicesFromAssembly(assembly);
         config.AddOpenBehavior(typeof(ValidationBehavior<,>));
         config.AddOpenBehavior(typeof(LoggingBehavior<,>));
-        config.AddOpenBehavior(typeof(UnitOfWorkBehavior<,>));
     })
-    .AddValidatorsFromAssembly(assembly)
-    .AddMarten(opts =>
-    {
-        opts.Schema.For<ShoppingCart>().Identity(x => x.UserName);
-    })
-    .UseLightweightSessions()
-    .UseNpgsqlDataSource();
+    .AddValidatorsFromAssembly(assembly);
 
-//Injection dependence
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
+//Injection dependence — DynamoDB Local injeta AWS_ENDPOINT_URL_DYNAMODB; o SDK resolve sozinho.
+builder.Services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
 builder.Services.AddScoped<IBasketRepository, BasketRepository>();
 builder.Services.Decorate<IBasketRepository, CacheBasketRepository>();
 
 //Async Communication Services
-builder.Services.AddMessageBroker(
-    builder.Configuration, Assembly.GetExecutingAssembly());
+builder.Services.AddEventBridgeMessaging(builder.Configuration);
 
 var app = builder.Build();
 // Configure the HTTP request pipeline.
+
+await app.Services.EnsureBasketTableCreatedAsync();
 
 app.MapDefaultEndpoints();
 app.MapCarter();

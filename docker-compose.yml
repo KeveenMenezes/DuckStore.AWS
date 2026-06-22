@@ -9,10 +9,7 @@ services:
     image: redis
 
   orderdb:
-    image: mcr.microsoft.com/mssql/server
-
-  messagebroker:
-    image: rabbitmq:management
+    image: postgres
 
   catalog.api:
     build:
