@@ -1,5 +1,4 @@
-using Aspire.Hosting.ApplicationModel;
-using Aspire.Hosting.AWS.DynamoDB;
+﻿using Aspire.Hosting.AWS.DynamoDB;
 using AppHost.Extensions;
 
 namespace AppHost.Catalog;
