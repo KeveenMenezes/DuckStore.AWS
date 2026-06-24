@@ -1,4 +1,4 @@
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.DependencyInjection;
 using Ordering.Infrastructure.Data;
@@ -28,7 +28,9 @@ public static class DynamoTableInitializer
                     new AttributeDefinition("PK", ScalarAttributeType.S),
                     new AttributeDefinition("SK", ScalarAttributeType.S),
                     new AttributeDefinition("GSI1PK", ScalarAttributeType.S),
-                    new AttributeDefinition("GSI1SK", ScalarAttributeType.S)
+                    new AttributeDefinition("GSI1SK", ScalarAttributeType.S),
+                    new AttributeDefinition("GSI2PK", ScalarAttributeType.S),
+                    new AttributeDefinition("GSI2SK", ScalarAttributeType.S)
                 ],
                 KeySchema =
                 [
@@ -46,6 +48,18 @@ public static class DynamoTableInitializer
                             new KeySchemaElement("GSI1SK", KeyType.RANGE)
                         ],
                         Projection = new Projection { ProjectionType = ProjectionType.KEYS_ONLY }
+                    },
+                    new GlobalSecondaryIndex
+                    {
+                        // GSI2 lista pedidos por status (GSI2PK=STATUS#{status}, GSI2SK=CreatedAt).
+                        // Projection ALL evita um GetItem extra por resultado na leitura.
+                        IndexName = OrderRepository.Gsi2Name,
+                        KeySchema =
+                        [
+                            new KeySchemaElement("GSI2PK", KeyType.HASH),
+                            new KeySchemaElement("GSI2SK", KeyType.RANGE)
+                        ],
+                        Projection = new Projection { ProjectionType = ProjectionType.ALL }
                     }
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,

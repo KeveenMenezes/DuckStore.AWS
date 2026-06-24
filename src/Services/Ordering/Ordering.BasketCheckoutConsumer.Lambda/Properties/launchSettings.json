@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Aspire_ordering-basket-checkout-consumer": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "exec --depsfile ./Ordering.BasketCheckoutConsumer.Lambda.deps.json --runtimeconfig ./Ordering.BasketCheckoutConsumer.Lambda.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.BasketCheckoutConsumer.Lambda::Ordering.BasketCheckoutConsumer.Lambda.Function::FunctionHandler",
+      "workingDirectory": "bin/Debug/net10.0/"
+    }
+  }
+}

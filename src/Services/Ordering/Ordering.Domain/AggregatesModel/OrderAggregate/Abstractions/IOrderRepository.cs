@@ -1,3 +1,5 @@
+﻿using Ordering.Domain.Enums;
+
 namespace Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 public interface IOrderRepository
@@ -12,6 +14,8 @@ public interface IOrderRepository
     IAsyncEnumerable<Order> GetOrdersByNameAsync(string name);
 
     IAsyncEnumerable<Order> GetOrdersByCustomerAsync(Guid customerId);
+
+    IAsyncEnumerable<Order> GetOrdersByStatusAsync(OrderStatus status);
 
     Task<long> GetTotalCountOrders(CancellationToken cancellationToken = default);
 }

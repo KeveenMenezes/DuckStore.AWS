@@ -6,7 +6,7 @@ public sealed class OrderingApiFixture
     : IAsyncLifetime
 {
     /// <summary>
-    /// Timeout for the full application startup including Docker containers
+    /// Timeout for the full application  including Docker containers
     /// (PostgreSQL, LocalStack, Elasticsearch JVM, migrations, etc.).
     /// </summary>
     private static readonly TimeSpan StartupTimeout = TimeSpan.FromMinutes(2);

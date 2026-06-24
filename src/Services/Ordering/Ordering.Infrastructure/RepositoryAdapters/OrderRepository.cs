@@ -1,4 +1,4 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
@@ -8,7 +8,7 @@ using Ordering.Domain.Enums;
 
 namespace Ordering.Infrastructure.RepositoryAdapters;
 
-// Modelo single-table: Order (PK=ORDER#{id}, SK=METADATA) + OrderItems (PK=ORDER#{id}, SK=ORDERITEM#{itemId}).
+// Modelo single-table: Order (PK=ORDER#{id}, SK=ORDER) + OrderItems (PK=ORDER#{id}, SK=ORDERITEM#{itemId}).
 // Order+OrderItems são escritos atomicamente via TransactWriteItems. A publicação do
 // OrderCreatedEvent para o EventBridge não depende mais disso — é feita via DynamoDB Streams
 // (a tabela tem Streams habilitado, consumido por Ordering.OrderCreatedPublisher.Lambda).
@@ -17,6 +17,7 @@ public class OrderRepository(IAmazonDynamoDB dynamoDb)
 {
     public const string TableName = "OrderingTable";
     public const string Gsi1Name = "GSI1";
+    public const string Gsi2Name = "GSI2";
 
     public async Task<Order?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -67,7 +68,8 @@ public class OrderRepository(IAmazonDynamoDB dynamoDb)
             TableName = TableName,
             IndexName = Gsi1Name,
             KeyConditionExpression = "GSI1PK = :pk",
-            ExpressionAttributeValues = new Dictionary<string, AttributeValue> { [":pk"] = new(CustomerGsiPk(customerId)) }
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue> { [":pk"] = new(CustomerGsiPk(customerId)) },
+            ScanIndexForward = false // GSI1SK = CreatedAt: pedidos mais recentes primeiro
         });
 
         foreach (var item in response.Items)
@@ -76,6 +78,22 @@ public class OrderRepository(IAmazonDynamoDB dynamoDb)
             if (order is not null)
                 yield return order;
         }
+    }
+
+    // GSI2 já projeta os atributos do cabeçalho do pedido (sem itens), evitando um GetItem extra por resultado.
+    public async IAsyncEnumerable<Order> GetOrdersByStatusAsync(OrderStatus status)
+    {
+        var response = await dynamoDb.QueryAsync(new QueryRequest
+        {
+            TableName = TableName,
+            IndexName = Gsi2Name,
+            KeyConditionExpression = "GSI2PK = :pk",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue> { [":pk"] = new(StatusGsiPk(status)) },
+            ScanIndexForward = false // GSI2SK = CreatedAt: pedidos mais recentes primeiro
+        });
+
+        foreach (var item in response.Items)
+            yield return MapOrderHeader(item);
     }
 
     public async IAsyncEnumerable<Order> GetOrdersByNameAsync(string name)
@@ -159,18 +177,26 @@ public class OrderRepository(IAmazonDynamoDB dynamoDb)
         return transactItems;
     }
 
-    private static Dictionary<string, AttributeValue> ToOrderRow(Order order) =>
-        new()
+    private static Dictionary<string, AttributeValue> ToOrderRow(Order order)
+    {
+        var createdAt = (order.CreatedAt ?? DateTime.UtcNow).ToString("o");
+        var updatedAt = (order.LastModified ?? order.CreatedAt ?? DateTime.UtcNow).ToString("o");
+
+        return new()
         {
             ["PK"] = new(OrderPk(order.Id.Value)),
-            ["SK"] = new(Metadata),
+            ["SK"] = new(OrderSk),
             ["Type"] = new("Order"),
             ["Id"] = new(order.Id.Value.ToString()),
             ["CustomerId"] = new(order.CustomerId.Value.ToString()),
             ["OrderName"] = new(order.OrderName.Value),
             ["Status"] = new(order.Status.ToString()),
+            ["CreatedAt"] = new(createdAt),
+            ["UpdatedAt"] = new(updatedAt),
             ["GSI1PK"] = new(CustomerGsiPk(order.CustomerId.Value)),
-            ["GSI1SK"] = new(OrderPk(order.Id.Value)),
+            ["GSI1SK"] = new(createdAt),
+            ["GSI2PK"] = new(StatusGsiPk(order.Status)),
+            ["GSI2SK"] = new(createdAt),
             ["ShippingAddress"] = new AttributeValue
             {
                 M = new Dictionary<string, AttributeValue>
@@ -196,6 +222,7 @@ public class OrderRepository(IAmazonDynamoDB dynamoDb)
                 }
             }
         };
+    }
 
     private static Dictionary<string, AttributeValue> ToOrderItemRow(Guid orderId, OrderItem item) =>
         new()
@@ -215,6 +242,23 @@ public class OrderRepository(IAmazonDynamoDB dynamoDb)
         var itemRows = items.Where(i => i["Type"].S == "OrderItem");
 
         var id = Guid.Parse(orderRow["Id"].S);
+
+        var orderItems = itemRows.Select(i => OrderItem.Load(
+            Guid.Parse(i["Id"].S),
+            id,
+            Guid.Parse(i["ProductId"].S),
+            int.Parse(i["Quantity"].N, CultureInfo.InvariantCulture),
+            decimal.Parse(i["Price"].N, CultureInfo.InvariantCulture)));
+
+        return BuildOrder(orderRow, orderItems);
+    }
+
+    // GSI2 usa ProjectionType.ALL, então o item já traz tudo que BuildOrder precisa (sem itens da
+    // linha) — usado por GetOrdersByStatusAsync para listar pedidos por status sem GetItem extra.
+    private static Order MapOrderHeader(Dictionary<string, AttributeValue> orderRow) => BuildOrder(orderRow, []);
+
+    private static Order BuildOrder(Dictionary<string, AttributeValue> orderRow, IEnumerable<OrderItem> orderItems)
+    {
         var addressMap = orderRow["ShippingAddress"].M;
         var paymentMap = orderRow["Payment"].M;
 
@@ -234,30 +278,26 @@ public class OrderRepository(IAmazonDynamoDB dynamoDb)
             paymentMap["Cvv"].S,
             Enum.Parse<PaymentMethod>(paymentMap["PaymentMethod"].S));
 
-        var orderItems = itemRows.Select(i => OrderItem.Load(
-            Guid.Parse(i["Id"].S),
-            id,
-            Guid.Parse(i["ProductId"].S),
-            int.Parse(i["Quantity"].N, CultureInfo.InvariantCulture),
-            decimal.Parse(i["Price"].N, CultureInfo.InvariantCulture)));
-
         return Order.Load(
-            id,
+            Guid.Parse(orderRow["Id"].S),
             Guid.Parse(orderRow["CustomerId"].S),
             orderRow["OrderName"].S,
             address,
             payment,
             Enum.Parse<OrderStatus>(orderRow["Status"].S),
-            orderItems);
+            orderItems,
+            DateTime.Parse(orderRow["CreatedAt"].S, null, DateTimeStyles.RoundtripKind),
+            DateTime.Parse(orderRow["UpdatedAt"].S, null, DateTimeStyles.RoundtripKind));
     }
 
     private static string OrderPk(Guid orderId) => $"ORDER#{orderId}";
     private static string OrderItemSk(Guid orderItemId) => $"ORDERITEM#{orderItemId}";
     private static string CustomerGsiPk(Guid customerId) => $"CUSTOMER#{customerId}";
-    private const string Metadata = "METADATA";
+    private static string StatusGsiPk(OrderStatus status) => $"STATUS#{status.ToString().ToUpperInvariant()}";
+    private const string OrderSk = "ORDER";
 
     private static Dictionary<string, AttributeValue> OrderKey(Guid orderId) =>
-        new() { ["PK"] = new(OrderPk(orderId)), ["SK"] = new(Metadata) };
+        new() { ["PK"] = new(OrderPk(orderId)), ["SK"] = new(OrderSk) };
 
     private static Dictionary<string, AttributeValue> OrderItemKey(Guid orderId, Guid orderItemId) =>
         new() { ["PK"] = new(OrderPk(orderId)), ["SK"] = new(OrderItemSk(orderItemId)) };

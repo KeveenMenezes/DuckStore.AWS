@@ -20,7 +20,8 @@ public class Order : Aggregate<OrderId>
             ShippingAddress = shippingAddress,
             Payment = payment,
 
-            Status = OrderStatus.Pending
+            Status = OrderStatus.Pending,
+            CreatedAt = DateTime.UtcNow
         };
 
         order.AddDomainEvent(new OrderCreatedEvent(order));
@@ -38,6 +39,7 @@ public class Order : Aggregate<OrderId>
         ShippingAddress = shippingAddress;
         Payment = payment;
         Status = status;
+        LastModified = DateTime.UtcNow;
 
         AddDomainEvent(new OrderUpdatedEvent(this));
     }
@@ -57,7 +59,6 @@ public class Order : Aggregate<OrderId>
         _orderItems.Remove(orderItem);
     }
 
-    // Reconstitui um Order já persistido (preserva Status/Id originais, sem disparar domain events).
     public static Order Load(
         Guid id,
         Guid customerId,
@@ -65,7 +66,9 @@ public class Order : Aggregate<OrderId>
         Address shippingAddress,
         Payment payment,
         OrderStatus status,
-        IEnumerable<OrderItem> orderItems)
+        IEnumerable<OrderItem> orderItems,
+        DateTime? createdAt = null,
+        DateTime? lastModified = null)
     {
         var order = new Order
         {
@@ -74,7 +77,9 @@ public class Order : Aggregate<OrderId>
             OrderName = OrderName.Of(orderName),
             ShippingAddress = shippingAddress,
             Payment = payment,
-            Status = status
+            Status = status,
+            CreatedAt = createdAt,
+            LastModified = lastModified
         };
 
         order._orderItems.AddRange(orderItems);
@@ -85,10 +90,10 @@ public class Order : Aggregate<OrderId>
     private readonly List<OrderItem> _orderItems = [];
     public IReadOnlyList<OrderItem> OrderItems => _orderItems.AsReadOnly();
 
-    public CustomerId CustomerId { get; private set; } = default!;
-    public OrderName OrderName { get; private set; } = default!;
-    public Address ShippingAddress { get; private set; } = default!;
-    public Payment Payment { get; private set; } = default!;
+    public CustomerId CustomerId { get; private set; } = null!;
+    public OrderName OrderName { get; private set; } = null!;
+    public Address ShippingAddress { get; private set; } = null!;
+    public Payment Payment { get; private set; } = null!;
     public OrderStatus Status { get; private set; } = OrderStatus.Pending;
     public decimal TotalPrice
     {

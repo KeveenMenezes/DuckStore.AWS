@@ -1,80 +1,80 @@
 # DuckStore
 
-DuckStore é uma aplicação de e-commerce moderna e escalável, projetada para demonstrar conceitos avançados de arquitetura de software e integração de tecnologias. Este projeto utiliza uma abordagem baseada em microsserviços para oferecer uma solução robusta e flexível.
+DuckStore is a modern, scalable e-commerce application designed to showcase advanced software architecture concepts and technology integration. The project follows a microservices-based approach to deliver a robust and flexible solution.
 
 ---
 
-## 📜 Conceito
+## 📜 Concept
 
-É um exemplo de e-commerce que permite aos usuários gerenciar carrinhos de compras, aplicar descontos e realizar transações de forma eficiente. Ele simula um ambiente real de comércio eletrônico, integrando serviços como banco de dados, cache, mensageria e APIs externas.
+It is an e-commerce sample that lets users manage shopping carts, apply discounts, and complete transactions efficiently. It simulates a real-world e-commerce environment, integrating services such as databases, cache, messaging, and external APIs.
 
 #### 🖼️ Design Inspirations
 
-![Imagem conceito](./docs/img/layout_concepts_v1.jpeg)
-![Imagem conceito](./docs/img/layout_concepts_v2.jpeg)
-![Imagem conceito](./docs/img/layout_concepts_v3.jpeg)
+![Concept image](./docs/img/layout_concepts_v1.jpeg)
+![Concept image](./docs/img/layout_concepts_v2.jpeg)
+![Concept image](./docs/img/layout_concepts_v3.jpeg)
 
 ---
 
-## 📐 Arquitetura
+## 📐 Architecture
 
-A arquitetura do DuckStore é baseada em microsserviços, com comunicação assíncrona entre os serviços. Cada serviço segue os princípios de **Vertical Slice Architecture**, **Ports and Adapters**, **Clean Architecture** e **três camadas**.
+DuckStore's architecture is based on microservices with asynchronous communication between services. Each service follows the principles of **Vertical Slice Architecture**, **Ports and Adapters**, **Clean Architecture**, and **three-layer architecture**.
 
-A comunicação entre os serviços é feita utilizando o **RabbitMQ** como broker de mensagens, garantindo integração assíncrona e desacoplada. Essa abordagem permite maior escalabilidade, flexibilidade e facilidade de manutenção.
+Communication between services is handled with **RabbitMQ** as the message broker, ensuring asynchronous and decoupled integration. This approach enables greater scalability, flexibility, and ease of maintenance.
 
-Abaixo está uma visão geral da arquitetura:
+Below is an overview of the architecture:
 
-![Arquitetura do DuckStore](./docs/img/architecture.png)
+![DuckStore architecture](./docs/img/architecture.png)
 
-Cada serviço é responsável por uma funcionalidade específica, como gerenciamento de carrinho, descontos e processamento de pedidos, seguindo os princípios de modularidade e separação de responsabilidades.
-
----
-
-## 🛠️ Tecnologias Utilizadas
-
-- **C# e .NET**: Linguagem e framework principal para desenvolvimento.
-- **Aspire**: Framework para simplificar a criação de APIs e serviços.
-- **Angular**: Framework para desenvolvimento de front-end.
-- **Blazor**: Framework para desenvolvimento de interfaces web interativas.
-- **YARP**: Proxy reverso para roteamento de requisições.
-- **Entity Framework Core**: ORM para manipulação de dados.
-- **SQLite**: Banco de dados leve para persistência local.
-- **SQL Server**: Banco de dados relacional robusto para persistência de dados.
-- **RabbitMQ**: Mensageria para comunicação assíncrona entre microsserviços.
-- **PostgreSQL**: Banco de dados relacional para persistência de dados.
-- **Redis**: Cache distribuído para melhorar a performance.
-- **Marten**: Biblioteca para manipulação de dados no PostgreSQL.
-- **MassTransit**: Framework para integração com RabbitMQ.
-- **FluentValidation**: Validação de dados.
-- **Carter**: Framework minimalista para APIs.
-- **gRPC**: Comunicação eficiente entre serviços.
-- **OpenTelemetry**: Observabilidade e rastreamento distribuído.
-- **Mapster**: Biblioteca para mapeamento de objetos.
+Each service is responsible for a specific capability — such as cart management, discounts, and order processing — following the principles of modularity and separation of concerns.
 
 ---
 
-## 🚀 Como Iniciar o Projeto
+## 🛠️ Technologies Used
 
-### Pré-requisitos
+- **C# and .NET**: Main language and framework for development.
+- **Aspire**: Framework that simplifies building APIs and services.
+- **Angular**: Framework for front-end development.
+- **Blazor**: Framework for building interactive web interfaces.
+- **YARP**: Reverse proxy for request routing.
+- **Entity Framework Core**: ORM for data manipulation.
+- **SQLite**: Lightweight database for local persistence.
+- **SQL Server**: Robust relational database for data persistence.
+- **RabbitMQ**: Messaging for asynchronous communication between microservices.
+- **PostgreSQL**: Relational database for data persistence.
+- **Redis**: Distributed cache to improve performance.
+- **Marten**: Library for handling data in PostgreSQL.
+- **MassTransit**: Framework for RabbitMQ integration.
+- **FluentValidation**: Data validation.
+- **Carter**: Minimalist framework for APIs.
+- **gRPC**: Efficient communication between services.
+- **OpenTelemetry**: Observability and distributed tracing.
+- **Mapster**: Object mapping library.
 
-- .NET SDK 9.0 ou superior
-- Docker (opcional, para serviços como RabbitMQ, PostgreSQL e Redis)
-- Visual Studio Code com a extensão **C# Dev Kit**
+---
 
-### Passos para Iniciar
+## 🚀 Getting Started
 
-Clone o repositório:
+### Prerequisites
+
+- .NET SDK 9.0 or higher
+- Docker (optional, for services such as RabbitMQ, PostgreSQL, and Redis)
+- Visual Studio Code with the **C# Dev Kit** extension
+
+### Steps to Run
+
+Clone the repository:
    ```bash
    git clone [Github](https://github.com/KeveenMenezes/DuckStore.git)
    cd DuckStore
    ```
 
-Utilize a extensão **C# Dev Kit** para iniciar o projeto:
-   - Pressione `F5` e selecione o folder `C#`.
-   - Escolha o projeto `C#: AppHost` para iniciar.
+Use the **C# Dev Kit** extension to start the project:
+   - Press `F5` and select the `C#` folder.
+   - Choose the `C#: AppHost` project to start.
 
-## 📧 Contato
+## 📧 Contact
 
-Para dúvidas ou sugestões, entre em contato pelo [Linkedin](https://www.linkedin.com/in/keveen-menezes-52592162/)
+For questions or suggestions, reach out on [Linkedin](https://www.linkedin.com/in/keveen-menezes-52592162/)
 
 ---
