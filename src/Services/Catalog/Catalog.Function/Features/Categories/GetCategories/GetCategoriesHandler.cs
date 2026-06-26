@@ -1,4 +1,4 @@
-namespace Catalog.API.Features.Categories.GetCategories;
+namespace Catalog.Function.Features.Categories.GetCategories;
 
 public record GetCategoriesQuery(int PageIndex, int PageSize)
     : IQuery<GetCategoriesResult>;

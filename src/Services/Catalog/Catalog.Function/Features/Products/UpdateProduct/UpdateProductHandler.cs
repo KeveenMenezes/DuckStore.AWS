@@ -1,4 +1,4 @@
-namespace Catalog.API.Features.Products.UpdateProduct;
+namespace Catalog.Function.Features.Products.UpdateProduct;
 
 public record UpdateProductCommand(
     Guid Id,

@@ -1,4 +1,4 @@
-using Catalog.API.Features.Products.UpdateProduct;
+using Catalog.Function.Features.Products.UpdateProduct;
 
 namespace Catalog.Function;
 
@@ -15,7 +15,7 @@ public record UpdateProductResponse(Guid Id);
 
 public partial class Functions
 {
-    [LambdaFunction]
+    [LambdaFunction(PackageType = LambdaPackageType.Image)]
     [HttpApi(LambdaHttpMethod.Put, "/products")]
     public async Task<IHttpResult> UpdateProduct(
         [FromBody] UpdateProductRequest request,

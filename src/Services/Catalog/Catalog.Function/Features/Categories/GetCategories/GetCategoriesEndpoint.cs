@@ -1,10 +1,10 @@
-using Catalog.API.Features.Categories.GetCategories;
+﻿using Catalog.Function.Features.Categories.GetCategories;
 
 namespace Catalog.Function;
 
 public partial class Functions
 {
-    [LambdaFunction]
+    [LambdaFunction(PackageType = LambdaPackageType.Image)]
     [HttpApi(LambdaHttpMethod.Get, "/categories")]
     public async Task<PaginatedResult<Category>> GetCategories(
         [FromServices] ISender sender,

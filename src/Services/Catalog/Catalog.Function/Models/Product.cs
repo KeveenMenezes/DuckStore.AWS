@@ -1,4 +1,4 @@
-﻿namespace Catalog.API.Models;
+﻿namespace Catalog.Function.Models;
 
 public class Product : IdentifiableAggregate<ProductId, Guid>
 {
@@ -35,9 +35,6 @@ public class Product : IdentifiableAggregate<ProductId, Guid>
             CategoryIds = categoryIds
         };
 
-        // TODO: Criar o consumidor desse evento
-        product.AddDomainEvent(new ProductCreatedEvent(product));
-
         return product;
     }
 
@@ -71,8 +68,6 @@ public class Product : IdentifiableAggregate<ProductId, Guid>
         Stock = stock;
 
         CategoryIds = categoryIds;
-
-        AddDomainEvent(new ProductUpdatedEvent(this));
     }
 
     public string Name { get; private set; } = default!;
@@ -80,11 +75,11 @@ public class Product : IdentifiableAggregate<ProductId, Guid>
     public string ImageUrl { get; private set; } = default!;
     public decimal Price { get; private set; } = default!;
 
-    //TODO: criar eventos para controle de estoque
+    //TODO: emit events for stock control
     public int Stock { get; private set; } = default!;
     public List<CategoryId> CategoryIds { get; private set; } = default!;
 
-    // Reconstitui um Product já persistido (sem revalidar regras de criação nem disparar domain events).
+    // Reconstitutes an already-persisted Product (without re-validating creation rules or raising domain events).
     internal static Product Load(
         Guid id,
         string name,

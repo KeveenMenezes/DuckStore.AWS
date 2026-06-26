@@ -1,7 +1,7 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 
-namespace Catalog.API.Repositories;
+namespace Catalog.Function.Repositories;
 
 public class DynamoCategoryRepository(IAmazonDynamoDB dynamoDb) : ICategoryRepository
 {

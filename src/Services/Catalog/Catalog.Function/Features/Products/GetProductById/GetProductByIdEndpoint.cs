@@ -1,4 +1,4 @@
-using Catalog.API.Features.Products.GetProductById;
+using Catalog.Function.Features.Products.GetProductById;
 
 namespace Catalog.Function;
 
@@ -6,7 +6,7 @@ public record GetProductByIdResponse(Product Product);
 
 public partial class Functions
 {
-    [LambdaFunction]
+    [LambdaFunction(PackageType = LambdaPackageType.Image)]
     [HttpApi(LambdaHttpMethod.Get, "/products/{id}")]
     public async Task<IHttpResult> GetProductById(
         Guid id,

@@ -11,5 +11,8 @@
   "s3-prefix": "Catalog.Function/",
   "template": "serverless.template",
   "template-parameters": "",
-  "docker-host-build-output-dir": "./bin/Release/lambda-publish"
+  "docker-host-build-output-dir": "./bin/Release/lambda-publish",
+  "package-type": "image",
+  "image-repo": "duckstore-catalog-function",
+  "image-tag": "latest"
 }

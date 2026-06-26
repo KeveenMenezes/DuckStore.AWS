@@ -1,4 +1,4 @@
-﻿namespace Catalog.API.Models;
+﻿namespace Catalog.Function.Models;
 
 public class Category : IdentifiableEntity<CategoryId, Guid>
 {

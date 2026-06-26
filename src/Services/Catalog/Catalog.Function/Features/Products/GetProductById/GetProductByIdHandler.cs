@@ -1,4 +1,4 @@
-namespace Catalog.API.Features.Products.GetProductById;
+namespace Catalog.Function.Features.Products.GetProductById;
 
 public record GetProductByIdQuery(Guid Id) :
     IQuery<GetProductByIdResult>;

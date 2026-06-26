@@ -1,10 +1,10 @@
-using Catalog.API.Features.Products.GetProducts;
+using Catalog.Function.Features.Products.GetProducts;
 
 namespace Catalog.Function;
 
 public partial class Functions
 {
-    [LambdaFunction]
+    [LambdaFunction(PackageType = LambdaPackageType.Image)]
     [HttpApi(LambdaHttpMethod.Get, "/products")]
     public async Task<PaginatedResult<Product>> GetProducts(
         [FromServices] ISender sender,

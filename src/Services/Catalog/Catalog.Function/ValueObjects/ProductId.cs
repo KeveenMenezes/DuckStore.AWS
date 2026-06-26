@@ -1,4 +1,4 @@
-﻿namespace Catalog.API.ValueObjects;
+﻿namespace Catalog.Function.ValueObjects;
 
 public class ProductId : ValueObject<Guid>
 {

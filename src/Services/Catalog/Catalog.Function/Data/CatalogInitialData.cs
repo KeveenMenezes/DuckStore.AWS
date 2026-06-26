@@ -1,4 +1,4 @@
-namespace Catalog.API.Data;
+﻿namespace Catalog.Function.Data;
 
 public class CatalogInitialData(IProductRepository productRepository, ICategoryRepository categoryRepository)
 {

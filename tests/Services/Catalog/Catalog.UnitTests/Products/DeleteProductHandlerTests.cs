@@ -4,14 +4,14 @@ public class DeleteProductHandlerTests
 {
     private readonly AutoMocker _autoMocker;
     private readonly Mock<IProductRepository> _productRepositoryMock;
-    private readonly DeleteProductCommandValitor _validator;
+    private readonly DeleteProductCommandValidator _validator;
     private readonly DeleteProductHandler _handler;
 
     public DeleteProductHandlerTests()
     {
         _autoMocker = new AutoMocker();
         _productRepositoryMock = _autoMocker.GetMock<IProductRepository>();
-        _validator = new DeleteProductCommandValitor();
+        _validator = new DeleteProductCommandValidator();
         _handler = new DeleteProductHandler(_productRepositoryMock.Object);
     }
 

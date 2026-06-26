@@ -1,4 +1,4 @@
-namespace Catalog.API.Repositories;
+namespace Catalog.Function.Repositories;
 
 public interface IProductRepository
 {

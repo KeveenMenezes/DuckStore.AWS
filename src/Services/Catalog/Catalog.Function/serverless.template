@@ -3,181 +3,6 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "An AWS Serverless Application. This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
   "Resources": {
-    "CatalogFunctionFunctionsDefaultGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootGet"
-        ],
-        "SyncedEventProperties": {
-          "RootGet": [
-            "Path",
-            "Method"
-          ]
-        }
-      },
-      "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_Default_Generated::Default",
-        "Events": {
-          "RootGet": {
-            "Type": "HttpApi",
-            "Properties": {
-              "Path": "/",
-              "Method": "GET"
-            }
-          }
-        }
-      }
-    },
-    "CatalogFunctionFunctionsAddGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootGet"
-        ],
-        "SyncedEventProperties": {
-          "RootGet": [
-            "Path",
-            "Method"
-          ]
-        }
-      },
-      "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_Add_Generated::Add",
-        "Events": {
-          "RootGet": {
-            "Type": "HttpApi",
-            "Properties": {
-              "Path": "/add/{x}/{y}",
-              "Method": "GET"
-            }
-          }
-        }
-      }
-    },
-    "CatalogFunctionFunctionsSubtractGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootGet"
-        ],
-        "SyncedEventProperties": {
-          "RootGet": [
-            "Path",
-            "Method"
-          ]
-        }
-      },
-      "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_Subtract_Generated::Subtract",
-        "Events": {
-          "RootGet": {
-            "Type": "HttpApi",
-            "Properties": {
-              "Path": "/subtract/{x}/{y}",
-              "Method": "GET"
-            }
-          }
-        }
-      }
-    },
-    "CatalogFunctionFunctionsMultiplyGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootGet"
-        ],
-        "SyncedEventProperties": {
-          "RootGet": [
-            "Path",
-            "Method"
-          ]
-        }
-      },
-      "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_Multiply_Generated::Multiply",
-        "Events": {
-          "RootGet": {
-            "Type": "HttpApi",
-            "Properties": {
-              "Path": "/multiply/{x}/{y}",
-              "Method": "GET"
-            }
-          }
-        }
-      }
-    },
-    "CatalogFunctionFunctionsDivideGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootGet"
-        ],
-        "SyncedEventProperties": {
-          "RootGet": [
-            "Path",
-            "Method"
-          ]
-        }
-      },
-      "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_Divide_Generated::Divide",
-        "Events": {
-          "RootGet": {
-            "Type": "HttpApi",
-            "Properties": {
-              "Path": "/divide/{x}/{y}",
-              "Method": "GET"
-            }
-          }
-        }
-      }
-    },
     "CatalogFunctionFunctionsGetProductByCategoryGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
@@ -193,15 +18,12 @@
         }
       },
       "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
         "MemorySize": 512,
         "Timeout": 30,
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_GetProductByCategory_Generated::GetProductByCategory",
+        "PackageType": "Image",
         "Events": {
           "RootGet": {
             "Type": "HttpApi",
@@ -210,6 +32,12 @@
               "Method": "GET"
             }
           }
+        },
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Catalog.Function::Catalog.Function.Functions_GetProductByCategory_Generated::GetProductByCategory"
+          ]
         }
       }
     },
@@ -228,15 +56,12 @@
         }
       },
       "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
         "MemorySize": 512,
         "Timeout": 30,
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_GetCategories_Generated::GetCategories",
+        "PackageType": "Image",
         "Events": {
           "RootGet": {
             "Type": "HttpApi",
@@ -245,6 +70,12 @@
               "Method": "GET"
             }
           }
+        },
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Catalog.Function::Catalog.Function.Functions_GetCategories_Generated::GetCategories"
+          ]
         }
       }
     },
@@ -263,15 +94,12 @@
         }
       },
       "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
         "MemorySize": 512,
         "Timeout": 30,
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_CreateProduct_Generated::CreateProduct",
+        "PackageType": "Image",
         "Events": {
           "RootPost": {
             "Type": "HttpApi",
@@ -280,6 +108,12 @@
               "Method": "POST"
             }
           }
+        },
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Catalog.Function::Catalog.Function.Functions_CreateProduct_Generated::CreateProduct"
+          ]
         }
       }
     },
@@ -298,15 +132,12 @@
         }
       },
       "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
         "MemorySize": 512,
         "Timeout": 30,
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_DeleteProduct_Generated::DeleteProduct",
+        "PackageType": "Image",
         "Events": {
           "RootDelete": {
             "Type": "HttpApi",
@@ -315,6 +146,12 @@
               "Method": "DELETE"
             }
           }
+        },
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Catalog.Function::Catalog.Function.Functions_DeleteProduct_Generated::DeleteProduct"
+          ]
         }
       }
     },
@@ -333,15 +170,12 @@
         }
       },
       "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
         "MemorySize": 512,
         "Timeout": 30,
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_GetProductById_Generated::GetProductById",
+        "PackageType": "Image",
         "Events": {
           "RootGet": {
             "Type": "HttpApi",
@@ -350,6 +184,12 @@
               "Method": "GET"
             }
           }
+        },
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Catalog.Function::Catalog.Function.Functions_GetProductById_Generated::GetProductById"
+          ]
         }
       }
     },
@@ -368,15 +208,12 @@
         }
       },
       "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
         "MemorySize": 512,
         "Timeout": 30,
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_GetProducts_Generated::GetProducts",
+        "PackageType": "Image",
         "Events": {
           "RootGet": {
             "Type": "HttpApi",
@@ -385,6 +222,12 @@
               "Method": "GET"
             }
           }
+        },
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Catalog.Function::Catalog.Function.Functions_GetProducts_Generated::GetProducts"
+          ]
         }
       }
     },
@@ -403,15 +246,12 @@
         }
       },
       "Properties": {
-        "Runtime": "dotnet10",
-        "CodeUri": ".",
         "MemorySize": 512,
         "Timeout": 30,
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Zip",
-        "Handler": "Catalog.Function::Catalog.Function.Functions_UpdateProduct_Generated::UpdateProduct",
+        "PackageType": "Image",
         "Events": {
           "RootPut": {
             "Type": "HttpApi",
@@ -420,6 +260,12 @@
               "Method": "PUT"
             }
           }
+        },
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Catalog.Function::Catalog.Function.Functions_UpdateProduct_Generated::UpdateProduct"
+          ]
         }
       }
     }

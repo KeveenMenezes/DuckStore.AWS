@@ -2,7 +2,7 @@ using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Microsoft.Extensions.DependencyInjection;
 
-namespace Catalog.API.Repositories;
+namespace Catalog.Function.Repositories;
 
 public static class DynamoTableInitializer
 {
@@ -28,7 +28,7 @@ public static class DynamoTableInitializer
         }
         catch (ResourceInUseException)
         {
-            // Tabela já existe — idempotente.
+            // Table already exists — idempotent.
         }
     }
 }

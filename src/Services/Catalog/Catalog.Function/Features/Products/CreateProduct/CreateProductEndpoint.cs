@@ -1,4 +1,4 @@
-using Catalog.API.Features.Products.CreateProduct;
+using Catalog.Function.Features.Products.CreateProduct;
 
 namespace Catalog.Function;
 
@@ -14,7 +14,7 @@ public record CreateProductResponse(Guid Id);
 
 public partial class Functions
 {
-    [LambdaFunction]
+    [LambdaFunction(PackageType = LambdaPackageType.Image)]
     [HttpApi(LambdaHttpMethod.Post, "/products")]
     public async Task<IHttpResult> CreateProduct(
         [FromBody] CreateProductRequest request,
