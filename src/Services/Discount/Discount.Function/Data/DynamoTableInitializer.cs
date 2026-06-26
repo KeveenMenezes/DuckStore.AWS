@@ -1,7 +1,8 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
+using Microsoft.Extensions.DependencyInjection;
 
-namespace Discount.Grpc.Data;
+namespace Discount.Function.Data;
 
 public static class DynamoTableInitializer
 {

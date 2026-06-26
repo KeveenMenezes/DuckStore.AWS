@@ -1,4 +1,4 @@
-namespace Discount.Grpc.Data;
+namespace Discount.Function.Data;
 
 public interface ICouponRepository
 {

@@ -1,7 +1,7 @@
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 
-namespace Discount.Grpc.Data;
+namespace Discount.Function.Data;
 
 public class DynamoCouponRepository(IAmazonDynamoDB dynamoDb) : ICouponRepository
 {
