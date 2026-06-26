@@ -31,7 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\src\Services\Basket\Basket.API\Basket.API.csproj" />
+    <ProjectReference Include="..\..\..\..\src\Services\Basket\Basket.Function\Basket.Function.csproj" />
     <ProjectReference Include="..\..\..\..\src\Services\Ordering\Ordering.Application\Ordering.Application.csproj" />
     <ProjectReference Include="..\..\..\..\src\Services\Ordering\Ordering.Domain\Ordering.Domain.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.UnitTests\BuildingBlocks.UnitTests.csproj" />

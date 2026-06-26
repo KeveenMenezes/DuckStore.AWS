@@ -2,10 +2,10 @@
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
 #pragma warning disable CS8620 // Argument cannot be used for parameter due to differences in the nullability of reference types.
 
-using Basket.API.Basket.CheckoutBasket;
-using Basket.API.Data;
-using Basket.API.Dtos;
-using Basket.API.Models;
+using Basket.Function.Data;
+using Basket.Function.Dtos;
+using Basket.Function.Features.CheckoutBasket;
+using Basket.Function.Models;
 using BuildingBlocks.Messaging.EventBridge;
 using BuildingBlocks.Messaging.Events;
 using FluentValidation.TestHelper;
