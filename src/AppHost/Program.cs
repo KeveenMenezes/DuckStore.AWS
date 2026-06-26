@@ -22,16 +22,16 @@ var dynamoDb = builder.
     })
     .WithHttpEndpoint(8000, 8000);
 
-builder.AddAWSLambdaServiceEmulator();
+var lambdaEmulator = builder.AddAWSLambdaServiceEmulator();
 
 // Services
 var elasticsearch = builder.AddObservability();
 
 var orderingApi = builder.AddOrderingServices(dynamoDb, elasticsearch);
 
-var discountApi = builder.AddDiscountApi(dynamoDb, elasticsearch);
+builder.AddDiscountLambdas(dynamoDb);
 
-var basketApi = builder.AddBasketApi(redis, dynamoDb, discountApi, elasticsearch);
+builder.AddBasketLambdas(redis, dynamoDb, lambdaEmulator);
 
 builder.AddCatalogLambdas(dynamoDb);
 
@@ -39,14 +39,12 @@ builder.AddCatalogLambdas(dynamoDb);
 var yarpApiGateway = builder.AddProject<Projects.YarpApiGateway>(
     "yarp-api-gateway", GetHttpsForEndpoints())
     .WithExternalHttpEndpoints()
-    .WithReference(orderingApi)
-    .WithReference(basketApi);
+    .WithReference(orderingApi);
 
 // Apps
 builder.AddProject<Projects.Shopping_Web_Server>(
     "shopping-web-server", GetHttpForEndpoints())
     .WithExternalHttpEndpoints()
-    .WithReference(basketApi)
     .WithReference(orderingApi);
 
 builder.AddNpmApp("shopping-web-spa", "../WebApps/Shopping.Web.SPA")

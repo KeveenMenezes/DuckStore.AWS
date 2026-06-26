@@ -114,7 +114,7 @@
     },
     "catalogapi": {
       "type": "project.v0",
-      "path": "../Services/Catalog/Catalog.API/Catalog.API.csproj",
+      "path": "../Services/Catalog/Catalog.Function/Catalog.Function.csproj",
       "env": {
         "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EXCEPTION_LOG_ATTRIBUTES": "true",
         "OTEL_DOTNET_EXPERIMENTAL_OTLP_EMIT_EVENT_LOG_ATTRIBUTES": "true",

@@ -1,5 +1,3 @@
-using Aspire.Hosting.ApplicationModel;
-
 namespace AppHost.Observability;
 
 public static class ObservabilityExtensions

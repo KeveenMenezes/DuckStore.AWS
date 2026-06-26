@@ -1,19 +1,20 @@
-using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.AWS.DynamoDB;
+using Aspire.Hosting.AWS.Lambda;
 using AppHost.Extensions;
 
 namespace AppHost.Discount;
 
 public static class DiscountExtensions
 {
-    public static IResourceBuilder<ProjectResource> AddDiscountApi(
+    public const string GetDiscountFunctionName = "discount-get-discount";
+
+    public static IResourceBuilder<LambdaProjectResource> AddDiscountLambdas(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<DynamoDBLocalResource> dynamoDb,
-        IResourceBuilder<ElasticsearchResource> elasticsearch) =>
-        builder.AddProject<Projects.Discount_Grpc>("discount-api", "http")
+        IResourceBuilder<DynamoDBLocalResource> dynamoDb) =>
+        builder.AddAWSLambdaFunction<Projects.Discount_Function>(
+                GetDiscountFunctionName,
+                lambdaHandler: "Discount.Function::Discount.Function.Functions_GetDiscount_Generated::GetDiscount")
             .WaitFor(dynamoDb)
-            .WaitFor(elasticsearch)
             .WithReference(dynamoDb)
-            .WithReference(elasticsearch)
             .WithAwsDevEnvironment();
 }
