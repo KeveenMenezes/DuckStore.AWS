@@ -11,8 +11,10 @@
     <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="2.0.0" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.5" />
     <PackageVersion Include="AWSSDK.Core" Version="4.0.9.6" />
+    <PackageVersion Include="AWSSDK.DAX.Client" Version="4.0.0" />
     <PackageVersion Include="AWSSDK.DynamoDBv2" Version="4.0.21.6" />
     <PackageVersion Include="AWSSDK.EventBridge" Version="4.0.6.9" />
+    <PackageVersion Include="AWSSDK.Lambda" Version="4.0.18" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.3.7" />
     <PackageVersion Include="Aspire.Elastic.Clients.Elasticsearch" Version="13.3.0" />
     <PackageVersion Include="Aspire.Hosting.AWS" Version="13.3.1" />

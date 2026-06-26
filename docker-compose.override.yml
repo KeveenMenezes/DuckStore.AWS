@@ -39,7 +39,7 @@ services:
     ports:
       - "5434:5432"
 
-  catalog.api:
+  Catalog.Function:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080

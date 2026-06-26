@@ -4,7 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project overview
 
-DuckStore is a .NET microservices e-commerce sample built around .NET Aspire orchestration, Vertical Slice Architecture, and CQRS. It's a learning/demo project, not production software — favor consistency with existing patterns over introducing new ones.
+DuckStore is a **serverless-first AWS** .NET microservices e-commerce sample, orchestrated locally by .NET Aspire. It uses Vertical Slice Architecture, CQRS (MediatR), AWS Lambda functions, DynamoDB, and Amazon EventBridge. It's a learning/demo project, not production software — favor consistency with existing patterns over introducing new ones.
+
+The codebase is mid-evolution: it was migrated from a classic stack (PostgreSQL/Marten, EF Core, RabbitMQ/MassTransit, gRPC, Carter) to serverless AWS. Architectural decisions are recorded under `docs/adr/` — **read the relevant ADR before changing cross-cutting infrastructure**. Key recent ones: ADR-0004 (EventBridge over MassTransit/RabbitMQ), ADR-0005 (removal of in-process domain events; CDC via DynamoDB Streams), ADR-0006 (React/Next.js as the primary SPA). Use the `adr` skill to author/update ADRs.
+
+Target framework is **net10.0** across all .NET projects.
 
 ## Common commands
 
@@ -12,14 +16,15 @@ DuckStore is a .NET microservices e-commerce sample built around .NET Aspire orc
 # Build the whole solution
 dotnet build DuckStore.sln
 
-# Run everything (Aspire orchestrates all services, infra containers, and web apps)
+# Run everything (Aspire orchestrates Lambda functions, DynamoDB Local, the Lambda emulator,
+# Redis, Elasticsearch/Kibana, and the web apps)
 dotnet run --project src/AppHost/AppHost.csproj
 
-# Run all tests
+# Run all .NET tests
 dotnet test
 
 # Run a single test project
-dotnet test tests/Services/Basket/Basket.UnitTests/Basket.UnitTests.csproj
+dotnet test tests/Services/Catalog/Catalog.UnitTests/Catalog.UnitTests.csproj
 
 # Run a single test by name
 dotnet test --filter "FullyQualifiedName~CheckoutBasketCommandHandlerTests"
@@ -30,44 +35,63 @@ dotnet format DuckStore.sln
 
 Git hooks live in `.githooks/` (configured via `core.hooksPath`); the pre-commit hook runs `dotnet format` on staged `.cs` files and re-stages them. Don't bypass this with `--no-verify`.
 
-Use `dotnet run --project src/AppHost/AppHost.csproj` (Aspire) to start the system locally — it provisions Postgres, Redis, RabbitMQ, Elasticsearch/Kibana, and LocalStack (SQS/DynamoDB) as containers and wires service discovery between them. `docker-compose.yml`/`docker-compose.override.yml` are secondary/legacy to Aspire.
+Use `dotnet run --project src/AppHost/AppHost.csproj` (Aspire) to start the system locally — it provisions DynamoDB Local (`http://localhost:8000`), the Aspire AWS Lambda service emulator, Redis, and Elasticsearch/Kibana as containers, registers each Lambda function, and wires the dev environment between them. `docker-compose.yml`/`docker-compose.override.yml` are secondary/legacy to Aspire.
+
+The Go notification service and the React SPA have their own toolchains (`go`, `pnpm`/`next`) — see those subsections.
 
 ## Architecture
 
-### Services (src/Services/*)
+### The serverless model
 
-Each service follows **Vertical Slice Architecture**: features are organized by use case folder (not by technical layer), each containing an endpoint, command/query, handler, and validator together.
+- **Compute** is AWS Lambda. Each use case is its own function. Locally, Aspire registers them via `AddAWSLambdaFunction<Projects.X>(...)` and runs them through the Lambda service emulator.
+- **Persistence** is DynamoDB (DynamoDB Local in dev). Repositories talk to `IAmazonDynamoDB` directly (`TransactWriteItems`, etc.) — there is no EF Core `SaveChanges`/`ChangeTracker`/interceptor pipeline anymore.
+- **Cross-service messaging** is Amazon EventBridge (`BuildingBlocks.Messaging/EventBridge`). The bus only exists on AWS; locally, publishes are **best-effort and fail silently**. Integration events are produced via **Change Data Capture**: a committed DynamoDB write → DynamoDB Streams → a Stream-triggered publisher Lambda → EventBridge (see ADR-0005). Do not reintroduce in-process domain events as the integration path.
+- **Synchronous service-to-service calls** use direct Lambda invocation via the AWS Lambda Invoke API (e.g. Basket → Discount through `DiscountLambdaClient`), not gRPC/HTTP.
 
-- **Basket.API** — Carter + MediatR + Marten (PostgreSQL document store) with a Redis cache-aside decorator (`CacheBasketRepository` wraps `BasketRepository`). Calls Discount.Grpc to apply discounts at checkout. Slices live under `Basket/{CheckoutBasket,StoreBasket,GetBasket,DeleteBasket}`.
-- **Catalog.API** — Same Carter + MediatR + Marten/PostgreSQL pattern as Basket. Slices under `Features/Products/*` and `Features/Categories/*`.
-- **Discount.Grpc** — Plain gRPC service (no Carter/MediatR), EF Core + SQLite.
-- **Ordering.{Domain,Application,Infrastructure,API}** — The one service using classic DDD/layered architecture instead of vertical slices: `Ordering.Domain` has the `Order` aggregate, value objects, and domain events; `Ordering.Application` wires MediatR + pipeline behaviors; `Ordering.Infrastructure` has the EF Core `ApplicationDbContext` (PostgreSQL) with MassTransit inbox/outbox and `SaveChangesInterceptor`s for auditing and domain event dispatch. `Ordering.MigrationService` applies EF Core migrations before `Ordering.API` starts.
-- **Notification** — Go service (not .NET) consuming events from SQS and writing to DynamoDB via LocalStack in dev.
+### Lambda function pattern (Basket, Catalog, Discount)
+
+Each `*.Function` project uses the **Amazon.Lambda.Annotations** source generator:
+
+- A `partial class Functions` holds methods decorated with `[LambdaFunction]` + `[HttpApi(...)]` (or other event-source attributes). The generator emits the actual handler types referenced in the AppHost as `X.Function::X.Function.Functions_<Method>_Generated::<Method>`. When you add/rename a function method, the AppHost `lambdaHandler` string must match the generated name.
+- DI is configured in a `[LambdaStartup] public class Startup.ConfigureServices(IServiceCollection)`. Configuration comes from environment variables that Aspire injects (`ConnectionStrings__*`, `services__*`, `EventBridge__*`, `Discount__FunctionName`, AWS dev credentials/region).
+- Endpoints map the HTTP request to a MediatR command/query via `ISender.Send(...)` and adapt request/response DTOs (Mapster `.Adapt<T>()`, convention-based).
 
 ### CQRS conventions (Basket, Catalog, Ordering)
 
 - Commands implement `ICommand<TResponse>`, queries implement `IQuery<TResponse>` (from `BuildingBlocks.Core`), handled by `ICommandHandler<,>`/`IQueryHandler<,>` over MediatR.
-- A shared MediatR pipeline (registered per-service) runs `ValidationBehavior` (FluentValidation `AbstractValidator<TCommand>`), `LoggingBehavior`, and `UnitOfWorkBehavior` in that order for every request.
-- Carter `ICarterModule` endpoint classes map HTTP routes directly to `ISender.Send(...)`. Request/response DTOs convert to/from commands via Mapster's `.Adapt<T>()` (convention-based, no explicit profiles).
+- The MediatR pipeline in Lambda startups registers `ValidationBehavior` (FluentValidation `AbstractValidator<TCommand>`) and `LoggingBehavior` from `BuildingBlocks.ServiceDefaults.Behaviors`. (The old `UnitOfWorkBehavior` is gone — there is no DB transaction scope to manage.)
+- Slices live under `Features/{UseCase}/` (e.g. `Features/Products/CreateProduct`, `Features/CheckoutBasket`), each holding endpoint + command/query + handler + validator together.
+
+### Services (src/Services/*)
+
+- **Basket.Function** — Lambda + DynamoDB with a Redis cache-aside decorator (`CacheBasketRepository` wraps `BasketRepository`; storage wired in `BasketStorageExtensions`). Calls Discount via Lambda invoke (`DiscountLambdaClient`). Checkout publishes to EventBridge. Slices under `Features/{GetBasket,StoreBasket,DeleteBasket,CheckoutBasket}`.
+- **Catalog.Function** — Lambda + DynamoDB (`DynamoProductRepository`, `DynamoCategoryRepository`). Slices under `Features/Products/*` and `Features/Categories/*`.
+- **Discount.Function** — Lambda + DynamoDB (`DynamoCouponRepository`). Invoked directly by Basket (was previously gRPC + EF/SQLite).
+- **Ordering.{Domain,Application,Infrastructure,API}** — Keeps the classic DDD/layered structure (`Order` aggregate, value objects in `Ordering.Domain`; MediatR + behaviors in `Ordering.Application`; repositories in `Ordering.Infrastructure`), but persistence is now **DynamoDB** (`OrderingTable`), not EF/PostgreSQL. `Aggregate<TId>`/`IAggregate` are now empty aggregate-root markers (domain events removed — ADR-0005). Plus two Lambdas:
+  - `Ordering.BasketCheckoutConsumer.Lambda` — consumes the checkout integration event and writes the order.
+  - `Ordering.OrderCreatedPublisher.Lambda` — DynamoDB Streams source on `OrderingTable`; publishes `OrderCreated` to EventBridge (CDC).
+  - `Ordering.MigrationService` — creates/seeds DynamoDB tables (`DynamoTableInitializer`) before Ordering Lambdas/API start.
+- **Notification** — Go service (`src/Services/Notification/Notification.Go`), consumes events and writes to DynamoDB. Has its own `go.mod` and `main_test.go` (`go test ./...`).
 
 ### BuildingBlocks (src/BuildingBlocks/*)
 
-Shared code referenced by every service — check here before adding cross-cutting concerns, they likely already exist:
+Shared code referenced across services — check here before adding cross-cutting concerns:
 
-- **BuildingBlocks.Core** — `ICommand`/`IQuery`/handler interfaces, `IUnitOfWork`, DDD base types (`Aggregate<TId>`, `IDomainEvent`, `ValueObject`), pagination helpers.
-- **BuildingBlocks.Messaging** — `IntegrationEvent` base record and the MassTransit/RabbitMQ `AddMessageBroker()` extension (auto-registers consumers from the calling assembly, kebab-case endpoint naming).
-- **BuildingBlocks.ServiceDefaults** — `AddServiceDefaults()` (service discovery, Polly resilience, health checks, OpenTelemetry, Serilog → Elasticsearch logging), the shared MediatR behaviors, and `CustomExceptionHandler` for ProblemDetails responses. Every API's `Program.cs` calls this.
-- **BuildingBlocks.ServiceDefaults.Lambda** — AWS Lambda hosting equivalents of the above, used by the Go/Lambda-adjacent notification path.
+- **BuildingBlocks.Core** — `ICommand`/`IQuery`/handler interfaces, `IUnitOfWork`, DDD base types (`Aggregate<TId>`/`IAggregate` as markers, `ValueObject`), pagination helpers (`PaginatedResult<T>`). Note: `IDomainEvent` and the domain-event machinery were deleted (ADR-0005).
+- **BuildingBlocks.Messaging** — `IntegrationEvent` base record and the EventBridge integration: `AddEventBridgeMessaging()` registers `IAmazonEventBridge` + `IEventPublisher` (`EventBridgePublisher`).
+- **BuildingBlocks.ServiceDefaults** — `AddServiceDefaults()` (service discovery, Polly resilience, health checks, OpenTelemetry, Serilog → Elasticsearch), the shared MediatR `Behaviors`, and `CustomExceptionHandler` for ProblemDetails responses.
+- **BuildingBlocks.ServiceDefaults.Lambda** — Lambda hosting equivalents of the above.
 
 ### Orchestration and routing
 
-- **src/AppHost** — .NET Aspire AppHost (`Program.cs`). This is the source of truth for what infrastructure exists, service dependencies, and health-check wait chains (e.g. `basket-api` waits on `redis`, `basketDb`, `discount-api`, the RabbitMQ broker, and Elasticsearch before starting). Add new resources/services here, not in docker-compose.
-- **src/ApiGateways/YarpApiGateway** — YARP reverse proxy. Routes are prefixed per service (`/catalog-service/**`, `/basket-service/**`, `/ordering-service/**`, the prefix stripped before forwarding); the ordering route has a rate-limiter policy applied.
-- **src/WebApps/Shopping.Web.Server** — Blazor Server frontend, talks to services through Refit-generated typed clients (`ICatalogService`, `IBasketService`, `IOrderingService`) pointed at the YARP gateway.
-- **src/WebApps/Shopping.Web.SPA** — Angular SPA, also calls through the gateway.
+- **src/AppHost** — .NET Aspire AppHost. `Program.cs` is the composition root; per-service wiring lives in `*Extensions.cs` (`BasketExtensions`, `CatalogExtensions`, `DiscountExtensions`, `OrderingExtensions`, `ObservabilityExtensions`). This is the source of truth for what infrastructure exists, Lambda handler names, `WaitFor`/`WaitForCompletion` chains, and DynamoDB Streams sources. Shared helpers in `Extensions/Extensions.cs`: `WithAwsDevEnvironment()` (dummy AWS creds + region for local dev) and `WithLambdaInvokeTarget()` (points a Lambda client at the local emulator and supplies the target function name). Add new resources/functions here, not in docker-compose.
+- **src/ApiGateways/YarpApiGateway** — YARP reverse proxy. Routes are prefixed per service (prefix stripped before forwarding); the ordering route has a rate-limiter policy.
+- **src/WebApps/Shopping.Web.Server** — Blazor Server frontend (Refit typed clients through the gateway).
+- **src/WebApps/Shopping.Web.SPA** — Angular SPA (legacy; being replaced per ADR-0006).
+- **src/WebApps/Shopping.Web.SPA.React** — React/Next.js SPA (the primary SPA going forward). Uses `pnpm` (`pnpm dev` / `pnpm build` / `pnpm lint`). This directory is slated to move into its own Git repository, linked back into DuckStore as a **git submodule**.
 
 ## Testing
 
-- Unit tests: xUnit + Moq + Moq.AutoMock, one project per service under `tests/Services/<Service>/<Service>.UnitTests`. Tests target handlers directly (e.g. `CheckoutBasketCommandHandlerTests`), mocking repository/unit-of-work dependencies.
-- Functional tests (`Ordering.FunctionalTests`): use `DistributedApplicationTestingBuilder` to spin up the real Aspire app graph (including containers) and exercise actual HTTP endpoints via `_app.CreateHttpClient("ordering-api")` after waiting for resource health. These are slower and require Docker.
-- Packages and versions are centrally pinned in `Directory.Packages.props` (central package management) — add new package references there, not inline versions in `.csproj` files.
+- Unit tests: xUnit + Moq + Moq.AutoMock, one project per service under `tests/Services/<Service>/<Service>.UnitTests` (plus `tests/BuildingBlocks/BuildingBlocks.UnitTests`). Tests target handlers directly, mocking repository/dependency interfaces.
+- Functional tests (`Ordering.FunctionalTests`): use `DistributedApplicationTestingBuilder` to spin up the real Aspire app graph (including containers) and exercise actual endpoints after waiting for resource health. Slower; require Docker.
+- Packages/versions are centrally pinned in `Directory.Packages.props` (central package management) — add package references there, not inline versions in `.csproj` files.

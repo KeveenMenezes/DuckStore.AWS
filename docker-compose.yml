@@ -11,9 +11,9 @@ services:
   orderdb:
     image: postgres
 
-  catalog.api:
+  Catalog.Function:
     build:
-      context: ./Services/Catalog/Catalog.API
+      context: ./Services/Catalog/Catalog.Function
       dockerfile: Dockerfile
 
   basket.api:
