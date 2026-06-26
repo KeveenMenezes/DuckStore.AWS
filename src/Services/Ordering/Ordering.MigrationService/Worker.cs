@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using Microsoft.Extensions.DependencyInjection;
 using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 namespace Ordering.MigrationService;

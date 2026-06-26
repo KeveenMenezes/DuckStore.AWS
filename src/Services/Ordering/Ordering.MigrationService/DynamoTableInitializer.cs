@@ -1,6 +1,5 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using Microsoft.Extensions.DependencyInjection;
 using Ordering.Infrastructure.Data;
 using Ordering.Infrastructure.RepositoryAdapters;
 
@@ -74,7 +73,7 @@ public static class DynamoTableInitializer
         }
         catch (ResourceInUseException)
         {
-            // Tabela já existe — idempotente.
+            // Table already exists — idempotent.
         }
     }
 
@@ -94,7 +93,7 @@ public static class DynamoTableInitializer
         }
         catch (ResourceInUseException)
         {
-            // Tabela já existe — idempotente.
+            // Table already exists — idempotent.
         }
     }
 

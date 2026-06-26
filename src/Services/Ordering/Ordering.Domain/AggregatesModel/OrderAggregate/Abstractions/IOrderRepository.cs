@@ -1,6 +1,4 @@
-﻿using Ordering.Domain.Enums;
-
-namespace Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+﻿namespace Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 
 public interface IOrderRepository
 {

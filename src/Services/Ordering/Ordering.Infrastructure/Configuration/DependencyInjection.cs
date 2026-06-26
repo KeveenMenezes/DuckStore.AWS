@@ -10,7 +10,7 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // DynamoDB Local injeta AWS_ENDPOINT_URL_DYNAMODB; o SDK resolve sozinho.
+        // DynamoDB Local injects AWS_ENDPOINT_URL_DYNAMODB; the SDK resolves it on its own.
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
 
         services.AddScoped<IOrderRepository, OrderRepository>();

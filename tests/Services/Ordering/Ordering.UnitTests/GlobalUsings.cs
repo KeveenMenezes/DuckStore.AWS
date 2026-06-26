@@ -2,12 +2,10 @@
 global using BuildingBlocks.Messaging.Events;
 global using BuildingBlocks.UnitTests;
 global using FluentValidation.TestHelper;
-global using MediatR;
 global using Microsoft.Extensions.Logging;
 global using Ordering.Application.Dtos;
 global using Ordering.Application.Orders.Commands.CreateOrder;
 global using Ordering.Application.Orders.Commands.DeleteOrder;
-global using Ordering.Application.Orders.EventHandlers.Domain;
 global using Ordering.Application.Orders.Mapping;
 global using Ordering.Application.Orders.Queries.GetOrders;
 global using Ordering.Application.Orders.Queries.GetOrdersByCustomer;

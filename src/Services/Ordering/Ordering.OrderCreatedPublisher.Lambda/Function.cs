@@ -14,9 +14,9 @@ using Ordering.Infrastructure.Configuration;
 
 namespace Ordering.OrderCreatedPublisher.Lambda;
 
-// Disparado pelo DynamoDB Stream da OrderingTable. Substitui o outbox pattern: a própria
-// escrita do Order já é a fonte de verdade do evento — não precisa de tabela de outbox
-// nem de atomicidade especial entre Order e a publicação.
+// Triggered by the OrderingTable DynamoDB Stream. Replaces the outbox pattern: the Order write
+// itself is the source of truth for the event — no outbox table or special atomicity between
+// the Order and its publication is needed. Gated by the OrderFulfillment feature flag.
 public class Function
 {
     private readonly IServiceProvider _serviceProvider;

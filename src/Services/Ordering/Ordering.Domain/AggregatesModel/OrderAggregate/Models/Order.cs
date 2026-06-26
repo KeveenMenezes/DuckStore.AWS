@@ -24,8 +24,6 @@ public class Order : Aggregate<OrderId>
             CreatedAt = DateTime.UtcNow
         };
 
-        order.AddDomainEvent(new OrderCreatedEvent(order));
-
         return order;
     }
 
@@ -40,8 +38,6 @@ public class Order : Aggregate<OrderId>
         Payment = payment;
         Status = status;
         LastModified = DateTime.UtcNow;
-
-        AddDomainEvent(new OrderUpdatedEvent(this));
     }
 
     public void Add(ProductId productId, int quantity, decimal price)

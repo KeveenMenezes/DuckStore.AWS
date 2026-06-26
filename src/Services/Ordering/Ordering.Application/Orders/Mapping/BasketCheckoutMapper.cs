@@ -1,6 +1,4 @@
-﻿using Ordering.Application.Orders.Commands.CreateOrder;
-
-namespace Ordering.Application.Orders.Mapping;
+﻿namespace Ordering.Application.Orders.Mapping;
 
 public static class BasketCheckoutMapper
 {

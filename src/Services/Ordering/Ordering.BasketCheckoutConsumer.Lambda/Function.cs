@@ -16,6 +16,9 @@ using Ordering.Infrastructure.Data;
 
 namespace Ordering.BasketCheckoutConsumer.Lambda;
 
+// Triggered by the BasketCheckoutEvent on EventBridge. Turns a basket checkout into a CreateOrder
+// command, with idempotency (inbox pattern) backed by the ProcessedIntegrationEvents table so a
+// redelivered event is processed at most once.
 public class Function
 {
     private readonly IServiceProvider _serviceProvider;

@@ -4,14 +4,13 @@ using Amazon.DynamoDBv2.Model;
 using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
 using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
 using Ordering.Domain.AggregatesModel.OrderAggregate.ValueObjects;
-using Ordering.Domain.Enums;
 
 namespace Ordering.Infrastructure.RepositoryAdapters;
 
-// Modelo single-table: Order (PK=ORDER#{id}, SK=ORDER) + OrderItems (PK=ORDER#{id}, SK=ORDERITEM#{itemId}).
-// Order+OrderItems são escritos atomicamente via TransactWriteItems. A publicação do
-// OrderCreatedEvent para o EventBridge não depende mais disso — é feita via DynamoDB Streams
-// (a tabela tem Streams habilitado, consumido por Ordering.OrderCreatedPublisher.Lambda).
+// Single-table model: Order (PK=ORDER#{id}, SK=ORDER) + OrderItems (PK=ORDER#{id}, SK=ORDERITEM#{itemId}).
+// Order+OrderItems are written atomically via TransactWriteItems. Publishing the
+// OrderCreatedEvent to EventBridge no longer depends on this — it's done via DynamoDB Streams
+// (the table has Streams enabled, consumed by Ordering.OrderCreatedPublisher.Lambda).
 public class OrderRepository(IAmazonDynamoDB dynamoDb)
     : IOrderRepository
 {
@@ -80,7 +79,7 @@ public class OrderRepository(IAmazonDynamoDB dynamoDb)
         }
     }
 
-    // GSI2 já projeta os atributos do cabeçalho do pedido (sem itens), evitando um GetItem extra por resultado.
+    // GSI2 already projects the order header attributes (no items), avoiding an extra GetItem per result.
     public async IAsyncEnumerable<Order> GetOrdersByStatusAsync(OrderStatus status)
     {
         var response = await dynamoDb.QueryAsync(new QueryRequest
@@ -253,8 +252,8 @@ public class OrderRepository(IAmazonDynamoDB dynamoDb)
         return BuildOrder(orderRow, orderItems);
     }
 
-    // GSI2 usa ProjectionType.ALL, então o item já traz tudo que BuildOrder precisa (sem itens da
-    // linha) — usado por GetOrdersByStatusAsync para listar pedidos por status sem GetItem extra.
+    // GSI2 uses ProjectionType.ALL, so the item already carries everything BuildOrder needs (without
+    // line items) — used by GetOrdersByStatusAsync to list orders by status without an extra GetItem.
     private static Order MapOrderHeader(Dictionary<string, AttributeValue> orderRow) => BuildOrder(orderRow, []);
 
     private static Order BuildOrder(Dictionary<string, AttributeValue> orderRow, IEnumerable<OrderItem> orderItems)
