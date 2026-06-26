@@ -13,8 +13,8 @@ public static class Extensions
         services.Configure<EventBridgeOptions>(
             configuration.GetSection(EventBridgeOptions.SectionName));
 
-        // O bus EventBridge só existe na AWS — o cliente resolve o endpoint real via
-        // ambiente/IAM. Localmente não há bus, e o publisher publica em best-effort.
+        // The EventBridge bus only exists on AWS — the client resolves the real endpoint via
+        // environment/IAM. There is no bus locally, and the publisher publishes best-effort.
         services.AddSingleton<IAmazonEventBridge>(_ => new AmazonEventBridgeClient());
 
         services.AddSingleton<IEventPublisher, EventBridgePublisher>();
