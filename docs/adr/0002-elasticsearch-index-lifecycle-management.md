@@ -165,7 +165,7 @@ If longer retention is needed:
 
 All DuckStore microservices generating logs:
 
-- Catalog.API
+- Catalog.Function
 - Basket.API
 - Ordering.API
 - Discount.Grpc

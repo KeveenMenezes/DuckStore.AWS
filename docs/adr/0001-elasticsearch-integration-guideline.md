@@ -113,7 +113,7 @@ builder.AddKeyedElasticsearchClient("orders");
 
 All DuckStore APIs:
 
-- Catalog.API
+- Catalog.Function
 - Basket.API
 - Ordering.API
 - Discount.Grpc
