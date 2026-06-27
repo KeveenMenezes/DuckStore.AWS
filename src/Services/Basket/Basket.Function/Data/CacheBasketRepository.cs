@@ -38,4 +38,7 @@ public class CacheBasketRepository(
 
         await _database.KeyDeleteAsync(userName);
     }
+
+    public Task MarkCheckoutAsync(string userName, string checkoutDataJson, CancellationToken cancellationToken) =>
+        basketRepository.MarkCheckoutAsync(userName, checkoutDataJson, cancellationToken);
 }

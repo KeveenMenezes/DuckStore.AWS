@@ -5,15 +5,24 @@ using AppHost.Extensions;
 
 namespace AppHost.Basket;
 
+public record BasketResources(
+    IResourceBuilder<LambdaProjectResource> GetBasket,
+    IResourceBuilder<LambdaProjectResource> StoreBasket,
+    IResourceBuilder<LambdaProjectResource> DeleteBasket,
+    IResourceBuilder<LambdaProjectResource> CheckoutBasket
+);
+
 public static class BasketExtensions
 {
-    public static IDistributedApplicationBuilder AddBasketLambdas(
+    private const string ShoppingCartsTableName = "ShoppingCarts";
+
+    public static BasketResources AddBasketLambdas(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<RedisResource> redis,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb,
         IResourceBuilder<LambdaEmulatorResource> lambdaEmulator)
     {
-        builder.AddAWSLambdaFunction<Projects.Basket_Function>(
+        var getBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(
                 "basket-get-basket",
                 lambdaHandler: "Basket.Function::Basket.Function.Functions_GetBasket_Generated::GetBasket")
             .WaitFor(dynamoDb)
@@ -22,7 +31,7 @@ public static class BasketExtensions
             .WithReference(redis)
             .WithAwsDevEnvironment();
 
-        builder.AddAWSLambdaFunction<Projects.Basket_Function>(
+        var storeBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(
                 "basket-store-basket",
                 lambdaHandler: "Basket.Function::Basket.Function.Functions_StoreBasket_Generated::StoreBasket")
             .WaitFor(dynamoDb)
@@ -32,7 +41,7 @@ public static class BasketExtensions
             .WithLambdaInvokeTarget(lambdaEmulator, DiscountExtensions.GetDiscountFunctionName)
             .WithAwsDevEnvironment();
 
-        builder.AddAWSLambdaFunction<Projects.Basket_Function>(
+        var deleteBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(
                 "basket-delete-basket",
                 lambdaHandler: "Basket.Function::Basket.Function.Functions_DeleteBasket_Generated::DeleteBasket")
             .WaitFor(dynamoDb)
@@ -41,16 +50,15 @@ public static class BasketExtensions
             .WithReference(redis)
             .WithAwsDevEnvironment();
 
-        builder.AddAWSLambdaFunction<Projects.Basket_Function>(
+        var checkoutBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(
                 "basket-checkout-basket",
                 lambdaHandler: "Basket.Function::Basket.Function.Functions_CheckoutBasket_Generated::CheckoutBasket")
             .WaitFor(dynamoDb)
             .WaitFor(redis)
             .WithReference(dynamoDb)
             .WithReference(redis)
-            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
             .WithAwsDevEnvironment();
 
-        return builder;
+        return new BasketResources(getBasket, storeBasket, deleteBasket, checkoutBasket);
     }
 }

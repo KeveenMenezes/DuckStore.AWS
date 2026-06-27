@@ -8,8 +8,6 @@ global using Basket.Function.Exceptions;
 global using Basket.Function.Models;
 global using BuildingBlocks.Core.CQRS;
 global using BuildingBlocks.Core.Exceptions;
-global using BuildingBlocks.Messaging.EventBridge;
-global using BuildingBlocks.Messaging.Events;
 global using FluentValidation;
 global using Mapster;
 global using MediatR;

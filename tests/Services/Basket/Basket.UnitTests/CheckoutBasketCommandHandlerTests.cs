@@ -1,4 +1,4 @@
-﻿#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
 #pragma warning disable CS8620 // Argument cannot be used for parameter due to differences in the nullability of reference types.
 
@@ -6,8 +6,6 @@ using Basket.Function.Data;
 using Basket.Function.Dtos;
 using Basket.Function.Features.CheckoutBasket;
 using Basket.Function.Models;
-using BuildingBlocks.Messaging.EventBridge;
-using BuildingBlocks.Messaging.Events;
 using FluentValidation.TestHelper;
 
 namespace Basket.UnitTests;
@@ -16,7 +14,6 @@ public class CheckoutBasketCommandHandlerTests
 {
     private readonly AutoMocker _autoMocker;
     private readonly Mock<IBasketRepository> _basketRepositoryMock;
-    private readonly Mock<IEventPublisher> _eventPublisherMock;
     private readonly CheckoutBasketCommandValidator _validator;
     private readonly CheckoutBasketCommandHandler _handler;
 
@@ -24,10 +21,8 @@ public class CheckoutBasketCommandHandlerTests
     {
         _autoMocker = new AutoMocker();
         _basketRepositoryMock = _autoMocker.GetMock<IBasketRepository>();
-        _eventPublisherMock = _autoMocker.GetMock<IEventPublisher>();
         _validator = new CheckoutBasketCommandValidator();
-        _handler = new CheckoutBasketCommandHandler(
-            _basketRepositoryMock.Object, _eventPublisherMock.Object);
+        _handler = new CheckoutBasketCommandHandler(_basketRepositoryMock.Object);
     }
 
     [Fact]
@@ -69,10 +64,12 @@ public class CheckoutBasketCommandHandlerTests
         Assert.NotNull(result);
         Assert.True(result.IsSuccess);
 
-        _eventPublisherMock.Verify(publisher =>
-            publisher.PublishAsync(It.Is<BasketCheckoutEvent>(e =>
-                e.UserName == basketCheckoutDto.UserName &&
-                e.TotalPrice == basketCheckoutDto.TotalPrice), It.IsAny<CancellationToken>()), Times.Once);
+        _basketRepositoryMock.Verify(repo =>
+            repo.MarkCheckoutAsync(
+                basketCheckoutDto.UserName,
+                It.Is<string>(json => json.Contains(basketCheckoutDto.UserName)),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
 
         _basketRepositoryMock.Verify(repo =>
             repo.DeleteBasket(basketCheckoutDto.UserName, It.IsAny<CancellationToken>()), Times.Once);
@@ -102,8 +99,9 @@ public class CheckoutBasketCommandHandlerTests
         Assert.NotNull(result);
         Assert.False(result.IsSuccess);
 
-        _eventPublisherMock.Verify(publisher =>
-            publisher.PublishAsync(It.IsAny<BasketCheckoutEvent>(), It.IsAny<CancellationToken>()), Times.Never);
+        _basketRepositoryMock.Verify(repo =>
+            repo.MarkCheckoutAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
 
         _basketRepositoryMock.Verify(repo =>
             repo.DeleteBasket(basketCheckoutDto.UserName, It.IsAny<CancellationToken>()), Times.Never);
