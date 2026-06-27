@@ -19,7 +19,7 @@ public class Startup
     {
         services.AddLogging();
 
-        // Aspire injects the configuration via environment variables (ConnectionStrings__*, services__*, EventBridge__*).
+        // Aspire injects the configuration via environment variables (ConnectionStrings__*, services__*).
         var configuration = new ConfigurationBuilder()
             .AddEnvironmentVariables()
             .Build();
@@ -44,8 +44,5 @@ public class Startup
         services.AddSingleton<IAmazonLambda>(_ => new AmazonLambdaClient());
         services.AddSingleton<IDiscountClient>(
             sp => new DiscountLambdaClient(sp.GetRequiredService<IAmazonLambda>(), discountFunctionName));
-
-        // Comunicação assíncrona via EventBridge.
-        services.AddEventBridgeMessaging(configuration);
     }
 }

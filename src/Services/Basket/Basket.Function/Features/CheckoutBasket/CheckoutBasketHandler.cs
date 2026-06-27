@@ -21,8 +21,7 @@ public class CheckoutBasketCommandValidator
     }
 }
 
-public class CheckoutBasketCommandHandler(
-    IBasketRepository basketRepository, IEventPublisher eventPublisher)
+public class CheckoutBasketCommandHandler(IBasketRepository basketRepository)
     : ICommandHandler<CheckoutBasketCommand, CheckoutBasketResult>
 {
     public async Task<CheckoutBasketResult> Handle(
@@ -36,9 +35,11 @@ public class CheckoutBasketCommandHandler(
             return new CheckoutBasketResult(false);
         }
 
-        var eventMessage = command.BasketCheckoutDto.Adapt<BasketCheckoutEvent>();
-
-        await eventPublisher.PublishAsync(eventMessage, cancellationToken);
+        // Write checkout payload to DynamoDB before deletion so DynamoDB Streams
+        // captures it and the ShoppingCartsEventPublisher Lambda can publish to EventBridge.
+        var checkoutDataJson = JsonSerializer.Serialize(command.BasketCheckoutDto);
+        await basketRepository.MarkCheckoutAsync(
+            command.BasketCheckoutDto.UserName, checkoutDataJson, cancellationToken);
 
         await basketRepository.DeleteBasket(
             command.BasketCheckoutDto.UserName, cancellationToken);

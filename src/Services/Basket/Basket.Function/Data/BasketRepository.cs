@@ -48,4 +48,20 @@ public class BasketRepository(IAmazonDynamoDB dynamoDb)
                 Key = new Dictionary<string, AttributeValue> { ["UserName"] = new(userName) }
             },
             cancellationToken);
+
+    public Task MarkCheckoutAsync(string userName, string checkoutDataJson, CancellationToken cancellationToken) =>
+        dynamoDb.UpdateItemAsync(
+            new UpdateItemRequest
+            {
+                TableName = TableName,
+                Key = new Dictionary<string, AttributeValue> { ["UserName"] = new(userName) },
+                UpdateExpression = "SET #T = :type, CheckoutData = :data",
+                ExpressionAttributeNames = new Dictionary<string, string> { ["#T"] = "Type" },
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":type"] = new("Checkout"),
+                    [":data"] = new(checkoutDataJson)
+                }
+            },
+            cancellationToken);
 }
