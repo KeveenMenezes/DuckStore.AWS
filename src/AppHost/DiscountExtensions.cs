@@ -10,11 +10,18 @@ public static class DiscountExtensions
 
     public static IResourceBuilder<LambdaProjectResource> AddDiscountLambdas(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<DynamoDBLocalResource> dynamoDb) =>
-        builder.AddAWSLambdaFunction<Projects.Discount_Function>(
-                GetDiscountFunctionName,
-                lambdaHandler: "Discount.Function::Discount.Function.Functions_GetDiscount_Generated::GetDiscount")
+        IResourceBuilder<DynamoDBLocalResource> dynamoDb)
+    {
+        var discountSeeder = builder.AddProject<Projects.Discount_DevelopmentDataSeeder>("discount-data-seeder")
             .WaitFor(dynamoDb)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
+
+        return builder.AddAWSLambdaFunction<Projects.Discount_Function>(
+                GetDiscountFunctionName,
+                lambdaHandler: "Discount.Function::Discount.Function.Functions_GetDiscount_Generated::GetDiscount")
+            .WaitForCompletion(discountSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+    }
 }

@@ -1,7 +1,7 @@
 using Ordering.Domain.AggregatesModel.OrderAggregate.Models;
 using Ordering.Domain.AggregatesModel.OrderAggregate.ValueObjects;
 
-namespace Ordering.MigrationService;
+namespace Ordering.DevelopmentDataSeeder;
 
 internal static class InitialData
 {

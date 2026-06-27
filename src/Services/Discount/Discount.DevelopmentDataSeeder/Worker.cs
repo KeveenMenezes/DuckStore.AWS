@@ -1,7 +1,7 @@
 using System.Diagnostics;
-using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+using Discount.Function.Data;
 
-namespace Ordering.MigrationService;
+namespace Discount.DevelopmentDataSeeder;
 
 public class Worker(
     IServiceProvider serviceProvider,
@@ -13,16 +13,13 @@ public class Worker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var activity = s_activitySource.StartActivity(
-            "Provisioning DynamoDB tables", ActivityKind.Client);
+            "Provisioning Discount DynamoDB tables", ActivityKind.Client);
 
         try
         {
             using var scope = serviceProvider.CreateScope();
 
-            await scope.ServiceProvider.EnsureOrderingTablesCreatedAsync();
-
-            var orderRepository = scope.ServiceProvider.GetRequiredService<IOrderRepository>();
-            await SeedAsync(orderRepository);
+            await scope.ServiceProvider.EnsureDiscountTableCreatedAsync();
         }
         catch (Exception ex)
         {
@@ -31,14 +28,5 @@ public class Worker(
         }
 
         hostApplicationLifetime.StopApplication();
-    }
-
-    private static async Task SeedAsync(IOrderRepository orderRepository)
-    {
-        if (await orderRepository.GetTotalCountOrders() > 0)
-            return;
-
-        foreach (var order in InitialData.OrdersWithItems)
-            await orderRepository.AddAsync(order);
     }
 }
