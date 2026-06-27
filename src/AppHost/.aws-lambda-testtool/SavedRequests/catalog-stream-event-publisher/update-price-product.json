@@ -1,0 +1,39 @@
+{
+  "Records": [
+    {
+      "eventID": "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4",
+      "eventVersion": "1.1",
+      "eventSource": "aws:dynamodb",
+      "awsRegion": "us-east-1",
+      "eventName": "MODIFY",
+      "dynamodb": {
+        "ApproximateCreationDateTime": 1.719446400e9,
+        "Keys": {
+          "Id": { "S": "3f9a1b2c-4d5e-6f7a-8b9c-0d1e2f3a4b5c" }
+        },
+        "OldImage": {
+          "Id":          { "S": "3f9a1b2c-4d5e-6f7a-8b9c-0d1e2f3a4b5c" },
+          "Name":        { "S": "Duck Debug Pro" },
+          "Description": { "S": "A rubber duck for serious debugging sessions." },
+          "ImageUrl":    { "S": "https://example.com/duck-debug-pro.png" },
+          "Price":       { "N": "29.99" },
+          "Stock":       { "N": "100" },
+          "CategoryIds": { "SS": ["cat-001", "cat-002"] }
+        },
+        "NewImage": {
+          "Id":          { "S": "3f9a1b2c-4d5e-6f7a-8b9c-0d1e2f3a4b5c" },
+          "Name":        { "S": "Duck Debug Pro" },
+          "Description": { "S": "A rubber duck for serious debugging sessions." },
+          "ImageUrl":    { "S": "https://example.com/duck-debug-pro.png" },
+          "Price":       { "N": "19.99" },
+          "Stock":       { "N": "100" },
+          "CategoryIds": { "SS": ["cat-001", "cat-002"] }
+        },
+        "StreamViewType": "NEW_AND_OLD_IMAGES",
+        "SequenceNumber": "111",
+        "SizeBytes": 512
+      },
+      "eventSourceARN": "arn:aws:dynamodb:us-east-1:123456789012:table/Products/stream/2024-06-26T00:00:00.000"
+    }
+  ]
+}
