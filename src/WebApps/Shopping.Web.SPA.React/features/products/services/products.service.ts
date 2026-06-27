@@ -1,39 +1,59 @@
-import { products } from "@/features/products/data/products.data"
+import { gql } from "@/shared/lib/graphql-client"
+import type { GqlProductPage, GqlCategoryPage } from "@/graphql/types"
 import type { Product, ProductCategory } from "@/features/products/types/product.types"
 
-/** Sentinel category id representing "all products". */
 export const ALL_CATEGORY_ID = "all"
 
-/** Ordered category definitions (excluding the "all" entry). */
-const CATEGORY_DEFINITIONS: ReadonlyArray<{ id: string; name: string }> = [
-  { id: "classics", name: "Classics" },
-  { id: "languages", name: "Languages" },
-  { id: "frameworks", name: "Frameworks" },
-  { id: "specials", name: "Specials" },
-]
+const PRODUCTS_QUERY = `
+  query GetProducts($pageSize: Int, $nextToken: String) {
+    products(pageSize: $pageSize, nextToken: $nextToken) {
+      items {
+        id name description imageUrl price stock categoryIds
+      }
+      nextToken
+    }
+  }
+`
 
-/** Return the full product catalog. */
-export function getProducts(): Product[] {
-  return products
+const CATEGORIES_QUERY = `
+  query GetCategories($pageSize: Int) {
+    categories(pageSize: $pageSize) {
+      items { id name }
+    }
+  }
+`
+
+/** Fetch the full product catalog from GraphQL (used by Server Components). */
+export async function getProducts(pageSize = 100, init?: RequestInit): Promise<Product[]> {
+  const data = await gql<{ products: GqlProductPage }>(PRODUCTS_QUERY, { pageSize }, init)
+  return data.products.items
+}
+
+/** Fetch all categories from GraphQL. */
+export async function getRawCategories(init?: RequestInit): Promise<Array<{ id: string; name: string }>> {
+  const data = await gql<{ categories: GqlCategoryPage }>(CATEGORIES_QUERY, { pageSize: 50 }, init)
+  return data.categories.items
 }
 
 /**
- * Return products for a category, or all products for the "all" sentinel.
- * `source` defaults to the full catalog but can be a server-fetched list so
- * the client filters the same data the Server Component rendered.
+ * Filter products by category ID (client-side).
+ * `source` must be passed explicitly — no longer reads static data.
  */
-export function getProductsByCategory(categoryId: string, source: Product[] = products): Product[] {
+export function getProductsByCategory(categoryId: string, source: Product[]): Product[] {
   if (categoryId === ALL_CATEGORY_ID) return source
-  return source.filter((product) => product.category === categoryId)
+  return source.filter((p) => p.categoryIds.includes(categoryId))
 }
 
-/** Build the category filter list with up-to-date product counts. */
-export function getCategories(): ProductCategory[] {
-  return [
-    { id: ALL_CATEGORY_ID, name: "All", count: products.length },
-    ...CATEGORY_DEFINITIONS.map((category) => ({
-      ...category,
-      count: products.filter((product) => product.category === category.id).length,
-    })),
-  ]
+/** Build the category filter list with product counts derived from the loaded catalog. */
+export function buildCategories(
+  rawCategories: Array<{ id: string; name: string }>,
+  allProducts: Product[],
+): ProductCategory[] {
+  const all: ProductCategory = { id: ALL_CATEGORY_ID, name: "All", count: allProducts.length }
+  const rest = rawCategories.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    count: allProducts.filter((p) => p.categoryIds.includes(cat.id)).length,
+  }))
+  return [all, ...rest]
 }

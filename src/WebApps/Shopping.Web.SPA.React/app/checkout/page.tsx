@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 import { CheckoutView } from "@/features/checkout/components/checkout-view"
 
-// 🔵 SSR: per-user flow (cart/payment) — never cached.
-export const dynamic = "force-dynamic"
+// SSG: server shell is identical for all users. Cart and auth hydrate client-side.
+export const revalidate = false
 
 export const metadata: Metadata = {
   title: "Checkout - CodeDuck Store",

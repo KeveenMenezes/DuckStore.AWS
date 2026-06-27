@@ -7,4 +7,5 @@ export const STORAGE_KEYS = {
   users: "codeduck_users",
   theme: "codeduck_theme",
   orders: (userId: string) => `codeduck_orders_${userId}`,
+  guestUsername: "codeduck_guest_username",
 } as const

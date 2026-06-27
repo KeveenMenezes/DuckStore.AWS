@@ -4,7 +4,7 @@ import { useState } from "react"
 import type { FormEvent } from "react"
 import { useCart } from "@/features/cart/hooks/use-cart"
 import { useAuth } from "@/features/auth/hooks/use-auth"
-import { simulatePayment, validateCheckoutForm } from "@/features/checkout/services/checkout.service"
+import { submitCheckout, validateCheckoutForm } from "@/features/checkout/services/checkout.service"
 import type {
   CheckoutFieldErrors,
   CheckoutFormData,
@@ -22,9 +22,8 @@ const EMPTY_FORM: CheckoutFormData = {
 }
 
 /**
- * Owns the entire checkout flow: form state, validation, payment simulation,
- * order creation, and the form/processing/success state machine. The page
- * components stay presentational.
+ * Owns the entire checkout flow: form state, validation, basket persistence,
+ * checkout mutation, and the form/processing/success state machine.
  */
 export function useCheckout() {
   const { items, totalPrice, totalItems, clearCart } = useCart()
@@ -32,6 +31,7 @@ export function useCheckout() {
 
   const [state, setState] = useState<CheckoutState>("form")
   const [orderId, setOrderId] = useState("")
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [formData, setFormData] = useState<CheckoutFormData>(EMPTY_FORM)
   const [errors, setErrors] = useState<CheckoutFieldErrors>({})
 
@@ -41,27 +41,34 @@ export function useCheckout() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
+    setCheckoutError(null)
     const validationErrors = validateCheckoutForm(formData)
     setErrors(validationErrors)
     if (Object.keys(validationErrors).length > 0) return
 
     setState("processing")
-    const id = await simulatePayment()
-    setOrderId(id)
+    try {
+      const id = await submitCheckout(formData, items, totalPrice)
+      setOrderId(id)
 
-    if (user) {
-      addOrder({
-        items: items.map((i) => ({
-          name: i.product.name,
-          quantity: i.quantity,
-          price: i.product.price,
-        })),
-        total: totalPrice,
-      })
+      if (user) {
+        addOrder({
+          items: items.map((i) => ({
+            name: i.product.name,
+            quantity: i.quantity,
+            price: i.product.price,
+          })),
+          total: totalPrice,
+        })
+      }
+
+      clearCart()
+      setState("success")
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "An unexpected error occurred."
+      setCheckoutError(message)
+      setState("form")
     }
-
-    clearCart()
-    setState("success")
   }
 
   return {
@@ -69,6 +76,7 @@ export function useCheckout() {
     orderId,
     formData,
     errors,
+    checkoutError,
     items,
     totalItems,
     totalPrice,

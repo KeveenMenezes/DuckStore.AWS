@@ -1,18 +1,15 @@
+/** Product as returned by the GraphQL API (sourced from DynamoDB Products table). */
 export interface Product {
   id: string
   name: string
   description: string
-  longDescription: string
+  imageUrl: string
   price: number
-  image: string
-  category: string
-  tags: string[]
   stock: number
-  rating: number
-  reviews: number
+  categoryIds: string[]
 }
 
-/** A selectable catalog category along with the number of products in it. */
+/** A selectable catalog category with a client-derived product count. */
 export interface ProductCategory {
   id: string
   name: string

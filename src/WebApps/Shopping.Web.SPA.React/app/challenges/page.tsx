@@ -2,8 +2,8 @@ import type { Metadata } from "next"
 import { ChallengesView } from "@/features/challenges/components/challenges-view"
 import { getChallenges } from "@/features/challenges/services/challenges.service"
 
-// 🟡 ISR: challenge list and static catalog content.
-export const revalidate = 300
+// SSG: challenge list is static data compiled into the bundle — no runtime fetch.
+export const revalidate = false
 
 export const metadata: Metadata = {
   title: "Code Challenges - CodeDuck Store",

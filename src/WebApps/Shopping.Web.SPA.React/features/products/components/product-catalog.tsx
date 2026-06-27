@@ -6,9 +6,8 @@ import { CategoryFilter } from "@/features/products/components/category-filter"
 import type { Product, ProductCategory } from "@/features/products/types/product.types"
 
 interface ProductCatalogProps {
-  /** Server-fetched catalog (ISR). When omitted, the client reads it directly. */
-  initialProducts?: Product[]
-  initialCategories?: ProductCategory[]
+  initialProducts: Product[]
+  initialCategories: ProductCategory[]
 }
 
 export function ProductCatalog({ initialProducts, initialCategories }: ProductCatalogProps) {

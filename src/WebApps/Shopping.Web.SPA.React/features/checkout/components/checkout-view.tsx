@@ -12,7 +12,7 @@ import { CheckoutProcessing } from "@/features/checkout/components/checkout-proc
 import { CheckoutSuccess } from "@/features/checkout/components/checkout-success"
 
 export function CheckoutView() {
-  const { state, orderId, formData, errors, items, totalItems, totalPrice, updateField, handleSubmit } = useCheckout()
+  const { state, orderId, formData, errors, checkoutError, items, totalItems, totalPrice, updateField, handleSubmit } = useCheckout()
 
   if (items.length === 0 && state !== "success") {
     return <CheckoutEmpty />
@@ -36,6 +36,12 @@ export function CheckoutView() {
       </Link>
 
       <h1 className="mb-8 text-3xl font-bold text-foreground">Checkout</h1>
+
+      {checkoutError && (
+        <div className="mb-6 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {checkoutError}
+        </div>
+      )}
 
       <div className="grid gap-8 lg:grid-cols-5">
         <CheckoutForm
