@@ -25,10 +25,25 @@ public static class DynamoTableInitializer
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
                 BillingMode = BillingMode.PAY_PER_REQUEST
             });
+
+            await WaitUntilTableIsActiveAsync(dynamoDb, tableName);
         }
         catch (ResourceInUseException)
         {
             // Table already exists — idempotent.
+        }
+    }
+
+    private static async Task WaitUntilTableIsActiveAsync(IAmazonDynamoDB dynamoDb, string tableName)
+    {
+        while (true)
+        {
+            var response = await dynamoDb.DescribeTableAsync(tableName);
+
+            if (response.Table.TableStatus == TableStatus.ACTIVE)
+                return;
+
+            await Task.Delay(TimeSpan.FromSeconds(1));
         }
     }
 }
