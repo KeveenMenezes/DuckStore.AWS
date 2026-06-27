@@ -12,7 +12,7 @@ public static class OrderingExtensions
         IResourceBuilder<DynamoDBLocalResource> dynamoDb,
         IResourceBuilder<ElasticsearchResource> elasticsearch)
     {
-        var orderingMigration = builder.AddProject<Projects.Ordering_MigrationService>("ordering-migration")
+        var orderingMigration = builder.AddProject<Projects.Ordering_DevelopmentDataSeeder>("ordering-data-seeder")
             .WaitFor(dynamoDb)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();

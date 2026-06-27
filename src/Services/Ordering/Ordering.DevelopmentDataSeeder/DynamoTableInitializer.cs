@@ -3,7 +3,7 @@ using Amazon.DynamoDBv2.Model;
 using Ordering.Infrastructure.Data;
 using Ordering.Infrastructure.RepositoryAdapters;
 
-namespace Ordering.MigrationService;
+namespace Ordering.DevelopmentDataSeeder;
 
 public static class DynamoTableInitializer
 {

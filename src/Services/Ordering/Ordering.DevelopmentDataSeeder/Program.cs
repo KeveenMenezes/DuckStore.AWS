@@ -1,6 +1,6 @@
 using BuildingBlocks.ServiceDefaults;
 using Ordering.Infrastructure.Configuration;
-using Ordering.MigrationService;
+using Ordering.DevelopmentDataSeeder;
 
 var builder = Host.CreateApplicationBuilder(args);
 // Add services to the container.
