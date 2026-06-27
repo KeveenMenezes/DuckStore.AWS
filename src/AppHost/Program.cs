@@ -31,9 +31,7 @@ var orderingApi = builder.AddOrderingServices(dynamoDb, elasticsearch);
 
 builder.AddDiscountLambdas(dynamoDb);
 
-builder.AddBasketLambdas(redis, dynamoDb, lambdaEmulator);
-
-builder.AddCatalogLambdas(dynamoDb);
+var basketResources = builder.AddBasketLambdas(redis, dynamoDb, lambdaEmulator);
 
 // Reverse proxies
 var yarpApiGateway = builder.AddProject<Projects.YarpApiGateway>(
@@ -47,12 +45,28 @@ builder.AddProject<Projects.Shopping_Web_Server>(
     .WithExternalHttpEndpoints()
     .WithReference(orderingApi);
 
-builder.AddNpmApp("shopping-web-spa", "../WebApps/Shopping.Web.SPA")
+const string spaBaseUrl = "http://localhost:3000";
+
+builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")
     .WithExternalHttpEndpoints()
     .WaitFor(yarpApiGateway)
+    .WaitFor(dynamoDb)
+    .WaitFor(basketResources.GetBasket)
+    .WaitFor(basketResources.StoreBasket)
+    .WaitFor(basketResources.DeleteBasket)
+    .WaitFor(basketResources.CheckoutBasket)
     .WithReference(yarpApiGateway)
-    .WithEndpoint(port: 4200, targetPort: 4200, scheme: "https", name: "https", env: "PORT", isProxied: false)
+    .WithReference(dynamoDb)
+    .WithReference(basketResources.GetBasket)
+    .WithReference(basketResources.StoreBasket)
+    .WithReference(basketResources.DeleteBasket)
+    .WithReference(basketResources.CheckoutBasket)
+    .WithAwsDevEnvironment()
+    .WithEnvironment("CATALOG_WEBHOOK_SECRET", AppHost.Catalog.CatalogExtensions.CatalogWebhookSecretValue)
+    .WithEndpoint(port: 3000, targetPort: 3000, scheme: "http", name: "http", env: "PORT", isProxied: false)
     .PublishAsDockerFile();
+
+builder.AddCatalogLambdas(dynamoDb, spaBaseUrl);
 
 await builder.Build().RunAsync();
 return;
