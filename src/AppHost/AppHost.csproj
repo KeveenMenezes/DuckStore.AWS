@@ -17,17 +17,16 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageJsons Include="..\WebApps\Shopping.Web.SPA\package.json" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\ApiGateways\YarpApiGateway\YarpApiGateway.csproj" />
     <ProjectReference Include="..\Services\Basket\Basket.Function\Basket.Function.csproj" />
     <ProjectReference Include="..\Services\Catalog\Catalog.Function\Catalog.Function.csproj" />
     <ProjectReference Include="..\Services\Discount\Discount.Function\Discount.Function.csproj" />
     <ProjectReference Include="..\Services\Ordering\Ordering.API\Ordering.API.csproj" />
     <ProjectReference Include="..\Services\Ordering\Ordering.BasketCheckoutConsumer.Lambda\Ordering.BasketCheckoutConsumer.Lambda.csproj" />
-    <ProjectReference Include="..\Services\Ordering\Ordering.MigrationService\Ordering.MigrationService.csproj" />
+    <ProjectReference Include="..\Services\Catalog\Catalog.DevelopmentDataSeeder\Catalog.DevelopmentDataSeeder.csproj" />
+    <ProjectReference Include="..\Services\Catalog\Catalog.StreamEventPublish.Lambda\Catalog.StreamEventPublish.Lambda.csproj" />
+    <ProjectReference Include="..\Services\Discount\Discount.DevelopmentDataSeeder\Discount.DevelopmentDataSeeder.csproj" />
+    <ProjectReference Include="..\Services\Ordering\Ordering.DevelopmentDataSeeder\Ordering.DevelopmentDataSeeder.csproj" />
     <ProjectReference Include="..\Services\Ordering\Ordering.OrderCreatedPublisher.Lambda\Ordering.OrderCreatedPublisher.Lambda.csproj" />
     <ProjectReference Include="..\WebApps\Shopping.Web.Server\Shopping.Web.Server.csproj" />
   </ItemGroup>
@@ -39,7 +38,7 @@
 
     <!-- Install npm packages if node_modules is missing -->
     <Message Importance="Normal" Text="Installing npm packages for %(PackageJsons.RelativeDir)" Condition="!Exists('%(PackageJsons.RootDir)%(PackageJsons.Directory)/node_modules')" />
-    <Exec Command="npm install" WorkingDirectory="%(PackageJsons.RootDir)%(PackageJsons.Directory)" Condition="!Exists('%(PackageJsons.RootDir)%(PackageJsons.Directory)/node_modules')" />
+    <Exec Command="pnpm install" WorkingDirectory="%(PackageJsons.RootDir)%(PackageJsons.Directory)" Condition="!Exists('%(PackageJsons.RootDir)%(PackageJsons.Directory)/node_modules')" />
   </Target>
 
 </Project>
