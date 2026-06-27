@@ -1,0 +1,117 @@
+type Product {
+  id: ID!
+  name: String!
+  description: String!
+  imageUrl: String!
+  price: Float!
+  stock: Int!
+  categoryIds: [ID!]!
+}
+
+type ProductPage {
+  items: [Product!]!
+  nextToken: String
+}
+
+type Category {
+  id: ID!
+  name: String!
+  parentId: ID
+  path: [ID!]!
+}
+
+type CategoryPage {
+  items: [Category!]!
+  nextToken: String
+}
+
+type CartItem {
+  quantity: Int!
+  color: String
+  price: Float!
+  productId: ID!
+  productName: String!
+}
+
+type ShoppingCart {
+  userName: String!
+  items: [CartItem!]!
+  totalPrice: Float!
+}
+
+type Coupon {
+  productName: String!
+  description: String!
+  amount: Int!
+}
+
+type StoreBasketResult {
+  userName: String!
+}
+
+type CheckoutResult {
+  isSuccess: Boolean!
+}
+
+type DeleteBasketResult {
+  isSuccess: Boolean!
+}
+
+input CartItemInput {
+  quantity: Int!
+  color: String
+  price: Float!
+  productId: ID!
+  productName: String!
+}
+
+input ShoppingCartInput {
+  userName: String!
+  items: [CartItemInput!]!
+}
+
+input CheckoutInput {
+  userName: String!
+  customerId: ID!
+  totalPrice: Float!
+  firstName: String!
+  lastName: String!
+  emailAddress: String!
+  addressLine: String!
+  country: String!
+  state: String!
+  zipCode: String!
+  cardName: String!
+  cardNumber: String!
+  expiration: String!
+  cvv: String!
+  paymentMethod: Int!
+}
+
+type Query {
+  # Direct DynamoDB resolver — Scan Products table, no Lambda in the path
+  products(pageSize: Int, nextToken: String): ProductPage!
+
+  # Direct DynamoDB resolver — GetItem by Id
+  product(id: ID!): Product
+
+  # Direct DynamoDB resolver — Scan Categories table
+  categories(pageSize: Int, nextToken: String): CategoryPage!
+
+  # Direct DynamoDB resolver (or Lambda if Redis cache-aside is required in prod)
+  basket(userName: String!): ShoppingCart
+
+  # Lambda resolver — Discount domain logic
+  couponFor(productName: String!): Coupon
+}
+
+type Mutation {
+  # Lambda resolver — Redis cache-aside, Discount Lambda invoke, validation
+  storeBasket(input: ShoppingCartInput!): StoreBasketResult!
+
+  # Lambda resolver — EventBridge publish, basket deletion
+  checkoutBasket(input: CheckoutInput!): CheckoutResult!
+
+  # Lambda resolver — cache invalidation
+  deleteBasket(userName: String!): DeleteBasketResult!
+}

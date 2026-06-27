@@ -1,8 +1,8 @@
 import type { Metadata } from "next"
 import { OrdersView } from "@/features/auth/components/orders-view"
 
-// 🔵 SSR: per-user order history — never cached.
-export const dynamic = "force-dynamic"
+// SSG: server shell is identical for all users. Auth and user data hydrate client-side.
+export const revalidate = false
 
 export const metadata: Metadata = {
   title: "My Orders - CodeDuck Store",

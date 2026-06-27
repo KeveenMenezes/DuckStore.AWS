@@ -1,7 +1,7 @@
 "use client"
 
 import Image from "next/image"
-import { ShoppingCart, Star, Package } from "lucide-react"
+import { ShoppingCart, Package } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -29,7 +29,7 @@ export function ProductCard({ product }: { product: Product }) {
     <Card className="group overflow-hidden border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
       <div className="relative aspect-square overflow-hidden">
         <Image
-          src={product.image}
+          src={product.imageUrl}
           alt={product.name}
           fill
           className="object-cover transition-transform duration-300 group-hover:scale-105"
@@ -51,13 +51,6 @@ export function ProductCard({ product }: { product: Product }) {
         <div>
           <h3 className="font-semibold text-foreground">{product.name}</h3>
           <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1">
-            <Star className="h-3.5 w-3.5 fill-primary text-primary" />
-            <span className="text-sm font-medium text-foreground">{product.rating}</span>
-          </div>
-          <span className="text-xs text-muted-foreground">({product.reviews} reviews)</span>
         </div>
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Package className="h-3.5 w-3.5" />
