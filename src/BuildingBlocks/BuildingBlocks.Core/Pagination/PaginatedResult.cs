@@ -1,9 +1,9 @@
 ﻿namespace BuildingBlocks.Core.Pagination;
 
 /// <summary>
-/// Representa um resultado paginado de uma consulta.
+/// Represents a paginated result of a query.
 /// </summary>
-/// <typeparam name="TEntity">O tipo da entidade retornada na paginação.</typeparam>
+/// <typeparam name="TEntity">The type of entity returned in the pagination.</typeparam>
 public class PaginatedResult<TEntity>(
     long pageNumber,
     long pageSize,
@@ -16,7 +16,7 @@ public class PaginatedResult<TEntity>(
     where TEntity : class
 {
     /// <summary>
-    /// Itens da página atual.
+    /// Items on the current page.
     /// </summary>
     public IEnumerable<TEntity> Items { get; } = items;
 }

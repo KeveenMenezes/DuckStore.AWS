@@ -126,10 +126,7 @@ public static partial class Extensions
                 }
 
                 tracing.AddAspNetCoreInstrumentation()
-                    .AddGrpcClientInstrumentation()
-                    .AddSqlClientInstrumentation()
                     .AddConsoleExporter()
-                    .AddSource("MassTransit")
                     .AddSource("Experimental.Microsoft.Extensions.AI");
             });
 
