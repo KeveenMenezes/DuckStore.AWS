@@ -1,5 +1,5 @@
-using System.Diagnostics;
-using Ordering.Domain.AggregatesModel.OrderAggregate.Abstractions;
+﻿using System.Diagnostics;
+using Ordering.Function.Data;
 
 namespace Ordering.DevelopmentDataSeeder;
 
@@ -35,10 +35,10 @@ public class Worker(
 
     private static async Task SeedAsync(IOrderRepository orderRepository)
     {
-        if (await orderRepository.GetTotalCountOrders() > 0)
+        if (await orderRepository.AnyAsync())
             return;
 
-        foreach (var order in InitialData.OrdersWithItems)
+        foreach (var order in OrderingInitialData.OrdersWithItems)
             await orderRepository.AddAsync(order);
     }
 }

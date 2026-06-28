@@ -1,0 +1,57 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Transform": "AWS::Serverless-2016-10-31",
+  "Description": "An AWS Serverless Application. This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
+  "Resources": {
+    "OrderingFunctionFunctionsGetOrdersByCustomerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Image",
+        "Events": {},
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Ordering.Function::Ordering.Function.Functions_GetOrdersByCustomer_Generated::GetOrdersByCustomer"
+          ]
+        }
+      }
+    },
+    "OrderingFunctionFunctionsDeleteOrderGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Image",
+        "Events": {},
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Ordering.Function::Ordering.Function.Functions_DeleteOrder_Generated::DeleteOrder"
+          ]
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ApiURL": {
+      "Description": "API endpoint URL for Prod environment",
+      "Value": {
+        "Fn::Sub": "https://${ServerlessHttpApi}.execute-api.${AWS::Region}.amazonaws.com/"
+      }
+    }
+  }
+}

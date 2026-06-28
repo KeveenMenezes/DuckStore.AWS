@@ -21,8 +21,8 @@ public class GetOrdersByCustomerTests
         var query = new GetOrdersByCustomerQuery(customerId);
 
         _orderRepository
-            .Setup(repo => repo.GetOrdersByCustomerAsync(customerId))
-            .Returns(OrderDataTests.GetOrdersStreamMockAsync(10));
+            .Setup(repo => repo.GetOrdersByCustomerAsync(customerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OrderDataTests.GetOrdersListMock(10));
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);
@@ -39,8 +39,8 @@ public class GetOrdersByCustomerTests
         var query = new GetOrdersByCustomerQuery(It.IsAny<Guid>());
 
         _orderRepository
-            .Setup(repo => repo.GetOrdersByCustomerAsync(It.IsAny<Guid>()))
-            .Returns(OrderDataTests.GetOrdersStreamMockAsync(0));
+            .Setup(repo => repo.GetOrdersByCustomerAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(OrderDataTests.GetOrdersListMock(0));
 
         // Act
         var result = await _handler.Handle(query, CancellationToken.None);

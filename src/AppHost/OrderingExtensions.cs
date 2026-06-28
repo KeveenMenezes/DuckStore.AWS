@@ -1,13 +1,19 @@
+﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
-using AppHost.Extensions;
+using Aspire.Hosting.AWS.Lambda;
 
 namespace AppHost.Ordering;
 
+public record OrderingResources(
+    IResourceBuilder<LambdaProjectResource> GetOrdersByCustomer,
+    IResourceBuilder<LambdaProjectResource> DeleteOrder
+);
+
 public static class OrderingExtensions
 {
-    private const string OrderingTableName = "OrderingTable";
+    private const string OrderingTableName = "ordering";
 
-    public static IResourceBuilder<ProjectResource> AddOrderingServices(
+    public static OrderingResources AddOrderingServices(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb,
         IResourceBuilder<ElasticsearchResource> elasticsearch)
@@ -17,32 +23,38 @@ public static class OrderingExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
-        builder.AddAWSLambdaFunction<Projects.Ordering_BasketCheckoutConsumer_Lambda>(
+        builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
                 "ordering-basket-checkout-consumer",
-                lambdaHandler: "Ordering.BasketCheckoutConsumer.Lambda::Ordering.BasketCheckoutConsumer.Lambda.Function::FunctionHandler")
+                lambdaHandler: "Ordering.Function::Ordering.Function.EventsIntegration.Consumer.BasketCheckoutConsumerFunction::FunctionHandler")
             .WaitForCompletion(orderingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
-        builder.AddAWSLambdaFunction<Projects.Ordering_OrderCreatedPublisher_Lambda>(
+        builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
                 "ordering-order-created-publisher",
                 lambdaHandler:
-                "Ordering.OrderCreatedPublisher.Lambda::Ordering.OrderCreatedPublisher.Lambda.Function::FunctionHandler")
+                "Ordering.Function::Ordering.Function.EventsIntegration.Publisher.OrderCreatedPublisherFunction::FunctionHandler")
             .WaitForCompletion(orderingMigration)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(OrderingTableName)
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
-        return builder.AddProject<Projects.Ordering_API>("ordering-api")
+        var getOrdersByCustomer = builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
+                "ordering-get-orders-by-customer",
+                lambdaHandler: "Ordering.Function::Ordering.Function.Functions_GetOrdersByCustomer_Generated::GetOrdersByCustomer")
             .WaitForCompletion(orderingMigration)
-            .WaitFor(dynamoDb)
-            .WaitFor(elasticsearch)
             .WithReference(dynamoDb)
-            .WithReference(elasticsearch)
-            .WithAwsDevEnvironment()
-            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
-            .WithHttpHealthCheck("/health");
+            .WithAwsDevEnvironment();
+
+        var deleteOrder = builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
+                "ordering-delete-order",
+                lambdaHandler: "Ordering.Function::Ordering.Function.Functions_DeleteOrder_Generated::DeleteOrder")
+            .WaitForCompletion(orderingMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
+        return new OrderingResources(getOrdersByCustomer, deleteOrder);
     }
 }

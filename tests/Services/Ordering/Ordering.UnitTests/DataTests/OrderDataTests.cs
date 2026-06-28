@@ -2,14 +2,8 @@
 
 public static class OrderDataTests
 {
-    public static async IAsyncEnumerable<Order> GetOrdersStreamMockAsync(int count = 10)
-    {
-        for (var i = 1; i <= count; i++)
-        {
-            yield return CreateOrderWithItems(i.ToString());
-            await Task.Yield();
-        }
-    }
+    public static IReadOnlyList<Order> GetOrdersListMock(int count = 10) =>
+        [.. Enumerable.Range(1, count).Select(i => CreateOrderWithItems(i.ToString()))];
 
     public static Order CreateOrderWithItems(string? suffix = null)
     {

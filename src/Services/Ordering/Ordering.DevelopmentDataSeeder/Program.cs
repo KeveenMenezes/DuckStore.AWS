@@ -1,20 +1,14 @@
+﻿using Amazon.DynamoDBv2;
 using BuildingBlocks.ServiceDefaults;
-using Ordering.Infrastructure.Configuration;
 using Ordering.DevelopmentDataSeeder;
+using Ordering.Function.Data;
 
 var builder = Host.CreateApplicationBuilder(args);
-// Add services to the container.
 
-if (builder.Environment.IsDevelopment())
-{
-    builder.AddServiceDefaults();
+builder.AddServiceDefaults();
 
-    builder.Services
-        .AddInfrastructureServices(builder.Configuration)
-        .AddHostedService<Worker>();
-}
+builder.Services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
+builder.Services.AddScoped<IOrderRepository, DynamoOrderRepository>();
+builder.Services.AddHostedService<Worker>();
 
-var host = builder.Build();
-// Configure the HTTP request pipeline.
-
-await host.RunAsync();
+await builder.Build().RunAsync();
