@@ -10,13 +10,16 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 )
 
-// ensureResources creates the SQS queue and DynamoDB table if they don't exist.
+// ensureResources creates the SQS queue and DynamoDB tables if they don't exist.
 // This is used in local development with LocalStack.
-func ensureResources(ctx context.Context, sqsClient *sqs.Client, dynamoClient *dynamodb.Client, queueName, tableName string) error {
+func ensureResources(ctx context.Context, sqsClient *sqs.Client, dynamoClient *dynamodb.Client, queueName, tableName, processedEventsTable string) error {
 	if err := ensureQueue(ctx, sqsClient, queueName); err != nil {
 		return err
 	}
-	return ensureTable(ctx, dynamoClient, tableName)
+	if err := ensureTable(ctx, dynamoClient, tableName); err != nil {
+		return err
+	}
+	return ensureProcessedEventsTable(ctx, dynamoClient, processedEventsTable)
 }
 
 func ensureQueue(ctx context.Context, client *sqs.Client, queueName string) error {
@@ -41,6 +44,40 @@ func ensureQueue(ctx context.Context, client *sqs.Client, queueName string) erro
 }
 
 func ensureTable(ctx context.Context, client *dynamodb.Client, tableName string) error {
+	_, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
+		TableName: aws.String(tableName),
+	})
+	if err == nil {
+		log.Printf("[INFO] DynamoDB table %q already exists\n", tableName)
+		return nil
+	}
+
+	log.Printf("[INFO] Creating DynamoDB table %q...\n", tableName)
+	_, err = client.CreateTable(ctx, &dynamodb.CreateTableInput{
+		TableName: aws.String(tableName),
+		KeySchema: []dbtypes.KeySchemaElement{
+			{
+				AttributeName: aws.String("PK"),
+				KeyType:       dbtypes.KeyTypeHash,
+			},
+		},
+		AttributeDefinitions: []dbtypes.AttributeDefinition{
+			{
+				AttributeName: aws.String("PK"),
+				AttributeType: dbtypes.ScalarAttributeTypeS,
+			},
+		},
+		BillingMode: dbtypes.BillingModePayPerRequest,
+	})
+	if err != nil {
+		return err
+	}
+
+	log.Printf("[INFO] DynamoDB table %q created successfully\n", tableName)
+	return nil
+}
+
+func ensureProcessedEventsTable(ctx context.Context, client *dynamodb.Client, tableName string) error {
 	_, err := client.DescribeTable(ctx, &dynamodb.DescribeTableInput{
 		TableName: aws.String(tableName),
 	})

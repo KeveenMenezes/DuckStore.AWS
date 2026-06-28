@@ -16,13 +16,15 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 )
 
 const (
-	defaultQueueName = "duckstore-notifications"
-	defaultTableName = "duckstore-notifications"
-	defaultRegion    = "us-east-1"
+	defaultQueueName            = "duckstore-notifications"
+	defaultTableName            = "duckstore-notifications"
+	defaultProcessedEventsTable = "notification-processed-events"
+	defaultRegion               = "us-east-1"
 )
 
 func main() {
@@ -48,10 +50,14 @@ func lambdaHandler(ctx context.Context, sqsEvent events.SQSEvent) error {
 		return fmt.Errorf("failed to load AWS config: %w", err)
 	}
 
-	store := NewStore(dynamodb.NewFromConfig(cfg), getEnvOrDefault("DYNAMODB_TABLE", defaultTableName))
+	dynamoClient := dynamodb.NewFromConfig(cfg)
+	tableName := getEnvOrDefault("DYNAMODB_TABLE", defaultTableName)
+	processedEventsTable := getEnvOrDefault("PROCESSED_EVENTS_TABLE", defaultProcessedEventsTable)
+	store := NewStore(dynamoClient, tableName)
+	consumer := NewIdempotentConsumer(dynamoClient, processedEventsTable)
 
 	for _, record := range sqsEvent.Records {
-		if err := processMessage(ctx, store, record.Body); err != nil {
+		if err := processMessage(ctx, store, consumer, tableName, record.Body); err != nil {
 			log.Printf("[ERROR] Failed to process record %s: %v\n", record.MessageId, err)
 			return err
 		}
@@ -74,7 +80,9 @@ func runPoller() {
 	dynamoClient := dynamodb.NewFromConfig(cfg)
 
 	tableName := getEnvOrDefault("DYNAMODB_TABLE", defaultTableName)
+	processedEventsTable := getEnvOrDefault("PROCESSED_EVENTS_TABLE", defaultProcessedEventsTable)
 	store := NewStore(dynamoClient, tableName)
+	consumer := NewIdempotentConsumer(dynamoClient, processedEventsTable)
 
 	// Resolve queue URL: prefer SQS_QUEUE_URL (injected by Aspire/CloudFormation),
 	// fall back to looking up by SQS_QUEUE_NAME.
@@ -84,7 +92,7 @@ func runPoller() {
 
 		// Ensure resources exist (only for local dev with custom endpoints like LocalStack)
 		if os.Getenv("AWS_ENDPOINT_URL") != "" {
-			if err := ensureResources(ctx, sqsClient, dynamoClient, queueName, tableName); err != nil {
+			if err := ensureResources(ctx, sqsClient, dynamoClient, queueName, tableName, processedEventsTable); err != nil {
 				log.Fatalf("[FATAL] Failed to ensure AWS resources: %v", err)
 			}
 		}
@@ -105,13 +113,13 @@ func runPoller() {
 			log.Println("[INFO] Shutting down poller...")
 			return
 		default:
-			poll(ctx, sqsClient, store, queueURL)
+			poll(ctx, sqsClient, store, consumer, tableName, queueURL)
 		}
 	}
 }
 
 // poll receives messages from SQS and processes them.
-func poll(ctx context.Context, client *sqs.Client, store *Store, queueURL string) {
+func poll(ctx context.Context, client *sqs.Client, store *Store, consumer *IdempotentConsumer, tableName, queueURL string) {
 	result, err := client.ReceiveMessage(ctx, &sqs.ReceiveMessageInput{
 		QueueUrl:            aws.String(queueURL),
 		MaxNumberOfMessages: 10,
@@ -135,7 +143,7 @@ func poll(ctx context.Context, client *sqs.Client, store *Store, queueURL string
 
 		log.Printf("[INFO] Processing message ID: %s\n", msgID)
 
-		if err := processMessage(ctx, store, body); err != nil {
+		if err := processMessage(ctx, store, consumer, tableName, body); err != nil {
 			log.Printf("[ERROR] Failed to process message %s: %v\n", msgID, err)
 			continue
 		}
@@ -152,7 +160,7 @@ func poll(ctx context.Context, client *sqs.Client, store *Store, queueURL string
 }
 
 // processMessage parses and saves a single SQS message body.
-func processMessage(ctx context.Context, store *Store, body string) error {
+func processMessage(ctx context.Context, store *Store, consumer *IdempotentConsumer, tableName, body string) error {
 	log.Printf("[INFO] Message received: %s\n", body)
 
 	var notification NotificationEvent
@@ -161,9 +169,6 @@ func processMessage(ctx context.Context, store *Store, body string) error {
 	}
 
 	// Populate metadata if not set
-	if notification.ID == "" {
-		notification.ID = fmt.Sprintf("notif-%d", time.Now().UnixNano())
-	}
 	if notification.ProcessedAt == "" {
 		notification.ProcessedAt = time.Now().UTC().Format(time.RFC3339)
 	}
@@ -171,13 +176,20 @@ func processMessage(ctx context.Context, store *Store, body string) error {
 		notification.Status = "processed"
 	}
 
-	if err := store.Save(ctx, notification); err != nil {
-		log.Printf("[ERROR] Failed to save to DynamoDB: %v\n", err)
+	// No stable event ID — fall back to a plain save (no idempotency guarantee)
+	if notification.ID == "" {
+		notification.ID = NewNotificationID()
+		return store.Save(ctx, notification)
+	}
+
+	notifItem, err := store.Marshal(notification)
+	if err != nil {
 		return err
 	}
 
-	log.Printf("[INFO] Successfully saved notification %s to DynamoDB\n", notification.ID)
-	return nil
+	return consumer.Consume(ctx, notification.ID, []types.TransactWriteItem{
+		{Put: &types.Put{TableName: &tableName, Item: notifItem}},
+	})
 }
 
 // newAWSConfig builds the AWS SDK config, using LocalStack endpoint if set.
