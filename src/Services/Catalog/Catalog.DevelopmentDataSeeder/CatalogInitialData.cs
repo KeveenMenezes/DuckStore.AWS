@@ -1,12 +1,16 @@
-﻿namespace Catalog.Function.Data;
+﻿using Catalog.Function.Data;
+using Catalog.Function.Models;
+using Catalog.Function.ValueObjects;
+
+namespace Catalog.DevelopmentDataSeeder;
 
 public class CatalogInitialData(IProductRepository productRepository, ICategoryRepository categoryRepository)
 {
     // Stable category GUIDs so product→category FK is consistent across DynamoDB Local restarts.
-    private static readonly Guid ClassicsId   = new("a1000000-0000-0000-0000-000000000001");
-    private static readonly Guid LanguagesId  = new("a1000000-0000-0000-0000-000000000002");
+    private static readonly Guid ClassicsId = new("a1000000-0000-0000-0000-000000000001");
+    private static readonly Guid LanguagesId = new("a1000000-0000-0000-0000-000000000002");
     private static readonly Guid FrameworksId = new("a1000000-0000-0000-0000-000000000003");
-    private static readonly Guid SpecialsId   = new("a1000000-0000-0000-0000-000000000004");
+    private static readonly Guid SpecialsId = new("a1000000-0000-0000-0000-000000000004");
 
     private const string DuckImage =
         "https://s.yimg.com/ny/api/res/1.2/1KPwRUrDJIrTid9e6.UwqA--" +
@@ -27,10 +31,10 @@ public class CatalogInitialData(IProductRepository productRepository, ICategoryR
 
     private static IEnumerable<Category> GetPreconfiguredCategories()
     {
-        var classicsId   = CategoryId.Of(ClassicsId);
-        var languagesId  = CategoryId.Of(LanguagesId);
+        var classicsId = CategoryId.Of(ClassicsId);
+        var languagesId = CategoryId.Of(LanguagesId);
         var frameworksId = CategoryId.Of(FrameworksId);
-        var specialsId   = CategoryId.Of(SpecialsId);
+        var specialsId = CategoryId.Of(SpecialsId);
 
         return
         [
@@ -43,10 +47,10 @@ public class CatalogInitialData(IProductRepository productRepository, ICategoryR
 
     private static IEnumerable<Product> GetPreconfiguredProducts()
     {
-        var classics   = new List<CategoryId> { CategoryId.Of(ClassicsId) };
-        var languages  = new List<CategoryId> { CategoryId.Of(LanguagesId) };
+        var classics = new List<CategoryId> { CategoryId.Of(ClassicsId) };
+        var languages = new List<CategoryId> { CategoryId.Of(LanguagesId) };
         var frameworks = new List<CategoryId> { CategoryId.Of(FrameworksId) };
-        var specials   = new List<CategoryId> { CategoryId.Of(SpecialsId) };
+        var specials = new List<CategoryId> { CategoryId.Of(SpecialsId) };
 
         return
         [

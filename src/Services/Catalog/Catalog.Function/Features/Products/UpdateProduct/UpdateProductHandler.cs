@@ -1,4 +1,4 @@
-namespace Catalog.Function.Features.Products.UpdateProduct;
+﻿namespace Catalog.Function.Features.Products.UpdateProduct;
 
 public record UpdateProductCommand(
     Guid Id,
@@ -11,6 +11,11 @@ public record UpdateProductCommand(
     : ICommand<UpdateProductResult>;
 
 public record UpdateProductResult(Guid Id);
+
+public class ProductNotFoundException(Guid Id)
+    : NotFoundException("Product", Id)
+{
+}
 
 public class UpdateProductCommandValidator : AbstractValidator<UpdateProductCommand>
 {

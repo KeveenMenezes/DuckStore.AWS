@@ -41,6 +41,24 @@
       "executablePath": "dotnet",
       "commandLineArgs": "exec --depsfile ./Catalog.Function.deps.json --runtimeconfig ./Catalog.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Catalog.Function::Catalog.Function.Functions_GetCategories_Generated::GetCategories",
       "workingDirectory": "bin/Debug/net10.0/"
+    },
+    "Aspire_catalog-stream-event-publisher": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "exec --depsfile ./Catalog.Function.deps.json --runtimeconfig ./Catalog.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Catalog.Function::Catalog.Function.EventsIntegration.Publisher.CatalogStreamEventPublisherFunction::FunctionHandler",
+      "workingDirectory": "bin/Debug/net10.0/"
+    },
+    "Aspire_catalog-catalog-updated-consumer": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "exec --depsfile ./Catalog.Function.deps.json --runtimeconfig ./Catalog.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Catalog.Function::Catalog.Function.EventsIntegration.Consumer.CatalogUpdatedConsumerFunction::FunctionHandler",
+      "workingDirectory": "bin/Debug/net10.0/"
+    },
+    "Aspire_catalog-review-created-consumer": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "exec --depsfile ./Catalog.Function.deps.json --runtimeconfig ./Catalog.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Catalog.Function::Catalog.Function.EventsIntegration.Consumer.ReviewCreatedConsumerFunction::FunctionHandler",
+      "workingDirectory": "bin/Debug/net10.0/"
     }
   }
 }

@@ -5,7 +5,7 @@ namespace AppHost.Catalog;
 
 public static class CatalogExtensions
 {
-    private const string ProductsTableName = "Products";
+    private const string ProductsTableName = "products";
     private const string CatalogWebhookSecret = "catalog-dev-secret";
 
     public static IDistributedApplicationBuilder AddCatalogLambdas(
@@ -19,35 +19,32 @@ public static class CatalogExtensions
             .WithAwsDevEnvironment();
 
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
-                "catalog-create-product",
-                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_CreateProduct_Generated::CreateProduct")
-            .WaitForCompletion(catalogSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment();
-
-        builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
-                "catalog-update-product",
-                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_UpdateProduct_Generated::UpdateProduct")
-            .WaitForCompletion(catalogSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment();
-
-        builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
-                "catalog-delete-product",
-                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_DeleteProduct_Generated::DeleteProduct")
-            .WaitForCompletion(catalogSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment();
-
-        builder.AddAWSLambdaFunction<Projects.Catalog_StreamEventPublish_Lambda>(
                 "catalog-stream-event-publisher",
-                lambdaHandler: "Catalog.StreamEventPublish.Lambda::Catalog.StreamEventPublish.Lambda.Function::FunctionHandler")
+                lambdaHandler: "Catalog.Function::Catalog.Function.EventsIntegration.Publisher.CatalogStreamEventPublisherFunction::FunctionHandler")
             .WaitForCompletion(catalogSeeder)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(ProductsTableName)
             .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+
+        // Consumes CatalogUpdated from EventBridge and triggers ISR cache revalidation on the SPA.
+        builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
+                "catalog-catalog-updated-consumer",
+                lambdaHandler: "Catalog.Function::Catalog.Function.EventsIntegration.Consumer.CatalogUpdatedConsumerFunction::FunctionHandler")
+            .WaitForCompletion(catalogSeeder)
+            .WithAwsDevEnvironment()
             .WithEnvironment("Catalog__WebhookUrl", $"{spaWebhookUrl}/api/webhooks/catalog-updated")
             .WithEnvironment("CATALOG_WEBHOOK_SECRET", CatalogWebhookSecret);
+
+        // Consumes ReviewCreated from EventBridge and folds the rating into the product
+        // (AverageRating/RatingCount) — ADR-0011.
+        builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
+                "catalog-review-created-consumer",
+                lambdaHandler: "Catalog.Function::Catalog.Function.EventsIntegration.Consumer.ReviewCreatedConsumerFunction::FunctionHandler")
+            .WaitForCompletion(catalogSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
         return builder;
     }

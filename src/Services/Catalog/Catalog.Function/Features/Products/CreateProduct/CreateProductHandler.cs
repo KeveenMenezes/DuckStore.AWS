@@ -1,4 +1,4 @@
-namespace Catalog.Function.Features.Products.CreateProduct;
+﻿namespace Catalog.Function.Features.Products.CreateProduct;
 
 public record CreateProductCommand(
     string Name,

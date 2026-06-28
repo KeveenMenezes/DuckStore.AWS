@@ -1,8 +1,8 @@
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using Microsoft.Extensions.DependencyInjection;
+using Catalog.Function.Data;
 
-namespace Catalog.Function.Repositories;
+namespace Catalog.DevelopmentDataSeeder;
 
 public static class DynamoTableInitializer
 {
@@ -12,17 +12,20 @@ public static class DynamoTableInitializer
 
         await EnsureTableAsync(dynamoDb, DynamoProductRepository.TableName);
         await EnsureTableAsync(dynamoDb, DynamoCategoryRepository.TableName);
+        // Inbox for the ReviewCreated consumer's idempotency (ADR-0011).
+        await EnsureTableAsync(dynamoDb, ProcessedIntegrationEvent.TableName, partitionKey: "PK");
     }
 
-    private static async Task EnsureTableAsync(IAmazonDynamoDB dynamoDb, string tableName)
+    private static async Task EnsureTableAsync(
+        IAmazonDynamoDB dynamoDb, string tableName, string partitionKey = "Id")
     {
         try
         {
             await dynamoDb.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
-                KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
+                AttributeDefinitions = [new AttributeDefinition(partitionKey, ScalarAttributeType.S)],
+                KeySchema = [new KeySchemaElement(partitionKey, KeyType.HASH)],
                 BillingMode = BillingMode.PAY_PER_REQUEST
             });
 

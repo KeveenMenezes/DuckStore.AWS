@@ -79,6 +79,11 @@ public class Product : IdentifiableAggregate<ProductId, Guid>
     public int Stock { get; private set; } = default!;
     public List<CategoryId> CategoryIds { get; private set; } = default!;
 
+    // Aggregate rating materialized from the Review context via CDC (ADR-0011). Maintained
+    // exclusively by the ReviewCreated consumer Lambda; product writes never set these.
+    public double AverageRating { get; private set; }
+    public int RatingCount { get; private set; }
+
     // Reconstitutes an already-persisted Product (without re-validating creation rules or raising domain events).
     internal static Product Load(
         Guid id,
@@ -87,7 +92,9 @@ public class Product : IdentifiableAggregate<ProductId, Guid>
         string imageUrl,
         decimal price,
         int stock,
-        List<CategoryId> categoryIds) =>
+        List<CategoryId> categoryIds,
+        double averageRating = 0,
+        int ratingCount = 0) =>
         new()
         {
             Id = ProductId.Of(id),
@@ -96,6 +103,8 @@ public class Product : IdentifiableAggregate<ProductId, Guid>
             ImageUrl = imageUrl,
             Price = price,
             Stock = stock,
-            CategoryIds = categoryIds
+            CategoryIds = categoryIds,
+            AverageRating = averageRating,
+            RatingCount = ratingCount
         };
 }

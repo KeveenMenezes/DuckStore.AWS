@@ -1,13 +1,7 @@
-global using BuildingBlocks.Core.Pagination;
-global using BuildingBlocks.UnitTests;
-global using Catalog.Function.Exceptions;
+﻿global using Catalog.Function.Data;
 global using Catalog.Function.Features.Products.CreateProduct;
 global using Catalog.Function.Features.Products.DeleteProduct;
-global using Catalog.Function.Features.Products.GetProductByCategory;
-global using Catalog.Function.Features.Products.GetProductById;
-global using Catalog.Function.Features.Products.GetProducts;
 global using Catalog.Function.Features.Products.UpdateProduct;
 global using Catalog.Function.Models;
-global using Catalog.Function.Repositories;
 global using Catalog.Function.ValueObjects;
 global using FluentValidation.TestHelper;
