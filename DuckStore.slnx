@@ -1,0 +1,57 @@
+<Solution>
+  <Folder Name="/SolutionItems/">
+    <File Path=".editorconfig" />
+    <File Path=".gitignore" />
+    <File Path="Directory.Packages.props" />
+    <File Path="nuget.config" />
+    <File Path="docker-compose.yml" />
+    <File Path="docker-compose.override.yml" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/AppHost/AppHost.csproj" />
+  </Folder>
+  <Folder Name="/src/ApiGateways/">
+    <Project Path="src/ApiGateways/YarpApiGateway/YarpApiGateway.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/">
+    <Project Path="src/BuildingBlocks/BuildingBlocks.Core/BuildingBlocks.Core.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.Messaging/BuildingBlocks.Messaging.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.ServiceDefaults/BuildingBlocks.ServiceDefaults.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Basket/">
+    <Project Path="src/Services/Basket/Basket.Function/Basket.Function.csproj" />
+    <Project Path="src/Services/Basket/Basket.DevelopmentDataSeeder/Basket.DevelopmentDataSeeder.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Catalog/">
+    <Project Path="src/Services/Catalog/Catalog.Function/Catalog.Function.csproj" />
+    <Project Path="src/Services/Catalog/Catalog.DevelopmentDataSeeder/Catalog.DevelopmentDataSeeder.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Discount/">
+    <Project Path="src/Services/Discount/Discount.Function/Discount.Function.csproj" />
+    <Project Path="src/Services/Discount/Discount.DevelopmentDataSeeder/Discount.DevelopmentDataSeeder.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Ordering/">
+    <Project Path="src/Services/Ordering/Ordering.Function/Ordering.Function.csproj" />
+    <Project Path="src/Services/Ordering/Ordering.DevelopmentDataSeeder/Ordering.DevelopmentDataSeeder.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Review/">
+    <Project Path="src/Services/Review/Review.Function/Review.Function.csproj" />
+    <Project Path="src/Services/Review/Review.DevelopmentDataSeeder/Review.DevelopmentDataSeeder.csproj" />
+  </Folder>
+  <Folder Name="/src/WebApps/">
+    <Project Path="src/WebApps/Shopping.Web.Server/Shopping.Web.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/BuildingBlocks/">
+    <Project Path="tests/BuildingBlocks/BuildingBlocks.UnitTests/BuildingBlocks.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Services/Basket/">
+    <Project Path="tests/Services/Basket/Basket.UnitTests/Basket.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Services/Catalog/">
+    <Project Path="tests/Services/Catalog/Catalog.UnitTests/Catalog.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Services/Ordering/">
+    <Project Path="tests/Services/Ordering/Ordering.UnitTests/Ordering.UnitTests.csproj" />
+    <Project Path="tests/Services/Ordering/Ordering.FunctionalTests/Ordering.FunctionalTests.csproj" />
+  </Folder>
+</Solution>
