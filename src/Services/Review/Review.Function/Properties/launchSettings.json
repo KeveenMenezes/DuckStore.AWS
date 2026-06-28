@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Aspire_review-reviews-event-publisher": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "exec --depsfile ./Review.Function.deps.json --runtimeconfig ./Review.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Review.Function::Review.Function.EventsIntegration.Publisher.ReviewCreatedPublisherFunction::FunctionHandler",
+      "workingDirectory": "bin/Debug/net10.0/"
+    }
+  }
+}
