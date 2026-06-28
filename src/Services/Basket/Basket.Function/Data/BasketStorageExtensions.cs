@@ -1,6 +1,6 @@
 ﻿using Amazon.DAX;
 using Amazon.DynamoDBv2;
-using Amazon.Runtime;
+using Amazon.Runtime.Credentials;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -67,7 +67,7 @@ public static class BasketStorageExtensions
 
         var daxConfig = new DaxClientConfig(endpoint, port)
         {
-            AwsCredentials = FallbackCredentialsFactory.GetCredentials()
+            AwsCredentials = DefaultAWSCredentialsIdentityResolver.GetCredentials()
         };
 
         return new ClusterDaxClient(daxConfig);

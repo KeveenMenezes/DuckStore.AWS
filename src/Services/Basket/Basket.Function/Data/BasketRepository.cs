@@ -1,4 +1,4 @@
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 
 namespace Basket.Function.Data;
@@ -6,7 +6,7 @@ namespace Basket.Function.Data;
 public class BasketRepository(IAmazonDynamoDB dynamoDb)
     : IBasketRepository
 {
-    public const string TableName = "ShoppingCarts";
+    public const string TableName = "shopping-carts";
 
     public async Task<ShoppingCart> GetBasket(string userName, CancellationToken cancellationToken)
     {
@@ -18,9 +18,9 @@ public class BasketRepository(IAmazonDynamoDB dynamoDb)
             },
             cancellationToken);
 
-        return response.Item.Count == 0 ?
-            throw new BasketNotFoundException(userName) :
-            JsonSerializer.Deserialize<ShoppingCart>(response.Item["Data"].S)!;
+        return response.Item is { Count: > 0 } ?
+            JsonSerializer.Deserialize<ShoppingCart>(response.Item["Data"].S)! :
+            throw new BasketNotFoundException(userName);
     }
 
     public async Task<ShoppingCart> StoreCart(ShoppingCart cart, CancellationToken cancellationToken)

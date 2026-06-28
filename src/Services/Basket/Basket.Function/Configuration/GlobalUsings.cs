@@ -1,10 +1,8 @@
 ﻿global using System.Text.Json;
 global using Amazon.Lambda.Annotations;
-global using Amazon.Lambda.Annotations.APIGateway;
 global using Basket.Function.Clients;
 global using Basket.Function.Data;
 global using Basket.Function.Dtos;
-global using Basket.Function.Exceptions;
 global using Basket.Function.Models;
 global using BuildingBlocks.Core.CQRS;
 global using BuildingBlocks.Core.Exceptions;

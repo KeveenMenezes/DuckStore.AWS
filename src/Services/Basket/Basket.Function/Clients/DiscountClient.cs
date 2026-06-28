@@ -1,4 +1,4 @@
-using Amazon.Lambda;
+﻿using Amazon.Lambda;
 using Amazon.Lambda.Model;
 
 namespace Basket.Function.Clients;
@@ -9,7 +9,8 @@ public record GetDiscountResponse(string ProductName, string Description, int Am
 
 public interface IDiscountClient
 {
-    Task<GetDiscountResponse> GetDiscountAsync(string productName, CancellationToken cancellationToken = default);
+    Task<GetDiscountResponse> GetDiscountAsync(
+        string productName, CancellationToken cancellationToken = default);
 }
 
 public class DiscountLambdaClient(IAmazonLambda lambdaClient, string functionName) : IDiscountClient

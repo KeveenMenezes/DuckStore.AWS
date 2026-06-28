@@ -3,57 +3,10 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "An AWS Serverless Application. This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
   "Resources": {
-    "BasketFunctionFunctionsGetBasketGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootGet"
-        ],
-        "SyncedEventProperties": {
-          "RootGet": [
-            "Path",
-            "Method"
-          ]
-        }
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "Events": {
-          "RootGet": {
-            "Type": "HttpApi",
-            "Properties": {
-              "Path": "/basket/{userName}",
-              "Method": "GET"
-            }
-          }
-        },
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Basket.Function::Basket.Function.Functions_GetBasket_Generated::GetBasket"
-          ]
-        }
-      }
-    },
     "BasketFunctionFunctionsStoreBasketGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootPost"
-        ],
-        "SyncedEventProperties": {
-          "RootPost": [
-            "Path",
-            "Method"
-          ]
-        }
+        "Tool": "Amazon.Lambda.Annotations"
       },
       "Properties": {
         "MemorySize": 512,
@@ -62,15 +15,7 @@
           "AWSLambdaBasicExecutionRole"
         ],
         "PackageType": "Image",
-        "Events": {
-          "RootPost": {
-            "Type": "HttpApi",
-            "Properties": {
-              "Path": "/basket",
-              "Method": "POST"
-            }
-          }
-        },
+        "Events": {},
         "ImageUri": ".",
         "ImageConfig": {
           "Command": [
@@ -79,57 +24,10 @@
         }
       }
     },
-    "BasketFunctionFunctionsDeleteBasketGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootDelete"
-        ],
-        "SyncedEventProperties": {
-          "RootDelete": [
-            "Path",
-            "Method"
-          ]
-        }
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "Events": {
-          "RootDelete": {
-            "Type": "HttpApi",
-            "Properties": {
-              "Path": "/basket/{userName}",
-              "Method": "DELETE"
-            }
-          }
-        },
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Basket.Function::Basket.Function.Functions_DeleteBasket_Generated::DeleteBasket"
-          ]
-        }
-      }
-    },
     "BasketFunctionFunctionsCheckoutBasketGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations",
-        "SyncedEvents": [
-          "RootPost"
-        ],
-        "SyncedEventProperties": {
-          "RootPost": [
-            "Path",
-            "Method"
-          ]
-        }
+        "Tool": "Amazon.Lambda.Annotations"
       },
       "Properties": {
         "MemorySize": 512,
@@ -138,15 +36,7 @@
           "AWSLambdaBasicExecutionRole"
         ],
         "PackageType": "Image",
-        "Events": {
-          "RootPost": {
-            "Type": "HttpApi",
-            "Properties": {
-              "Path": "/basket/checkout",
-              "Method": "POST"
-            }
-          }
-        },
+        "Events": {},
         "ImageUri": ".",
         "ImageConfig": {
           "Command": [

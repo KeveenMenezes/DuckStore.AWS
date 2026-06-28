@@ -1,28 +1,22 @@
-﻿using System.Text.Json;
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using Amazon.Lambda.Core;
 using Amazon.Lambda.DynamoDBEvents;
-using Amazon.Lambda.RuntimeSupport;
-using Amazon.Lambda.Serialization.SystemTextJson;
 using BuildingBlocks.Messaging.EventBridge;
 using BuildingBlocks.Messaging.Events;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using SdkAttribute = Amazon.DynamoDBv2.Model.AttributeValue;
 
-[assembly: LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]
-
-namespace Basket.ShoppingCartsEventPublisher.Lambda;
+namespace Basket.Function.EventsIntegration.Publisher;
 
 // Triggered by ShoppingCarts DynamoDB Stream. On MODIFY records where Type = "Checkout",
 // publishes BasketCheckoutEvent to EventBridge and cleans up the basket item.
 // This replaces the previous in-process best-effort publish in CheckoutBasketCommandHandler.
-public class Function
+public class ShoppingCartsEventPublisherFunction
 {
     private readonly IServiceProvider _serviceProvider;
 
-    public Function()
+    public ShoppingCartsEventPublisherFunction()
     {
         var configuration = new ConfigurationBuilder()
             .AddEnvironmentVariables()
@@ -60,21 +54,9 @@ public class Function
             var userName = record.Dynamodb.NewImage["UserName"].S;
             await dynamoDb.DeleteItemAsync(new DeleteItemRequest
             {
-                TableName = "ShoppingCarts",
+                TableName = BasketRepository.TableName,
                 Key = new Dictionary<string, SdkAttribute> { ["UserName"] = new(userName) }
             });
         }
-    }
-
-    private static async Task Main()
-    {
-        Func<DynamoDBEvent, Task> handler = new Function().FunctionHandler;
-
-        using var bootstrap = LambdaBootstrapBuilder.Create(
-                handler,
-                new DefaultLambdaJsonSerializer())
-            .Build();
-
-        await bootstrap.RunAsync();
     }
 }

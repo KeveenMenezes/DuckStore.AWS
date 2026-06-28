@@ -1,4 +1,4 @@
-namespace Basket.Function.Features.CheckoutBasket;
+﻿namespace Basket.Function.Features.CheckoutBasket;
 
 public record CheckoutBasketCommand(BasketCheckoutDto BasketCheckoutDto)
     : ICommand<CheckoutBasketResult>;
