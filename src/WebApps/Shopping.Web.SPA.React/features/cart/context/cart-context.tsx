@@ -1,8 +1,22 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, useMemo, type ReactNode } from "react"
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useMemo,
+  useEffect,
+  useRef,
+  type ReactNode,
+} from "react"
+import { gql } from "@/api"
+import { GET_BASKET } from "@/api/queries/order"
 import type { Product } from "@/features/products/types/product.types"
 import type { CartItem } from "@/features/cart/types/cart.types"
+import type { GqlShoppingCart } from "@/graphql/types"
+import { getProducts } from "@/features/products/services/products.service"
+import { getGuestUserName, syncCartToBasket } from "@/features/cart/services/basket.service"
 
 interface CartContextType {
   items: CartItem[]
@@ -14,6 +28,7 @@ interface CartContextType {
   totalPrice: number
   isOpen: boolean
   setIsOpen: (open: boolean) => void
+  isLoading: boolean
 }
 
 const CartContext = createContext<CartContextType | null>(null)
@@ -21,6 +36,53 @@ const CartContext = createContext<CartContextType | null>(null)
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+  // Prevents syncing back to DB the items that were just loaded from DB
+  const skipNextSyncRef = useRef(false)
+
+  useEffect(() => {
+    let cancelled = false
+    async function hydrate() {
+      try {
+        const userName = getGuestUserName()
+        const [catalog, data] = await Promise.all([
+          getProducts(),
+          gql<{ basket: GqlShoppingCart | null }>(GET_BASKET, { userName }),
+        ])
+        if (cancelled) return
+        const enriched: CartItem[] = (data.basket?.items ?? []).flatMap((item) => {
+          const product = catalog.find((p) => p.id === item.productId)
+          if (!product) return []
+          return [{ product, quantity: item.quantity }]
+        })
+        if (enriched.length > 0) {
+          skipNextSyncRef.current = true
+          setItems(enriched)
+        }
+      } catch {
+        // carrinho começa vazio em caso de erro
+      } finally {
+        if (!cancelled) setIsLoading(false)
+      }
+    }
+    hydrate()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    if (skipNextSyncRef.current) {
+      skipNextSyncRef.current = false
+      return
+    }
+    if (items.length === 0) return
+    const timer = setTimeout(() => {
+      const userName = getGuestUserName()
+      syncCartToBasket(userName, items).catch(console.error)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [items])
 
   const addItem = useCallback((product: Product): boolean => {
     let success = false
@@ -89,8 +151,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       totalPrice,
       isOpen,
       setIsOpen,
+      isLoading,
     }),
-    [items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen],
+    [items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen, isLoading],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

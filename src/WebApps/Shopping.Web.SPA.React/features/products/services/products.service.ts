@@ -1,37 +1,26 @@
-import { gql } from "@/shared/lib/graphql-client"
-import type { GqlProductPage, GqlCategoryPage } from "@/graphql/types"
+import { gql } from "@/api"
+import { GET_PRODUCTS, GET_PRODUCT } from "@/api/queries/product"
+import { GET_CATEGORIES } from "@/api/queries/category"
+import type { GqlProductPage, GqlCategoryPage, GqlProduct } from "@/graphql/types"
 import type { Product, ProductCategory } from "@/features/products/types/product.types"
 
 export const ALL_CATEGORY_ID = "all"
 
-const PRODUCTS_QUERY = `
-  query GetProducts($pageSize: Int, $nextToken: String) {
-    products(pageSize: $pageSize, nextToken: $nextToken) {
-      items {
-        id name description imageUrl price stock categoryIds
-      }
-      nextToken
-    }
-  }
-`
-
-const CATEGORIES_QUERY = `
-  query GetCategories($pageSize: Int) {
-    categories(pageSize: $pageSize) {
-      items { id name }
-    }
-  }
-`
-
 /** Fetch the full product catalog from GraphQL (used by Server Components). */
 export async function getProducts(pageSize = 100, init?: RequestInit): Promise<Product[]> {
-  const data = await gql<{ products: GqlProductPage }>(PRODUCTS_QUERY, { pageSize }, init)
+  const data = await gql<{ products: GqlProductPage }>(GET_PRODUCTS, { pageSize }, init)
   return data.products.items
+}
+
+/** Fetch a single product by id (used by Server Components). */
+export async function getProduct(id: string, init?: RequestInit): Promise<Product> {
+  const data = await gql<{ product: GqlProduct }>(GET_PRODUCT, { id }, init)
+  return data.product
 }
 
 /** Fetch all categories from GraphQL. */
 export async function getRawCategories(init?: RequestInit): Promise<Array<{ id: string; name: string }>> {
-  const data = await gql<{ categories: GqlCategoryPage }>(CATEGORIES_QUERY, { pageSize: 50 }, init)
+  const data = await gql<{ categories: GqlCategoryPage }>(GET_CATEGORIES, { pageSize: 50 }, init)
   return data.categories.items
 }
 

@@ -8,6 +8,7 @@ export const ROUTES = {
   checkout: "/checkout",
   profile: "/my-profile",
   orders: "/my-orders",
+  product: (id: string) => `/products/${id}`,
 } as const
 
 export type AppRoute = (typeof ROUTES)[keyof typeof ROUTES]
