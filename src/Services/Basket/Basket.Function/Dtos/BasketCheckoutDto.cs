@@ -1,4 +1,4 @@
-namespace Basket.Function.Dtos;
+﻿namespace Basket.Function.Dtos;
 
 public class BasketCheckoutDto
 {

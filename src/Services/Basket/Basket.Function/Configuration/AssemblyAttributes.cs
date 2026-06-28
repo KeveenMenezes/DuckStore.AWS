@@ -1,5 +1,5 @@
-using Amazon.Lambda.Serialization.SystemTextJson;
+﻿using Amazon.Lambda.Serialization.SystemTextJson;
 
-// Registra o serializador JSON usado pelo runtime do Lambda para (de)serializar
-// os eventos de entrada/saída. Exigido pelo source generator do Amazon.Lambda.Annotations (AWSLambda0108).
+// Registers the JSON serializer used by the Lambda runtime to (de)serialize
+// input/output events. Required by the Amazon.Lambda.Annotations source generator (AWSLambda0108).
 [assembly: Amazon.Lambda.Core.LambdaSerializer(typeof(DefaultLambdaJsonSerializer))]

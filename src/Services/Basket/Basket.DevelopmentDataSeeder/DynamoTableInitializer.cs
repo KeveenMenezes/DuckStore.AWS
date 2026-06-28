@@ -1,8 +1,8 @@
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using Microsoft.Extensions.DependencyInjection;
+using Basket.Function.Data;
 
-namespace Basket.Function.Data;
+namespace Basket.DevelopmentDataSeeder;
 
 public static class DynamoTableInitializer
 {
