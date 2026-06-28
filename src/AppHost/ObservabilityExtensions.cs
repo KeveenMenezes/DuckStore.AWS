@@ -1,4 +1,4 @@
-namespace AppHost.Observability;
+﻿namespace AppHost.Observability;
 
 public static class ObservabilityExtensions
 {
