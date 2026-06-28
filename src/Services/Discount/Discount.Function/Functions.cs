@@ -1,4 +1,4 @@
-namespace Discount.Function;
+﻿namespace Discount.Function;
 
 public record GetDiscountRequest(string ProductName);
 
