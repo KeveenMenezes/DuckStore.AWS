@@ -7,6 +7,7 @@ import (
 
 	"github.com/aws/aws-sdk-go-v2/feature/dynamodb/attributevalue"
 	"github.com/aws/aws-sdk-go-v2/service/dynamodb"
+	"github.com/aws/aws-sdk-go-v2/service/dynamodb/types"
 )
 
 // Store handles DynamoDB persistence for notification events.
@@ -23,11 +24,20 @@ func NewStore(client *dynamodb.Client, tableName string) *Store {
 	}
 }
 
-// Save persists a NotificationEvent to DynamoDB.
-func (s *Store) Save(ctx context.Context, event NotificationEvent) error {
+// Marshal converts a NotificationEvent into a DynamoDB attribute map.
+func (s *Store) Marshal(event NotificationEvent) (map[string]types.AttributeValue, error) {
 	item, err := attributevalue.MarshalMap(event)
 	if err != nil {
-		return fmt.Errorf("failed to marshal notification event: %w", err)
+		return nil, fmt.Errorf("failed to marshal notification event: %w", err)
+	}
+	return item, nil
+}
+
+// Save persists a NotificationEvent to DynamoDB (used as a fallback when no event ID is available).
+func (s *Store) Save(ctx context.Context, event NotificationEvent) error {
+	item, err := s.Marshal(event)
+	if err != nil {
+		return err
 	}
 
 	_, err = s.client.PutItem(ctx, &dynamodb.PutItemInput{
