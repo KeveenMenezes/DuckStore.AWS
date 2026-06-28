@@ -19,15 +19,15 @@
   <ItemGroup>
     <ProjectReference Include="..\ApiGateways\YarpApiGateway\YarpApiGateway.csproj" />
     <ProjectReference Include="..\Services\Basket\Basket.Function\Basket.Function.csproj" />
+    <ProjectReference Include="..\Services\Basket\Basket.DevelopmentDataSeeder\Basket.DevelopmentDataSeeder.csproj" />
     <ProjectReference Include="..\Services\Catalog\Catalog.Function\Catalog.Function.csproj" />
     <ProjectReference Include="..\Services\Discount\Discount.Function\Discount.Function.csproj" />
-    <ProjectReference Include="..\Services\Ordering\Ordering.API\Ordering.API.csproj" />
-    <ProjectReference Include="..\Services\Ordering\Ordering.BasketCheckoutConsumer.Lambda\Ordering.BasketCheckoutConsumer.Lambda.csproj" />
+    <ProjectReference Include="..\Services\Ordering\Ordering.Function\Ordering.Function.csproj" />
     <ProjectReference Include="..\Services\Catalog\Catalog.DevelopmentDataSeeder\Catalog.DevelopmentDataSeeder.csproj" />
-    <ProjectReference Include="..\Services\Catalog\Catalog.StreamEventPublish.Lambda\Catalog.StreamEventPublish.Lambda.csproj" />
     <ProjectReference Include="..\Services\Discount\Discount.DevelopmentDataSeeder\Discount.DevelopmentDataSeeder.csproj" />
     <ProjectReference Include="..\Services\Ordering\Ordering.DevelopmentDataSeeder\Ordering.DevelopmentDataSeeder.csproj" />
-    <ProjectReference Include="..\Services\Ordering\Ordering.OrderCreatedPublisher.Lambda\Ordering.OrderCreatedPublisher.Lambda.csproj" />
+    <ProjectReference Include="..\Services\Review\Review.Function\Review.Function.csproj" />
+    <ProjectReference Include="..\Services\Review\Review.DevelopmentDataSeeder\Review.DevelopmentDataSeeder.csproj" />
     <ProjectReference Include="..\WebApps\Shopping.Web.Server\Shopping.Web.Server.csproj" />
   </ItemGroup>
 
