@@ -1,8 +1,4 @@
-using Amazon.EventBridge;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-
-namespace BuildingBlocks.Messaging.EventBridge;
+﻿namespace BuildingBlocks.Messaging.EventBridge;
 
 public static class Extensions
 {

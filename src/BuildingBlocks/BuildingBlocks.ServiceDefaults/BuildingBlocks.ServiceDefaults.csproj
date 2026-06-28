@@ -15,16 +15,13 @@
     <PackageReference Include="MediatR" />
     <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
     <PackageReference Include="Microsoft.Extensions.ServiceDiscovery" />
-    <PackageReference Include="Microsoft.FeatureManagement.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Exporter.Console" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.GrpcNetClient" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
     <PackageReference Include="Aspire.Elastic.Clients.Elasticsearch" />
-    <PackageReference Include="OpenTelemetry.Instrumentation.SqlClient" />
     <PackageReference Include="Serilog.AspNetCore" />
     <PackageReference Include="Serilog.Enrichers.Span" />
     <PackageReference Include="Serilog.Sinks.Elasticsearch" />
@@ -44,7 +41,6 @@
     <Using Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <Using Include="OpenTelemetry.Extensions.Hosting" />
     <Using Include="OpenTelemetry.Instrumentation.AspNetCore" />
-    <Using Include="OpenTelemetry.Instrumentation.GrpcNetClient" />
     <Using Include="OpenTelemetry.Instrumentation.Http" />
     <Using Include="OpenTelemetry.Instrumentation.Runtime" />
   </ItemGroup>

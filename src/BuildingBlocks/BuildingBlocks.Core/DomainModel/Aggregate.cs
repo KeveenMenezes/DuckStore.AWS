@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Core.DomainModel;
+﻿namespace BuildingBlocks.Core.DomainModel;
 
 // Aggregate-root marker. Kept to preserve the DDD aggregate boundary in the type
 // system. Integration events are published via DynamoDB Streams (CDC), not via

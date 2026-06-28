@@ -1,8 +1,4 @@
 ﻿using System.Text.Json;
-using Amazon.EventBridge;
-using Amazon.EventBridge.Model;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace BuildingBlocks.Messaging.EventBridge;
 
@@ -33,8 +29,7 @@ public class EventBridgePublisher(
             ]
         };
 
-        // Best-effort: o bus EventBridge só existe na AWS. Sem ele (dev local) apenas
-        // logamos um aviso em vez de quebrar o fluxo — a integração é testada na AWS.
+        // Best-effort: the EventBridge bus only exists on AWS; locally we log a warning instead of breaking the flow.
         try
         {
             var response = await client.PutEventsAsync(request, cancellationToken);
