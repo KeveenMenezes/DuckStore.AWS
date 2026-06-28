@@ -1,4 +1,4 @@
-namespace Catalog.Function.Data;
+﻿namespace Catalog.Function.Models;
 
 public class IdentifiableAggregate<TKey, T> : Aggregate<TKey>
     where T : IComparable<T>

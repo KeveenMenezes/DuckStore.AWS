@@ -1,4 +1,4 @@
-namespace Catalog.Function.Repositories;
+﻿namespace Catalog.Function.Data;
 
 public interface IProductRepository
 {

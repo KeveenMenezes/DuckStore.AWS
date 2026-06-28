@@ -1,6 +1,4 @@
-using System.Diagnostics;
-using Catalog.Function.Data;
-using Catalog.Function.Repositories;
+﻿using System.Diagnostics;
 
 namespace Catalog.DevelopmentDataSeeder;
 

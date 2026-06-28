@@ -1,4 +1,4 @@
-namespace Catalog.UnitTests.Products;
+﻿namespace Catalog.UnitTests.Products;
 
 public class CreateProductHandlerTests
 {

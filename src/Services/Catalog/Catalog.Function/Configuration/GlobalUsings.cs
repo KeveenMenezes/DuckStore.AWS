@@ -1,15 +1,10 @@
 ﻿global using System.Text.Json.Serialization;
 global using Amazon.Lambda.Annotations;
-global using Amazon.Lambda.Annotations.APIGateway;
 global using BuildingBlocks.Core.CQRS;
 global using BuildingBlocks.Core.DomainModel;
 global using BuildingBlocks.Core.Exceptions;
 global using BuildingBlocks.Core.Pagination;
 global using Catalog.Function.Data;
-global using Catalog.Function.Exceptions;
 global using Catalog.Function.Models;
-global using Catalog.Function.Repositories;
 global using Catalog.Function.ValueObjects;
 global using FluentValidation;
-global using Mapster;
-global using MediatR;

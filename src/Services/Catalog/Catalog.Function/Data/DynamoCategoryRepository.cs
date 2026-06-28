@@ -1,11 +1,11 @@
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 
-namespace Catalog.Function.Repositories;
+namespace Catalog.Function.Data;
 
 public class DynamoCategoryRepository(IAmazonDynamoDB dynamoDb) : ICategoryRepository
 {
-    public const string TableName = "Categories";
+    public const string TableName = "categories";
 
     public async Task<PaginatedResult<Category>> GetPagedAsync(
         int pageIndex, int pageSize, CancellationToken cancellationToken = default)
@@ -14,13 +14,19 @@ public class DynamoCategoryRepository(IAmazonDynamoDB dynamoDb) : ICategoryRepos
             new ScanRequest { TableName = TableName },
             cancellationToken);
 
-        var page = response.Items
+        var items = response.Items ?? [];
+
+        var page = items
             .Skip((Math.Max(pageIndex, 1) - 1) * pageSize)
             .Take(pageSize)
             .Select(ToCategory)
             .ToList();
 
-        return new PaginatedResult<Category>(pageIndex, pageSize, response.Items.Count, page);
+        return new PaginatedResult<Category>(
+            pageIndex,
+            pageSize,
+            items.Count,
+            page);
     }
 
     public async Task<bool> AnyAsync(CancellationToken cancellationToken = default)

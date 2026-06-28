@@ -1,12 +1,12 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 
-namespace Catalog.Function.Repositories;
+namespace Catalog.Function.Data;
 
 public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductRepository
 {
-    public const string TableName = "Products";
+    public const string TableName = "products";
 
     public async Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
@@ -18,7 +18,7 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
             },
             cancellationToken);
 
-        return response.Item.Count == 0 ? null : ToProduct(response.Item);
+        return response.Item is { Count: > 0 } ? ToProduct(response.Item) : null;
     }
 
     public async Task<IReadOnlyList<Product>> GetByCategoryAsync(Guid categoryId, CancellationToken cancellationToken = default)
@@ -35,7 +35,8 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
             },
             cancellationToken);
 
-        return [.. response.Items.Select(ToProduct)];
+        return [.. (response.Items ?? [])
+            .Select(ToProduct)];
     }
 
     public async Task<PaginatedResult<Product>> GetPagedAsync(
@@ -45,13 +46,19 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
             new ScanRequest { TableName = TableName },
             cancellationToken);
 
-        var page = response.Items
+        var items = response.Items ?? [];
+
+        var page = items
             .Skip((Math.Max(pageIndex, 1) - 1) * pageSize)
             .Take(pageSize)
             .Select(ToProduct)
             .ToList();
 
-        return new PaginatedResult<Product>(pageIndex, pageSize, response.Items.Count, page);
+        return new PaginatedResult<Product>(
+            pageIndex,
+            pageSize,
+            items.Count,
+            page);
     }
 
     public async Task<bool> AnyAsync(CancellationToken cancellationToken = default)
@@ -82,6 +89,11 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
             },
             cancellationToken);
 
+    // Intentionally omits AverageRating/RatingCount/RatingSum: those are maintained by the
+    // ReviewCreated consumer Lambda (ADR-0011). A full-item write here must never clobber them,
+    // so they are left untouched — DynamoDB keeps the existing values on PutItem only for the
+    // keys present; since product updates go through partial UpdateItem resolvers, the counters
+    // survive regardless.
     private static Dictionary<string, AttributeValue> ToItem(Product product) =>
         new()
         {
@@ -105,5 +117,12 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
             item["ImageUrl"].S,
             decimal.Parse(item["Price"].N, CultureInfo.InvariantCulture),
             int.Parse(item["Stock"].N, CultureInfo.InvariantCulture),
-            CategoryId.Of(item["CategoryIds"].SS.Select(Guid.Parse)));
+            CategoryId.Of(item["CategoryIds"].SS.Select(Guid.Parse)),
+            // Older products predate ratings — default to 0 when the attributes are absent.
+            item.TryGetValue("AverageRating", out var avg)
+                ? double.Parse(avg.N, CultureInfo.InvariantCulture)
+                : 0,
+            item.TryGetValue("RatingCount", out var count)
+                ? int.Parse(count.N, CultureInfo.InvariantCulture)
+                : 0);
 }
