@@ -1,4 +1,4 @@
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using Discount.Function.Data;
 
 namespace Discount.DevelopmentDataSeeder;

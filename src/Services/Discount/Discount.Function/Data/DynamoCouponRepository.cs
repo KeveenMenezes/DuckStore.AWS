@@ -1,11 +1,11 @@
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 
 namespace Discount.Function.Data;
 
 public class DynamoCouponRepository(IAmazonDynamoDB dynamoDb) : ICouponRepository
 {
-    public const string TableName = "Coupons";
+    public const string TableName = "coupons";
 
     public async Task<Coupon?> GetByProductNameAsync(string productName, CancellationToken cancellationToken = default)
     {
@@ -17,7 +17,7 @@ public class DynamoCouponRepository(IAmazonDynamoDB dynamoDb) : ICouponRepositor
             },
             cancellationToken);
 
-        return response.Item.Count == 0 ? null : ToCoupon(response.Item);
+        return response.Item is { Count: > 0 } ? ToCoupon(response.Item) : null;
     }
 
     public async Task<bool> AnyAsync(CancellationToken cancellationToken = default)

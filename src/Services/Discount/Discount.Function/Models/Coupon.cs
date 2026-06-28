@@ -1,4 +1,4 @@
-namespace Discount.Function.Models;
+﻿namespace Discount.Function.Models;
 
 public class Coupon
 {

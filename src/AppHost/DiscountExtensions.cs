@@ -1,6 +1,6 @@
+﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
 using Aspire.Hosting.AWS.Lambda;
-using AppHost.Extensions;
 
 namespace AppHost.Discount;
 
