@@ -14,7 +14,7 @@ interface CheckoutFormProps {
   errors: CheckoutFieldErrors
   totalPrice: number
   onFieldChange: (field: keyof CheckoutFormData, value: string) => void
-  onSubmit: (e: FormEvent) => void
+  onSubmit: (e: FormEvent<HTMLFormElement>) => void | Promise<void>
 }
 
 export function CheckoutForm({ formData, errors, totalPrice, onFieldChange, onSubmit }: CheckoutFormProps) {

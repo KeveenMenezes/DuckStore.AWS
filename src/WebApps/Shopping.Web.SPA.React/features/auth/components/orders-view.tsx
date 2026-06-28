@@ -5,6 +5,7 @@ import { Package, ArrowLeft, ShoppingBag } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { formatBRL } from "@/shared/lib/format"
 import { ROUTES } from "@/shared/constants/routes"
@@ -18,7 +19,7 @@ const statusMap: Record<OrderStatus, { label: string; variant: "secondary" | "de
 
 /** Per-user order history. Requires a hydrated session (SSR force-dynamic page). */
 export function OrdersView() {
-  const { user, orders } = useAuth()
+  const { user, orders, ordersLoading } = useAuth()
 
   if (!user) {
     return (
@@ -49,7 +50,29 @@ export function OrdersView() {
 
       <h1 className="mb-8 text-3xl font-bold text-foreground">My Orders</h1>
 
-      {orders.length === 0 ? (
+      {ordersLoading ? (
+        <div className="flex flex-col gap-4">
+          {[1, 2].map((n) => (
+            <Card key={n} className="border-border bg-card">
+              <CardHeader className="flex flex-row items-center justify-between pb-3">
+                <div className="flex flex-col gap-2">
+                  <Skeleton className="h-4 w-48" />
+                  <Skeleton className="h-3 w-32" />
+                </div>
+                <Skeleton className="h-6 w-20" />
+              </CardHeader>
+              <CardContent className="flex flex-col gap-3">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
+                <div className="mt-2 flex items-center justify-between border-t border-border pt-3">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-6 w-24" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : orders.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-4 py-16">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-secondary">
             <ShoppingBag className="h-8 w-8 text-muted-foreground" />

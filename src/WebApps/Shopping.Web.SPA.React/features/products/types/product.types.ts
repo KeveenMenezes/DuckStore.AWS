@@ -7,6 +7,8 @@ export interface Product {
   price: number
   stock: number
   categoryIds: string[]
+  averageRating: number
+  ratingCount: number
 }
 
 /** A selectable catalog category with a client-derived product count. */

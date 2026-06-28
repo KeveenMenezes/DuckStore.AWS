@@ -6,6 +6,23 @@ type Product {
   price: Float!
   stock: Int!
   categoryIds: [ID!]!
+  # Aggregate rating materialized from the Review context via CDC (ADR-0011); 0 when no reviews.
+  averageRating: Float!
+  ratingCount: Int!
+}
+
+type Review {
+  id: ID!
+  productId: ID!
+  userName: String!
+  rating: Int!
+  comment: String!
+  createdAt: String!
+}
+
+type ReviewPage {
+  items: [Review!]!
+  nextToken: String
 }
 
 type ProductPage {
@@ -45,6 +62,50 @@ type Coupon {
   amount: Int!
 }
 
+type ShippingAddress {
+  firstName: String!
+  lastName: String!
+  emailAddress: String!
+  addressLine: String!
+  country: String!
+  state: String!
+  zipCode: String!
+}
+
+type OrderPayment {
+  cardName: String!
+  cardNumber: String!
+  expiration: String!
+  cvv: String!
+  paymentMethod: Int!
+}
+
+type OrderItem {
+  productId: ID!
+  quantity: Int!
+  price: Float!
+}
+
+type Order {
+  id: ID!
+  customerId: ID!
+  orderName: String!
+  status: String!
+  createdAt: String
+  shippingAddress: ShippingAddress!
+  payment: OrderPayment!
+  orderItems: [OrderItem!]!
+}
+
+type OrderPage {
+  items: [Order!]!
+  nextToken: String
+}
+
+type DeleteOrderResult {
+  isSuccess: Boolean!
+}
+
 type StoreBasketResult {
   userName: String!
 }
@@ -54,6 +115,22 @@ type CheckoutResult {
 }
 
 type DeleteBasketResult {
+  isSuccess: Boolean!
+}
+
+type CreateProductResult {
+  id: ID!
+}
+
+type CreateReviewResult {
+  id: ID!
+}
+
+type UpdateProductResult {
+  id: ID!
+}
+
+type DeleteProductResult {
   isSuccess: Boolean!
 }
 
@@ -88,6 +165,32 @@ input CheckoutInput {
   paymentMethod: Int!
 }
 
+input CreateProductInput {
+  name: String!
+  description: String!
+  imageUrl: String!
+  price: Float!
+  stock: Int!
+  categoryIds: [ID!]!
+}
+
+input UpdateProductInput {
+  id: ID!
+  name: String!
+  description: String!
+  imageUrl: String!
+  price: Float!
+  stock: Int!
+  categoryIds: [ID!]!
+}
+
+input CreateReviewInput {
+  productId: ID!
+  userName: String!
+  rating: Int!
+  comment: String!
+}
+
 type Query {
   # Direct DynamoDB resolver — Scan Products table, no Lambda in the path
   products(pageSize: Int, nextToken: String): ProductPage!
@@ -98,20 +201,47 @@ type Query {
   # Direct DynamoDB resolver — Scan Categories table
   categories(pageSize: Int, nextToken: String): CategoryPage!
 
-  # Direct DynamoDB resolver (or Lambda if Redis cache-aside is required in prod)
+  # Direct DynamoDB resolver — GetItem on ShoppingCarts; Data attribute is a JSON blob
   basket(userName: String!): ShoppingCart
 
   # Lambda resolver — Discount domain logic
   couponFor(productName: String!): Coupon
+
+  # Direct DynamoDB resolver — Scan ordering (Type = "Order") with cursor pagination
+  orders(pageSize: Int, nextToken: String): OrderPage!
+
+  # Direct DynamoDB resolver — Scan with contains(OrderName) + Type filter
+  ordersByName(name: String!, pageSize: Int, nextToken: String): OrderPage!
+
+  # Lambda resolver — GSI1 is KEYS_ONLY; needs Query + BatchGetItem for full attributes (criterion 1)
+  ordersByCustomer(customerId: ID!): OrderPage!
+
+  # Direct DynamoDB resolver — Query reviews GSI1 by ProductId, newest-first
+  reviewsByProduct(productId: ID!, pageSize: Int, nextToken: String): ReviewPage!
 }
 
 type Mutation {
-  # Lambda resolver — Redis cache-aside, Discount Lambda invoke, validation
+  # Lambda resolver — Discount Lambda invoke per cart item (criterion 2; ADR-0009)
   storeBasket(input: ShoppingCartInput!): StoreBasketResult!
 
-  # Lambda resolver — EventBridge publish, basket deletion
+  # Lambda resolver — 2-step DynamoDB pipeline for CDC marker (criterion 1; ADR-0009)
   checkoutBasket(input: CheckoutInput!): CheckoutResult!
 
-  # Lambda resolver — cache invalidation
+  # Direct DynamoDB resolver — DeleteItem on ShoppingCarts
   deleteBasket(userName: String!): DeleteBasketResult!
+
+  # Direct DynamoDB resolver — PutItem on Products
+  createProduct(input: CreateProductInput!): CreateProductResult!
+
+  # Direct DynamoDB resolver — UpdateItem on Products (condition: attribute_exists)
+  updateProduct(input: UpdateProductInput!): UpdateProductResult!
+
+  # Direct DynamoDB resolver — DeleteItem on Products
+  deleteProduct(id: ID!): DeleteProductResult!
+
+  # Lambda resolver — Query ORDERITEM rows + TransactWriteItems (criterion 1; ADR-0009)
+  deleteOrder(orderId: ID!): DeleteOrderResult!
+
+  # Direct DynamoDB resolver — PutItem on Reviews (CDC updates the product rating; ADR-0011)
+  createReview(input: CreateReviewInput!): CreateReviewResult!
 }

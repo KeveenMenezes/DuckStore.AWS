@@ -39,7 +39,7 @@ export function useCheckout() {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleSubmit = async (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault()
     setCheckoutError(null)
     const validationErrors = validateCheckoutForm(formData)
@@ -48,7 +48,7 @@ export function useCheckout() {
 
     setState("processing")
     try {
-      const id = await submitCheckout(formData, items, totalPrice)
+      const id = await submitCheckout(formData, totalPrice)
       setOrderId(id)
 
       if (user) {

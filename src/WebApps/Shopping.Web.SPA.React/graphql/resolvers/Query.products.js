@@ -21,6 +21,8 @@ export function response(ctx) {
     price: parseFloat(item.Price),
     stock: parseInt(item.Stock, 10),
     categoryIds: item.CategoryIds ?? [],
+    averageRating: item.AverageRating ? parseFloat(item.AverageRating) : 0,
+    ratingCount: item.RatingCount ? parseInt(item.RatingCount, 10) : 0,
   }))
 
   return { items, nextToken: ctx.result.nextToken ?? null }
