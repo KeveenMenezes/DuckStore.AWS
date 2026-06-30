@@ -18,7 +18,7 @@ public class Worker(
         {
             using var scope = serviceProvider.CreateScope();
 
-            await scope.ServiceProvider.EnsureBasketTableCreatedAsync();
+            await scope.ServiceProvider.EnsureBasketTablesCreatedAsync();
         }
         catch (Exception ex)
         {

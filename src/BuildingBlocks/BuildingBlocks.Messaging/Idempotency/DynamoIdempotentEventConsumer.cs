@@ -5,7 +5,9 @@ namespace BuildingBlocks.Messaging.Idempotency;
 public class DynamoIdempotentEventConsumer(IAmazonDynamoDB dynamoDb, string tableName)
     : IIdempotentEventConsumer
 {
-    public async Task ConsumeAsync(string eventId, IReadOnlyList<TransactWriteItem> businessItems,
+    public async Task ConsumeAsync(
+        string eventId,
+        IReadOnlyList<TransactWriteItem> businessItems,
         CancellationToken cancellationToken = default)
     {
         var items = new List<TransactWriteItem>
@@ -33,8 +35,8 @@ public class DynamoIdempotentEventConsumer(IAmazonDynamoDB dynamoDb, string tabl
                 cancellationToken);
         }
         catch (TransactionCanceledException ex)
-            when (ex.CancellationReasons.Count > 0
-                  && ex.CancellationReasons[0].Code == "ConditionalCheckFailed")
+            when (ex.CancellationReasons.Count > 0 &&
+                ex.CancellationReasons[0].Code == "ConditionalCheckFailed")
         {
             // Event already processed — idempotent no-op.
         }

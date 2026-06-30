@@ -1,5 +1,4 @@
-﻿using AppHost.Discount;
-using AppHost.Extensions;
+﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
 using Aspire.Hosting.AWS.Lambda;
 
@@ -17,8 +16,7 @@ public static class BasketExtensions
     public static BasketResources AddBasketLambdas(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<RedisResource> redis,
-        IResourceBuilder<DynamoDBLocalResource> dynamoDb,
-        IResourceBuilder<LambdaEmulatorResource> lambdaEmulator)
+        IResourceBuilder<DynamoDBLocalResource> dynamoDb)
     {
         var basketSeeder = builder.AddProject<Projects.Basket_DevelopmentDataSeeder>("basket-data-seeder")
             .WaitFor(dynamoDb)
@@ -41,7 +39,6 @@ public static class BasketExtensions
             .WaitFor(redis)
             .WithReference(dynamoDb)
             .WithReference(redis)
-            .WithLambdaInvokeTarget(lambdaEmulator, DiscountExtensions.GetDiscountFunctionName)
             .WithAwsDevEnvironment();
 
         var checkoutBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(

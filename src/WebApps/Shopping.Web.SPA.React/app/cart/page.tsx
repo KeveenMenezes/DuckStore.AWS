@@ -1,0 +1,71 @@
+"use client"
+
+import Link from "next/link"
+import { ShoppingBag, ArrowLeft } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { useCart } from "@/features/cart/hooks/use-cart"
+import { CartItem } from "@/features/cart/components/cart-item"
+import { CartSummary } from "@/features/cart/components/cart-summary"
+import { ROUTES } from "@/shared/constants/routes"
+
+export default function CartPage() {
+  const { items, removeItem, updateQuantity, totalItems, totalPrice } = useCart()
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
+      <div className="mb-6 flex items-center gap-3">
+        <Link href={ROUTES.home}>
+          <Button variant="ghost" size="icon" aria-label="Back to store">
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+        </Link>
+        <h1 className="text-2xl font-bold text-foreground">
+          Your Cart{totalItems > 0 && <span className="ml-2 text-muted-foreground text-lg font-normal">({totalItems} items)</span>}
+        </h1>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-4 py-24">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-secondary">
+            <ShoppingBag className="h-10 w-10 text-muted-foreground" />
+          </div>
+          <p className="text-center text-lg text-muted-foreground">
+            Your cart is empty. How about adding a duck?
+          </p>
+          <Link href={ROUTES.home}>
+            <Button>Continue Shopping</Button>
+          </Link>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <div className="flex flex-col gap-4">
+              {items.map((item) => (
+                <CartItem
+                  key={item.product.id}
+                  item={item}
+                  onUpdateQuantity={updateQuantity}
+                  onRemove={removeItem}
+                />
+              ))}
+            </div>
+            <div className="mt-6">
+              <Link href={ROUTES.home}>
+                <Button variant="outline" className="gap-2">
+                  <ArrowLeft className="h-4 w-4" />
+                  Continue Shopping
+                </Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="lg:col-span-1">
+            <div className="rounded-lg border border-border bg-background">
+              <CartSummary totalPrice={totalPrice} onCheckout={() => {}} />
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

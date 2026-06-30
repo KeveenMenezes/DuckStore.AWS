@@ -19,7 +19,7 @@ public class BasketRepository(IAmazonDynamoDB dynamoDb)
             cancellationToken);
 
         return response.Item is { Count: > 0 } ?
-            JsonSerializer.Deserialize<ShoppingCart>(response.Item["Data"].S)! :
+            BasketSerializer.Deserialize(response.Item["Data"].S) :
             throw new BasketNotFoundException(userName);
     }
 
@@ -32,7 +32,7 @@ public class BasketRepository(IAmazonDynamoDB dynamoDb)
                 Item = new Dictionary<string, AttributeValue>
                 {
                     ["UserName"] = new(cart.UserName),
-                    ["Data"] = new(JsonSerializer.Serialize(cart))
+                    ["Data"] = new(BasketSerializer.Serialize(cart))
                 }
             },
             cancellationToken);

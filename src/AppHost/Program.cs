@@ -1,7 +1,6 @@
 ﻿#pragma warning disable CA2252 // Opt in to preview features
 using AppHost.Basket;
 using AppHost.Catalog;
-using AppHost.Discount;
 using AppHost.Extensions;
 using AppHost.Observability;
 using AppHost.Ordering;
@@ -30,9 +29,7 @@ var elasticsearch = builder.AddObservability();
 
 builder.AddOrderingServices(dynamoDb, elasticsearch);
 
-builder.AddDiscountLambdas(dynamoDb);
-
-var basketResources = builder.AddBasketLambdas(redis, dynamoDb, lambdaEmulator);
+var basketResources = builder.AddBasketLambdas(redis, dynamoDb);
 
 builder.AddReviewServices(dynamoDb);
 

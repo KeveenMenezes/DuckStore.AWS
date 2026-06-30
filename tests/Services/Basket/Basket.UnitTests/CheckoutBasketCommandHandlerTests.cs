@@ -35,21 +35,9 @@ public class CheckoutBasketCommandHandlerTests
             TotalPrice = 100.0m
         };
 
-        var basket = new ShoppingCart
-        {
-            UserName = "testuser",
-            Items =
-            [
-                new ()
-                {
-                    ProductId = Guid.NewGuid(),
-                    Quantity = 2,
-                    Color = "Red",
-                    Price = 50.0m,
-                    ProductName = "Sample Product"
-                }
-            ]
-        };
+        var basket = ShoppingCart.Create(
+            "testuser",
+            [ShoppingCartItem.Create(Guid.NewGuid(), "Sample Product", "Red", 2, 50.0m)]);
 
         _basketRepositoryMock.Setup(repo =>
             repo.GetBasket(basketCheckoutDto.UserName, It.IsAny<CancellationToken>()))

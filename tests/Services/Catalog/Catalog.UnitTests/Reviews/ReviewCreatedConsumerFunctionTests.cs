@@ -1,4 +1,4 @@
-﻿using Catalog.Function.EventsIntegration.Consumer;
+﻿using Catalog.Function.Modules.Products.EventsIntegration.Consumer;
 
 namespace Catalog.UnitTests.Reviews;
 

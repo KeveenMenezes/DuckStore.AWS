@@ -1,5 +1,4 @@
-﻿using Amazon.Lambda;
-using BuildingBlocks.ServiceDefaults.Behaviors;
+﻿using BuildingBlocks.ServiceDefaults.Behaviors;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -38,11 +37,8 @@ public class Startup
         // Redis (cache-aside) in non-production; DynamoDB DAX (transparent) in production.
         services.AddBasketStorage(configuration);
 
-        // Discount Lambda client: direct invocation via the AWS Lambda Invoke API.
-        // In local dev, AWS_ENDPOINT_URL_LAMBDA points at the Aspire emulator; the SDK resolves it on its own.
-        var discountFunctionName = configuration["Discount:FunctionName"] ?? "discount-get-discount";
-        services.AddSingleton<IAmazonLambda>(_ => new AmazonLambdaClient());
-        services.AddSingleton<IDiscountClient>(
-            sp => new DiscountLambdaClient(sp.GetRequiredService<IAmazonLambda>(), discountFunctionName));
+        // Discount was merged into Basket: coupons are read in-process from DynamoDB,
+        // replacing the previous cross-service Lambda invoke of the Discount function.
+        services.AddSingleton<ICouponRepository, DynamoCouponRepository>();
     }
 }

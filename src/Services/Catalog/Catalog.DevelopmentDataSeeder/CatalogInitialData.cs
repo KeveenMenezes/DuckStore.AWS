@@ -1,6 +1,9 @@
-﻿using Catalog.Function.Data;
-using Catalog.Function.Models;
-using Catalog.Function.ValueObjects;
+﻿using Catalog.Function.Modules.Categories.Data;
+using Catalog.Function.Modules.Categories.Models;
+using Catalog.Function.Modules.Categories.ValueObjects;
+using Catalog.Function.Modules.Products.Data;
+using Catalog.Function.Modules.Products.Models;
+using Catalog.Function.Modules.Products.ValueObjects;
 
 namespace Catalog.DevelopmentDataSeeder;
 

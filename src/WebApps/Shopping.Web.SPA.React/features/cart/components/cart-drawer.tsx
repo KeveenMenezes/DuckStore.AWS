@@ -1,10 +1,12 @@
 "use client"
 
+import Link from "next/link"
 import { ShoppingBag, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/features/cart/hooks/use-cart"
 import { CartItem } from "@/features/cart/components/cart-item"
 import { CartSummary } from "@/features/cart/components/cart-summary"
+import { ROUTES } from "@/shared/constants/routes"
 
 export function CartDrawer() {
   const { items, removeItem, updateQuantity, totalItems, totalPrice, isOpen, setIsOpen } = useCart()
@@ -26,9 +28,16 @@ export function CartDrawer() {
               Cart ({totalItems})
             </h2>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} aria-label="Close cart">
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Link href={ROUTES.cart} onClick={() => setIsOpen(false)}>
+              <Button variant="outline" size="sm" className="text-xs">
+                View Cart
+              </Button>
+            </Link>
+            <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} aria-label="Close cart">
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         {items.length === 0 ? (

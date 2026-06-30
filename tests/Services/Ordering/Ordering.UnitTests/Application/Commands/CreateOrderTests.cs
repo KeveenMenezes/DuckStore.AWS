@@ -1,4 +1,6 @@
-﻿namespace Ordering.UnitTests.Application.Commands;
+﻿using Ordering.Function.EventsIntegration.Consumer.BasketCheckout;
+
+namespace Ordering.UnitTests.Application.Commands;
 
 public class CreateOrderTests
 {

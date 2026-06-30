@@ -298,14 +298,23 @@ const resolvers = {
     },
 
     async couponFor(_: unknown, { productName }: { productName: string }) {
-      const body = await invokeLambda<{ ProductName: string; Description: string; Amount: number }>(
-        'discount-get-discount',
-        { ProductName: productName },
+      // Direct DynamoDB GetItem on the coupons table (ADR-0009: a key lookup needs no Lambda).
+      const result = await dynamoDb.send(
+        new GetItemCommand({
+          TableName: 'coupons',
+          Key: { ProductName: { S: productName } },
+        }),
       )
+
+      if (!result.Item) {
+        return { productName, description: 'No Discount', amount: 0 }
+      }
+
+      const coupon = unmarshall(result.Item)
       return {
-        productName: body.ProductName,
-        description: body.Description,
-        amount: body.Amount,
+        productName: coupon.ProductName,
+        description: coupon.Description,
+        amount: Number(coupon.Amount),
       }
     },
 

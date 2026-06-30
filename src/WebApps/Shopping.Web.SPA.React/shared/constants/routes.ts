@@ -4,6 +4,7 @@
  */
 export const ROUTES = {
   home: "/",
+  cart: "/cart",
   challenges: "/challenges",
   checkout: "/checkout",
   profile: "/my-profile",
