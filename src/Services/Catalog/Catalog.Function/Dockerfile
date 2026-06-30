@@ -4,7 +4,12 @@
 
 FROM public.ecr.aws/lambda/dotnet:10 AS base
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+# Build on the runner's native arch (BUILDPLATFORM) and cross-compile to
+# linux-arm64. This avoids running an arm64 dotnet SDK under emulation on an
+# x86 host (GitHub runners are x86_64) — which fails with "exec format error".
+# Only the final `base` stage is arm64, and it merely COPYs artifacts (no RUN),
+# so no arm64 binary executes at build time.
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /build
 
 COPY Directory.Packages.props nuget.config ./
