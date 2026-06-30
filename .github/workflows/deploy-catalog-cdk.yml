@@ -15,29 +15,17 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  DOTNET_VERSION: '10.0.x'
   NODE_VERSION: '24'
 
 jobs:
   deploy:
-    name: Publish Lambda & Deploy CDK
+    name: Deploy CDK
     runs-on: ubuntu-latest
     environment: development
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Publish Catalog Lambda (linux-arm64)
-        run: |
-          dotnet publish src/Services/Catalog/Catalog.Function/Catalog.Function.csproj \
-            -c Release -r linux-arm64 --self-contained false \
-            -o infra/publish/catalog
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
