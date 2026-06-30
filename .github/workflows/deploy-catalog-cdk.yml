@@ -16,7 +16,7 @@ permissions:
 env:
   AWS_REGION: us-east-1
   DOTNET_VERSION: '10.0.x'
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
 
 jobs:
   deploy:
