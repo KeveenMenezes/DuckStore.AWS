@@ -13,7 +13,7 @@ import { ROUTES } from "@/shared/constants/routes"
 import { useState } from "react"
 
 export function Header() {
-  const { totalItems, setIsOpen } = useCart()
+  const { totalItems } = useCart()
   const { score } = useScore()
   const { user, isLoading } = useAuth()
   const { theme, toggleTheme } = useTheme()
@@ -65,20 +65,16 @@ export function Header() {
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
 
-            <Button
-              variant="ghost"
-              size="icon"
-              className="relative"
-              onClick={() => setIsOpen(true)}
-              aria-label="Open cart"
-            >
-              <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && (
-                <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                  {totalItems}
-                </span>
-              )}
-            </Button>
+            <Link href={ROUTES.cart} aria-label="Open cart">
+              <Button variant="ghost" size="icon" className="relative">
+                <ShoppingCart className="h-5 w-5" />
+                {totalItems > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                    {totalItems}
+                  </span>
+                )}
+              </Button>
+            </Link>
 
             {!isLoading && (
               user ? (

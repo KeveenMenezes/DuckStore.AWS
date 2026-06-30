@@ -2,7 +2,7 @@
 
 namespace Basket.Function;
 
-public record StoreBasketRequest(ShoppingCart Cart);
+public record StoreBasketRequest(ShoppingCartDto Cart);
 public record StoreBasketResponse(string UserName);
 
 public partial class Functions

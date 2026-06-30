@@ -9,15 +9,15 @@ public class CacheBasketRepository(
 
     public async Task<ShoppingCart> GetBasket(string userName, CancellationToken cancellationToken)
     {
-        using var dataBasket = await _database.StringGetLeaseAsync(userName);
+        var cached = await _database.StringGetAsync(userName);
 
-        if (dataBasket is not null)
+        if (cached.HasValue)
         {
-            return JsonSerializer.Deserialize<ShoppingCart>(dataBasket.Span)!;
+            return BasketSerializer.Deserialize(cached!);
         }
 
         var basket = await basketRepository.GetBasket(userName, cancellationToken);
-        await _database.StringSetAsync(userName, JsonSerializer.Serialize(basket));
+        await _database.StringSetAsync(userName, BasketSerializer.Serialize(basket));
 
         return basket;
     }
@@ -26,8 +26,7 @@ public class CacheBasketRepository(
     {
         await basketRepository.StoreCart(cart, cancellationToken);
 
-        await _database.StringSetAsync(
-            cart.UserName, JsonSerializer.Serialize(cart));
+        await _database.StringSetAsync(cart.UserName, BasketSerializer.Serialize(cart));
 
         return cart;
     }

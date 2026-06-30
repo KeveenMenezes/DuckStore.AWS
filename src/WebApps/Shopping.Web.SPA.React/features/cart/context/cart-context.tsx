@@ -39,6 +39,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   // Prevents syncing back to DB the items that were just loaded from DB
   const skipNextSyncRef = useRef(false)
+  // Always-current snapshot of items — lets addItem read state without being in its dep array.
+  const itemsRef = useRef(items)
+  useEffect(() => { itemsRef.current = items }, [items])
 
   useEffect(() => {
     let cancelled = false
@@ -72,36 +75,37 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [])
 
   useEffect(() => {
+    if (isLoading) return
     if (skipNextSyncRef.current) {
       skipNextSyncRef.current = false
       return
     }
-    if (items.length === 0) return
     const timer = setTimeout(() => {
       const userName = getGuestUserName()
       syncCartToBasket(userName, items).catch(console.error)
     }, 300)
     return () => clearTimeout(timer)
-  }, [items])
+  }, [items, isLoading])
 
   const addItem = useCallback((product: Product): boolean => {
-    let success = false
-    setItems((prev) => {
-      const existing = prev.find((item) => item.product.id === product.id)
-      if (existing) {
-        if (existing.quantity >= product.stock) return prev
-        success = true
-        return prev.map((item) =>
+    const existing = itemsRef.current.find((item) => item.product.id === product.id)
+
+    if (existing) {
+      if (existing.quantity >= product.stock) return false
+      setItems((prev) =>
+        prev.map((item) =>
           item.product.id === product.id
             ? { ...item, quantity: item.quantity + 1 }
             : item,
-        )
-      }
-      if (product.stock <= 0) return prev
-      success = true
-      return [...prev, { product, quantity: 1 }]
-    })
-    return success
+        ),
+      )
+      return true
+    }
+
+    if (product.stock <= 0) return false
+
+    setItems((prev) => [...prev, { product, quantity: 1 }])
+    return true
   }, [])
 
   const removeItem = useCallback((productId: string) => {

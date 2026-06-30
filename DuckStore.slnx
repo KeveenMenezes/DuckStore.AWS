@@ -26,10 +26,6 @@
     <Project Path="src/Services/Catalog/Catalog.Function/Catalog.Function.csproj" />
     <Project Path="src/Services/Catalog/Catalog.DevelopmentDataSeeder/Catalog.DevelopmentDataSeeder.csproj" />
   </Folder>
-  <Folder Name="/src/Services/Discount/">
-    <Project Path="src/Services/Discount/Discount.Function/Discount.Function.csproj" />
-    <Project Path="src/Services/Discount/Discount.DevelopmentDataSeeder/Discount.DevelopmentDataSeeder.csproj" />
-  </Folder>
   <Folder Name="/src/Services/Ordering/">
     <Project Path="src/Services/Ordering/Ordering.Function/Ordering.Function.csproj" />
     <Project Path="src/Services/Ordering/Ordering.DevelopmentDataSeeder/Ordering.DevelopmentDataSeeder.csproj" />

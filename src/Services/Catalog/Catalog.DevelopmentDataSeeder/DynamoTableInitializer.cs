@@ -1,6 +1,8 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using Catalog.Function.Data;
+using Catalog.Function.Modules.Categories.Data;
+using Catalog.Function.Modules.Products.Data;
+using Catalog.Function.Shared.Data;
 
 namespace Catalog.DevelopmentDataSeeder;
 

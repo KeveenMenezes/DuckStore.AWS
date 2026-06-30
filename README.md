@@ -14,6 +14,23 @@ It is an e-commerce sample that lets users manage shopping carts, apply discount
 ![Concept image](./docs/img/layout_concepts_v2.jpeg)
 ![Concept image](./docs/img/layout_concepts_v3.jpeg)
 
+#### 🔄 Business Flow
+
+The diagram below shows the end-to-end purchase flow across all domain lanes:
+
+![Business flow diagram](./docs/img/business-flow.png)
+
+| Lane | Steps |
+|---|---|
+| **Client** | Access → Validate login → Sign Up / Login |
+| **Products** | List Products → View Product Details |
+| **Basket** | Add to Cart → Apply Coupon → Start Checkout → Cart Checkout → Delete Basket |
+| **Shipping** | Validate Address (CEP) → Calculate Shipping Options → Select Shipping Options |
+| **Ordering** | Create Order → Confirm Order |
+| **Payment** | Calculate Payment Options → Select Payment Options → Process Payment |
+
+Key integration events connecting the lanes: `CheckoutStart`, `ShippingOptionsCalculated`, `OrderCreated`, `OrderConfirmed`, `ConfirmPayment`, `CheckoutedCard`.
+
 ---
 
 ## 📐 Architecture

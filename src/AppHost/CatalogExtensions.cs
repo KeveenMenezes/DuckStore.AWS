@@ -20,7 +20,7 @@ public static class CatalogExtensions
 
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
                 "catalog-stream-event-publisher",
-                lambdaHandler: "Catalog.Function::Catalog.Function.EventsIntegration.Publisher.CatalogStreamEventPublisherFunction::FunctionHandler")
+                lambdaHandler: "Catalog.Function::Catalog.Function.Modules.Products.EventsIntegration.Publisher.CatalogStreamEventPublisherFunction::FunctionHandler")
             .WaitForCompletion(catalogSeeder)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(ProductsTableName)
@@ -30,7 +30,7 @@ public static class CatalogExtensions
         // Consumes CatalogUpdated from EventBridge and triggers ISR cache revalidation on the SPA.
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
                 "catalog-catalog-updated-consumer",
-                lambdaHandler: "Catalog.Function::Catalog.Function.EventsIntegration.Consumer.CatalogUpdatedConsumerFunction::FunctionHandler")
+                lambdaHandler: "Catalog.Function::Catalog.Function.Modules.Products.EventsIntegration.Consumer.CatalogUpdatedConsumerFunction::FunctionHandler")
             .WaitForCompletion(catalogSeeder)
             .WithAwsDevEnvironment()
             .WithEnvironment("Catalog__WebhookUrl", $"{spaWebhookUrl}/api/webhooks/catalog-updated")
@@ -40,7 +40,7 @@ public static class CatalogExtensions
         // (AverageRating/RatingCount) — ADR-0011.
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
                 "catalog-review-created-consumer",
-                lambdaHandler: "Catalog.Function::Catalog.Function.EventsIntegration.Consumer.ReviewCreatedConsumerFunction::FunctionHandler")
+                lambdaHandler: "Catalog.Function::Catalog.Function.Modules.Products.EventsIntegration.Consumer.ReviewCreatedConsumerFunction::FunctionHandler")
             .WaitForCompletion(catalogSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()

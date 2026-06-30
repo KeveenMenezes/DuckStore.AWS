@@ -1,0 +1,14 @@
+﻿global using System.Text.Json.Serialization;
+global using Amazon.Lambda.Annotations;
+global using BuildingBlocks.Core.CQRS;
+global using BuildingBlocks.Core.DomainModel;
+global using BuildingBlocks.Core.Exceptions;
+global using BuildingBlocks.Core.Pagination;
+global using Catalog.Function.Modules.Categories.Data;
+global using Catalog.Function.Modules.Categories.Models;
+global using Catalog.Function.Modules.Categories.ValueObjects;
+global using Catalog.Function.Modules.Products.Data;
+global using Catalog.Function.Modules.Products.Models;
+global using Catalog.Function.Modules.Products.ValueObjects;
+global using Catalog.Function.Shared.Data;
+global using FluentValidation;

@@ -204,7 +204,7 @@ type Query {
   # Direct DynamoDB resolver — GetItem on ShoppingCarts; Data attribute is a JSON blob
   basket(userName: String!): ShoppingCart
 
-  # Lambda resolver — Discount domain logic
+  # Direct DynamoDB resolver — GetItem on coupons by ProductName (Discount merged into Basket; ADR-0009)
   couponFor(productName: String!): Coupon
 
   # Direct DynamoDB resolver — Scan ordering (Type = "Order") with cursor pagination
@@ -221,7 +221,7 @@ type Query {
 }
 
 type Mutation {
-  # Lambda resolver — Discount Lambda invoke per cart item (criterion 2; ADR-0009)
+  # Lambda resolver — MediatR/FluentValidation pipeline + in-process coupon lookup per item (criterion 2; ADR-0009)
   storeBasket(input: ShoppingCartInput!): StoreBasketResult!
 
   # Lambda resolver — 2-step DynamoDB pipeline for CDC marker (criterion 1; ADR-0009)

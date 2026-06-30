@@ -1,7 +1,8 @@
 ﻿using Amazon.DynamoDBv2;
 using BuildingBlocks.ServiceDefaults;
 using Catalog.DevelopmentDataSeeder;
-using Catalog.Function.Data;
+using Catalog.Function.Modules.Categories.Data;
+using Catalog.Function.Modules.Products.Data;
 
 var builder = Host.CreateApplicationBuilder(args);
 

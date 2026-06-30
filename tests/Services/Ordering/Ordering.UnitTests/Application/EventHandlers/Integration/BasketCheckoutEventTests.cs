@@ -1,4 +1,6 @@
-﻿namespace Ordering.UnitTests.Application.EventHandlers.Integration;
+﻿using Ordering.Function.EventsIntegration.Consumer.BasketCheckout;
+
+namespace Ordering.UnitTests.Application.EventHandlers.Integration;
 
 public class BasketCheckoutMapperTests
 {

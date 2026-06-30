@@ -1,6 +1,5 @@
 ﻿global using System.Text.Json;
 global using Amazon.Lambda.Annotations;
-global using Basket.Function.Clients;
 global using Basket.Function.Data;
 global using Basket.Function.Dtos;
 global using Basket.Function.Models;
