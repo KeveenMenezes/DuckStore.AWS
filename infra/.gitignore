@@ -1,0 +1,7 @@
+node_modules/
+dist/
+cdk.out/
+publish/
+*.js
+*.d.ts
+!jest.config.js

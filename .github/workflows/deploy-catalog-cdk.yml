@@ -1,0 +1,75 @@
+name: Deploy Catalog CDK Stack
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - 'infra/**'
+      - 'src/Services/Catalog/**'
+      - 'src/BuildingBlocks/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  DOTNET_VERSION: '10.0.x'
+  NODE_VERSION: '20'
+
+jobs:
+  deploy:
+    name: Publish Lambda & Deploy CDK
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Publish Catalog Lambda (linux-arm64)
+        run: |
+          dotnet publish src/Services/Catalog/Catalog.Function/Catalog.Function.csproj \
+            -c Release -r linux-arm64 --self-contained false \
+            -o infra/publish/catalog
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Install CDK dependencies
+        working-directory: infra
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy Catalog CDK stack
+        working-directory: infra
+        run: |
+          npx cdk deploy DuckStoreCatalogStack \
+            --require-approval never \
+            --parameters CatalogWebhookSecret=${{ secrets.CATALOG_WEBHOOK_SECRET }} \
+            --parameters SpaWebhookUrl=${{ secrets.SPA_WEBHOOK_URL }}
+
+      - name: Deployment summary
+        run: |
+          echo "## Catalog CDK Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Stack** | DuckStoreCatalogStack |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
