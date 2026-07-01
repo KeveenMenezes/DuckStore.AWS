@@ -6,7 +6,7 @@ import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
-export interface SpaRevalidationWebhookProps {
+export interface SpaTagRevalidatorProps {
   readonly tagCacheTable: dynamodb.Table;
   /** The shared "duckstore-event-bus" Catalog/Review publish integration events to. */
   readonly eventBus: events.IEventBus;
@@ -19,20 +19,20 @@ export interface SpaRevalidationWebhookProps {
  * EventBridge bus Catalog already publishes to, and marks every tag-cache
  * entry for the affected tag as stale directly in DynamoDB — the same
  * mechanism Next.js's own revalidateTag() uses internally (see
- * lambda/spa-revalidation-webhook/index.mjs for the full explanation of why
- * this replaces the earlier SQS-based design). No public HTTP surface, no
- * secret to manage, no dependency on the SPA even being reachable to
- * receive the trigger.
+ * lambda/spa-tag-revalidator/index.mjs for the full explanation of why this
+ * replaces both the original HTTP webhook and an earlier SQS-based design).
+ * No public HTTP surface, no secret to manage, no dependency on the SPA even
+ * being reachable to receive the trigger — hence no "webhook" in the name.
  *
  * Relies on the Node.js 22 Lambda runtime's built-in AWS SDK v3 (no
  * node_modules bundled) — acceptable for this small piece of internal glue
  * in a demo project; see AWS's Node.js Lambda docs on runtime-included SDK
  * versions if this ever needs pinning.
  */
-export class SpaRevalidationWebhook extends Construct {
+export class SpaTagRevalidator extends Construct {
   public readonly function: lambda.Function;
 
-  constructor(scope: Construct, id: string, props: SpaRevalidationWebhookProps) {
+  constructor(scope: Construct, id: string, props: SpaTagRevalidatorProps) {
     super(scope, id);
 
     const { tagCacheTable, eventBus } = props;
@@ -41,7 +41,7 @@ export class SpaRevalidationWebhook extends Construct {
       runtime: lambda.Runtime.NODEJS_22_X,
       architecture: lambda.Architecture.ARM_64,
       handler: 'index.handler',
-      code: lambda.Code.fromAsset(path.join(__dirname, '..', 'lambda', 'spa-revalidation-webhook')),
+      code: lambda.Code.fromAsset(path.join(__dirname, '..', 'lambda', 'spa-tag-revalidator')),
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
       description:
@@ -59,8 +59,8 @@ export class SpaRevalidationWebhook extends Construct {
     // True for every environment this has run in so far.
     const rule = new events.Rule(this, 'Rule', {
       eventBus,
-      ruleName: 'spa-revalidation-webhook-rule',
-      description: 'Routes CatalogUpdatedEvent/ReviewCreatedEvent to the SPA ISR revalidation Lambda',
+      ruleName: 'spa-tag-revalidator-rule',
+      description: 'Routes CatalogUpdatedEvent/ReviewCreatedEvent to the SPA ISR tag revalidator Lambda',
       eventPattern: {
         source: ['duckstore'],
         detailType: ['CatalogUpdatedEvent', 'ReviewCreatedEvent'],

@@ -6,7 +6,7 @@ import { Construct } from 'constructs';
 import { SpaStorage } from '../constructs/spa-storage';
 import { SpaLambdas } from '../constructs/spa-lambdas';
 import { SpaDistribution } from '../constructs/spa-distribution';
-import { SpaRevalidationWebhook } from '../constructs/spa-revalidation-webhook';
+import { SpaTagRevalidator } from '../constructs/spa-tag-revalidator';
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const OPEN_NEXT_DIR = path.join(REPO_ROOT, 'src/WebApps/Shopping.Web.SPA.React/.open-next');
@@ -25,7 +25,7 @@ export class SpaStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: SpaStackProps) {
     super(scope, id, props);
 
-    // catalog-updated no longer has an HTTP webhook (see SpaRevalidationWebhook
+    // catalog-updated no longer has an HTTP webhook (see SpaTagRevalidator
     // below) — this is only the client-triggered review-created path, POSTed
     // by review-form.tsx right after a user submits a review.
     const reviewWebhookSecret = new cdk.CfnParameter(this, 'ReviewWebhookSecret', {
@@ -84,7 +84,7 @@ export class SpaStack extends cdk.Stack {
     // tag-cache staleness marking (same mechanism revalidateTag() uses
     // internally). Replaces the old catalog-catalog-updated-consumer +
     // /api/webhooks/catalog-updated pair.
-    new SpaRevalidationWebhook(this, 'RevalidationWebhook', {
+    new SpaTagRevalidator(this, 'TagRevalidator', {
       tagCacheTable: storage.tagCacheTable,
       eventBus: events.EventBus.fromEventBusName(this, 'DuckstoreEventBus', 'duckstore-event-bus'),
     });
