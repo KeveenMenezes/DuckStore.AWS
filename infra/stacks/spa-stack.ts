@@ -1,10 +1,12 @@
 import * as crypto from 'crypto';
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
+import * as events from 'aws-cdk-lib/aws-events';
 import { Construct } from 'constructs';
 import { SpaStorage } from '../constructs/spa-storage';
 import { SpaLambdas } from '../constructs/spa-lambdas';
 import { SpaDistribution } from '../constructs/spa-distribution';
+import { SpaTagRevalidator } from '../constructs/spa-tag-revalidator';
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const OPEN_NEXT_DIR = path.join(REPO_ROOT, 'src/WebApps/Shopping.Web.SPA.React/.open-next');
@@ -23,13 +25,9 @@ export class SpaStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: SpaStackProps) {
     super(scope, id, props);
 
-    // Same shared secrets CatalogStack's CDC consumer sends in x-webhook-secret —
-    // the SPA's webhook route handlers validate against these.
-    const catalogWebhookSecret = new cdk.CfnParameter(this, 'CatalogWebhookSecret', {
-      type: 'String',
-      noEcho: true,
-      description: 'Secret the catalog-updated webhook validates in x-webhook-secret.',
-    });
+    // catalog-updated no longer has an HTTP webhook (see SpaTagRevalidator
+    // below) — this is only the client-triggered review-created path, POSTed
+    // by review-form.tsx right after a user submits a review.
     const reviewWebhookSecret = new cdk.CfnParameter(this, 'ReviewWebhookSecret', {
       type: 'String',
       noEcho: true,
@@ -67,7 +65,6 @@ export class SpaStack extends cdk.Stack {
         APPSYNC_API_KEY: props.appsyncApiKey,
         COGNITO_CLIENT_ID: props.cognitoClientId,
         COGNITO_HOSTED_UI_URL: props.cognitoHostedUiUrl,
-        CATALOG_WEBHOOK_SECRET: catalogWebhookSecret.valueAsString,
         REVIEW_WEBHOOK_SECRET: reviewWebhookSecret.valueAsString,
         NEXT_PUBLIC_SITE_URL: `https://${domainName}`,
       },
@@ -82,10 +79,20 @@ export class SpaStack extends cdk.Stack {
       originVerifySecret,
     });
 
+    // Backend-triggered ISR revalidation (catalog/review changes from
+    // outside the SPA) — no HTTP webhook, straight EventBridge -> DynamoDB
+    // tag-cache staleness marking (same mechanism revalidateTag() uses
+    // internally). Replaces the old catalog-catalog-updated-consumer +
+    // /api/webhooks/catalog-updated pair.
+    new SpaTagRevalidator(this, 'TagRevalidator', {
+      tagCacheTable: storage.tagCacheTable,
+      eventBus: events.EventBus.fromEventBusName(this, 'DuckstoreEventBus', 'duckstore-event-bus'),
+    });
+
     new cdk.CfnOutput(this, 'SpaUrl', {
       value: distribution.url,
       exportName: `${this.stackName}-SpaUrl`,
-      description: 'Public URL of the deployed SPA — use as SPA_BASE_URL/SPA_WEBHOOK_URL in other stacks',
+      description: 'Public URL of the deployed SPA — use as SPA_BASE_URL in other stacks (e.g. Cognito callback URLs)',
     });
 
     new cdk.CfnOutput(this, 'CloudFrontDistributionId', {

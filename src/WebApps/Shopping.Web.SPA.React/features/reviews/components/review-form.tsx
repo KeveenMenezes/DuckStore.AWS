@@ -69,7 +69,8 @@ export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
         if (secret) {
           fetch('/api/webhooks/review-created', {
             method: 'POST',
-            headers: { 'x-webhook-secret': secret },
+            headers: { 'x-webhook-secret': secret, 'content-type': 'application/json' },
+            body: JSON.stringify({ productId }),
           }).catch(() => undefined)
         }
         setSubmitted(true)
