@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import { CatalogStack } from '../stacks/catalog-stack';
 import { BasketStack } from '../stacks/basket-stack';
 import { OrderingStack } from '../stacks/ordering-stack';
+import { ReviewStack } from '../stacks/review-stack';
 
 const app = new cdk.App();
 
@@ -20,11 +21,17 @@ new CatalogStack(app, 'DuckStoreCatalogStack', {
 new BasketStack(app, 'DuckStoreBasketStack', {
   env,
   description:
-    'DuckStore Basket service — DynamoDB tables (shopping-carts, coupons), DAX cluster, and Lambda functions',
+    'DuckStore Basket service — DynamoDB tables (shopping-carts, coupons) and Lambda functions',
 });
 
 new OrderingStack(app, 'DuckStoreOrderingStack', {
   env,
   description:
     'DuckStore Ordering service — DynamoDB tables (ordering + GSI1, ordering-processed-events) and Lambda functions',
+});
+
+new ReviewStack(app, 'DuckStoreReviewStack', {
+  env,
+  description:
+    'DuckStore Review service — DynamoDB table (reviews + GSI1) and CDC Lambda (ReviewCreatedEvent → EventBridge)',
 });
