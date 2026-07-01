@@ -1,3 +1,4 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
@@ -10,6 +11,14 @@ export interface SpaTagRevalidatorProps {
   readonly tagCacheTable: dynamodb.Table;
   /** The shared "duckstore-event-bus" Catalog/Review publish integration events to. */
   readonly eventBus: events.IEventBus;
+  /**
+   * Path to the SPA's `.open-next` build output. Used to read the Next.js
+   * build ID (assets/BUILD_ID), which OpenNext prefixes onto every tag-cache
+   * partition key ("{buildId}/products") — the revalidator must query with
+   * the same prefix or it matches nothing. Changes on every deploy, so it's
+   * read fresh at synth time rather than hardcoded.
+   */
+  readonly openNextDir: string;
 }
 
 /**
@@ -35,7 +44,9 @@ export class SpaTagRevalidator extends Construct {
   constructor(scope: Construct, id: string, props: SpaTagRevalidatorProps) {
     super(scope, id);
 
-    const { tagCacheTable, eventBus } = props;
+    const { tagCacheTable, eventBus, openNextDir } = props;
+
+    const buildId = fs.readFileSync(path.join(openNextDir, 'assets', 'BUILD_ID'), 'utf8').trim();
 
     this.function = new lambda.Function(this, 'Function', {
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -48,6 +59,7 @@ export class SpaTagRevalidator extends Construct {
         'Marks OpenNext tag-cache entries stale in response to CatalogUpdatedEvent/ReviewCreatedEvent',
       environment: {
         TAG_CACHE_TABLE_NAME: tagCacheTable.tableName,
+        TAG_CACHE_BUILD_ID: buildId,
       },
     });
 
