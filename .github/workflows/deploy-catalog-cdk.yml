@@ -15,32 +15,20 @@ permissions:
 
 env:
   AWS_REGION: us-east-1
-  DOTNET_VERSION: '10.0.x'
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
 
 jobs:
   deploy:
-    name: Publish Lambda & Deploy CDK
+    name: Deploy CDK
     runs-on: ubuntu-latest
     environment: development
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: Publish Catalog Lambda (linux-arm64)
-        run: |
-          dotnet publish src/Services/Catalog/Catalog.Function/Catalog.Function.csproj \
-            -c Release -r linux-arm64 --self-contained false \
-            -o infra/publish/catalog
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
@@ -51,9 +39,9 @@ jobs:
         run: npm ci
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy Catalog CDK stack
@@ -62,7 +50,7 @@ jobs:
           npx cdk deploy DuckStoreCatalogStack \
             --require-approval never \
             --parameters CatalogWebhookSecret=${{ secrets.CATALOG_WEBHOOK_SECRET }} \
-            --parameters SpaWebhookUrl=${{ secrets.SPA_WEBHOOK_URL }}
+            --parameters SpaWebhookUrl=${{ vars.SPA_WEBHOOK_URL }}
 
       - name: Deployment summary
         run: |

@@ -11,9 +11,6 @@ var builder = DistributedApplication.CreateBuilder(args);
 
 builder.AddForwardedHeaders();
 
-// Cache
-var redis = builder.AddRedis("redis");
-
 // Data Base
 var dynamoDb = builder.
     AddAWSDynamoDBLocal("dynamo", new DynamoDBLocalOptions
@@ -29,7 +26,7 @@ var elasticsearch = builder.AddObservability();
 
 builder.AddOrderingServices(dynamoDb, elasticsearch);
 
-var basketResources = builder.AddBasketLambdas(redis, dynamoDb);
+var basketResources = builder.AddBasketLambdas(dynamoDb);
 
 builder.AddReviewServices(dynamoDb);
 

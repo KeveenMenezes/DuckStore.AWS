@@ -1,6 +1,9 @@
 import { util } from '@aws-appsync/utils'
 
 export function request(ctx) {
+  const groups = ctx.identity?.groups ?? []
+  if (!groups.includes('Admin') && !groups.includes('Seller')) util.unauthorized()
+
   const { id, name, description, imageUrl, price, stock, categoryIds } = ctx.args.input
   return {
     operation: 'UpdateItem',

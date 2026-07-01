@@ -1,9 +1,10 @@
 import { util } from '@aws-appsync/utils'
 
 export function request(ctx) {
+  // Always use the authenticated user's sub — never trust the client-supplied customerId
   return {
     operation: 'Invoke',
-    payload: { CustomerId: ctx.args.customerId },
+    payload: { CustomerId: ctx.identity.sub },
   }
 }
 
@@ -11,10 +12,10 @@ export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
   return {
     items: (ctx.result.Orders ?? []).map(o => ({
-      id: String(o.Id),
-      customerId: String(o.CustomerId),
+      id: `${o.Id}`,
+      customerId: `${o.CustomerId}`,
       orderName: o.OrderName,
-      status: String(o.Status),
+      status: `${o.Status}`,
       createdAt: null,
       shippingAddress: {
         firstName: o.ShippingAddress?.FirstName ?? '',

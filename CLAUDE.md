@@ -17,7 +17,7 @@ Target framework is **net10.0** across all .NET projects.
 dotnet build DuckStore.sln
 
 # Run everything (Aspire orchestrates Lambda functions, DynamoDB Local, the Lambda emulator,
-# Redis, Elasticsearch/Kibana, and the web apps)
+# Elasticsearch/Kibana, and the web apps)
 dotnet run --project src/AppHost/AppHost.csproj
 
 # Run all .NET tests
@@ -35,7 +35,7 @@ dotnet format DuckStore.sln
 
 Git hooks live in `.githooks/` (configured via `core.hooksPath`); the pre-commit hook runs `dotnet format` on staged `.cs` files and re-stages them. Don't bypass this with `--no-verify`.
 
-Use `dotnet run --project src/AppHost/AppHost.csproj` (Aspire) to start the system locally — it provisions DynamoDB Local (`http://localhost:8000`), the Aspire AWS Lambda service emulator, Redis, and Elasticsearch/Kibana as containers, registers each Lambda function, and wires the dev environment between them. `docker-compose.yml`/`docker-compose.override.yml` are secondary/legacy to Aspire.
+Use `dotnet run --project src/AppHost/AppHost.csproj` (Aspire) to start the system locally — it provisions DynamoDB Local (`http://localhost:8000`), the Aspire AWS Lambda service emulator, and Elasticsearch/Kibana as containers, registers each Lambda function, and wires the dev environment between them. `docker-compose.yml`/`docker-compose.override.yml` are secondary/legacy to Aspire.
 
 The Go notification service and the React SPA have their own toolchains (`go`, `pnpm`/`next`) — see those subsections.
 
@@ -64,7 +64,7 @@ Each `*.Function` project uses the **Amazon.Lambda.Annotations** source generato
 
 ### Services (src/Services/*)
 
-- **Basket.Function** — Lambda + DynamoDB with a Redis cache-aside decorator (`CacheBasketRepository` wraps `BasketRepository`; storage wired in `BasketStorageExtensions`). `ShoppingCart` is the aggregate root (`Aggregate<string>`, Id = UserName) and owns the discount rule (`ApplyDiscounts`); `Coupon` is an in-process `Entity<string>` read from the `coupons` table via `DynamoCouponRepository` — the old Discount service and its Lambda invoke were merged in (ADR-0012). Checkout publishes to EventBridge (CDC). Slices under `Features/{StoreBasket,CheckoutBasket}`.
+- **Basket.Function** — Lambda + DynamoDB (`BasketRepository`, no caching layer; storage wired in `BasketStorageExtensions`). `ShoppingCart` is the aggregate root (`Aggregate<string>`, Id = UserName) and owns the discount rule (`ApplyDiscounts`); `Coupon` is an in-process `Entity<string>` read from the `coupons` table via `DynamoCouponRepository` — the old Discount service and its Lambda invoke were merged in (ADR-0012). Checkout publishes to EventBridge (CDC). Slices under `Features/{StoreBasket,CheckoutBasket}`.
 - **Catalog.Function** — Lambda + DynamoDB (`DynamoProductRepository`, `DynamoCategoryRepository`). Slices under `Features/Products/*` and `Features/Categories/*`.
 - **Ordering.Function** — single `*.Function` project like Catalog/Basket (collapsed from the old `Ordering.{Domain,Application,Infrastructure}` DDD layering). Still keeps DDD types internally (`Order` aggregate + value objects under `Models/`/`ValueObjects/`, MediatR slices under `Features/`), but persistence is **DynamoDB** (`ordering`) via `DynamoOrderRepository`. Each order is a **single item** with its `OrderItems` embedded as a list attribute — written with one `PutItem` (atomic on its own; no `TransactWriteItems`), read by `Id` with `GetItem`, listed by customer through GSI1 (`ProjectionType.ALL`, no N+1). `Aggregate<TId>`/`IAggregate` are empty aggregate-root markers (domain events removed — ADR-0005). The two CDC/event Lambdas live **inside** the Function project as plain classes (referenced by explicit handler strings in `OrderingExtensions`):
   - `EventsIntegration/Consumer/BasketCheckoutConsumerFunction` — consumes the checkout integration event and writes the order (idempotent via `ProcessedIntegrationEvents`).

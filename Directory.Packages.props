@@ -11,7 +11,6 @@
     <PackageVersion Include="Amazon.Lambda.RuntimeSupport" Version="2.0.0" />
     <PackageVersion Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.5" />
     <PackageVersion Include="AWSSDK.Core" Version="4.0.9.6" />
-    <PackageVersion Include="AWSSDK.DAX.Client" Version="4.0.0" />
     <PackageVersion Include="AWSSDK.DynamoDBv2" Version="4.0.21.6" />
     <PackageVersion Include="AWSSDK.EventBridge" Version="4.0.6.9" />
     <PackageVersion Include="AWSSDK.Lambda" Version="4.0.18" />
@@ -20,10 +19,8 @@
     <PackageVersion Include="Aspire.Hosting.AWS" Version="13.3.1" />
     <PackageVersion Include="Aspire.Hosting.MongoDB" Version="13.1.1" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
-    <PackageVersion Include="Aspire.Hosting.Redis" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.2" />
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.4.6" />
-    <PackageVersion Include="Aspire.StackExchange.Redis" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="13.4.6" />
     <PackageVersion Include="Aspire.Npgsql" Version="13.4.6" />
     <PackageVersion Include="Aspire.Hosting.Elasticsearch" Version="13.3.0" />
@@ -78,12 +75,10 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AWS" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.AWSLambda" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.15.2" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.15.0-beta.1" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.15.0-beta.1" />
     <PackageVersion Include="Refit.HttpClientFactory" Version="10.0.1" />
-    <PackageVersion Include="Scrutor" Version="7.0.0" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
     <PackageVersion Include="Serilog.Enrichers.Span" Version="3.1.0" />
     <PackageVersion Include="Serilog.Sinks.Elasticsearch" Version="10.0.0" />

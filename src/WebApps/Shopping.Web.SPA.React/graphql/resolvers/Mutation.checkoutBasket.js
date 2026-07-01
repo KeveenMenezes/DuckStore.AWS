@@ -7,7 +7,7 @@ export function request(ctx) {
     payload: {
       BasketCheckoutDto: {
         UserName: input.userName,
-        CustomerId: input.customerId,
+        CustomerId: ctx.identity.sub,  // always from Cognito — never trust client value
         TotalPrice: input.totalPrice,
         FirstName: input.firstName,
         LastName: input.lastName,

@@ -18,9 +18,6 @@
     <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" />
     <PackageReference Include="Amazon.Lambda.Annotations" />
     <PackageReference Include="AWSSDK.DynamoDBv2" />
-    <PackageReference Include="AWSSDK.DAX.Client" />
-    <PackageReference Include="Aspire.StackExchange.Redis" />
-    <PackageReference Include="Scrutor" />
   </ItemGroup>
 
   <ItemGroup>
