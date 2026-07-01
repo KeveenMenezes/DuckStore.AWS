@@ -85,6 +85,7 @@ export class SpaStack extends cdk.Stack {
     // internally). Replaces the old catalog-catalog-updated-consumer +
     // /api/webhooks/catalog-updated pair.
     new SpaTagRevalidator(this, 'TagRevalidator', {
+      openNextDir: OPEN_NEXT_DIR,
       tagCacheTable: storage.tagCacheTable,
       eventBus: events.EventBus.fromEventBusName(this, 'DuckstoreEventBus', 'duckstore-event-bus'),
     });

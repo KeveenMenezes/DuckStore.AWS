@@ -11,6 +11,8 @@ import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/li
 // staleness check (a Query against the "revalidate" GSI comparing
 // revalidatedAt against the cached entry's lastModified) picks up on the
 // next request, forcing a fresh fetch instead of serving the cached value.
+// Crucially, those partition keys are build-ID-prefixed ("{buildId}/products",
+// not "products") — see BUILD_ID below; querying the bare tag matches nothing.
 //
 // The SQS revalidation queue (OpenNext's own, consumed by the separate
 // revalidation-function Lambda) is deliberately NOT used here — it expects
@@ -32,6 +34,14 @@ import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/li
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}))
 
+// OpenNext's DynamoDB tag cache namespaces every partition key with the
+// Next.js build ID — a row's `tag` is stored as "{buildId}/products", not
+// "products" (and `path` likewise), so a new deploy's cache can't collide
+// with the previous build's. Querying the bare tag matches nothing, which
+// silently made every revalidation a no-op. The build ID is injected at
+// deploy time from .open-next/assets/BUILD_ID (see spa-tag-revalidator.ts).
+const BUILD_ID = process.env.TAG_CACHE_BUILD_ID
+
 function tagsForEvent(event) {
   const detailType = event['detail-type']
   const productId = event.detail?.ProductId
@@ -45,12 +55,14 @@ function tagsForEvent(event) {
 }
 
 async function markTagStale(tag) {
+  const key = BUILD_ID ? `${BUILD_ID}/${tag}` : tag
+
   const { Items = [] } = await ddb.send(
     new QueryCommand({
       TableName: process.env.TAG_CACHE_TABLE_NAME,
       KeyConditionExpression: '#tag = :tag',
       ExpressionAttributeNames: { '#tag': 'tag' },
-      ExpressionAttributeValues: { ':tag': tag },
+      ExpressionAttributeValues: { ':tag': key },
     }),
   )
 
@@ -61,7 +73,8 @@ async function markTagStale(tag) {
       ddb.send(
         new UpdateCommand({
           TableName: process.env.TAG_CACHE_TABLE_NAME,
-          Key: { tag, path: item.path },
+          // item.path is already build-ID-prefixed (read back from the query).
+          Key: { tag: key, path: item.path },
           UpdateExpression: 'SET revalidatedAt = :now',
           ExpressionAttributeValues: { ':now': now },
         }),
@@ -69,7 +82,7 @@ async function markTagStale(tag) {
     ),
   )
 
-  console.log(`Marked ${Items.length} entr${Items.length === 1 ? 'y' : 'ies'} stale for tag "${tag}"`)
+  console.log(`Marked ${Items.length} entr${Items.length === 1 ? 'y' : 'ies'} stale for tag "${key}"`)
 }
 
 export const handler = async (event) => {
