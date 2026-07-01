@@ -90,7 +90,6 @@ jobs:
           npx cdk deploy DuckStoreSpaStack \
             --require-approval never \
             --context environmentName=${{ env.ENVIRONMENT_NAME }} \
-            --parameters CatalogWebhookSecret=${{ secrets.CATALOG_WEBHOOK_SECRET }} \
             --parameters ReviewWebhookSecret=${{ secrets.REVIEW_WEBHOOK_SECRET }}
 
       - name: Deployment summary

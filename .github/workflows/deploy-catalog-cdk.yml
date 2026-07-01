@@ -48,9 +48,7 @@ jobs:
         working-directory: infra
         run: |
           npx cdk deploy DuckStoreCatalogStack \
-            --require-approval never \
-            --parameters CatalogWebhookSecret=${{ secrets.CATALOG_WEBHOOK_SECRET }} \
-            --parameters SpaWebhookUrl=${{ vars.SPA_WEBHOOK_URL }}
+            --require-approval never
 
       - name: Deployment summary
         run: |

@@ -23,22 +23,17 @@ export interface CatalogLambdasProps {
   readonly productsTable: dynamodb.Table;
   readonly categoriesTable: dynamodb.Table;
   readonly processedEventsTable: dynamodb.Table;
-  /** Base URL of the Next.js SPA. Consumer appends /api/webhooks/catalog-updated. */
-  readonly spaWebhookUrl: string;
-  readonly catalogWebhookSecret: string;
 }
 
 export class CatalogLambdas extends Construct {
   public readonly eventBus: events.EventBus;
   public readonly streamPublisher: lambda.Function;
-  public readonly catalogUpdatedConsumer: lambda.Function;
   public readonly reviewCreatedConsumer: lambda.Function;
 
   constructor(scope: Construct, id: string, props: CatalogLambdasProps) {
     super(scope, id);
 
-    const { productsTable, processedEventsTable, spaWebhookUrl, catalogWebhookSecret } =
-      props;
+    const { productsTable, processedEventsTable } = props;
 
     // All Catalog integration events flow through this bus (ADR-0004).
     this.eventBus = new events.EventBus(this, 'EventBus', {
@@ -101,41 +96,12 @@ export class CatalogLambdas extends Construct {
 
     this.eventBus.grantPutEventsTo(this.streamPublisher);
 
-    // -------------------------------------------------------------------------
-    // 2. catalog-catalog-updated-consumer
-    //    Trigger: EventBridge rule (CatalogUpdatedEvent)
-    //    IAM: none — only makes outbound HTTPS calls to the SPA webhook
-    // -------------------------------------------------------------------------
-    this.catalogUpdatedConsumer = new lambda.DockerImageFunction(this, 'CatalogUpdatedConsumer', {
-      functionName: 'catalog-catalog-updated-consumer',
-      architecture: DOTNET_ARCH,
-      code: catalogCode([`${HANDLER_PREFIX}Consumer.CatalogUpdatedConsumerFunction::FunctionHandler`]),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
-      description:
-        'Consumes CatalogUpdatedEvent and POSTs to the Next.js ISR webhook to trigger revalidateTag',
-      environment: {
-        Catalog__WebhookUrl: `${spaWebhookUrl}/api/webhooks/catalog-updated`,
-        CATALOG_WEBHOOK_SECRET: catalogWebhookSecret,
-      },
-    });
-
-    const catalogUpdatedRule = new events.Rule(this, 'CatalogUpdatedRule', {
-      eventBus: this.eventBus,
-      ruleName: 'catalog-updated-consumer-rule',
-      description:
-        'Routes CatalogUpdatedEvent (source=duckstore) to catalog-catalog-updated-consumer',
-      eventPattern: {
-        source: ['duckstore'],
-        detailType: ['CatalogUpdatedEvent'],
-      },
-    });
-    catalogUpdatedRule.addTarget(
-      new targets.LambdaFunction(this.catalogUpdatedConsumer),
-    );
+    // CatalogUpdatedEvent's ISR revalidation trigger moved to
+    // SpaRevalidationWebhook (infra/constructs/spa-revalidation-webhook.ts),
+    // which subscribes to this same bus directly — no HTTP webhook needed.
 
     // -------------------------------------------------------------------------
-    // 3. catalog-review-created-consumer
+    // 2. catalog-review-created-consumer
     //    Trigger: EventBridge rule (ReviewCreatedEvent from Review service)
     //    IAM: read+write on products and catalog-processed-events (ADR-0011)
     // -------------------------------------------------------------------------

@@ -7,7 +7,9 @@ using Microsoft.Extensions.DependencyInjection;
 namespace Catalog.Function.Modules.Products.EventsIntegration.Publisher;
 
 // Triggered by the Products DynamoDB Stream. Publishes one CatalogUpdatedEvent per record to
-// EventBridge. ISR cache revalidation is handled downstream by catalog-catalog-updated-consumer.
+// EventBridge. ISR cache revalidation is handled downstream by the SPA's
+// SpaRevalidationWebhook Lambda (infra/constructs/spa-revalidation-webhook.ts),
+// which subscribes to this same event directly.
 public class CatalogStreamEventPublisherFunction
 {
     private readonly IServiceProvider _serviceProvider;
