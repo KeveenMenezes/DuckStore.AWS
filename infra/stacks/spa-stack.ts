@@ -1,5 +1,6 @@
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { SpaStorage } from '../constructs/spa-storage';
 import { SpaLambdas } from '../constructs/spa-lambdas';
@@ -65,6 +66,21 @@ export class SpaStack extends cdk.Stack {
       domainName,
       hostedZoneDomainName: props.hostedZoneDomainName,
     });
+
+    // As of Oct 2025, Function URL invocation requires BOTH
+    // lambda:InvokeFunctionUrl (granted automatically by
+    // FunctionUrlOrigin.withOriginAccessControl) AND lambda:InvokeFunction
+    // scoped to InvokedViaFunctionUrl — the CDK OAC helper doesn't add this
+    // second grant yet, so without it CloudFront gets a 403 AccessDeniedException.
+    const cloudfrontPrincipal = new iam.ServicePrincipal('cloudfront.amazonaws.com');
+    for (const fn of [functions.defaultServerFunction, functions.imageOptimizationFunction]) {
+      fn.addPermission('AllowCloudFrontInvokeFunction', {
+        principal: cloudfrontPrincipal,
+        action: 'lambda:InvokeFunction',
+        sourceArn: distribution.distribution.distributionArn,
+        invokedViaFunctionUrl: true,
+      });
+    }
 
     new cdk.CfnOutput(this, 'SpaUrl', {
       value: distribution.url,
