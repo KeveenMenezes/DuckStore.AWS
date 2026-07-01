@@ -15,6 +15,8 @@ export interface SpaDistributionProps {
   readonly domainName: string;
   /** Apex domain of the Route53 hosted zone, e.g. "keveenmenezes.com". */
   readonly hostedZoneDomainName: string;
+  /** Sent as the x-origin-verify custom origin header to the server function; see spa-stack.ts. */
+  readonly originVerifySecret: string;
 }
 
 // Static asset paths served straight from S3 (no Lambda involved) — mirrors
@@ -50,6 +52,7 @@ export class SpaDistribution extends Construct {
       imageOptimizationFunctionUrl,
       domainName,
       hostedZoneDomainName,
+      originVerifySecret,
     } = props;
 
     const hostedZone = route53.HostedZone.fromLookup(this, 'Zone', {
@@ -66,8 +69,14 @@ export class SpaDistribution extends Construct {
     const s3Origin = origins.S3BucketOrigin.withOriginAccessControl(assetsBucket, {
       originPath: '/_assets',
     });
-    const serverOrigin = origins.FunctionUrlOrigin.withOriginAccessControl(defaultServerFunctionUrl);
-    const imageOrigin = origins.FunctionUrlOrigin.withOriginAccessControl(imageOptimizationFunctionUrl);
+    // Plain origins, not withOriginAccessControl — the Function URLs are
+    // NONE auth (see spa-lambdas.ts), so there's no SigV4 identity for OAC
+    // to sign with. The server origin instead gets a secret custom header
+    // that middleware.ts checks.
+    const serverOrigin = new origins.FunctionUrlOrigin(defaultServerFunctionUrl, {
+      customHeaders: { 'x-origin-verify': originVerifySecret },
+    });
+    const imageOrigin = new origins.FunctionUrlOrigin(imageOptimizationFunctionUrl);
 
     const staticBehavior: cloudfront.BehaviorOptions = {
       origin: s3Origin,

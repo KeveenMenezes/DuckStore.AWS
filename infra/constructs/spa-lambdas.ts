@@ -16,6 +16,13 @@ export interface SpaLambdasProps {
   readonly tagCacheTable: dynamodb.Table;
   readonly revalidationQueue: sqs.Queue;
   /**
+   * Shared secret CloudFront injects as a custom origin header on every
+   * request to the server function; middleware.ts rejects requests without
+   * a matching x-origin-verify header. See spa-stack.ts for why this
+   * replaces AWS_IAM + OAC on the Function URL.
+   */
+  readonly originVerifySecret: string;
+  /**
    * Server-only app env vars (AppSync URL/key, Cognito, webhook secrets, etc.)
    * forwarded to the `default` server function alongside OpenNext's own
    * cache/queue wiring.
@@ -45,7 +52,7 @@ export class SpaLambdas extends Construct {
   constructor(scope: Construct, id: string, props: SpaLambdasProps) {
     super(scope, id);
 
-    const { openNextDir, assetsBucket, tagCacheTable, revalidationQueue, appEnvironment } = props;
+    const { openNextDir, assetsBucket, tagCacheTable, revalidationQueue, originVerifySecret, appEnvironment } = props;
 
     // -------------------------------------------------------------------------
     // default — SSR/ISR/API routes. Handles every request except static assets
@@ -66,6 +73,7 @@ export class SpaLambdas extends Construct {
         CACHE_DYNAMO_TABLE: tagCacheTable.tableName,
         REVALIDATION_QUEUE_URL: revalidationQueue.queueUrl,
         REVALIDATION_QUEUE_REGION: cdk.Stack.of(this).region,
+        ORIGIN_VERIFY_SECRET: originVerifySecret,
         ...appEnvironment,
       },
     });
@@ -73,8 +81,10 @@ export class SpaLambdas extends Construct {
     tagCacheTable.grantReadWriteData(this.defaultServerFunction);
     revalidationQueue.grantSendMessages(this.defaultServerFunction);
 
+    // NONE (public), not AWS_IAM+OAC — see originVerifySecret doc comment
+    // above for why. middleware.ts is the actual access gate.
     this.defaultServerFunctionUrl = this.defaultServerFunction.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.AWS_IAM,
+      authType: lambda.FunctionUrlAuthType.NONE,
     });
 
     // -------------------------------------------------------------------------
@@ -98,8 +108,11 @@ export class SpaLambdas extends Construct {
     });
     assetsBucket.grantRead(this.imageOptimizationFunction, '_assets/*');
 
+    // Public (NONE): only resizes/serves already-public images from the
+    // assets bucket, no sensitive data — matches OpenNext's own reference
+    // architecture. No origin-verify header check needed here.
     this.imageOptimizationFunctionUrl = this.imageOptimizationFunction.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.AWS_IAM,
+      authType: lambda.FunctionUrlAuthType.NONE,
     });
 
     // -------------------------------------------------------------------------
