@@ -1,6 +1,6 @@
 import { createGqlClient } from './graphql-client'
 import { resolveEndpoint } from './endpoint-resolver'
-import { getAuthToken } from './auth-provider'
+import { getAuthHeaders } from './auth-provider'
 
 /**
  * Pre-configured GraphQL client for use across the application.
@@ -8,7 +8,7 @@ import { getAuthToken } from './auth-provider'
  */
 export const gql = createGqlClient({
   endpoint: resolveEndpoint(),
-  getToken: getAuthToken,
+  getAuthHeaders,
 })
 
 export { GraphQLRequestError } from './graphql-client'
