@@ -59,7 +59,6 @@ Each service is responsible for a specific capability — such as cart managemen
 - **SQL Server**: Robust relational database for data persistence.
 - **RabbitMQ**: Messaging for asynchronous communication between microservices.
 - **PostgreSQL**: Relational database for data persistence.
-- **Redis**: Distributed cache to improve performance.
 - **Marten**: Library for handling data in PostgreSQL.
 - **MassTransit**: Framework for RabbitMQ integration.
 - **FluentValidation**: Data validation.
@@ -75,7 +74,7 @@ Each service is responsible for a specific capability — such as cart managemen
 ### Prerequisites
 
 - .NET SDK 9.0 or higher
-- Docker (optional, for services such as RabbitMQ, PostgreSQL, and Redis)
+- Docker (optional, for services such as RabbitMQ and PostgreSQL)
 - Visual Studio Code with the **C# Dev Kit** extension
 
 ### Steps to Run

@@ -8,4 +8,3 @@ global using BuildingBlocks.Core.Exceptions;
 global using FluentValidation;
 global using Mapster;
 global using MediatR;
-global using StackExchange.Redis;

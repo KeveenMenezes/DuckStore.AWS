@@ -15,7 +15,6 @@ public static class BasketExtensions
 
     public static BasketResources AddBasketLambdas(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<RedisResource> redis,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb)
     {
         var basketSeeder = builder.AddProject<Projects.Basket_DevelopmentDataSeeder>("basket-data-seeder")
@@ -36,9 +35,7 @@ public static class BasketExtensions
                 "basket-store-basket",
                 lambdaHandler: "Basket.Function::Basket.Function.Functions_StoreBasket_Generated::StoreBasket")
             .WaitForCompletion(basketSeeder)
-            .WaitFor(redis)
             .WithReference(dynamoDb)
-            .WithReference(redis)
             .WithAwsDevEnvironment();
 
         var checkoutBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(

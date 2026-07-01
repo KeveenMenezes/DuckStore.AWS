@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers'
 
 /**
- * Production GraphQL proxy: reads the Cognito Access Token from the httpOnly
+ * AppSync GraphQL proxy: reads the Cognito Access Token from the httpOnly
  * cookie set by /api/auth/callback and forwards it to AppSync as Bearer.
  *
  * Unauthenticated requests fall back to the API Key so public catalog queries
@@ -9,7 +9,7 @@ import { cookies } from 'next/headers'
  *
  * The browser never knows the AppSync URL — it always talks to /api/graphql.
  */
-export async function handleProd(req: Request): Promise<Response> {
+export async function handleAppSync(req: Request): Promise<Response> {
   const cookieStore = await cookies()
   const accessToken = cookieStore.get('access_token')?.value
 

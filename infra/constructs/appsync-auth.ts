@@ -72,10 +72,15 @@ exports.handler = async (event) => {
       timeout: cdk.Duration.seconds(10),
     });
 
+    // Wildcarded ARN breaks the circular dependency:
+    //   UserPool → Lambda trigger (LambdaConfig Fn::GetAtt)
+    //   Lambda IAM policy → UserPool (Fn::GetAtt) ← removes this link
     assignCustomerGroupFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['cognito-idp:AdminAddUserToGroup'],
-        resources: [this.userPool.userPoolArn],
+        resources: [
+          `arn:aws:cognito-idp:${cdk.Stack.of(this).region}:${cdk.Stack.of(this).account}:userpool/*`,
+        ],
       }),
     );
 

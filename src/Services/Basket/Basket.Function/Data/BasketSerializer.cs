@@ -1,8 +1,8 @@
 namespace Basket.Function.Data;
 
-// Single source of truth for the cart's stored/cached JSON shape (the DynamoDB `Data`
-// attribute and the Redis value). Keeping it here lets the ShoppingCart aggregate stay
-// encapsulated while the persisted item avoids unused aggregate audit fields.
+// Single source of truth for the cart's stored JSON shape (the DynamoDB `Data` attribute).
+// Keeping it here lets the ShoppingCart aggregate stay encapsulated while the persisted
+// item avoids unused aggregate audit fields.
 internal static class BasketSerializer
 {
     public static string Serialize(ShoppingCart cart) =>

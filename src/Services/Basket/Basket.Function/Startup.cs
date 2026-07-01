@@ -33,8 +33,7 @@ public class Startup
             })
             .AddValidatorsFromAssembly(assembly);
 
-        // Basket persistence + cache per environment:
-        // Redis (cache-aside) in non-production; DynamoDB DAX (transparent) in production.
+        // Basket persistence: DynamoDB repository, no caching layer.
         services.AddBasketStorage(configuration);
 
         // Discount was merged into Basket: coupons are read in-process from DynamoDB,
