@@ -48,5 +48,9 @@
         ]
       }
     ]
+  },
+  "hosted-zone:account=603767527989:domainName=keveenmenezes.com:region=us-east-1": {
+    "Id": "/hostedzone/Z077437021ABX98AG6CIN",
+    "Name": "keveenmenezes.com."
   }
 }

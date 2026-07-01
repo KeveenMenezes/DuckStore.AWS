@@ -22,11 +22,11 @@ export class GraphQLRequestError extends Error {
 
 export interface GqlClientConfig {
   endpoint: string
-  getToken?: () => Promise<string | undefined>
+  getAuthHeaders?: () => Promise<Record<string, string> | undefined>
 }
 
 /**
- * Creates a GraphQL client bound to the given endpoint and optional token provider.
+ * Creates a GraphQL client bound to the given endpoint and optional auth header provider.
  * Pure fetch wrapper — no environment detection, no auth logic, no side effects.
  */
 export function createGqlClient(config: GqlClientConfig) {
@@ -35,14 +35,14 @@ export function createGqlClient(config: GqlClientConfig) {
     variables?: TVariables,
     init?: RequestInit,
   ): Promise<TData> {
-    const token = await config.getToken?.()
+    const authHeaders = await config.getAuthHeaders?.()
     const { headers: extraHeaders, ...restInit } = init ?? {}
 
     const res = await fetch(config.endpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(token ? { Authorization: token } : {}),
+        ...authHeaders,
         ...extraHeaders,
       },
       body: JSON.stringify({ query, variables }),

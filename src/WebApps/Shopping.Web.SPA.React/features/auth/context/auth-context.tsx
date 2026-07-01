@@ -51,6 +51,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     getOrdersForCustomer(customerId)
       .then(setOrders)
       .catch(() => {
+        const session = authService.getSession()
         if (session) setOrders(ordersService.getForUser(session.id))
       })
       .finally(() => setOrdersLoading(false))

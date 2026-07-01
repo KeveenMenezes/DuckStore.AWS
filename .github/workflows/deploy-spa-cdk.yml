@@ -1,0 +1,90 @@
+name: Deploy SPA CDK Stack
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - 'infra/**'
+      - 'src/WebApps/Shopping.Web.SPA.React/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '24'
+  ENVIRONMENT_NAME: dev
+  SPA_URL: https://dev-duckstore.keveenmenezes.com
+
+jobs:
+  deploy:
+    name: Build SPA and deploy CDK
+    runs-on: ubuntu-latest
+    environment: development
+
+    defaults:
+      run:
+        working-directory: src/WebApps/Shopping.Web.SPA.React
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+
+      - name: Setup Node.js for SPA build
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+          cache-dependency-path: src/WebApps/Shopping.Web.SPA.React/pnpm-lock.yaml
+
+      - name: Install SPA dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build with OpenNext
+        env:
+          NEXT_PUBLIC_SITE_URL: ${{ env.SPA_URL }}
+        run: pnpm build:opennext
+
+      - name: Setup Node.js for CDK
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Install CDK dependencies
+        working-directory: infra
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy SPA CDK stack
+        working-directory: infra
+        run: |
+          npx cdk deploy DuckStoreSpaStack \
+            --require-approval never \
+            --context environmentName=${{ env.ENVIRONMENT_NAME }} \
+            --parameters CatalogWebhookSecret=${{ secrets.CATALOG_WEBHOOK_SECRET }} \
+            --parameters ReviewWebhookSecret=${{ secrets.REVIEW_WEBHOOK_SECRET }}
+
+      - name: Deployment summary
+        run: |
+          echo "## SPA CDK Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Stack** | DuckStoreSpaStack |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **SPA URL** | ${{ env.SPA_URL }} |" >> $GITHUB_STEP_SUMMARY
