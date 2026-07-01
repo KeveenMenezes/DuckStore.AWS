@@ -18,10 +18,10 @@ export function response(ctx) {
     name: item.Name,
     description: item.Description,
     imageUrl: item.ImageUrl,
-    price: parseFloat(item.Price),
-    stock: parseInt(item.Stock, 10),
+    price: +item.Price,
+    stock: Math.floor(+item.Stock),
     categoryIds: item.CategoryIds ?? [],
-    averageRating: item.AverageRating ? parseFloat(item.AverageRating) : 0,
-    ratingCount: item.RatingCount ? parseInt(item.RatingCount, 10) : 0,
+    averageRating: item.AverageRating ? +item.AverageRating : 0,
+    ratingCount: item.RatingCount ? Math.floor(+item.RatingCount) : 0,
   }
 }

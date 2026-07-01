@@ -12,10 +12,10 @@ export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
   return {
     items: (ctx.result.Orders ?? []).map(o => ({
-      id: String(o.Id),
-      customerId: String(o.CustomerId),
+      id: `${o.Id}`,
+      customerId: `${o.CustomerId}`,
       orderName: o.OrderName,
-      status: String(o.Status),
+      status: `${o.Status}`,
       createdAt: null,
       shippingAddress: {
         firstName: o.ShippingAddress?.FirstName ?? '',

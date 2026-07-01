@@ -24,7 +24,7 @@ export function response(ctx) {
     id: item.Id,
     productId: item.ProductId,
     userName: item.UserName,
-    rating: parseInt(item.Rating, 10),
+    rating: Math.floor(+item.Rating),
     comment: item.Comment,
     createdAt: item.CreatedAt,
   }))
