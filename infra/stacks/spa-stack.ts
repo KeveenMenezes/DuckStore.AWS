@@ -1,6 +1,6 @@
+import * as crypto from 'crypto';
 import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
-import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import { SpaStorage } from '../constructs/spa-storage';
 import { SpaLambdas } from '../constructs/spa-lambdas';
@@ -38,6 +38,19 @@ export class SpaStack extends cdk.Stack {
 
     const domainName = `${props.environmentName}-duckstore.${props.hostedZoneDomainName}`;
 
+    // Lambda Function URLs with AWS_IAM auth + CloudFront OAC can't carry a
+    // POST/PUT body: CloudFront's SigV4 signing to a Function URL origin
+    // requires the *client* to precompute an x-amz-content-sha256 payload
+    // hash, which neither browsers nor the Catalog/Review webhook-sending
+    // Lambdas do (AWS docs: "Lambda doesn't support unsigned payloads" for
+    // Function URL OAC). That breaks every POST route (GraphQL BFF,
+    // webhooks). Instead the server Function URL is public (NONE auth, like
+    // most real-world Next.js-on-Lambda deployments) and CloudFront injects
+    // a secret header that middleware.ts on the SPA rejects requests
+    // without — regenerated per deploy, only needs to match between here
+    // and the distribution's custom origin header.
+    const originVerifySecret = crypto.randomBytes(32).toString('hex');
+
     const storage = new SpaStorage(this, 'SpaStorage', {
       openNextDir: OPEN_NEXT_DIR,
     });
@@ -47,6 +60,7 @@ export class SpaStack extends cdk.Stack {
       assetsBucket: storage.assetsBucket,
       tagCacheTable: storage.tagCacheTable,
       revalidationQueue: storage.revalidationQueue,
+      originVerifySecret,
       appEnvironment: {
         GRAPHQL_BACKEND: 'appsync',
         APPSYNC_URL: props.appsyncUrl,
@@ -65,22 +79,8 @@ export class SpaStack extends cdk.Stack {
       imageOptimizationFunctionUrl: functions.imageOptimizationFunctionUrl,
       domainName,
       hostedZoneDomainName: props.hostedZoneDomainName,
+      originVerifySecret,
     });
-
-    // As of Oct 2025, Function URL invocation requires BOTH
-    // lambda:InvokeFunctionUrl (granted automatically by
-    // FunctionUrlOrigin.withOriginAccessControl) AND lambda:InvokeFunction
-    // scoped to InvokedViaFunctionUrl — the CDK OAC helper doesn't add this
-    // second grant yet, so without it CloudFront gets a 403 AccessDeniedException.
-    const cloudfrontPrincipal = new iam.ServicePrincipal('cloudfront.amazonaws.com');
-    for (const fn of [functions.defaultServerFunction, functions.imageOptimizationFunction]) {
-      fn.addPermission('AllowCloudFrontInvokeFunction', {
-        principal: cloudfrontPrincipal,
-        action: 'lambda:InvokeFunction',
-        sourceArn: distribution.distribution.distributionArn,
-        invokedViaFunctionUrl: true,
-      });
-    }
 
     new cdk.CfnOutput(this, 'SpaUrl', {
       value: distribution.url,
