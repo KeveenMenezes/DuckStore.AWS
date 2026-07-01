@@ -41,8 +41,6 @@ builder.AddProject<Projects.Shopping_Web_Server>(
     .WithExternalHttpEndpoints()
     .WithExplicitStart();
 
-const string spaBaseUrl = "http://localhost:3000";
-
 builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")
     .WithExternalHttpEndpoints()
     .WaitFor(yarpApiGateway)
@@ -57,12 +55,11 @@ builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React",
             ctx.EnvironmentVariables["AWS_ENDPOINT_URL_LAMBDA"] = lambdaEmulator.GetEndpoint("http");
     })
     .WithAwsDevEnvironment()
-    .WithEnvironment("CATALOG_WEBHOOK_SECRET", AppHost.Catalog.CatalogExtensions.CatalogWebhookSecretValue)
     .WithEndpoint(port: 3000, targetPort: 3000, scheme: "http", name: "http", env: "PORT", isProxied: false)
     .PublishAsDockerFile()
     .WithExplicitStart();
 
-builder.AddCatalogLambdas(dynamoDb, spaBaseUrl);
+builder.AddCatalogLambdas(dynamoDb);
 
 await builder.Build().RunAsync();
 return;
