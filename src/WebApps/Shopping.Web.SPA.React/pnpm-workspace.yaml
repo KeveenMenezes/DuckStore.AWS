@@ -1,2 +1,15 @@
 allowBuilds:
+  esbuild: true
   sharp: false
+
+# Pin these below @opennextjs/aws's exact-pinned AWS SDK client versions, which
+# always float to the newest (~daily) AWS SDK release and trip the registry's
+# minimum-release-age policy. Pinned to a mutually-compatible, already-aged pair
+# instead of disabling the age policy itself.
+overrides:
+  '@smithy/core': 3.26.0
+  '@smithy/hash-node': 4.4.2
+  '@aws-sdk/types': 3.973.13
+  '@aws-sdk/core': 3.974.23
+  '@smithy/types': 4.15.0
+  '@aws-sdk/signature-v4-multi-region': 3.996.35

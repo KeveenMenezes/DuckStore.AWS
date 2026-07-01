@@ -30,54 +30,74 @@ features/
   cart/          components, context, hooks, types
   challenges/    components, context, data, hooks, services, types
   checkout/      components, hooks, services, types
-  products/      components, data, hooks, services, types
+  products/      components, hooks, services, types
+  reviews/       components, services, types
   theme/         context, hooks, types
 shared/
   constants/     routes.ts, storage-keys.ts
   layout/        header, footer, hero-section, providers, user-dropdown
-  lib/           format.ts, graphql-client.ts, id.ts, storage.ts
+  lib/           format.ts, id.ts, storage.ts
+api/             GraphQL client used by client components and Server Components alike
+  index.ts               pre-built `gql` instance (endpoint + auth resolved once)
+  graphql-client.ts       pure fetch wrapper, `createGqlClient({ endpoint, getToken })`
+  endpoint-resolver.ts    picks the GraphQL endpoint for the current runtime context
+  auth-provider.ts        resolves the Cognito Access Token server-side (cookie)
+  queries/, mutations/, fragments/   one file per operation/entity
 components/ui/   shadcn/ui primitives — do not modify these manually
-app/             Next.js routes (page.tsx per route)
-graphql/         schema + AppSync JS resolvers (prod) and shared types
+app/             Next.js routes (page.tsx per route) + Route Handlers under app/api/
+graphql/         schema.graphql, AppSync JS resolvers (prod), and graphql/types.ts
 ```
 
 Path alias `@/*` maps to the project root.
 
-### GraphQL layer (two environments)
+### GraphQL layer
 
-**Development** — `app/api/graphql/route.ts` is a Next.js Route Handler running `graphql-yoga`. It talks directly to DynamoDB Local via AWS SDK v3 and calls Basket Lambda functions via Aspire service-discovery env vars (`services__<name>__http__0`). Set `AWS_ENDPOINT_URL_DYNAMODB` (injected by Aspire's `WithReference(dynamoDb)`) and the Lambda service env vars to connect the dev environment.
+The browser and Server Components never talk to AppSync or DynamoDB directly — they always call the `gql` client from `api/index.ts`, which POSTs to a single endpoint resolved by `api/endpoint-resolver.ts`:
 
-**Production** — set `NEXT_PUBLIC_GRAPHQL_URL` to the AWS AppSync endpoint. The files under `graphql/resolvers/*.js` are **AppSync JS resolver** units (request/response functions using `@aws-appsync/utils`) — they are not run locally and are deployed to AppSync separately.
+- Client-side (browser): relative `/api/graphql`.
+- Server-side (RSC/SSG/ISR): absolute `${NEXT_PUBLIC_SITE_URL}/api/graphql` (Node `fetch` needs an absolute URL).
+- Escape hatch: if `NEXT_PUBLIC_APPSYNC_URL` is set, the browser calls AppSync directly instead — not used in the deployed config today (see `[[project-appsync-security]]`, which keeps AppSync env vars server-only).
 
-`graphql/types.ts` holds TypeScript interfaces that mirror `graphql/schema.graphql` — keep them in sync when the schema changes.
+`app/api/graphql/route.ts` is the Next.js Route Handler backing that endpoint. It branches on `GRAPHQL_BACKEND` between two implementations in the same folder:
 
-The thin fetch wrapper lives at `shared/lib/graphql-client.ts` (`gql<TData>(query, variables?)`).
+- `local.ts` (`GRAPHQL_BACKEND=local`, dev) — runs `graphql-yoga` against DynamoDB Local via AWS SDK v3 (`AWS_ENDPOINT_URL_DYNAMODB`, injected by Aspire's `WithReference(dynamoDb)`) and invokes the Basket Lambda through the Aspire Lambda emulator (`AWS_ENDPOINT_URL_LAMBDA`). It strips the `@aws_api_key`/`@aws_cognito_user_pools` directives from `graphql/schema.graphql` before building the schema, since Yoga doesn't understand AppSync-only directives.
+- `appsync.ts` (`GRAPHQL_BACKEND=appsync`, staging/prod) — a **BFF proxy**: reads the Cognito Access Token from the httpOnly `access_token` cookie (set by `/api/auth/callback`) and forwards the request to real AppSync as `Authorization: Bearer`, falling back to `x-api-key` for unauthenticated/public queries. The browser never sees the AppSync URL or API key.
+
+Auth token resolution for **server-side** `gql` calls (Server Components, Route Handlers) goes through `api/auth-provider.ts`, which dynamic-imports `next/headers` to read the same `access_token` cookie — kept dynamic so bundlers don't choke when the module is pulled into a Client Component's import graph. Client-side callers never need this: they always go through the `/api/graphql` BFF, which adds the header itself.
+
+`/api/auth/{login,callback,logout,me}` implement the Cognito Hosted UI PKCE flow. See `[[project-appsync-security]]` for the full Cognito/AppSync security architecture (auth-per-operation table, Groups, env vars).
+
+The files under `graphql/resolvers/*.js` are **AppSync JS resolver** units (request/response functions using `@aws-appsync/utils`) — not run locally, deployed to AppSync separately. `graphql/types.ts` holds TypeScript interfaces that mirror `graphql/schema.graphql` — keep them in sync when the schema changes.
 
 ### Lambda response casing
 
-The .NET Lambda functions use `DefaultLambdaJsonSerializer`, which emits **PascalCase** JSON. The GraphQL route handler normalizes this to camelCase for the schema. When adding new Lambda-backed resolvers, remember to map `Item.PropertyName → item.propertyName`.
+The .NET Lambda functions use `DefaultLambdaJsonSerializer`, which emits **PascalCase** JSON. `app/api/graphql/local.ts` normalizes this to camelCase for the schema (e.g. the Basket item stored in the `Data` attribute is PascalCase JSON from the .NET serializer). When adding new Lambda-backed resolvers, remember to map `Item.PropertyName → item.propertyName`.
 
 ### State management
 
 All state is React Context — no external store:
 
 - `ThemeProvider` → `AuthProvider` → `CartProvider` → `ScoreProvider` (nesting order in `shared/layout/providers.tsx`)
-- **Auth**: localStorage-only simulation (`features/auth/services/auth.service.ts`). No backend auth integration yet.
-- **Cart**: in-memory React state. Synced to the Basket Lambda only at checkout time: `checkout.service.ts` calls `storeBasket` before `checkoutBasket`.
-- **Score**: local score for the code challenges feature.
+- **Auth**: hybrid. `AuthProvider` first checks for a real Cognito session via `GET /api/auth/me`; if that returns nothing it falls back to the localStorage-only simulation (`features/auth/services/auth.service.ts`). `loginWithCognito()` kicks off the PKCE flow; `login`/`register` are the local-simulation path.
+- **Cart**: React state, hydrated on mount from the Basket Lambda (`GET_BASKET` GraphQL query, keyed by a stable guest `userName`) and kept in sync continuously — every change is pushed back via a 300ms-debounced `syncCartToBasket` call (`features/cart/services/basket.service.ts`), not just at checkout. `features/checkout/services/checkout.service.ts` relies on this and no longer calls `storeBasket` itself before `checkoutBasket`.
+- **Score**: local-only state for the code challenges feature, no persistence/sync.
 
 Each feature exposes a custom hook (`use-auth.ts`, `use-cart.ts`, etc.) that wraps `useContext` — always use the hook, never `useContext` directly.
 
 ### Product catalog
 
-Driven by GraphQL: `products.service.ts` calls `getProducts()` and `getRawCategories()` which hit the `/api/graphql` local stub (dev) or the AppSync endpoint (prod). The stub reads DynamoDB Local directly. `features/products/data/products.data.ts` is now dead code (retained for reference; no longer imported).
+Driven by GraphQL through the `api/` client: `features/products/services/products.service.ts` calls `getProducts()`/`getProduct()`/`getRawCategories()`, which resolve to `/api/graphql` (dev: Yoga + DynamoDB Local; prod: BFF proxy to AppSync). There is no static/mock product data file anymore — everything is fetched.
 
 ### Pages
 
-| Route | File | Notes |
-|---|---|---|
-| `/` | `app/page.tsx` | ISR (`revalidate=300`), renders product catalog |
-| `/checkout` | `app/checkout/page.tsx` | Client-side checkout flow |
-| `/challenges` | `app/challenges/page.tsx` | Interactive code quiz feature |
-| `/my-profile` | `app/my-profile/page.tsx` | Auth-gated profile view |
-| `/my-orders` | `app/my-orders/page.tsx` | Auth-gated order history |
+Per the `rendering-strategy` skill: SSR for personalized data, SSG for content identical to every user, ISR (invalidated by webhook, never TTL) for static content that changes on writes elsewhere.
+
+| Route | File | Strategy | Notes |
+|---|---|---|---|
+| `/` | `app/page.tsx` | ISR (`revalidate=false`) | Fetches products/categories tagged `products`; invalidated by `POST /api/webhooks/catalog-updated` calling `revalidateTag('products')`. `ProductCatalog` (`"use client"`) only does client-side category filtering on the props it receives — no fetch of its own. |
+| `/products/[id]` | `app/products/[id]/page.tsx` | ISR (`revalidate=false`) | Tags `products` (product data/rating) and `reviews`; invalidated by both `catalog-updated` and `review-created` webhooks. |
+| `/checkout` | `app/checkout/page.tsx` | SSG (`revalidate=false`) | Server shell only; `CheckoutView` (`"use client"`) hydrates cart/auth client-side. |
+| `/challenges` | `app/challenges/page.tsx` | SSG (`revalidate=false`) | Challenge list is static data compiled into the bundle (`getChallenges()`, no runtime fetch); per-user score hydrates client-side via `ScoreProvider`. |
+| `/my-profile` | `app/my-profile/page.tsx` | SSG (`revalidate=false`) | Server shell only; `ProfileView` (`"use client"`) hydrates auth/user data client-side. |
+| `/my-orders` | `app/my-orders/page.tsx` | SSG (`revalidate=false`) | Server shell only; `OrdersView` (`"use client"`) hydrates auth/order data client-side. |
+| `/cart` | `app/cart/page.tsx` | CSR | Whole page is `"use client"` — reads `CartProvider` state directly, no server fetch. |

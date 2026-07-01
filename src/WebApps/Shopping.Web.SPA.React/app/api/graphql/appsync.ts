@@ -1,25 +1,21 @@
-import { cookies } from 'next/headers'
+import { getAuthHeaders } from '@/api/auth-provider'
 
 /**
- * AppSync GraphQL proxy: reads the Cognito Access Token from the httpOnly
- * cookie set by /api/auth/callback and forwards it to AppSync as Bearer.
- *
- * Unauthenticated requests fall back to the API Key so public catalog queries
- * (products, categories, reviewsByProduct) work without login.
+ * AppSync GraphQL proxy: resolves the same auth header the server-side `gql`
+ * client uses (Bearer from the httpOnly access_token cookie, or the API Key
+ * fallback for unauthenticated/public queries) and forwards the request to
+ * AppSync.
  *
  * The browser never knows the AppSync URL — it always talks to /api/graphql.
  */
 export async function handleAppSync(req: Request): Promise<Response> {
-  const cookieStore = await cookies()
-  const accessToken = cookieStore.get('access_token')?.value
+  const authHeaders = await getAuthHeaders()
 
   const res = await fetch(process.env.APPSYNC_URL!, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      ...(accessToken
-        ? { Authorization: `Bearer ${accessToken}` }
-        : { 'x-api-key': process.env.APPSYNC_API_KEY! }),
+      ...authHeaders,
     },
     body: await req.text(),
   })
