@@ -97,8 +97,8 @@ export class CatalogLambdas extends Construct {
     this.eventBus.grantPutEventsTo(this.streamPublisher);
 
     // CatalogUpdatedEvent's ISR revalidation trigger moved to
-    // SpaRevalidationWebhook (infra/constructs/spa-revalidation-webhook.ts),
-    // which subscribes to this same bus directly — no HTTP webhook needed.
+    // SpaTagRevalidator (infra/constructs/spa-tag-revalidator.ts), which
+    // subscribes to this same bus directly — no HTTP webhook needed.
 
     // -------------------------------------------------------------------------
     // 2. catalog-review-created-consumer

@@ -25,7 +25,7 @@ public static class CatalogExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
-        // ISR revalidation for catalog changes is production-only (SpaRevalidationWebhook
+        // ISR revalidation for catalog changes is production-only (SpaTagRevalidator
         // in infra/) — `next dev` doesn't do ISR caching, so there's no local equivalent.
 
         // Consumes ReviewCreated from EventBridge and folds the rating into the product
