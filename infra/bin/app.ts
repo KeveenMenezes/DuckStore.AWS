@@ -4,6 +4,7 @@ import { CatalogStack } from '../stacks/catalog-stack';
 import { BasketStack } from '../stacks/basket-stack';
 import { OrderingStack } from '../stacks/ordering-stack';
 import { ReviewStack } from '../stacks/review-stack';
+import { AppSyncStack } from '../stacks/appsync-stack';
 
 const app = new cdk.App();
 
@@ -34,4 +35,11 @@ new ReviewStack(app, 'DuckStoreReviewStack', {
   env,
   description:
     'DuckStore Review service — DynamoDB table (reviews + GSI1) and CDC Lambda (ReviewCreatedEvent → EventBridge)',
+});
+
+new AppSyncStack(app, 'DuckStoreAppSyncStack', {
+  env,
+  spaBaseUrl: app.node.tryGetContext('spaBaseUrl') ?? 'http://localhost:3000',
+  description:
+    'DuckStore AppSync API — Cognito UserPool (RBAC groups), DynamoDB direct resolvers, Lambda resolvers',
 });

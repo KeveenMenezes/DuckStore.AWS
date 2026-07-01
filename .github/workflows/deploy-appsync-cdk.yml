@@ -1,0 +1,65 @@
+name: Deploy AppSync CDK Stack
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - 'infra/**'
+      - 'src/WebApps/Shopping.Web.SPA.React/graphql/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '24'
+  # aws-actions/configure-aws-credentials@v4 uses node20 internally;
+  # remove once AWS releases a node24-compatible version.
+  ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
+
+jobs:
+  deploy:
+    name: Deploy CDK
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Install CDK dependencies
+        working-directory: infra
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy AppSync CDK stack
+        working-directory: infra
+        run: |
+          npx cdk deploy DuckStoreAppSyncStack \
+            --context spaBaseUrl=${{ vars.SPA_BASE_URL || 'http://localhost:3000' }} \
+            --require-approval never
+
+      - name: Deployment summary
+        run: |
+          echo "## AppSync CDK Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Stack** | DuckStoreAppSyncStack |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **SPA Base URL** | ${{ vars.SPA_BASE_URL || 'http://localhost:3000' }} |" >> $GITHUB_STEP_SUMMARY

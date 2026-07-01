@@ -1,9 +1,10 @@
 import { util } from '@aws-appsync/utils'
 
 export function request(ctx) {
+  // Always use the authenticated user's sub — never trust the client-supplied customerId
   return {
     operation: 'Invoke',
-    payload: { CustomerId: ctx.args.customerId },
+    payload: { CustomerId: ctx.identity.sub },
   }
 }
 
