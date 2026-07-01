@@ -13,6 +13,7 @@ interface AuthContextType {
   ordersLoading: boolean
   login: (email: string, password: string) => Promise<AuthResult>
   register: (name: string, email: string, password: string) => Promise<AuthResult>
+  loginWithCognito: () => void
   logout: () => void
   addOrder: (order: NewOrderInput) => void
 }
@@ -25,11 +26,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [ordersLoading, setOrdersLoading] = useState(false)
 
-  // Restore session on mount, then fetch order history from the backend.
+  // Restore session on mount: check Cognito session first, fall back to localStorage sim.
   useEffect(() => {
-    const session = authService.getSession()
-    if (session) setUser(session)
-    setIsLoading(false)
+    fetch('/api/auth/me')
+      .then(r => (r.ok ? r.json() : null))
+      .then((me: { sub: string; email: string; username: string } | null) => {
+        if (me) {
+          setUser({ id: me.sub, name: me.username, email: me.email })
+        } else {
+          const session = authService.getSession()
+          if (session) setUser(session)
+        }
+      })
+      .catch(() => {
+        const session = authService.getSession()
+        if (session) setUser(session)
+      })
+      .finally(() => setIsLoading(false))
 
     // Uses the stable guestCustomerId (same value sent at checkout) so the query
     // returns the real orders, regardless of auth state.
@@ -62,10 +75,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { success: result.success, error: result.error }
   }, [])
 
+  const loginWithCognito = useCallback(() => {
+    window.location.href = '/api/auth/login'
+  }, [])
+
   const logout = useCallback(() => {
     authService.clearSession()
     setUser(null)
     setOrders([])
+    // Also clears the Cognito httpOnly cookie via the server logout route
+    window.location.href = '/api/auth/logout'
   }, [])
 
   const addOrder = useCallback(
@@ -77,8 +96,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ user, orders, isLoading, ordersLoading, login, register, logout, addOrder }),
-    [user, orders, isLoading, ordersLoading, login, register, logout, addOrder],
+    () => ({ user, orders, isLoading, ordersLoading, login, register, loginWithCognito, logout, addOrder }),
+    [user, orders, isLoading, ordersLoading, login, register, loginWithCognito, logout, addOrder],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

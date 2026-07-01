@@ -1,6 +1,9 @@
 import { util } from '@aws-appsync/utils'
 
 export function request(ctx) {
+  const groups = ctx.identity?.groups ?? []
+  if (!groups.includes('Admin')) util.unauthorized()
+
   const { pageSize = 10, nextToken } = ctx.args
   return {
     operation: 'Scan',

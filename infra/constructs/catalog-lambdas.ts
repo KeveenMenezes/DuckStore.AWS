@@ -3,18 +3,18 @@ import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
 
-const DOTNET_RUNTIME = lambda.Runtime.DOTNET_10;
 const DOTNET_ARCH = lambda.Architecture.ARM_64;
 
-// Populate before `cdk deploy` by running:
-//   dotnet publish ../src/Services/Catalog/Catalog.Function \
-//     -c Release -r linux-arm64 --self-contained false \
-//     -o infra/publish/catalog
-const CATALOG_PUBLISH_PATH = path.join(__dirname, '..', 'publish', 'catalog');
+// Build context is the repo root: Catalog.Function's Dockerfile needs
+// Directory.Packages.props/nuget.config and the BuildingBlocks project
+// references, which all live outside the Catalog.Function folder.
+const REPO_ROOT = path.join(__dirname, '..', '..');
+const CATALOG_DOCKERFILE = 'src/Services/Catalog/Catalog.Function/Dockerfile';
 
 const HANDLER_PREFIX =
   'Catalog.Function::Catalog.Function.Modules.Products.EventsIntegration.';
@@ -45,21 +45,40 @@ export class CatalogLambdas extends Construct {
       eventBusName: 'duckstore-event-bus',
     });
 
-    // All three Lambdas share the same Catalog.Function assembly.
-    const code = lambda.Code.fromAsset(CATALOG_PUBLISH_PATH);
+    // All three Lambdas share the same Catalog.Function image, built once and
+    // referenced per-function with a different handler via the `cmd` override.
+    const catalogImage = new ecrAssets.DockerImageAsset(this, 'CatalogImage', {
+      directory: REPO_ROOT,
+      file: CATALOG_DOCKERFILE,
+      platform: ecrAssets.Platform.LINUX_ARM64,
+      // Scope the build context down to what the Dockerfile actually COPYs —
+      // without this, staging tries to copy the whole repo (.git, cdk.out, etc).
+      exclude: [
+        '**',
+        '!Directory.Packages.props',
+        '!nuget.config',
+        '!src/Services/Catalog/Catalog.Function/**',
+        '!src/BuildingBlocks/**',
+      ],
+    });
+    const catalogCode = (cmd: string[]) =>
+      lambda.DockerImageCode.fromEcr(catalogImage.repository, {
+        tagOrDigest: catalogImage.imageTag,
+        cmd,
+      });
 
     // -------------------------------------------------------------------------
     // 1. catalog-stream-event-publisher
     //    Trigger: DynamoDB Streams on products
     //    IAM: DynamoEventSource grants stream read; grantPutEventsTo for EventBridge
     // -------------------------------------------------------------------------
-    this.streamPublisher = new lambda.Function(this, 'StreamPublisher', {
+    this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
       functionName: 'catalog-stream-event-publisher',
-      runtime: DOTNET_RUNTIME,
       architecture: DOTNET_ARCH,
       // Full path exceeds Lambda's 128-char limit; relay class at Handlers.CatalogStreamPublisher.
-      handler: 'Catalog.Function::Catalog.Function.Handlers.CatalogStreamPublisher::FunctionHandler',
-      code,
+      code: catalogCode([
+        'Catalog.Function::Catalog.Function.Handlers.CatalogStreamPublisher::FunctionHandler',
+      ]),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       description:
@@ -87,12 +106,10 @@ export class CatalogLambdas extends Construct {
     //    Trigger: EventBridge rule (CatalogUpdatedEvent)
     //    IAM: none — only makes outbound HTTPS calls to the SPA webhook
     // -------------------------------------------------------------------------
-    this.catalogUpdatedConsumer = new lambda.Function(this, 'CatalogUpdatedConsumer', {
+    this.catalogUpdatedConsumer = new lambda.DockerImageFunction(this, 'CatalogUpdatedConsumer', {
       functionName: 'catalog-catalog-updated-consumer',
-      runtime: DOTNET_RUNTIME,
       architecture: DOTNET_ARCH,
-      handler: `${HANDLER_PREFIX}Consumer.CatalogUpdatedConsumerFunction::FunctionHandler`,
-      code,
+      code: catalogCode([`${HANDLER_PREFIX}Consumer.CatalogUpdatedConsumerFunction::FunctionHandler`]),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       description:
@@ -122,12 +139,10 @@ export class CatalogLambdas extends Construct {
     //    Trigger: EventBridge rule (ReviewCreatedEvent from Review service)
     //    IAM: read+write on products and catalog-processed-events (ADR-0011)
     // -------------------------------------------------------------------------
-    this.reviewCreatedConsumer = new lambda.Function(this, 'ReviewCreatedConsumer', {
+    this.reviewCreatedConsumer = new lambda.DockerImageFunction(this, 'ReviewCreatedConsumer', {
       functionName: 'catalog-review-created-consumer',
-      runtime: DOTNET_RUNTIME,
       architecture: DOTNET_ARCH,
-      handler: `${HANDLER_PREFIX}Consumer.ReviewCreatedConsumerFunction::FunctionHandler`,
-      code,
+      code: catalogCode([`${HANDLER_PREFIX}Consumer.ReviewCreatedConsumerFunction::FunctionHandler`]),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       description:
