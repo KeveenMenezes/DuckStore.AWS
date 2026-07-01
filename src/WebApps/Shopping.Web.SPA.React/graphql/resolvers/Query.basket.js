@@ -21,7 +21,7 @@ export function response(ctx) {
       quantity: i.Quantity,
       color: i.Color ?? null,
       price: i.Price,
-      productId: String(i.ProductId),
+      productId: `${i.ProductId}`,
       productName: i.ProductName,
     })),
     totalPrice: cart.TotalPrice,

@@ -1,5 +1,3 @@
-import { cookies } from 'next/headers'
-
 /**
  * Resolves the Cognito Access Token for the current request context.
  *
@@ -20,6 +18,9 @@ export async function getAuthToken(): Promise<string | undefined> {
   }
 
   try {
+    // Dynamic import keeps `next/headers` out of the static import graph so
+    // bundlers don't reject it when this module is pulled into a Client Component.
+    const { cookies } = await import('next/headers')
     const cookieStore = await cookies()
     const accessToken = cookieStore.get('access_token')?.value
     return accessToken ? `Bearer ${accessToken}` : undefined

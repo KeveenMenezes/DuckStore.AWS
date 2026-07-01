@@ -15,7 +15,10 @@ import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
+// Strip AppSync-only auth directives — graphql-yoga's schema builder doesn't know them.
 const typeDefs = readFileSync(join(process.cwd(), 'graphql/schema.graphql'), 'utf-8')
+  .replace(/\s*@aws_api_key\b/g, '')
+  .replace(/\s*@aws_cognito_user_pools\b/g, '')
 
 // AWS SDK v3 respects AWS_ENDPOINT_URL_DYNAMODB automatically, but we set it explicitly
 // because Aspire injects it via WithReference(dynamoDb).
