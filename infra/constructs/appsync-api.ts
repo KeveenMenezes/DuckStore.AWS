@@ -1,4 +1,5 @@
 import * as path from 'path';
+import { readFileSync } from 'fs';
 import * as cdk from 'aws-cdk-lib';
 import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
@@ -65,13 +66,12 @@ export class AppSyncApi extends Construct {
     typeName: string,
     fieldName: string,
   ) {
+    const filePath = path.join(RESOLVERS_DIR, `${typeName}.${fieldName}.js`);
     dataSource.createResolver(id, {
       typeName,
       fieldName,
       runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromAsset(
-        path.join(RESOLVERS_DIR, `${typeName}.${fieldName}.js`),
-      ),
+      code: appsync.Code.fromInline(readFileSync(filePath, 'utf-8')),
     });
   }
 

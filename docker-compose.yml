@@ -5,9 +5,6 @@ services:
   basketdb:
     image: postgres
 
-  distributedcache:
-    image: redis
-
   orderdb:
     image: postgres
 

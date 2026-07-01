@@ -1,10 +1,11 @@
 import { handleLocal } from './local'
-import { handleProd } from './prod'
+import { handleAppSync } from './appsync'
 
-// In production, APPSYNC_URL is set (server-only env var) and all requests are
-// proxied to AppSync with the Cognito Access Token from the httpOnly cookie.
-// In development, GraphQL Yoga handles requests against DynamoDB Local + Lambda emulator.
-const handle = process.env.APPSYNC_URL ? handleProd : handleLocal
+// GRAPHQL_BACKEND selects the backend explicitly per environment:
+// 'local' (dev) runs GraphQL Yoga against DynamoDB Local + Lambda emulator;
+// 'appsync' (dev/staging/prod on AWS) proxies to AppSync with the Cognito
+// Access Token from the httpOnly cookie.
+const handle = process.env.GRAPHQL_BACKEND === 'local' ? handleLocal : handleAppSync
 
 export const GET = handle
 export const POST = handle

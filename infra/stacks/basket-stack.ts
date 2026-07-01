@@ -1,5 +1,4 @@
 import * as cdk from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 import { BasketDynamoDB } from '../constructs/basket-dynamodb';
 import { BasketLambdas } from '../constructs/basket-lambdas';
@@ -8,16 +7,11 @@ export class BasketStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Use the default VPC so the DAX cluster and Lambda functions share the
-    // same network without provisioning a dedicated VPC (dev account convenience).
-    const vpc = ec2.Vpc.fromLookup(this, 'DefaultVpc', { isDefault: true });
-
     const dynamoDB = new BasketDynamoDB(this, 'BasketDynamoDB');
 
     const lambdas = new BasketLambdas(this, 'BasketLambdas', {
       shoppingCartsTable: dynamoDB.shoppingCartsTable,
       couponsTable: dynamoDB.couponsTable,
-      vpc,
     });
 
     new cdk.CfnOutput(this, 'ShoppingCartsTableName', {

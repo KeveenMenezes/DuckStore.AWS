@@ -82,7 +82,7 @@ Gerencia o carrinho de compras de cada usuário. Integra-se ao módulo de cupons
 1. Recebe o DTO do carrinho com todos os itens.
 2. Para cada item, consulta a tabela `coupons` buscando um cupom pelo nome do produto (`DynamoCouponRepository`).
 3. Aplica os descontos encontrados ao agregado `ShoppingCart` (regra de negócio in-process).
-4. Persiste o carrinho no DynamoDB (tabela `shopping-carts`) via `CacheBasketRepository` → `BasketRepository` (cache-aside Redis).
+4. Persiste o carrinho no DynamoDB (tabela `shopping-carts`) via `BasketRepository` (sem cache).
 
 **Resultado de negócio:** O carrinho é salvo com os preços já com desconto aplicado, garantindo que o cliente veja o preço final antes de confirmar.
 
