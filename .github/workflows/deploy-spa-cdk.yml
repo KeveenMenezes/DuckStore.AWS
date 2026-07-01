@@ -47,9 +47,30 @@ jobs:
       - name: Install SPA dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Pages fetch product/category data at build time (SSG/ISR prerendering),
+      # so the build needs real AppSync connectivity — not just the Lambda's
+      # runtime env vars, which don't exist yet at this point in the pipeline.
+      - name: Fetch AppSync connection info
+        id: appsync
+        run: |
+          OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name DuckStoreAppSyncStack \
+            --query "Stacks[0].Outputs" --output json)
+          echo "api_url=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiUrl") | .OutputValue')" >> "$GITHUB_OUTPUT"
+          echo "api_key=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiKey") | .OutputValue')" >> "$GITHUB_OUTPUT"
+
       - name: Build with OpenNext
         env:
           NEXT_PUBLIC_SITE_URL: ${{ env.SPA_URL }}
+          GRAPHQL_BACKEND: appsync
+          APPSYNC_URL: ${{ steps.appsync.outputs.api_url }}
+          APPSYNC_API_KEY: ${{ steps.appsync.outputs.api_key }}
         run: pnpm build:opennext
 
       - name: Setup Node.js for CDK
@@ -62,12 +83,6 @@ jobs:
       - name: Install CDK dependencies
         working-directory: infra
         run: npm ci
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6
-        with:
-          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy SPA CDK stack
         working-directory: infra
