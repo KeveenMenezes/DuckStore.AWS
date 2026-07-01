@@ -1,6 +1,8 @@
 import { util } from '@aws-appsync/utils'
 
 export function request(ctx) {
+  // Ownership check: only the authenticated user can read their own cart
+  if (!ctx.identity || ctx.identity.username !== ctx.args.userName) util.unauthorized()
   return {
     operation: 'GetItem',
     key: { UserName: util.dynamodb.toDynamoDB(ctx.args.userName) },

@@ -1,4 +1,7 @@
-type Product {
+# Public types: accessible via API_KEY (no login) and Cognito (authenticated users).
+# Private types carry no directive — the default Cognito User Pools auth applies.
+
+type Product @aws_api_key @aws_cognito_user_pools {
   id: ID!
   name: String!
   description: String!
@@ -11,7 +14,7 @@ type Product {
   ratingCount: Int!
 }
 
-type Review {
+type Review @aws_api_key @aws_cognito_user_pools {
   id: ID!
   productId: ID!
   userName: String!
@@ -20,24 +23,24 @@ type Review {
   createdAt: String!
 }
 
-type ReviewPage {
+type ReviewPage @aws_api_key @aws_cognito_user_pools {
   items: [Review!]!
   nextToken: String
 }
 
-type ProductPage {
+type ProductPage @aws_api_key @aws_cognito_user_pools {
   items: [Product!]!
   nextToken: String
 }
 
-type Category {
+type Category @aws_api_key @aws_cognito_user_pools {
   id: ID!
   name: String!
   parentId: ID
   path: [ID!]!
 }
 
-type CategoryPage {
+type CategoryPage @aws_api_key @aws_cognito_user_pools {
   items: [Category!]!
   nextToken: String
 }
@@ -192,56 +195,56 @@ input CreateReviewInput {
 }
 
 type Query {
-  # Direct DynamoDB resolver — Scan Products table, no Lambda in the path
-  products(pageSize: Int, nextToken: String): ProductPage!
+  # Direct DynamoDB resolver — public (API_KEY or Cognito)
+  products(pageSize: Int, nextToken: String): ProductPage! @aws_api_key @aws_cognito_user_pools
 
-  # Direct DynamoDB resolver — GetItem by Id
-  product(id: ID!): Product
+  # Direct DynamoDB resolver — public (API_KEY or Cognito)
+  product(id: ID!): Product @aws_api_key @aws_cognito_user_pools
 
-  # Direct DynamoDB resolver — Scan Categories table
-  categories(pageSize: Int, nextToken: String): CategoryPage!
+  # Direct DynamoDB resolver — public (API_KEY or Cognito)
+  categories(pageSize: Int, nextToken: String): CategoryPage! @aws_api_key @aws_cognito_user_pools
 
-  # Direct DynamoDB resolver — GetItem on ShoppingCarts; Data attribute is a JSON blob
+  # Direct DynamoDB resolver — Cognito required; resolver enforces ownership (username match)
   basket(userName: String!): ShoppingCart
 
-  # Direct DynamoDB resolver — GetItem on coupons by ProductName (Discount merged into Basket; ADR-0009)
+  # Direct DynamoDB resolver — Cognito required
   couponFor(productName: String!): Coupon
 
-  # Direct DynamoDB resolver — Scan ordering (Type = "Order") with cursor pagination
+  # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
   orders(pageSize: Int, nextToken: String): OrderPage!
 
-  # Direct DynamoDB resolver — Scan with contains(OrderName) + Type filter
+  # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
   ordersByName(name: String!, pageSize: Int, nextToken: String): OrderPage!
 
-  # Lambda resolver — GSI1 is KEYS_ONLY; needs Query + BatchGetItem for full attributes (criterion 1)
+  # Lambda resolver — Cognito required; uses ctx.identity.sub (resolver ignores client customerId)
   ordersByCustomer(customerId: ID!): OrderPage!
 
-  # Direct DynamoDB resolver — Query reviews GSI1 by ProductId, newest-first
-  reviewsByProduct(productId: ID!, pageSize: Int, nextToken: String): ReviewPage!
+  # Direct DynamoDB resolver — public (API_KEY or Cognito)
+  reviewsByProduct(productId: ID!, pageSize: Int, nextToken: String): ReviewPage! @aws_api_key @aws_cognito_user_pools
 }
 
 type Mutation {
-  # Lambda resolver — MediatR/FluentValidation pipeline + in-process coupon lookup per item (criterion 2; ADR-0009)
+  # Lambda resolver — Cognito required; MediatR/FluentValidation + in-process coupon lookup (ADR-0009)
   storeBasket(input: ShoppingCartInput!): StoreBasketResult!
 
-  # Lambda resolver — 2-step DynamoDB pipeline for CDC marker (criterion 1; ADR-0009)
+  # Lambda resolver — Cognito required; resolver injects ctx.identity.sub as CustomerId (ADR-0009)
   checkoutBasket(input: CheckoutInput!): CheckoutResult!
 
-  # Direct DynamoDB resolver — DeleteItem on ShoppingCarts
+  # Direct DynamoDB resolver — Cognito required; resolver enforces ownership (username match)
   deleteBasket(userName: String!): DeleteBasketResult!
 
-  # Direct DynamoDB resolver — PutItem on Products
+  # Direct DynamoDB resolver — Cognito required; Admin or Seller group only (enforced in resolver)
   createProduct(input: CreateProductInput!): CreateProductResult!
 
-  # Direct DynamoDB resolver — UpdateItem on Products (condition: attribute_exists)
+  # Direct DynamoDB resolver — Cognito required; Admin or Seller group only (enforced in resolver)
   updateProduct(input: UpdateProductInput!): UpdateProductResult!
 
-  # Direct DynamoDB resolver — DeleteItem on Products
+  # Direct DynamoDB resolver — Cognito required; Admin or Seller group only (enforced in resolver)
   deleteProduct(id: ID!): DeleteProductResult!
 
-  # Lambda resolver — Query ORDERITEM rows + TransactWriteItems (criterion 1; ADR-0009)
+  # Lambda resolver — Cognito required; Admin group only (enforced in resolver)
   deleteOrder(orderId: ID!): DeleteOrderResult!
 
-  # Direct DynamoDB resolver — PutItem on Reviews (CDC updates the product rating; ADR-0011)
+  # Direct DynamoDB resolver — Cognito required; CDC updates product rating (ADR-0011)
   createReview(input: CreateReviewInput!): CreateReviewResult!
 }

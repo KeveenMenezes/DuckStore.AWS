@@ -515,7 +515,7 @@ const resolvers = {
 const yoga = createYoga({
   schema: createSchema({ typeDefs, resolvers }),
   graphqlEndpoint: '/api/graphql',
-  maskedErrors: false,
+  maskedErrors: true,
 })
 
 export async function handleLocal(request: Request): Promise<Response> {
