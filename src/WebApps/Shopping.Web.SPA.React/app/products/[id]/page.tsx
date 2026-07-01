@@ -14,8 +14,10 @@ import { getReviewsByProduct } from "@/features/reviews/services/reviews.service
 import { formatBRL } from "@/shared/lib/format"
 import { ROUTES } from "@/shared/constants/routes"
 
-// ISR: product detail is the same for all users; invalidated by catalog-updated
-// webhook (product data / AverageRating) and review-created webhook (reviews list).
+// ISR: product detail is the same for all users; invalidated per-product via
+// the products:{id}/reviews:{id} tags (not the generic products/reviews tags
+// the home page uses), so a change to one product doesn't revalidate every
+// other product's page.
 export const revalidate = false
 
 interface ProductPageProps {
@@ -24,7 +26,7 @@ interface ProductPageProps {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params
-  const product = await getProduct(id, { cache: 'force-cache', next: { tags: ['products'] } }).catch(() => null)
+  const product = await getProduct(id, { cache: 'force-cache', next: { tags: [`products:${id}`] } }).catch(() => null)
   if (!product) return { title: "Product not found - CodeDuck Store" }
   return {
     title: `${product.name} - CodeDuck Store`,
@@ -35,8 +37,8 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params
 
-  const productInit: RequestInit = { cache: 'force-cache', next: { tags: ['products'] } }
-  const reviewsInit: RequestInit = { cache: 'force-cache', next: { tags: ['reviews'] } }
+  const productInit: RequestInit = { cache: 'force-cache', next: { tags: [`products:${id}`] } }
+  const reviewsInit: RequestInit = { cache: 'force-cache', next: { tags: [`reviews:${id}`] } }
 
   const [product, reviewPage] = await Promise.all([
     getProduct(id, productInit).catch(() => null),

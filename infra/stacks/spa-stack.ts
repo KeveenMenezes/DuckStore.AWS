@@ -81,12 +81,11 @@ export class SpaStack extends cdk.Stack {
 
     // Backend-triggered ISR revalidation (catalog/review changes from
     // outside the SPA) — no HTTP webhook, straight EventBridge -> DynamoDB
-    // tag lookup -> SQS revalidation queue. Replaces the old
-    // catalog-catalog-updated-consumer + /api/webhooks/catalog-updated pair.
+    // tag-cache staleness marking (same mechanism revalidateTag() uses
+    // internally). Replaces the old catalog-catalog-updated-consumer +
+    // /api/webhooks/catalog-updated pair.
     new SpaRevalidationWebhook(this, 'RevalidationWebhook', {
       tagCacheTable: storage.tagCacheTable,
-      revalidationQueue: storage.revalidationQueue,
-      spaHost: domainName,
       eventBus: events.EventBus.fromEventBusName(this, 'DuckstoreEventBus', 'duckstore-event-bus'),
     });
 

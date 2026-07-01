@@ -37,7 +37,12 @@ public class CatalogStreamEventPublisherFunction
 
         foreach (var record in dynamoEvent.Records)
         {
-            await eventPublisher.PublishAsync(new CatalogUpdatedEvent { ChangeType = record.EventName });
+            var productId = record.Dynamodb.Keys.TryGetValue("Id", out var idAttribute) ? idAttribute.S : string.Empty;
+            await eventPublisher.PublishAsync(new CatalogUpdatedEvent
+            {
+                ChangeType = record.EventName,
+                ProductId = productId,
+            });
         }
     }
 }

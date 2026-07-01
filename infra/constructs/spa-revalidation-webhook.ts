@@ -4,14 +4,10 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
-import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
 
 export interface SpaRevalidationWebhookProps {
   readonly tagCacheTable: dynamodb.Table;
-  readonly revalidationQueue: sqs.Queue;
-  /** SPA's public hostname, e.g. "dev-duckstore.keveenmenezes.com" (no scheme). */
-  readonly spaHost: string;
   /** The shared "duckstore-event-bus" Catalog/Review publish integration events to. */
   readonly eventBus: events.IEventBus;
 }
@@ -20,11 +16,13 @@ export interface SpaRevalidationWebhookProps {
  * Replaces the old HTTP webhook (public POST to /api/webhooks/catalog-updated
  * + a shared secret header) for backend-triggered ISR revalidation.
  * Subscribes directly to CatalogUpdatedEvent/ReviewCreatedEvent on the same
- * EventBridge bus Catalog already publishes to, resolves affected paths via
- * the OpenNext tag cache table, and enqueues them straight onto the
- * revalidation SQS queue OpenNext's own revalidation Lambda already
- * consumes — no public HTTP surface, no secret to manage, no dependency on
- * the SPA even being reachable to receive the trigger.
+ * EventBridge bus Catalog already publishes to, and marks every tag-cache
+ * entry for the affected tag as stale directly in DynamoDB — the same
+ * mechanism Next.js's own revalidateTag() uses internally (see
+ * lambda/spa-revalidation-webhook/index.mjs for the full explanation of why
+ * this replaces the earlier SQS-based design). No public HTTP surface, no
+ * secret to manage, no dependency on the SPA even being reachable to
+ * receive the trigger.
  *
  * Relies on the Node.js 22 Lambda runtime's built-in AWS SDK v3 (no
  * node_modules bundled) — acceptable for this small piece of internal glue
@@ -37,7 +35,7 @@ export class SpaRevalidationWebhook extends Construct {
   constructor(scope: Construct, id: string, props: SpaRevalidationWebhookProps) {
     super(scope, id);
 
-    const { tagCacheTable, revalidationQueue, spaHost, eventBus } = props;
+    const { tagCacheTable, eventBus } = props;
 
     this.function = new lambda.Function(this, 'Function', {
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -47,16 +45,13 @@ export class SpaRevalidationWebhook extends Construct {
       timeout: cdk.Duration.seconds(30),
       memorySize: 256,
       description:
-        'Resolves CatalogUpdatedEvent/ReviewCreatedEvent to affected ISR paths and enqueues them for revalidation',
+        'Marks OpenNext tag-cache entries stale in response to CatalogUpdatedEvent/ReviewCreatedEvent',
       environment: {
         TAG_CACHE_TABLE_NAME: tagCacheTable.tableName,
-        REVALIDATION_QUEUE_URL: revalidationQueue.queueUrl,
-        SPA_HOST: spaHost,
       },
     });
 
-    tagCacheTable.grantReadData(this.function);
-    revalidationQueue.grantSendMessages(this.function);
+    tagCacheTable.grantReadWriteData(this.function);
 
     // Deploy-order note: this imports the bus by fixed name (no CFN
     // Fn::ImportValue), so CDK won't sequence stack deploys for us —
