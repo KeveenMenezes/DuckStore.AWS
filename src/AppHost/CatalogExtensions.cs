@@ -6,12 +6,10 @@ namespace AppHost.Catalog;
 public static class CatalogExtensions
 {
     private const string ProductsTableName = "products";
-    private const string CatalogWebhookSecret = "catalog-dev-secret";
 
     public static IDistributedApplicationBuilder AddCatalogLambdas(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<DynamoDBLocalResource> dynamoDb,
-        string spaWebhookUrl)
+        IResourceBuilder<DynamoDBLocalResource> dynamoDb)
     {
         var catalogSeeder = builder.AddProject<Projects.Catalog_DevelopmentDataSeeder>("catalog-data-seeder")
             .WaitFor(dynamoDb)
@@ -27,14 +25,8 @@ public static class CatalogExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
-        // Consumes CatalogUpdated from EventBridge and triggers ISR cache revalidation on the SPA.
-        builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
-                "catalog-catalog-updated-consumer",
-                lambdaHandler: "Catalog.Function::Catalog.Function.Modules.Products.EventsIntegration.Consumer.CatalogUpdatedConsumerFunction::FunctionHandler")
-            .WaitForCompletion(catalogSeeder)
-            .WithAwsDevEnvironment()
-            .WithEnvironment("Catalog__WebhookUrl", $"{spaWebhookUrl}/api/webhooks/catalog-updated")
-            .WithEnvironment("CATALOG_WEBHOOK_SECRET", CatalogWebhookSecret);
+        // ISR revalidation for catalog changes is production-only (SpaTagRevalidator
+        // in infra/) — `next dev` doesn't do ISR caching, so there's no local equivalent.
 
         // Consumes ReviewCreated from EventBridge and folds the rating into the product
         // (AverageRating/RatingCount) — ADR-0011.
@@ -48,6 +40,4 @@ public static class CatalogExtensions
 
         return builder;
     }
-
-    public static string CatalogWebhookSecretValue => CatalogWebhookSecret;
 }

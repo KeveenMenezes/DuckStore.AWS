@@ -1,12 +1,11 @@
 import { revalidateTag } from 'next/cache'
 import { NextResponse } from 'next/server'
 
-// Invalidates the ISR cache for the reviews tag.
-// Triggered in two ways:
-//   1. Client-side: review-form.tsx POSTs here immediately after a successful createReview mutation.
-//   2. Future server-side: DynamoDB Stream (reviews table) → Lambda → POST /api/webhooks/review-created
-//      (same CDC pattern as catalog-updated). Provides server-authoritative invalidation for
-//      reviews created outside the SPA (e.g. via AppSync Console or API).
+// Invalidates the ISR cache for one product's reviews:{productId} tag —
+// granular, not the old blanket "reviews" tag, so one product's review
+// doesn't revalidate every other product's page.
+// Triggered client-side: review-form.tsx POSTs here immediately after a
+// successful createReview mutation.
 // Required env var: REVIEW_WEBHOOK_SECRET
 export async function POST(req: Request) {
   const secret = process.env.REVIEW_WEBHOOK_SECRET
@@ -19,6 +18,12 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  revalidateTag('reviews', {})
-  return NextResponse.json({ revalidated: true, tag: 'reviews' })
+  const { productId } = await req.json().catch(() => ({ productId: undefined }))
+  if (!productId) {
+    return NextResponse.json({ error: 'productId is required' }, { status: 400 })
+  }
+
+  const tag = `reviews:${productId}`
+  revalidateTag(tag, {})
+  return NextResponse.json({ revalidated: true, tag })
 }
