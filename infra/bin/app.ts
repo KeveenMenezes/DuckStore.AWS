@@ -5,6 +5,7 @@ import { BasketStack } from '../stacks/basket-stack';
 import { OrderingStack } from '../stacks/ordering-stack';
 import { ReviewStack } from '../stacks/review-stack';
 import { AppSyncStack } from '../stacks/appsync-stack';
+import { SpaStack } from '../stacks/spa-stack';
 
 const app = new cdk.App();
 
@@ -42,4 +43,17 @@ new AppSyncStack(app, 'DuckStoreAppSyncStack', {
   spaBaseUrl: app.node.tryGetContext('spaBaseUrl') ?? 'http://localhost:3000',
   description:
     'DuckStore AppSync API — Cognito UserPool (RBAC groups), DynamoDB direct resolvers, Lambda resolvers',
+});
+
+new SpaStack(app, 'DuckStoreSpaStack', {
+  env,
+  environmentName: app.node.tryGetContext('environmentName') ?? 'dev',
+  hostedZoneDomainName: app.node.tryGetContext('hostedZoneDomainName') ?? 'keveenmenezes.com',
+  // Cross-stack references into DuckStoreAppSyncStack's CfnOutputs — avoids
+  // duplicating these values as separate GitHub secrets/vars.
+  appsyncUrl: cdk.Fn.importValue('DuckStoreAppSyncStack-ApiUrl'),
+  appsyncApiKey: cdk.Fn.importValue('DuckStoreAppSyncStack-ApiKey'),
+  cognitoClientId: cdk.Fn.importValue('DuckStoreAppSyncStack-UserPoolClientId'),
+  cognitoHostedUiUrl: cdk.Fn.importValue('DuckStoreAppSyncStack-HostedUiUrl'),
+  description: 'DuckStore SPA — OpenNext (Next.js on Lambda) behind CloudFront with a custom domain',
 });
