@@ -1,4 +1,4 @@
-import { gql } from "@/api"
+import { gqlPublic } from "@/api"
 import { GET_PRODUCTS, GET_PRODUCT } from "@/api/queries/product"
 import { GET_CATEGORIES } from "@/api/queries/category"
 import type { GqlProductPage, GqlCategoryPage, GqlProduct } from "@/graphql/types"
@@ -6,21 +6,24 @@ import type { Product, ProductCategory } from "@/features/products/types/product
 
 export const ALL_CATEGORY_ID = "all"
 
+// Public catalog reads use the cookie-free `gqlPublic` client so the Server
+// Components that call them (home, product detail) stay statically renderable.
+
 /** Fetch the full product catalog from GraphQL (used by Server Components). */
 export async function getProducts(pageSize = 100, init?: RequestInit): Promise<Product[]> {
-  const data = await gql<{ products: GqlProductPage }>(GET_PRODUCTS, { pageSize }, init)
+  const data = await gqlPublic<{ products: GqlProductPage }>(GET_PRODUCTS, { pageSize }, init)
   return data.products.items
 }
 
 /** Fetch a single product by id (used by Server Components). */
 export async function getProduct(id: string, init?: RequestInit): Promise<Product> {
-  const data = await gql<{ product: GqlProduct }>(GET_PRODUCT, { id }, init)
+  const data = await gqlPublic<{ product: GqlProduct }>(GET_PRODUCT, { id }, init)
   return data.product
 }
 
 /** Fetch all categories from GraphQL. */
 export async function getRawCategories(init?: RequestInit): Promise<Array<{ id: string; name: string }>> {
-  const data = await gql<{ categories: GqlCategoryPage }>(GET_CATEGORIES, { pageSize: 50 }, init)
+  const data = await gqlPublic<{ categories: GqlCategoryPage }>(GET_CATEGORIES, { pageSize: 50 }, init)
   return data.categories.items
 }
 

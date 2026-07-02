@@ -65,8 +65,8 @@ export function Header() {
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
 
-            <Link href={ROUTES.cart} aria-label="Open cart">
-              <Button variant="ghost" size="icon" className="relative">
+            <Link href={ROUTES.cart}>
+              <Button variant="ghost" size="icon" className="relative" aria-label="Open cart">
                 <ShoppingCart className="h-5 w-5" />
                 {totalItems > 0 && (
                   <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">

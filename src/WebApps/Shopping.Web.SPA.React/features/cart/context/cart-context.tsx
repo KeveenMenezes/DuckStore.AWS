@@ -82,7 +82,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     const timer = setTimeout(() => {
       const userName = getGuestUserName()
-      syncCartToBasket(userName, items).catch(console.error)
+      // Fails silently for guests/local-simulated users (no Cognito session to authorize
+      // the write) — same tolerance as the hydrate effect above.
+      syncCartToBasket(userName, items).catch(() => {})
     }, 300)
     return () => clearTimeout(timer)
   }, [items, isLoading])
