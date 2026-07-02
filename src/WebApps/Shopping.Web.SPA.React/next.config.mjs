@@ -1,13 +1,4 @@
 /** @type {import('next').NextConfig} */
-
-// Product images are served from our own bucket through the SPA's CloudFront
-// domain (see infra/constructs/spa-product-images.ts). Next's optimizer only
-// fetches remote sources whose host is whitelisted here; derive it from the
-// site URL injected at build time so it tracks the environment's domain.
-const siteHost = process.env.NEXT_PUBLIC_SITE_URL
-  ? new URL(process.env.NEXT_PUBLIC_SITE_URL).hostname
-  : undefined
-
 const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
@@ -21,9 +12,8 @@ const nextConfig = {
     deviceSizes: [640, 828, 1080, 1200],
     imageSizes: [64, 128, 256],
     qualities: [60, 75, 85],
-    remotePatterns: siteHost
-      ? [{ protocol: 'https', hostname: siteHost, pathname: '/product-images/**' }]
-      : [],
+    // All images are currently local (/public). A future product-images bucket
+    // outside the site files will need an images.remotePatterns entry here.
   },
 }
 

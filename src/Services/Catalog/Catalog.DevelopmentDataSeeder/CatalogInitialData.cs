@@ -15,11 +15,11 @@ public class CatalogInitialData(IProductRepository productRepository, ICategoryR
     private static readonly Guid FrameworksId = new("a1000000-0000-0000-0000-000000000003");
     private static readonly Guid SpecialsId = new("a1000000-0000-0000-0000-000000000004");
 
-    // Served from our own product-images S3 bucket via the SPA's CloudFront
-    // domain (infra/constructs/spa-product-images.ts). Whitelisted for Next's
-    // image optimizer in next.config.mjs (images.remotePatterns → /product-images/**).
-    private const string DuckImage =
-        "https://dev-duckstore.keveenmenezes.com/product-images/hero.png";
+    // Reuses the SPA's own bundled asset (public/images/duck-hero.jpg) for now;
+    // a relative path lets Next's image optimizer treat it as a local image
+    // (read from the assets bucket) with no remotePatterns/domain coupling. A
+    // dedicated product-images bucket will replace this later.
+    private const string DuckImage = "/images/duck-hero.jpg";
 
     public async Task PopulateAsync(CancellationToken cancellationToken = default)
     {
