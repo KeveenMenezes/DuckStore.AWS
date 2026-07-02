@@ -101,11 +101,43 @@ export class SpaDistribution extends Construct {
       viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
     };
 
+    // The server function returns per-response Cache-Control: SSG/ISR shells
+    // (/cart, /challenges, /checkout, /my-orders, /my-profile) say
+    // `s-maxage=31536000`, while dynamic pages (/, /products/[id]) and the API
+    // routes say `no-store` (or send no header). CACHING_DISABLED ignored all of
+    // that and forced every request onto the Lambda — so cacheable shells never
+    // reached the CloudFront edge (all MISS → high TTFB). This policy instead
+    // *respects* the origin's Cache-Control (minTtl/defaultTtl = 0, so a missing
+    // or no-store header is never cached; only an explicit s-maxage caches, up to
+    // maxTtl). The key is kept minimal but includes the headers/query that vary a
+    // Next response so full-page HTML and React Server Component (RSC) payloads
+    // for the same route cache separately and don't collide. Cookies are excluded
+    // from the key — the cached shells are user-agnostic (auth/user data hydrates
+    // client-side); cookies are still forwarded to the origin for dynamic pages
+    // via the ALL_VIEWER_EXCEPT_HOST_HEADER origin-request policy below.
+    const serverCachePolicy = new cloudfront.CachePolicy(this, 'ServerCachePolicy', {
+      minTtl: cdk.Duration.seconds(0),
+      defaultTtl: cdk.Duration.seconds(0),
+      maxTtl: cdk.Duration.days(365),
+      queryStringBehavior: cloudfront.CacheQueryStringBehavior.all(),
+      headerBehavior: cloudfront.CacheHeaderBehavior.allowList(
+        'accept',
+        'rsc',
+        'next-router-prefetch',
+        'next-router-state-tree',
+        'next-url',
+        'x-prerender-revalidate',
+      ),
+      cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+      enableAcceptEncodingGzip: true,
+      enableAcceptEncodingBrotli: true,
+    });
+
     // Lambda Function URL origins must not receive the CloudFront-facing Host
     // header verbatim — this AWS-managed policy exists specifically for that.
     const serverBehavior: cloudfront.BehaviorOptions = {
       origin: serverOrigin,
-      cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+      cachePolicy: serverCachePolicy,
       originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
       allowedMethods: cloudfront.AllowedMethods.ALLOW_ALL,
       viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
