@@ -61,6 +61,8 @@ export function HeroSection() {
               src="/images/duck-hero.jpg"
               alt="Debug Duck - Rubber duck for debugging"
               fill
+              sizes="(max-width: 1024px) 100vw, 448px"
+              quality={75}
               className="object-cover"
               priority
               loading="eager"

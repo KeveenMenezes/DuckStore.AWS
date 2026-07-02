@@ -1,3 +1,4 @@
+import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
@@ -78,6 +79,22 @@ export class SpaDistribution extends Construct {
     });
     const imageOrigin = new origins.FunctionUrlOrigin(imageOptimizationFunctionUrl);
 
+    // The image optimizer varies its response by the Accept header (AVIF vs
+    // WebP vs JPEG) and the url/w/q query string. CloudFront must key the cache
+    // on both, or it would serve the wrong format to a client — hence a
+    // dedicated policy instead of the CACHING_DISABLED the behavior used while
+    // optimization was off.
+    const imageCachePolicy = new cloudfront.CachePolicy(this, 'ImageOptimizationCachePolicy', {
+      minTtl: cdk.Duration.seconds(0),
+      defaultTtl: cdk.Duration.days(365),
+      maxTtl: cdk.Duration.days(365),
+      queryStringBehavior: cloudfront.CacheQueryStringBehavior.allowList('url', 'w', 'q'),
+      headerBehavior: cloudfront.CacheHeaderBehavior.allowList('Accept'),
+      cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+      enableAcceptEncodingGzip: true,
+      enableAcceptEncodingBrotli: true,
+    });
+
     const staticBehavior: cloudfront.BehaviorOptions = {
       origin: s3Origin,
       cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
@@ -99,7 +116,7 @@ export class SpaDistribution extends Construct {
       additionalBehaviors: {
         '_next/image*': {
           origin: imageOrigin,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          cachePolicy: imageCachePolicy,
           originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,

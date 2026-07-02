@@ -15,10 +15,11 @@ public class CatalogInitialData(IProductRepository productRepository, ICategoryR
     private static readonly Guid FrameworksId = new("a1000000-0000-0000-0000-000000000003");
     private static readonly Guid SpecialsId = new("a1000000-0000-0000-0000-000000000004");
 
-    private const string DuckImage =
-        "https://s.yimg.com/ny/api/res/1.2/1KPwRUrDJIrTid9e6.UwqA--" +
-        "/YXBwaWQ9aGlnaGxhbmRlcjt3PTEyMDA7aD02MzI-" +
-        "/https://s.yimg.com/os/creatr-uploaded-images/2023-06/d377ed90-1059-11ee-be4e-0a70c44f0039";
+    // Reuses the SPA's own bundled asset (public/images/duck-hero.jpg) for now;
+    // a relative path lets Next's image optimizer treat it as a local image
+    // (read from the assets bucket) with no remotePatterns/domain coupling. A
+    // dedicated product-images bucket will replace this later.
+    private const string DuckImage = "/images/duck-hero.jpg";
 
     public async Task PopulateAsync(CancellationToken cancellationToken = default)
     {
