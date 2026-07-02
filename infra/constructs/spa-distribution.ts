@@ -10,8 +10,6 @@ import { Construct } from 'constructs';
 
 export interface SpaDistributionProps {
   readonly assetsBucket: s3.Bucket;
-  /** Product catalog images, served at `/product-images/*` (see spa-product-images.ts). */
-  readonly productImagesBucket: s3.Bucket;
   readonly defaultServerFunctionUrl: lambda.FunctionUrl;
   readonly imageOptimizationFunctionUrl: lambda.FunctionUrl;
   /** Full custom domain, e.g. "dev-duckstore.keveenmenezes.com". */
@@ -51,7 +49,6 @@ export class SpaDistribution extends Construct {
 
     const {
       assetsBucket,
-      productImagesBucket,
       defaultServerFunctionUrl,
       imageOptimizationFunctionUrl,
       domainName,
@@ -81,7 +78,6 @@ export class SpaDistribution extends Construct {
       customHeaders: { 'x-origin-verify': originVerifySecret },
     });
     const imageOrigin = new origins.FunctionUrlOrigin(imageOptimizationFunctionUrl);
-    const productImagesOrigin = origins.S3BucketOrigin.withOriginAccessControl(productImagesBucket);
 
     // The image optimizer varies its response by the Accept header (AVIF vs
     // WebP vs JPEG) and the url/w/q query string. CloudFront must key the cache
@@ -122,15 +118,6 @@ export class SpaDistribution extends Construct {
           origin: imageOrigin,
           cachePolicy: imageCachePolicy,
           originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
-          allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
-          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
-        },
-        // Product catalog images (original sources). The image optimizer fetches
-        // these over HTTPS via this same domain, then serves the optimized
-        // result under `_next/image*`.
-        'product-images/*': {
-          origin: productImagesOrigin,
-          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         },
