@@ -88,17 +88,17 @@ export class SpaLambdas extends Construct {
     });
 
     // -------------------------------------------------------------------------
-    // image-optimization-function — serves `_next/image*`. Reads source images
-    // straight from the assets bucket. Next.js images are unoptimized in this
-    // app's config, so this path is effectively unused today, but we deploy it
-    // to match OpenNext's build output faithfully.
+    // image-optimization-function — serves `_next/image*`. Resizes/re-encodes
+    // source images (local /public assets from the assets bucket, and product
+    // images fetched over HTTPS) to AVIF/WebP via sharp. open-next.config.ts
+    // installs a linux-arm64 sharp so this actually runs on the Lambda.
     // -------------------------------------------------------------------------
     this.imageOptimizationFunction = new lambda.Function(this, 'ImageOptimizationFunction', {
       runtime: NODE_RUNTIME,
       architecture: ARCH,
       handler: 'index.handler',
       code: lambda.Code.fromAsset(`${openNextDir}/image-optimization-function`),
-      memorySize: 1024,
+      memorySize: 1536,
       timeout: cdk.Duration.seconds(25),
       description: 'OpenNext image optimization function (_next/image)',
       environment: {

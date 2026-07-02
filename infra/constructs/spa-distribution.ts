@@ -1,3 +1,4 @@
+import * as cdk from 'aws-cdk-lib';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
@@ -9,6 +10,8 @@ import { Construct } from 'constructs';
 
 export interface SpaDistributionProps {
   readonly assetsBucket: s3.Bucket;
+  /** Product catalog images, served at `/product-images/*` (see spa-product-images.ts). */
+  readonly productImagesBucket: s3.Bucket;
   readonly defaultServerFunctionUrl: lambda.FunctionUrl;
   readonly imageOptimizationFunctionUrl: lambda.FunctionUrl;
   /** Full custom domain, e.g. "dev-duckstore.keveenmenezes.com". */
@@ -48,6 +51,7 @@ export class SpaDistribution extends Construct {
 
     const {
       assetsBucket,
+      productImagesBucket,
       defaultServerFunctionUrl,
       imageOptimizationFunctionUrl,
       domainName,
@@ -77,6 +81,23 @@ export class SpaDistribution extends Construct {
       customHeaders: { 'x-origin-verify': originVerifySecret },
     });
     const imageOrigin = new origins.FunctionUrlOrigin(imageOptimizationFunctionUrl);
+    const productImagesOrigin = origins.S3BucketOrigin.withOriginAccessControl(productImagesBucket);
+
+    // The image optimizer varies its response by the Accept header (AVIF vs
+    // WebP vs JPEG) and the url/w/q query string. CloudFront must key the cache
+    // on both, or it would serve the wrong format to a client — hence a
+    // dedicated policy instead of the CACHING_DISABLED the behavior used while
+    // optimization was off.
+    const imageCachePolicy = new cloudfront.CachePolicy(this, 'ImageOptimizationCachePolicy', {
+      minTtl: cdk.Duration.seconds(0),
+      defaultTtl: cdk.Duration.days(365),
+      maxTtl: cdk.Duration.days(365),
+      queryStringBehavior: cloudfront.CacheQueryStringBehavior.allowList('url', 'w', 'q'),
+      headerBehavior: cloudfront.CacheHeaderBehavior.allowList('Accept'),
+      cookieBehavior: cloudfront.CacheCookieBehavior.none(),
+      enableAcceptEncodingGzip: true,
+      enableAcceptEncodingBrotli: true,
+    });
 
     const staticBehavior: cloudfront.BehaviorOptions = {
       origin: s3Origin,
@@ -99,8 +120,17 @@ export class SpaDistribution extends Construct {
       additionalBehaviors: {
         '_next/image*': {
           origin: imageOrigin,
-          cachePolicy: cloudfront.CachePolicy.CACHING_DISABLED,
+          cachePolicy: imageCachePolicy,
           originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        },
+        // Product catalog images (original sources). The image optimizer fetches
+        // these over HTTPS via this same domain, then serves the optimized
+        // result under `_next/image*`.
+        'product-images/*': {
+          origin: productImagesOrigin,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         },
