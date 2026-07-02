@@ -34,3 +34,17 @@ export async function getAuthHeaders(): Promise<Record<string, string> | undefin
     return apiKeyFallback
   }
 }
+
+/**
+ * Auth headers for PUBLIC read queries (catalog, reviews). Deliberately never
+ * calls `cookies()` — reading a cookie during render forces the route to be
+ * dynamic, which is exactly what stopped `/` and `/products/[id]` from being
+ * statically generated / CDN-cached. These queries don't need a user token
+ * (the API key authorizes them), so server-side we return the key directly and
+ * stay cookie-free; the browser still goes through the /api/graphql BFF.
+ */
+export async function getPublicAuthHeaders(): Promise<Record<string, string> | undefined> {
+  if (typeof window !== 'undefined') return undefined
+  if (!process.env.APPSYNC_URL) return undefined
+  return { 'x-api-key': process.env.APPSYNC_API_KEY! }
+}

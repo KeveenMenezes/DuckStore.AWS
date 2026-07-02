@@ -9,7 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { StarRatingDisplay } from "@/features/reviews/components/star-rating"
 import { ReviewsSection } from "@/features/reviews/components/reviews-section"
 import { AddToCartButton } from "@/app/products/[id]/add-to-cart-button"
-import { getProduct } from "@/features/products/services/products.service"
+import { getProduct, getProducts } from "@/features/products/services/products.service"
 import { getReviewsByProduct } from "@/features/reviews/services/reviews.service"
 import { formatBRL } from "@/shared/lib/format"
 import { ROUTES } from "@/shared/constants/routes"
@@ -19,6 +19,16 @@ import { ROUTES } from "@/shared/constants/routes"
 // the home page uses), so a change to one product doesn't revalidate every
 // other product's page.
 export const revalidate = false
+
+// Prerender every product page at build (SSG) so `/products/[id]` is served
+// from the ISR cache / CDN instead of rendered on the Lambda per request.
+// Cookie-free (gqlPublic) — reading cookies here would force the route dynamic.
+// dynamicParams stays true (default), so a product not in this list still
+// renders on-demand and is then cached.
+export async function generateStaticParams() {
+  const products = await getProducts(100).catch(() => [])
+  return products.map((product) => ({ id: product.id }))
+}
 
 interface ProductPageProps {
   params: Promise<{ id: string }>
