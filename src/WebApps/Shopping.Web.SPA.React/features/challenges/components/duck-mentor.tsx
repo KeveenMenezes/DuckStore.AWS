@@ -24,6 +24,8 @@ export function DuckMentor({ hints, currentHints, onRequestHint, penalty }: Duck
             src="/images/duck-mentor.jpg"
             alt="Duck Mentor"
             fill
+            sizes="48px"
+            quality={75}
             className="object-cover"
           />
         </div>
