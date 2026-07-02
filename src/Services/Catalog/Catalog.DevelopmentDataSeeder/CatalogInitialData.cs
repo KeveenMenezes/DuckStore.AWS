@@ -15,10 +15,11 @@ public class CatalogInitialData(IProductRepository productRepository, ICategoryR
     private static readonly Guid FrameworksId = new("a1000000-0000-0000-0000-000000000003");
     private static readonly Guid SpecialsId = new("a1000000-0000-0000-0000-000000000004");
 
+    // Served from our own product-images S3 bucket via the SPA's CloudFront
+    // domain (infra/constructs/spa-product-images.ts). Whitelisted for Next's
+    // image optimizer in next.config.mjs (images.remotePatterns → /product-images/**).
     private const string DuckImage =
-        "https://s.yimg.com/ny/api/res/1.2/1KPwRUrDJIrTid9e6.UwqA--" +
-        "/YXBwaWQ9aGlnaGxhbmRlcjt3PTEyMDA7aD02MzI-" +
-        "/https://s.yimg.com/os/creatr-uploaded-images/2023-06/d377ed90-1059-11ee-be4e-0a70c44f0039";
+        "https://dev-duckstore.keveenmenezes.com/product-images/hero.png";
 
     public async Task PopulateAsync(CancellationToken cancellationToken = default)
     {

@@ -4,6 +4,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as events from 'aws-cdk-lib/aws-events';
 import { Construct } from 'constructs';
 import { SpaStorage } from '../constructs/spa-storage';
+import { SpaProductImages } from '../constructs/spa-product-images';
 import { SpaLambdas } from '../constructs/spa-lambdas';
 import { SpaDistribution } from '../constructs/spa-distribution';
 import { SpaTagRevalidator } from '../constructs/spa-tag-revalidator';
@@ -53,6 +54,8 @@ export class SpaStack extends cdk.Stack {
       openNextDir: OPEN_NEXT_DIR,
     });
 
+    const productImages = new SpaProductImages(this, 'SpaProductImages');
+
     const functions = new SpaLambdas(this, 'SpaLambdas', {
       openNextDir: OPEN_NEXT_DIR,
       assetsBucket: storage.assetsBucket,
@@ -72,6 +75,7 @@ export class SpaStack extends cdk.Stack {
 
     const distribution = new SpaDistribution(this, 'SpaDistribution', {
       assetsBucket: storage.assetsBucket,
+      productImagesBucket: productImages.bucket,
       defaultServerFunctionUrl: functions.defaultServerFunctionUrl,
       imageOptimizationFunctionUrl: functions.imageOptimizationFunctionUrl,
       domainName,
