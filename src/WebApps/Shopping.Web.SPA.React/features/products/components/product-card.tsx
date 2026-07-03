@@ -31,12 +31,14 @@ export function ProductCard({ product }: { product: Product }) {
     <Card className="group overflow-hidden border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
       <Link href={ROUTES.product(product.id)} className="block">
         <div className="relative aspect-square overflow-hidden">
+          {/* Product images are pre-optimized and served straight from CloudFront
+              (product-images/* → S3), bypassing the Next image optimizer — ADR-0018. */}
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
             sizes="(max-width: 768px) 50vw, 300px"
-            quality={75}
+            unoptimized
             className="object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </div>
