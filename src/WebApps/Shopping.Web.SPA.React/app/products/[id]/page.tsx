@@ -71,14 +71,15 @@ export default async function ProductPage({ params }: ProductPageProps) {
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
         {/* Product image */}
         <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-card">
+          {/* Served straight from CloudFront/S3, outside the Next optimizer — ADR-0018. */}
           <Image
             src={product.imageUrl}
             alt={product.name}
             fill
             sizes="(max-width: 1024px) 100vw, 600px"
-            quality={75}
             className="object-cover"
             priority
+            unoptimized
           />
           {!inStock && (
             <div className="absolute inset-0 flex items-center justify-center bg-background/70">

@@ -73,6 +73,7 @@ export class SpaStack extends cdk.Stack {
 
     const distribution = new SpaDistribution(this, 'SpaDistribution', {
       assetsBucket: storage.assetsBucket,
+      productImagesBucket: storage.productImagesBucket,
       defaultServerFunctionUrl: functions.defaultServerFunctionUrl,
       imageOptimizationFunctionUrl: functions.imageOptimizationFunctionUrl,
       domainName,

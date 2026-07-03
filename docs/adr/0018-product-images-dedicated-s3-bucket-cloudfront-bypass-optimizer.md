@@ -52,13 +52,13 @@ The same `/product-images/<key>` resolves in both environments:
 | Dev (`pnpm dev`, no S3/CloudFront) | Next `/public/product-images/` |
 | Prod | CloudFront `product-images/*` → S3 bucket |
 
-Seed images live in `public/product-images/`; the same folder is the `BucketDeployment` source for prod (`prune: false`, so images uploaded straight to S3 later survive redeploys). Images added directly to the bucket post-deploy show up without a SPA rebuild — the decoupling goal.
+The bucket is **not** seeded by CDK. Product images are uploaded straight to it via the AWS CLI/console (`aws s3 cp … s3://<bucket>/…`), fully decoupled from the SPA build — the point of the dedicated bucket. Local dev serves the same `/product-images/*` paths from the SPA's `public/product-images/` folder (a placeholder image lives there for local rendering).
 
 ---
 
 ## Applies To
 
-- `infra/constructs/spa-storage.ts` — new `productImagesBucket` + seed `BucketDeployment`.
+- `infra/constructs/spa-storage.ts` — new `productImagesBucket` (not seeded by CDK; populated via AWS CLI).
 - `infra/constructs/spa-distribution.ts` — `product-images/*` behavior + S3 origin.
 - `infra/stacks/spa-stack.ts` — wiring.
 - `src/WebApps/Shopping.Web.SPA.React` — `unoptimized` on the 3 product image components; `public/product-images/` seed; `next.config.mjs` comment.
@@ -79,12 +79,12 @@ Seed images live in `public/product-images/`; the same folder is the `BucketDepl
 
 - **No on-the-fly resizing/format negotiation** for product images — they must be uploaded already sized and in a modern format. A too-large upload ships as-is.
 - **A second bucket to operate** (though trivially — static content, OAC-only).
-- **Manual/undefined upload flow** — there is no admin UI yet to upload product images; images are seeded from `public/product-images/` or placed in S3 by hand.
+- **Manual upload flow** — there is no admin UI yet; product images are uploaded to the bucket by hand via the AWS CLI/console. Dev renders a placeholder from `public/product-images/`.
 
 ### Mitigation Strategies
 
 - Keep a lightweight convention for uploads (e.g. WebP, ~800px longest side). A future upload pipeline (S3-trigger Lambda generating variants) can be added later without changing this decision — it would only replace "upload ready" with "upload original".
-- `prune: false` on the seed deployment protects hand-uploaded images from being wiped on redeploy.
+- Because CDK never writes to the bucket, hand-uploaded images are never touched by a stack deploy (no `BucketDeployment` to overwrite/prune them).
 
 ### Future Constraints
 

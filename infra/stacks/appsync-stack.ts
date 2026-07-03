@@ -4,7 +4,7 @@ import { AppSyncAuth } from '../constructs/appsync-auth';
 import { AppSyncApi } from '../constructs/appsync-api';
 
 export interface AppSyncStackProps extends cdk.StackProps {
-  readonly spaBaseUrl: string;
+  readonly spaBaseUrls: string[];
 }
 
 export class AppSyncStack extends cdk.Stack {
@@ -12,7 +12,7 @@ export class AppSyncStack extends cdk.Stack {
     super(scope, id, props);
 
     const auth = new AppSyncAuth(this, 'AppSyncAuth', {
-      spaBaseUrl: props.spaBaseUrl,
+      spaBaseUrls: props.spaBaseUrls,
     });
 
     const appsync = new AppSyncApi(this, 'AppSyncApi', {

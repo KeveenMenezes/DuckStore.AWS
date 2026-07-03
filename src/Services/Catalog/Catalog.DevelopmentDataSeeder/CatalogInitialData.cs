@@ -15,11 +15,11 @@ public class CatalogInitialData(IProductRepository productRepository, ICategoryR
     private static readonly Guid FrameworksId = new("a1000000-0000-0000-0000-000000000003");
     private static readonly Guid SpecialsId = new("a1000000-0000-0000-0000-000000000004");
 
-    // Reuses the SPA's own bundled asset (public/images/duck-hero.jpg) for now;
-    // a relative path lets Next's image optimizer treat it as a local image
-    // (read from the assets bucket) with no remotePatterns/domain coupling. A
-    // dedicated product-images bucket will replace this later.
-    private const string DuckImage = "/images/duck-hero.jpg";
+    // Product images are served from the dedicated product-images bucket via the
+    // CloudFront product-images/* behavior, outside the Next image optimizer
+    // (ADR-0018). Same-origin path: resolves from the SPA's public/product-images
+    // in local dev and from the S3 bucket in prod.
+    private const string DuckImage = "/product-images/duck.jpg";
 
     public async Task PopulateAsync(CancellationToken cancellationToken = default)
     {

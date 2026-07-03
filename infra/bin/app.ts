@@ -17,6 +17,22 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION,
 };
 
+// Shared by AppSyncStack (Cognito callback/logout allowlist) and SpaStack
+// (CloudFront custom domain). Must be derived identically in both so the
+// deployed SPA's redirect_uri matches a registered Cognito callback URL.
+const environmentName = app.node.tryGetContext('environmentName') ?? 'dev';
+const hostedZoneDomainName =
+  app.node.tryGetContext('hostedZoneDomainName') ?? 'keveenmenezes.com';
+const spaDomainUrl = `https://${environmentName}-duckstore.${hostedZoneDomainName}`;
+
+// Project-wide tags — cascade to every resource in every stack (buckets, tables,
+// Lambdas, ...). This is how DuckStore resources are identified across the AWS
+// account (S3 console filter, Cost Explorer cost allocation, IAM conditions),
+// independent of the auto-generated physical names.
+cdk.Tags.of(app).add('Project', 'DuckStore');
+cdk.Tags.of(app).add('ManagedBy', 'CDK');
+cdk.Tags.of(app).add('Environment', environmentName);
+
 new CatalogStack(app, 'DuckStoreCatalogStack', {
   env,
   description:
@@ -49,7 +65,9 @@ new UserStack(app, 'DuckStoreUserStack', {
 
 new AppSyncStack(app, 'DuckStoreAppSyncStack', {
   env,
-  spaBaseUrl: app.node.tryGetContext('spaBaseUrl') ?? 'http://localhost:3000',
+  // Allow both the local dev server and the deployed CloudFront domain so the
+  // same app client works in dev (pnpm dev) and prod without a redirect_mismatch.
+  spaBaseUrls: ['http://localhost:3000', spaDomainUrl],
   description:
     'DuckStore AppSync API — Cognito UserPool (RBAC groups), DynamoDB direct resolvers, Lambda resolvers',
 });
@@ -68,8 +86,8 @@ const openNextDir = path.join(
 if (fs.existsSync(openNextDir)) {
   new SpaStack(app, 'DuckStoreSpaStack', {
     env,
-    environmentName: app.node.tryGetContext('environmentName') ?? 'dev',
-    hostedZoneDomainName: app.node.tryGetContext('hostedZoneDomainName') ?? 'keveenmenezes.com',
+    environmentName,
+    hostedZoneDomainName,
     // Cross-stack references into DuckStoreAppSyncStack's CfnOutputs — avoids
     // duplicating these values as separate GitHub secrets/vars.
     appsyncUrl: cdk.Fn.importValue('DuckStoreAppSyncStack-ApiUrl'),
