@@ -1,6 +1,8 @@
 allowBuilds:
   esbuild: true
   sharp: false
+  # Native import resolver used by eslint-config-next's import rules.
+  unrs-resolver: true
 
 # Pin these below @opennextjs/aws's exact-pinned AWS SDK client versions, which
 # always float to the newest (~daily) AWS SDK release and trip the registry's

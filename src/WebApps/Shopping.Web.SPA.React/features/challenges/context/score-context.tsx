@@ -8,7 +8,7 @@ interface ScoreContextType {
   completedChallenges: string[]
   addScore: (challengeId: string, points: number) => boolean
   hintsUsed: Record<string, number>
-  useHint: (challengeId: string) => void
+  spendHint: (challengeId: string) => void
   getHintPenalty: (challengeId: string) => number
 }
 
@@ -36,7 +36,7 @@ export function ScoreProvider({ children }: { children: ReactNode }) {
     [completedChallenges, getHintPenalty],
   )
 
-  const useHint = useCallback((challengeId: string) => {
+  const spendHint = useCallback((challengeId: string) => {
     setHintsUsed((prev) => ({
       ...prev,
       [challengeId]: (prev[challengeId] || 0) + 1,
@@ -44,8 +44,8 @@ export function ScoreProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ score, completedChallenges, addScore, hintsUsed, useHint, getHintPenalty }),
-    [score, completedChallenges, addScore, hintsUsed, useHint, getHintPenalty],
+    () => ({ score, completedChallenges, addScore, hintsUsed, spendHint, getHintPenalty }),
+    [score, completedChallenges, addScore, hintsUsed, spendHint, getHintPenalty],
   )
 
   return <ScoreContext.Provider value={value}>{children}</ScoreContext.Provider>

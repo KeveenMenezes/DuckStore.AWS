@@ -78,7 +78,7 @@ export function OrdersView() {
             <ShoppingBag className="h-8 w-8 text-muted-foreground" />
           </div>
           <h2 className="text-lg font-semibold text-foreground">No orders yet</h2>
-          <p className="text-center text-muted-foreground">You haven't made any purchases yet. How about taking a look at the store?</p>
+          <p className="text-center text-muted-foreground">You haven&apos;t made any purchases yet. How about taking a look at the store?</p>
           <Link href={ROUTES.home}>
             <Button className="gap-2">
               <ArrowLeft className="h-4 w-4" />
