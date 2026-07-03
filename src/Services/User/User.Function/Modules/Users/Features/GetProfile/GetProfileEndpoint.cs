@@ -1,10 +1,11 @@
-using User.Function.Modules.Users.Features.GetProfile;
+﻿using User.Function.Modules.Users.Features.GetProfile;
 
 namespace User.Function;
 
 // Invoked by the AppSync `myProfile` Lambda resolver with the caller's Cognito claims
 // (UserId = sub, Email, Name). See ADR-0017.
-public record GetProfileRequest(string UserId, string Email, string Name);
+public record GetProfileRequest(
+    string UserId, string Email, string Name);
 
 public record GetProfileResponse(
     string UserId,
