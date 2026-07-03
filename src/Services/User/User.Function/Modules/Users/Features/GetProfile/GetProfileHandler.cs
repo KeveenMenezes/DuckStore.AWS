@@ -1,4 +1,4 @@
-namespace User.Function.Modules.Users.Features.GetProfile;
+﻿namespace User.Function.Modules.Users.Features.GetProfile;
 
 // Get-or-create: returns the profile, provisioning it from the Cognito claims on first access
 // (lazy provisioning, ADR-0017). Modeled as a command because it may write.
