@@ -44,7 +44,7 @@ export function CheckoutForm({ formData, errors, totalPrice, onFieldChange, onSu
           />
           <FormField
             id="address"
-            label="Address"
+            label="Address (optional)"
             placeholder="Street, number, complement"
             value={formData.address}
             error={errors.address}

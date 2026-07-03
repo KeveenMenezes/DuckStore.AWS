@@ -36,13 +36,20 @@ export async function GET(req: NextRequest): Promise<Response> {
   const code = searchParams.get('code')
   const state = searchParams.get('state')
 
+  // Behind CloudFront the Host header is stripped (ALL_VIEWER_EXCEPT_HOST_HEADER),
+  // so req.url resolves to the internal Lambda Function URL host. Redirecting
+  // against it would send the browser straight to the Function URL — bypassing
+  // CloudFront (no x-origin-verify header) and getting a 403 from middleware.ts.
+  // Always redirect against the public site URL instead.
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? req.url
+
   const cookieStore = await cookies()
   const storedState = cookieStore.get('pkce_state')?.value
   const verifier = cookieStore.get('pkce_verifier')?.value
   const guestId = cookieStore.get(GUEST_COOKIE)?.value
 
   if (!code || !state || state !== storedState || !verifier) {
-    return NextResponse.redirect(new URL('/?auth_error=invalid_state', req.url))
+    return NextResponse.redirect(new URL('/?auth_error=invalid_state', siteUrl))
   }
 
   const tokenRes = await fetch(`${process.env.COGNITO_HOSTED_UI_URL}/oauth2/token`, {
@@ -58,7 +65,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   })
 
   if (!tokenRes.ok) {
-    return NextResponse.redirect(new URL('/?auth_error=token_exchange_failed', req.url))
+    return NextResponse.redirect(new URL('/?auth_error=token_exchange_failed', siteUrl))
   }
 
   const { access_token, id_token, expires_in } = (await tokenRes.json()) as {
@@ -81,7 +88,7 @@ export async function GET(req: NextRequest): Promise<Response> {
     await mergeGuestCart(access_token, guestId)
   }
 
-  const response = NextResponse.redirect(new URL('/', req.url))
+  const response = NextResponse.redirect(new URL('/', siteUrl))
   response.cookies.set('access_token', access_token, cookieOpts)
   response.cookies.set('id_token', id_token, cookieOpts)
   response.cookies.delete('pkce_verifier')

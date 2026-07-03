@@ -51,7 +51,7 @@ export function validateCheckoutForm(data: CheckoutFormData): CheckoutFieldError
   const errors: CheckoutFieldErrors = {}
   if (!data.name.trim()) errors.name = "Name is required"
   if (!data.email.trim() || !data.email.includes("@")) errors.email = "Invalid email"
-  if (!data.address.trim()) errors.address = "Address is required"
+  // Address is optional (users can complete it later in /my-profile).
   if (!data.city.trim()) errors.city = "City is required"
   if (!data.cardNumber.trim() || data.cardNumber.replace(/\s/g, "").length < 16) {
     errors.cardNumber = "Invalid card number"

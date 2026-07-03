@@ -68,6 +68,15 @@ new AppSyncStack(app, 'DuckStoreAppSyncStack', {
   // Allow both the local dev server and the deployed CloudFront domain so the
   // same app client works in dev (pnpm dev) and prod without a redirect_mismatch.
   spaBaseUrls: ['http://localhost:3000', spaDomainUrl],
+  // Social federation. Client IDs are public → committed in cdk.json context.
+  // Client secrets live in Secrets Manager (bootstrapped out-of-band) and are
+  // resolved by CloudFormation at deploy via a dynamic reference — never in the
+  // repo, and deploys stay self-sufficient (no -c needed). Absent context id =
+  // provider's button is simply not rendered.
+  googleClientId: app.node.tryGetContext('googleClientId'),
+  googleClientSecret: cdk.SecretValue.secretsManager('duckstore/federation/google'),
+  amazonClientId: app.node.tryGetContext('amazonClientId'),
+  amazonClientSecret: cdk.SecretValue.secretsManager('duckstore/federation/amazon'),
   description:
     'DuckStore AppSync API — Cognito UserPool (RBAC groups), DynamoDB direct resolvers, Lambda resolvers',
 });
