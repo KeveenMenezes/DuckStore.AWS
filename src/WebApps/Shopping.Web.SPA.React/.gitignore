@@ -9,6 +9,3 @@ node_modules/
 .open-next/
 .env*.local
 .DS_Store
-
-# TypeScript incremental build cache (local artifact — "incremental": true in tsconfig)
-*.tsbuildinfo
