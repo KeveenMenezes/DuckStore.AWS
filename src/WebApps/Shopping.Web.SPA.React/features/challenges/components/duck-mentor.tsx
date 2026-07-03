@@ -36,7 +36,7 @@ export function DuckMentor({ hints, currentHints, onRequestHint, penalty }: Duck
           </div>
           {currentHints === 0 ? (
             <p className="mt-1 text-sm text-muted-foreground">
-              Need help? Explain the code to me and I'll give you a hint!
+              Need help? Explain the code to me and I&apos;ll give you a hint!
               Each hint costs {HINT_PENALTY} penalty points.
             </p>
           ) : (
