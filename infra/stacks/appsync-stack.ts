@@ -5,6 +5,10 @@ import { AppSyncApi } from '../constructs/appsync-api';
 
 export interface AppSyncStackProps extends cdk.StackProps {
   readonly spaBaseUrls: string[];
+  readonly googleClientId?: string;
+  readonly googleClientSecret?: cdk.SecretValue;
+  readonly amazonClientId?: string;
+  readonly amazonClientSecret?: cdk.SecretValue;
 }
 
 export class AppSyncStack extends cdk.Stack {
@@ -13,6 +17,10 @@ export class AppSyncStack extends cdk.Stack {
 
     const auth = new AppSyncAuth(this, 'AppSyncAuth', {
       spaBaseUrls: props.spaBaseUrls,
+      googleClientId: props.googleClientId,
+      googleClientSecret: props.googleClientSecret,
+      amazonClientId: props.amazonClientId,
+      amazonClientSecret: props.amazonClientSecret,
     });
 
     const appsync = new AppSyncApi(this, 'AppSyncApi', {
