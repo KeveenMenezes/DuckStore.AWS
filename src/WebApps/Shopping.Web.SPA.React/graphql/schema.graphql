@@ -45,7 +45,9 @@ type CategoryPage @aws_api_key @aws_cognito_user_pools {
   nextToken: String
 }
 
-type CartItem {
+# Basket types are returned by dual-auth operations (Cognito OR API_KEY for guests via the BFF),
+# so the types themselves must permit both modes or AppSync rejects field access (ADR-0016).
+type CartItem @aws_api_key @aws_cognito_user_pools {
   quantity: Int!
   color: String
   price: Float!
@@ -53,7 +55,7 @@ type CartItem {
   productName: String!
 }
 
-type ShoppingCart {
+type ShoppingCart @aws_api_key @aws_cognito_user_pools {
   ownerId: String!
   items: [CartItem!]!
   totalPrice: Float!
@@ -109,7 +111,7 @@ type DeleteOrderResult {
   isSuccess: Boolean!
 }
 
-type StoreBasketResult {
+type StoreBasketResult @aws_api_key @aws_cognito_user_pools {
   ownerId: String!
 }
 
@@ -117,7 +119,7 @@ type CheckoutResult {
   isSuccess: Boolean!
 }
 
-type DeleteBasketResult {
+type DeleteBasketResult @aws_api_key @aws_cognito_user_pools {
   isSuccess: Boolean!
 }
 
