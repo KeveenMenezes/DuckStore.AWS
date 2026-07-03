@@ -42,6 +42,13 @@ export class SpaStorage extends Construct {
       versioned: true,
       lifecycleRules: [
         {
+          // `noncurrentVersionsToRetain` is only a modifier — on its own CDK
+          // emits a lifecycle rule with no action, which CloudFormation rejects
+          // ("At least one of [ExpirationDate,...] needs to be specified"). Pair
+          // it with an expiration action: keep the newest noncurrent version
+          // (the rollback target) and purge any older ones a day after they
+          // become noncurrent.
+          noncurrentVersionExpiration: cdk.Duration.days(1),
           noncurrentVersionsToRetain: 1,
         },
       ],
