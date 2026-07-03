@@ -21,8 +21,13 @@ export async function GET(req: Request): Promise<Response> {
     state,
   })
 
+  // `?screen=signup` lands on the Cognito Hosted UI sign-up page (same PKCE/OAuth params);
+  // otherwise the default `/oauth2/authorize` sign-in page.
+  const screen = new URL(req.url).searchParams.get('screen')
+  const endpoint = screen === 'signup' ? 'signup' : 'oauth2/authorize'
+
   const response = NextResponse.redirect(
-    `${process.env.COGNITO_HOSTED_UI_URL}/oauth2/authorize?${params}`,
+    `${process.env.COGNITO_HOSTED_UI_URL}/${endpoint}?${params}`,
   )
 
   // Temporary cookies — expire in 5 minutes (enough for the login flow)

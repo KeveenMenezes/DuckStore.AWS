@@ -1,18 +1,17 @@
 "use client"
 
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react"
-import { authService } from "@/features/auth/services/auth.service"
-import { ordersService, getOrdersForCustomer } from "@/features/auth/services/orders.service"
-import type { AuthResult, NewOrderInput, Order, User } from "@/features/auth/types/auth.types"
+import { getOrdersForCustomer } from "@/features/auth/services/orders.service"
+import { createOrderId } from "@/shared/lib/id"
+import type { NewOrderInput, Order, User } from "@/features/auth/types/auth.types"
 
 interface AuthContextType {
   user: User | null
   orders: Order[]
   isLoading: boolean
   ordersLoading: boolean
-  login: (email: string, password: string) => Promise<AuthResult>
-  register: (name: string, email: string, password: string) => Promise<AuthResult>
   loginWithCognito: () => void
+  signUpWithCognito: () => void
   logout: () => void
   addOrder: (order: NewOrderInput) => void
 }
@@ -25,89 +24,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
   const [ordersLoading, setOrdersLoading] = useState(false)
 
-  // Restore session on mount: check Cognito session first, fall back to localStorage sim.
+  // Restore the Cognito session on mount. /api/auth/me always responds 200:
+  // { authenticated, user }. "Not logged in" is a valid state (user: null), not an error.
   useEffect(() => {
     let cancelled = false
-    // /api/auth/me always responds 200: { authenticated, user }. "Not logged in"
-    // is a valid state (user: null), not an error — so no red console entry on
-    // the normal logged-out first visit. Fall back to the localStorage sim when
-    // there's no Cognito session.
     fetch('/api/auth/me')
       .then(r => r.json())
       .then((me: { authenticated: boolean; user: { sub: string; email: string; username: string } | null }) => {
-        if (cancelled) return
-        if (me.authenticated && me.user) {
-          // Fall back to email if the token had no username claim, so `name` is
-          // never undefined downstream (user-dropdown, initials, etc.).
-          setUser({ id: me.user.sub, name: me.user.username || me.user.email, email: me.user.email })
+        if (cancelled || !me.authenticated || !me.user) return
 
-          // Orders are Cognito-scoped: ordersByCustomer derives the customer from the token,
-          // so the argument is ignored server-side — we only fetch once authenticated.
-          setOrdersLoading(true)
-          getOrdersForCustomer(me.user.sub)
-            .then((o) => { if (!cancelled) setOrders(o) })
-            .catch(() => {})
-            .finally(() => { if (!cancelled) setOrdersLoading(false) })
-        } else {
-          const session = authService.getSession()
-          if (session) {
-            setUser(session)
-            setOrders(ordersService.getForUser(session.id))
-          }
-        }
+        // Fall back to email if the token had no username claim, so `name` is never
+        // undefined downstream (user-dropdown, initials, etc.).
+        setUser({ id: me.user.sub, name: me.user.username || me.user.email, email: me.user.email })
+
+        // Orders are Cognito-scoped: ordersByCustomer derives the customer from the token,
+        // so the argument is ignored server-side — we only fetch once authenticated.
+        setOrdersLoading(true)
+        getOrdersForCustomer(me.user.sub)
+          .then((o) => { if (!cancelled) setOrders(o) })
+          .catch(() => {})
+          .finally(() => { if (!cancelled) setOrdersLoading(false) })
       })
-      .catch(() => {
-        if (cancelled) return
-        const session = authService.getSession()
-        if (session) setUser(session)
-      })
+      .catch(() => {})
       .finally(() => { if (!cancelled) setIsLoading(false) })
 
     return () => { cancelled = true }
-  }, [])
-
-  const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
-    const result = await authService.login(email, password)
-    if (result.success && result.user) {
-      setUser(result.user)
-      // Local-simulation login: orders for the sim user come from localStorage.
-      setOrders(ordersService.getForUser(result.user.id))
-    }
-    return { success: result.success, error: result.error }
-  }, [])
-
-  const register = useCallback(async (name: string, email: string, password: string): Promise<AuthResult> => {
-    const result = await authService.register(name, email, password)
-    if (result.success && result.user) {
-      setUser(result.user)
-      setOrders([])
-    }
-    return { success: result.success, error: result.error }
   }, [])
 
   const loginWithCognito = useCallback(() => {
     window.location.href = '/api/auth/login'
   }, [])
 
+  const signUpWithCognito = useCallback(() => {
+    window.location.href = '/api/auth/login?screen=signup'
+  }, [])
+
   const logout = useCallback(() => {
-    authService.clearSession()
     setUser(null)
     setOrders([])
-    // Also clears the Cognito httpOnly cookie via the server logout route
+    // Clears the Cognito httpOnly cookies server-side, then redirects to the Cognito logout.
     window.location.href = '/api/auth/logout'
   }, [])
 
-  const addOrder = useCallback(
-    (orderData: NewOrderInput) => {
-      if (!user) return
-      setOrders(ordersService.addForUser(user.id, orderData))
-    },
-    [user],
-  )
+  // Optimistic, in-memory append so the just-placed order shows immediately. The real order
+  // is created asynchronously by the Ordering service and replaces this on the next fetch.
+  const addOrder = useCallback((orderData: NewOrderInput) => {
+    setOrders((prev) => [
+      { ...orderData, id: createOrderId(), date: new Date().toISOString(), status: "processing" },
+      ...prev,
+    ])
+  }, [])
 
   const value = useMemo(
-    () => ({ user, orders, isLoading, ordersLoading, login, register, loginWithCognito, logout, addOrder }),
-    [user, orders, isLoading, ordersLoading, login, register, loginWithCognito, logout, addOrder],
+    () => ({ user, orders, isLoading, ordersLoading, loginWithCognito, signUpWithCognito, logout, addOrder }),
+    [user, orders, isLoading, ordersLoading, loginWithCognito, signUpWithCognito, logout, addOrder],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

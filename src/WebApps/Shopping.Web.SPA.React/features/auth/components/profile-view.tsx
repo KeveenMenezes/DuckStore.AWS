@@ -8,6 +8,7 @@ import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useScore } from "@/features/challenges/hooks/use-score"
 import { getInitials } from "@/shared/lib/format"
 import { ROUTES } from "@/shared/constants/routes"
+import { ProfileDetails } from "@/features/auth/components/profile-details"
 
 /** Per-user profile experience. Requires a hydrated session (SSR force-dynamic page). */
 export function ProfileView() {
@@ -95,6 +96,8 @@ export function ProfileView() {
             </CardContent>
           </Card>
         </div>
+
+        <ProfileDetails />
       </div>
     </div>
   )

@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { FormEvent } from "react"
 import { useCart } from "@/features/cart/hooks/use-cart"
 import { useAuth } from "@/features/auth/hooks/use-auth"
+import { getMyProfile } from "@/features/auth/services/profile.service"
 import { submitCheckout, validateCheckoutForm } from "@/features/checkout/services/checkout.service"
 import type {
   CheckoutFieldErrors,
@@ -34,6 +35,26 @@ export function useCheckout() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [formData, setFormData] = useState<CheckoutFormData>(EMPTY_FORM)
   const [errors, setErrors] = useState<CheckoutFieldErrors>({})
+
+  // Pre-fill the shipping fields from the user's profile once authenticated. Only fills empty
+  // fields so it never clobbers what the user has already typed.
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    getMyProfile()
+      .then((p) => {
+        if (cancelled) return
+        setFormData((prev) => ({
+          ...prev,
+          name: prev.name || p.name || "",
+          email: prev.email || p.email || "",
+          address: prev.address || p.addressLine || "",
+          city: prev.city || p.city || "",
+        }))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [user])
 
   const updateField = (field: keyof CheckoutFormData, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))

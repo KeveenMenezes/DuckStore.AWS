@@ -7,7 +7,6 @@ import { useCart } from "@/features/cart/hooks/use-cart"
 import { useScore } from "@/features/challenges/hooks/use-score"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useTheme } from "@/features/theme/hooks/use-theme"
-import { AuthModal } from "@/features/auth/components/auth-modal"
 import { UserDropdown } from "@/shared/layout/user-dropdown"
 import { ROUTES } from "@/shared/constants/routes"
 import { useState } from "react"
@@ -15,10 +14,9 @@ import { useState } from "react"
 export function Header() {
   const { totalItems } = useCart()
   const { score } = useScore()
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, loginWithCognito, signUpWithCognito } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [authModal, setAuthModal] = useState<{ open: boolean; tab: "login" | "register" }>({ open: false, tab: "login" })
 
   return (
     <>
@@ -85,7 +83,7 @@ export function Header() {
                     variant="ghost"
                     size="sm"
                     className="gap-1.5 text-muted-foreground hover:text-foreground"
-                    onClick={() => setAuthModal({ open: true, tab: "login" })}
+                    onClick={loginWithCognito}
                   >
                     <LogIn className="h-4 w-4" />
                     Sign in
@@ -93,7 +91,7 @@ export function Header() {
                   <Button
                     size="sm"
                     className="gap-1.5"
-                    onClick={() => setAuthModal({ open: true, tab: "register" })}
+                    onClick={signUpWithCognito}
                   >
                     <UserPlus className="h-4 w-4" />
                     Sign up
@@ -139,7 +137,7 @@ export function Header() {
                     variant="outline"
                     size="sm"
                     className="flex-1 gap-1.5"
-                    onClick={() => { setAuthModal({ open: true, tab: "login" }); setMobileMenuOpen(false) }}
+                    onClick={loginWithCognito}
                   >
                     <LogIn className="h-4 w-4" />
                     Sign in
@@ -147,7 +145,7 @@ export function Header() {
                   <Button
                     size="sm"
                     className="flex-1 gap-1.5"
-                    onClick={() => { setAuthModal({ open: true, tab: "register" }); setMobileMenuOpen(false) }}
+                    onClick={signUpWithCognito}
                   >
                     <UserPlus className="h-4 w-4" />
                     Sign up
@@ -158,12 +156,6 @@ export function Header() {
           </div>
         )}
       </header>
-
-      <AuthModal
-        open={authModal.open}
-        onOpenChange={(open) => setAuthModal(prev => ({ ...prev, open }))}
-        initialTab={authModal.tab}
-      />
     </>
   )
 }
