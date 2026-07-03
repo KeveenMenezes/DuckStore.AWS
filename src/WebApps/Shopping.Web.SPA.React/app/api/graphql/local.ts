@@ -366,6 +366,28 @@ const resolvers = {
 
       return { items, nextToken: nextTokenOut }
     },
+
+    async myProfile(_: unknown, __: unknown, context: LocalContext) {
+      // Profile is Cognito-only in prod; locally there is no Cognito, so we derive the id from
+      // the BFF-resolved owner and seed with placeholder claims (same limitation as local checkout).
+      const userId = customerIdFromOwner(context.owner.ownerId)
+      const body = await invokeLambda<Record<string, string | undefined>>('user-get-profile', {
+        UserId: userId,
+        Email: `${userId}@local.dev`,
+        Name: userId,
+      })
+      return {
+        userId: body.UserId,
+        email: body.Email,
+        name: body.Name,
+        phone: body.Phone ?? null,
+        addressLine: body.AddressLine ?? null,
+        city: body.City ?? null,
+        state: body.State ?? null,
+        zipCode: body.ZipCode ?? null,
+        country: body.Country ?? null,
+      }
+    },
   },
 
   Mutation: {
@@ -438,6 +460,62 @@ const resolvers = {
         }),
       )
       return { isSuccess: true }
+    },
+
+    async updateProfile(
+      _: unknown,
+      { input }: { input: Record<string, string | null | undefined> },
+      context: LocalContext,
+    ) {
+      const userId = customerIdFromOwner(context.owner.ownerId)
+
+      const sets = ['Email = :email', '#name = :name']
+      const names: Record<string, string> = { '#name': 'Name' }
+      const values: Record<string, { S: string }> = {
+        ':email': { S: `${userId}@local.dev` },
+        ':name': { S: String(input.name) },
+      }
+      const optional: Array<[string, string, string?]> = [
+        ['Phone', 'phone'],
+        ['AddressLine', 'addressLine'],
+        ['City', 'city'],
+        ['State', 'state', '#state'],
+        ['ZipCode', 'zipCode'],
+        ['Country', 'country'],
+      ]
+      for (const [attr, key, alias] of optional) {
+        const v = input[key]
+        if (v != null) {
+          const name = alias ?? attr
+          if (alias) names[alias] = attr
+          sets.push(`${name} = :${key}`)
+          values[`:${key}`] = { S: v }
+        }
+      }
+
+      const result = await dynamoDb.send(
+        new UpdateItemCommand({
+          TableName: 'user-profiles',
+          Key: { UserId: { S: userId } },
+          UpdateExpression: 'SET ' + sets.join(', '),
+          ExpressionAttributeNames: names,
+          ExpressionAttributeValues: values,
+          ReturnValues: 'ALL_NEW',
+        }),
+      )
+
+      const item = unmarshall(result.Attributes ?? {})
+      return {
+        userId: item.UserId as string,
+        email: item.Email as string,
+        name: item.Name as string,
+        phone: (item.Phone as string) ?? null,
+        addressLine: (item.AddressLine as string) ?? null,
+        city: (item.City as string) ?? null,
+        state: (item.State as string) ?? null,
+        zipCode: (item.ZipCode as string) ?? null,
+        country: (item.Country as string) ?? null,
+      }
     },
 
     async createProduct(

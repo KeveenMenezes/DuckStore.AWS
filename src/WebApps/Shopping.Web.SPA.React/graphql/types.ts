@@ -83,6 +83,18 @@ export interface GqlMergeBasketResult {
   ownerId: string
 }
 
+export interface GqlUserProfile {
+  userId: string
+  email: string
+  name: string
+  phone: string | null
+  addressLine: string | null
+  city: string | null
+  state: string | null
+  zipCode: string | null
+  country: string | null
+}
+
 export interface GqlCreateProductResult {
   id: string
 }
@@ -193,4 +205,14 @@ export interface CreateReviewInput {
   userName: string
   rating: number
   comment: string
+}
+
+export interface UpdateProfileInput {
+  name: string
+  phone?: string | null
+  addressLine?: string | null
+  city?: string | null
+  state?: string | null
+  zipCode?: string | null
+  country?: string | null
 }
