@@ -7,8 +7,11 @@ export function formatBRL(value: number): string {
   return `R$ ${value.toFixed(2).replace(".", ",")}`
 }
 
-/** Derive up to two uppercase initials from a full name, e.g. `"Ana Lima"` -> `"AL"`. */
-export function getInitials(name: string): string {
+/** Derive up to two uppercase initials from a full name, e.g. `"Ana Lima"` -> `"AL"`.
+ * Tolerates a missing/empty name (returns "") so a user record without a name
+ * can't crash the render with `undefined.split(...)`. */
+export function getInitials(name?: string | null): string {
+  if (!name) return ""
   return name
     .split(" ")
     .map((part) => part[0])

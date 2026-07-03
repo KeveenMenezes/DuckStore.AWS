@@ -19,7 +19,11 @@ export function UserDropdown() {
 
   if (!user) return null
 
-  const initials = getInitials(user.name)
+  // A session can arrive without a name (e.g. a Cognito token missing the
+  // username/email claims) — fall back to the email so nothing calls
+  // `.split()` on undefined and crashes the whole tree.
+  const displayName = user.name?.trim() || user.email || ""
+  const initials = getInitials(displayName)
 
   return (
     <DropdownMenu>
@@ -29,13 +33,13 @@ export function UserDropdown() {
             {initials}
           </div>
           <span className="hidden text-sm font-medium text-foreground sm:inline">
-            {user.name.split(" ")[0]}
+            {displayName.split(" ")[0]}
           </span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48 border-border bg-popover">
         <div className="px-2 py-1.5">
-          <p className="text-sm font-medium text-foreground">{user.name}</p>
+          <p className="text-sm font-medium text-foreground">{displayName}</p>
           <p className="text-xs text-muted-foreground">{user.email}</p>
         </div>
         <DropdownMenuSeparator />
