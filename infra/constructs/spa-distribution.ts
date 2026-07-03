@@ -10,6 +10,7 @@ import { Construct } from 'constructs';
 
 export interface SpaDistributionProps {
   readonly assetsBucket: s3.Bucket;
+  readonly productImagesBucket: s3.Bucket;
   readonly defaultServerFunctionUrl: lambda.FunctionUrl;
   readonly imageOptimizationFunctionUrl: lambda.FunctionUrl;
   /** Full custom domain, e.g. "dev-duckstore.keveenmenezes.com". */
@@ -49,6 +50,7 @@ export class SpaDistribution extends Construct {
 
     const {
       assetsBucket,
+      productImagesBucket,
       defaultServerFunctionUrl,
       imageOptimizationFunctionUrl,
       domainName,
@@ -70,6 +72,9 @@ export class SpaDistribution extends Construct {
     const s3Origin = origins.S3BucketOrigin.withOriginAccessControl(assetsBucket, {
       originPath: '/_assets',
     });
+    // Dedicated product-images bucket — served as pure CDN, outside the Next
+    // image optimizer (ADR-0018).
+    const productImagesOrigin = origins.S3BucketOrigin.withOriginAccessControl(productImagesBucket);
     // Plain origins, not withOriginAccessControl — the Function URLs are
     // NONE auth (see spa-lambdas.ts), so there's no SigV4 identity for OAC
     // to sign with. The server origin instead gets a secret custom header
@@ -150,6 +155,14 @@ export class SpaDistribution extends Construct {
           origin: imageOrigin,
           cachePolicy: imageCachePolicy,
           originRequestPolicy: cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+          allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
+          viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
+        },
+        // Product catalog images — straight from S3, no optimizer Lambda (ADR-0018).
+        // More specific than the default behavior, distinct from `images/*` (public assets).
+        'product-images/*': {
+          origin: productImagesOrigin,
+          cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
           allowedMethods: cloudfront.AllowedMethods.ALLOW_GET_HEAD,
           viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         },

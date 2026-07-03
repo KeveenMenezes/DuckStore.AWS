@@ -23,6 +23,7 @@ export interface SpaStorageProps {
  */
 export class SpaStorage extends Construct {
   public readonly assetsBucket: s3.Bucket;
+  public readonly productImagesBucket: s3.Bucket;
   public readonly tagCacheTable: dynamodb.Table;
   public readonly revalidationQueue: sqs.Queue;
 
@@ -62,6 +63,22 @@ export class SpaStorage extends Construct {
       destinationKeyPrefix: '_assets',
       cacheControl: [s3deploy.CacheControl.fromString('public,max-age=31536000,immutable')],
       prune: false,
+    });
+
+    // Product catalog images — a dedicated bucket, decoupled from the OpenNext
+    // build so images can be uploaded/replaced without redeploying the SPA
+    // (ADR-0018). Served straight from CloudFront (product-images/* behavior),
+    // outside the Next image optimizer. OAC-only, no versioning (immutable keys).
+    // Intentionally NOT seeded here — images are uploaded straight to the bucket
+    // via the AWS CLI/console (`aws s3 cp … s3://<bucket>/…`). Local dev serves the
+    // same /product-images/* paths from the SPA's public/product-images folder.
+    // TODO: add an S3-trigger Lambda that optimizes uploaded images (resize +
+    // WebP/AVIF) on PutObject, so we can upload raw originals instead of pre-optimized
+    // files. Until then, images must be uploaded already web-ready (see ADR-0018).
+    this.productImagesBucket = new s3.Bucket(this, 'ProductImagesBucket', {
+      blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // Initial ISR cache seed — read directly by the server/revalidation Lambdas
