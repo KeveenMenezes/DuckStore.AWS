@@ -28,11 +28,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore session on mount: check Cognito session first, fall back to localStorage sim.
   useEffect(() => {
+    // /api/auth/me always responds 200: { authenticated, user }. "Not logged in"
+    // is a valid state (user: null), not an error — so no red console entry on
+    // the normal logged-out first visit. Fall back to the localStorage sim when
+    // there's no Cognito session.
     fetch('/api/auth/me')
-      .then(r => (r.ok ? r.json() : null))
-      .then((me: { sub: string; email: string; username: string } | null) => {
-        if (me) {
-          setUser({ id: me.sub, name: me.username, email: me.email })
+      .then(r => r.json())
+      .then((me: { authenticated: boolean; user: { sub: string; email: string; username: string } | null }) => {
+        if (me.authenticated && me.user) {
+          setUser({ id: me.user.sub, name: me.user.username, email: me.user.email })
         } else {
           const session = authService.getSession()
           if (session) setUser(session)
