@@ -23,7 +23,6 @@ public class ShoppingCartsEventPublisherFunction
             .Build();
 
         var services = new ServiceCollection();
-        services.AddLogging();
         services.AddSingleton<IConfiguration>(configuration);
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
         services.AddEventBridgeMessaging(configuration);
