@@ -16,10 +16,12 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark")
   const [mounted, setMounted] = useState(false)
 
-  // Restore the persisted preference on mount (client-only).
+  // Restore the persisted preference on mount (client-only). localStorage is unavailable during
+  // SSR, so this must sync into state after mount rather than via lazy initial state.
   useEffect(() => {
     const stored = storage.getRaw(STORAGE_KEYS.theme) as Theme | null
     if (stored === "light" || stored === "dark") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional client-only mount sync
       setTheme(stored)
     }
     setMounted(true)
