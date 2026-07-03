@@ -14,7 +14,7 @@ import { difficultyConfig, languageColors, languageLabels } from "@/features/cha
 import type { Challenge } from "@/features/challenges/types/challenge.types"
 
 export function ChallengeCard({ challenge }: { challenge: Challenge }) {
-  const { completedChallenges, addScore, hintsUsed, useHint, getHintPenalty } = useScore()
+  const { completedChallenges, addScore, hintsUsed, spendHint, getHintPenalty } = useScore()
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null)
   const [submitted, setSubmitted] = useState(false)
 
@@ -35,7 +35,7 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
 
   const handleHint = () => {
     if (currentHints < challenge.hints.length) {
-      useHint(challenge.id)
+      spendHint(challenge.id)
     }
   }
 
