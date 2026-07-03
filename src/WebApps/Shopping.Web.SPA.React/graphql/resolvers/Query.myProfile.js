@@ -1,23 +1,25 @@
-import { util } from '@aws-appsync/utils'
+import { util } from "@aws-appsync/utils";
 
 // Cognito-only. Passes the identity claims to the user-get-profile Lambda, which returns the
 // profile — lazily provisioning it (seeded from these claims) on first access. See ADR-0017.
 export function request(ctx) {
-  if (!ctx.identity || !ctx.identity.sub) util.unauthorized()
+  if (!ctx.identity || !ctx.identity.sub) util.unauthorized();
+
+  console.log("CTX:", JSON.stringify(ctx, null, 2));
 
   return {
-    operation: 'Invoke',
+    operation: "Invoke",
     payload: {
       UserId: ctx.identity.sub,
       Email: ctx.identity.claims.email,
       Name: ctx.identity.claims.name ?? ctx.identity.claims.email,
     },
-  }
+  };
 }
 
 export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type)
-  const p = ctx.result
+  if (ctx.error) util.error(ctx.error.message, ctx.error.type);
+  const p = ctx.result;
   return {
     userId: p.UserId,
     email: p.Email,
@@ -28,5 +30,5 @@ export function response(ctx) {
     state: p.State ?? null,
     zipCode: p.ZipCode ?? null,
     country: p.Country ?? null,
-  }
+  };
 }
