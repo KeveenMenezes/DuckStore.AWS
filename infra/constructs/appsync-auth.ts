@@ -8,6 +8,14 @@ export interface AppSyncAuthProps {
   /** Base URLs (e.g. http://localhost:3000, https://dev-duckstore.example.com)
    *  the SPA is served from — each gets a Cognito callback + logout URL. */
   readonly spaBaseUrls: string[];
+  /** Google/Amazon federation credentials, passed via CDK context at deploy time
+   *  (never committed). When a provider's clientId is set, that "Sign in with X"
+   *  button is added to Managed Login. Add the Cognito redirect URI
+   *  (`<hostedUi>/oauth2/idpresponse`) to each provider's console allow-list. */
+  readonly googleClientId?: string;
+  readonly googleClientSecret?: cdk.SecretValue;
+  readonly amazonClientId?: string;
+  readonly amazonClientSecret?: cdk.SecretValue;
 }
 
 export class AppSyncAuth extends Construct {
@@ -25,6 +33,12 @@ export class AppSyncAuth extends Construct {
       autoVerify: { email: true },
       standardAttributes: {
         email: { required: true, mutable: true },
+        // `fullname` maps to the OIDC `name` claim. Making it required adds a
+        // "Name" field to the Managed Login sign-up form. Required standard
+        // attributes can only be set at pool creation, so adding this REPLACES
+        // the pool (existing users are dropped). Name still lives authoritatively
+        // in the User service profile (ADR-0017); this only seeds the claim.
+        fullname: { required: true, mutable: true },
       },
       passwordPolicy: {
         minLength: 8,
@@ -93,11 +107,55 @@ exports.handler = async (event) => {
 
     const domain = this.userPool.addDomain('Domain', {
       cognitoDomain: { domainPrefix: 'duckstore' },
+      // Managed Login v2 — required for the CfnManagedLoginBranding style below.
+      managedLoginVersion: cognito.ManagedLoginVersion.NEWER_MANAGED_LOGIN,
     });
+
+    // Social federation (optional). Each IdP maps the provider's verified email +
+    // name onto the pool's required `email`/`name` attributes so federated users
+    // satisfy the schema. The app client must depend on the IdP resources, and
+    // list them in supportedIdentityProviders for the buttons to render.
+    const identityProviders: cognito.UserPoolClientIdentityProvider[] = [
+      cognito.UserPoolClientIdentityProvider.COGNITO,
+    ];
+    const idpResources: Construct[] = [];
+
+    if (props.googleClientId) {
+      const google = new cognito.UserPoolIdentityProviderGoogle(this, 'GoogleIdP', {
+        userPool: this.userPool,
+        clientId: props.googleClientId,
+        clientSecretValue: props.googleClientSecret,
+        scopes: ['openid', 'email', 'profile'],
+        attributeMapping: {
+          email: cognito.ProviderAttribute.GOOGLE_EMAIL,
+          fullname: cognito.ProviderAttribute.GOOGLE_NAME,
+        },
+      });
+      identityProviders.push(cognito.UserPoolClientIdentityProvider.GOOGLE);
+      idpResources.push(google);
+    }
+
+    if (props.amazonClientId) {
+      const amazon = new cognito.UserPoolIdentityProviderAmazon(this, 'AmazonIdP', {
+        userPool: this.userPool,
+        clientId: props.amazonClientId,
+        // Amazon L2 only accepts a plain string; unsafeUnwrap yields the
+        // {{resolve:secretsmanager:...}} dynamic reference, resolved at deploy.
+        clientSecret: props.amazonClientSecret?.unsafeUnwrap() ?? '',
+        scopes: ['profile'],
+        attributeMapping: {
+          email: cognito.ProviderAttribute.AMAZON_EMAIL,
+          fullname: cognito.ProviderAttribute.AMAZON_NAME,
+        },
+      });
+      identityProviders.push(cognito.UserPoolClientIdentityProvider.AMAZON);
+      idpResources.push(amazon);
+    }
 
     this.userPoolClient = this.userPool.addClient('SpaClient', {
       userPoolClientName: 'duckstore-spa',
       generateSecret: false,
+      supportedIdentityProviders: identityProviders,
       oAuth: {
         flows: { authorizationCodeGrant: true },
         scopes: [
@@ -113,7 +171,76 @@ exports.handler = async (event) => {
       refreshTokenValidity: cdk.Duration.days(30),
       preventUserExistenceErrors: true,
     });
+    // CloudFormation must create the IdPs before the client references them.
+    idpResources.forEach((idp) => this.userPoolClient.node.addDependency(idp));
 
     this.hostedUiUrl = `https://${domain.domainName}.auth.${cdk.Stack.of(this).region}.amazoncognito.com`;
+
+    // DuckStore branding for the Managed Login pages, so the hosted sign-in/sign-up
+    // stops looking white-label. Colors are the app's amber `--primary` theme
+    // (app/globals.css, oklch → sRGB) in Cognito's RGBA 8-digit hex format.
+    // `settings` is applied as a PATCH: keys outside Cognito's schema are ignored
+    // (no deploy failure), unspecified keys keep Cognito defaults.
+    new cognito.CfnManagedLoginBranding(this, 'SpaBranding', {
+      userPoolId: this.userPool.userPoolId,
+      clientId: this.userPoolClient.userPoolClientId,
+      useCognitoProvidedValues: false,
+      settings: {
+        components: {
+          primaryButton: {
+            lightMode: {
+              defaults: { backgroundColor: 'bc8500ff', textColor: '181000ff' },
+              hover: { backgroundColor: 'a67400ff', textColor: '181000ff' },
+              active: { backgroundColor: '8f6400ff', textColor: '181000ff' },
+            },
+            darkMode: {
+              defaults: { backgroundColor: 'ffd12eff', textColor: '181000ff' },
+              hover: { backgroundColor: 'e6b800ff', textColor: '181000ff' },
+              active: { backgroundColor: 'cca300ff', textColor: '181000ff' },
+            },
+          },
+          // Solid site background (--background) instead of Cognito's default
+          // purple/pink gradient image.
+          pageBackground: {
+            image: { enabled: false },
+            lightMode: { color: 'f8f8faff' },
+            darkMode: { color: '0f1b2aff' },
+          },
+          // Show the DuckStore duck on the form card (asset uploaded below) —
+          // it's disabled by Cognito default, which is why it wasn't rendering.
+          form: { logo: { enabled: true } },
+          // Branded header bar with the logo so the page isn't an empty expanse.
+          pageHeader: { logo: { enabled: true } },
+        },
+        componentClasses: {
+          // Links (Create an account / Forgot your password) — amber, not blue.
+          link: {
+            lightMode: { defaults: { textColor: 'bc8500ff' }, hover: { textColor: '8f6400ff' } },
+            darkMode: { defaults: { textColor: 'ffd12eff' }, hover: { textColor: 'e6b800ff' } },
+          },
+          // Input focus ring — amber (matches --ring), not blue.
+          focusState: {
+            lightMode: { borderColor: 'bc8500ff' },
+            darkMode: { borderColor: 'ffd12eff' },
+          },
+        },
+      },
+      // The DuckStore duck logo (src/.../public/icon.svg), base64-inlined so this
+      // construct stays self-contained when the SPA moves to its own submodule.
+      // Placed on both the form card and the page header, for light + dark.
+      assets: (['FORM_LOGO', 'PAGE_HEADER_LOGO'] as const).flatMap((category) =>
+        (['LIGHT', 'DARK'] as const).map((colorMode) => ({
+          category,
+          colorMode,
+          extension: 'SVG',
+          bytes: DUCK_LOGO_SVG_BASE64,
+        })),
+      ),
+    }).node.addDependency(domain);
   }
 }
+
+// Base64-encoded DuckStore duck logo (public/icon.svg). Inlined to avoid a
+// cross-package file read once the React SPA becomes a git submodule.
+const DUCK_LOGO_SVG_BASE64 =
+  'PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcng9IjIwIiBmaWxsPSIjMWExYTJlIi8+CiAgPCEtLSBCb2R5IC0tPgogIDxlbGxpcHNlIGN4PSI0NCIgY3k9IjcwIiByeD0iMzAiIHJ5PSIyMSIgZmlsbD0iI0ZGRDcwMCIvPgogIDwhLS0gSGVhZCAtLT4KICA8Y2lyY2xlIGN4PSI2NCIgY3k9IjQzIiByPSIxOSIgZmlsbD0iI0ZGRDcwMCIvPgogIDwhLS0gQmVhayAtLT4KICA8cG9seWdvbiBwb2ludHM9IjgwLDQxIDk2LDM2IDk2LDQ4IiBmaWxsPSIjRkY4QzAwIi8+CiAgPCEtLSBFeWUgLS0+CiAgPGNpcmNsZSBjeD0iNjkiIGN5PSIzNyIgcj0iNCIgZmlsbD0iIzFhMWExYSIvPgogIDxjaXJjbGUgY3g9IjcwLjUiIGN5PSIzNS41IiByPSIxLjIiIGZpbGw9IndoaXRlIi8+CiAgPCEtLSBXaW5nIGRldGFpbCAtLT4KICA8cGF0aCBkPSJNMjQgNjQgUTQwIDU0IDU3IDY0IiBzdHJva2U9IiNFNkJFMDAiIHN0cm9rZS13aWR0aD0iMi41IiBmaWxsPSJub25lIiBzdHJva2UtbGluZWNhcD0icm91bmQiLz4KPC9zdmc+Cg==';

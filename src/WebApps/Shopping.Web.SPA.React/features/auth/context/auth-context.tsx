@@ -30,12 +30,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     fetch('/api/auth/me')
       .then(r => r.json())
-      .then((me: { authenticated: boolean; user: { sub: string; email: string; username: string } | null }) => {
+      .then((me: { authenticated: boolean; user: { sub: string; email: string; username: string; name?: string } | null }) => {
         if (cancelled || !me.authenticated || !me.user) return
 
-        // Fall back to email if the token had no username claim, so `name` is never
+        // Prefer the `name` claim (captured at sign-up) for the display name;
+        // `username` is a Cognito UUID. Fall back to email so `name` is never
         // undefined downstream (user-dropdown, initials, etc.).
-        setUser({ id: me.user.sub, name: me.user.username || me.user.email, email: me.user.email })
+        setUser({ id: me.user.sub, name: me.user.name || me.user.email, email: me.user.email })
 
         // Orders are Cognito-scoped: ordersByCustomer derives the customer from the token,
         // so the argument is ignored server-side — we only fetch once authenticated.
