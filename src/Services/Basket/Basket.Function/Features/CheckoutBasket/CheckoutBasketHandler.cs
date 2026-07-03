@@ -14,9 +14,9 @@ public class CheckoutBasketCommandValidator
             .NotNull()
             .WithMessage("BasketCheckoutDto can't be null");
 
-        RuleFor(x => x.BasketCheckoutDto.UserName)
+        RuleFor(x => x.BasketCheckoutDto.OwnerId)
             .NotEmpty()
-            .WithMessage("UserName is required")
+            .WithMessage("OwnerId is required")
             .When(x => x.BasketCheckoutDto != null);
     }
 }
@@ -27,8 +27,8 @@ public class CheckoutBasketCommandHandler(IBasketRepository basketRepository)
     public async Task<CheckoutBasketResult> Handle(
         CheckoutBasketCommand command, CancellationToken cancellationToken)
     {
-        var basket = await basketRepository.GetBasket(
-            command.BasketCheckoutDto.UserName, cancellationToken);
+        var basket = await basketRepository.TryGetBasket(
+            command.BasketCheckoutDto.OwnerId, cancellationToken);
 
         if (basket == null)
         {
@@ -39,10 +39,10 @@ public class CheckoutBasketCommandHandler(IBasketRepository basketRepository)
         // captures it and the ShoppingCartsEventPublisher Lambda can publish to EventBridge.
         var checkoutDataJson = JsonSerializer.Serialize(command.BasketCheckoutDto);
         await basketRepository.MarkCheckoutAsync(
-            command.BasketCheckoutDto.UserName, checkoutDataJson, cancellationToken);
+            command.BasketCheckoutDto.OwnerId, checkoutDataJson, cancellationToken);
 
         await basketRepository.DeleteBasket(
-            command.BasketCheckoutDto.UserName, cancellationToken);
+            command.BasketCheckoutDto.OwnerId, cancellationToken);
 
         return new CheckoutBasketResult(true);
     }

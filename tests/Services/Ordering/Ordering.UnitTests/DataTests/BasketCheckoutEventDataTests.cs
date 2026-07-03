@@ -6,7 +6,7 @@ public static class BasketCheckoutEventDataTests
     {
         return new BasketCheckoutEvent
         {
-            UserName = "testuser",
+            OwnerId = "USER#testuser",
             CustomerId = Guid.NewGuid(),
             TotalPrice = 1000m,
             FirstName = "John",

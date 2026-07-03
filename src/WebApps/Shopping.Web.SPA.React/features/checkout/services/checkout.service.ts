@@ -1,22 +1,18 @@
 import { gql } from "@/api"
 import { CHECKOUT_BASKET } from "@/api/mutations/order"
-import { getGuestUserName, getGuestCustomerId } from "@/features/cart/services/basket.service"
 import type { CheckoutFormData, CheckoutFieldErrors } from "@/features/checkout/types/checkout.types"
 import type { GqlCheckoutResult } from "@/graphql/types"
 
-export { getGuestUserName, getGuestCustomerId }
-
 /**
- * Submit the cart for checkout via GraphQL.
- * The cart is already persisted in DynamoDB by the CartProvider sync — no extra storeBasket call needed.
+ * Submit the cart for checkout via GraphQL. Checkout is Cognito-only: the AppSync resolver
+ * derives OwnerId (USER#<sub>) and CustomerId from the token, so the browser sends neither.
+ * The cart is already persisted in DynamoDB by the CartProvider sync — no extra storeBasket call.
  * Returns a generated client-side order ID (the Ordering service creates the real order asynchronously).
  */
 export async function submitCheckout(
   formData: CheckoutFormData,
   totalPrice: number,
 ): Promise<string> {
-  const userName = getGuestUserName()
-
   const nameParts = formData.name.trim().split(" ")
   const firstName = nameParts[0] ?? "Guest"
   const lastName = nameParts.slice(1).join(" ") || "-"
@@ -27,8 +23,6 @@ export async function submitCheckout(
 
   const data = await gql<{ checkoutBasket: GqlCheckoutResult }>(CHECKOUT_BASKET, {
     input: {
-      userName,
-      customerId: getGuestCustomerId(),
       totalPrice,
       firstName,
       lastName,

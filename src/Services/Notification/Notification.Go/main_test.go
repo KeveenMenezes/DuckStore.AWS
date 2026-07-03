@@ -9,7 +9,7 @@ func TestNotificationEventUnmarshal(t *testing.T) {
 	body := `{
 		"id": "notif-001",
 		"eventType": "BasketCheckoutEvent",
-		"userName": "johndoe",
+		"ownerId": "USER#550e8400-e29b-41d4-a716-446655440000",
 		"customerId": "550e8400-e29b-41d4-a716-446655440000",
 		"totalPrice": 259.99,
 		"firstName": "John",
@@ -39,8 +39,8 @@ func TestNotificationEventUnmarshal(t *testing.T) {
 	if event.EventType != "BasketCheckoutEvent" {
 		t.Errorf("expected EventType 'BasketCheckoutEvent', got %q", event.EventType)
 	}
-	if event.UserName != "johndoe" {
-		t.Errorf("expected UserName 'johndoe', got %q", event.UserName)
+	if event.OwnerID != "USER#550e8400-e29b-41d4-a716-446655440000" {
+		t.Errorf("expected OwnerID 'USER#550e8400-e29b-41d4-a716-446655440000', got %q", event.OwnerID)
 	}
 	if event.TotalPrice != 259.99 {
 		t.Errorf("expected TotalPrice 259.99, got %f", event.TotalPrice)
@@ -54,7 +54,7 @@ func TestNotificationEventUnmarshal(t *testing.T) {
 }
 
 func TestNotificationEventDefaultValues(t *testing.T) {
-	body := `{"eventType": "BasketCheckoutEvent", "userName": "test"}`
+	body := `{"eventType": "BasketCheckoutEvent", "ownerId": "GUEST#test"}`
 
 	var event NotificationEvent
 	err := json.Unmarshal([]byte(body), &event)

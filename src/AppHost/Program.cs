@@ -47,6 +47,7 @@ builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React",
     .WaitFor(dynamoDb)
     .WaitFor(basketResources.StoreBasket)
     .WaitFor(basketResources.CheckoutBasket)
+    .WaitFor(basketResources.MergeBasket)
     .WithReference(yarpApiGateway)
     .WithReference(dynamoDb)
     .WithEnvironment(ctx =>

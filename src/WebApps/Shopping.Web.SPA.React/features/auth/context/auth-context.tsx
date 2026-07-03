@@ -3,7 +3,6 @@
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from "react"
 import { authService } from "@/features/auth/services/auth.service"
 import { ordersService, getOrdersForCustomer } from "@/features/auth/services/orders.service"
-import { getGuestCustomerId } from "@/features/cart/services/basket.service"
 import type { AuthResult, NewOrderInput, Order, User } from "@/features/auth/types/auth.types"
 
 interface AuthContextType {
@@ -28,6 +27,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore session on mount: check Cognito session first, fall back to localStorage sim.
   useEffect(() => {
+    let cancelled = false
     // /api/auth/me always responds 200: { authenticated, user }. "Not logged in"
     // is a valid state (user: null), not an error — so no red console entry on
     // the normal logged-out first visit. Fall back to the localStorage sim when
@@ -35,40 +35,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     fetch('/api/auth/me')
       .then(r => r.json())
       .then((me: { authenticated: boolean; user: { sub: string; email: string; username: string } | null }) => {
+        if (cancelled) return
         if (me.authenticated && me.user) {
           // Fall back to email if the token had no username claim, so `name` is
           // never undefined downstream (user-dropdown, initials, etc.).
           setUser({ id: me.user.sub, name: me.user.username || me.user.email, email: me.user.email })
+
+          // Orders are Cognito-scoped: ordersByCustomer derives the customer from the token,
+          // so the argument is ignored server-side — we only fetch once authenticated.
+          setOrdersLoading(true)
+          getOrdersForCustomer(me.user.sub)
+            .then((o) => { if (!cancelled) setOrders(o) })
+            .catch(() => {})
+            .finally(() => { if (!cancelled) setOrdersLoading(false) })
         } else {
           const session = authService.getSession()
-          if (session) setUser(session)
+          if (session) {
+            setUser(session)
+            setOrders(ordersService.getForUser(session.id))
+          }
         }
       })
       .catch(() => {
+        if (cancelled) return
         const session = authService.getSession()
         if (session) setUser(session)
       })
-      .finally(() => setIsLoading(false))
+      .finally(() => { if (!cancelled) setIsLoading(false) })
 
-    // Uses the stable guestCustomerId (same value sent at checkout) so the query
-    // returns the real orders, regardless of auth state.
-    const customerId = getGuestCustomerId()
-    setOrdersLoading(true)
-    getOrdersForCustomer(customerId)
-      .then(setOrders)
-      .catch(() => {
-        const session = authService.getSession()
-        if (session) setOrders(ordersService.getForUser(session.id))
-      })
-      .finally(() => setOrdersLoading(false))
+    return () => { cancelled = true }
   }, [])
 
   const login = useCallback(async (email: string, password: string): Promise<AuthResult> => {
     const result = await authService.login(email, password)
     if (result.success && result.user) {
       setUser(result.user)
-      // Orders are already loaded from the backend by the mount effect using the
-      // stable guestCustomerId — no need to re-fetch after login.
+      // Local-simulation login: orders for the sim user come from localStorage.
+      setOrders(ordersService.getForUser(result.user.id))
     }
     return { success: result.success, error: result.error }
   }, [])

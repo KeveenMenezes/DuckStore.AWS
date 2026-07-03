@@ -16,7 +16,7 @@ import type { Product } from "@/features/products/types/product.types"
 import type { CartItem } from "@/features/cart/types/cart.types"
 import type { GqlShoppingCart } from "@/graphql/types"
 import { getProducts } from "@/features/products/services/products.service"
-import { getGuestUserName, syncCartToBasket } from "@/features/cart/services/basket.service"
+import { syncCartToBasket } from "@/features/cart/services/basket.service"
 
 interface CartContextType {
   items: CartItem[]
@@ -47,10 +47,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     async function hydrate() {
       try {
-        const userName = getGuestUserName()
+        // No ownerId passed — the /api/graphql BFF injects it from the httpOnly identity cookies.
         const [catalog, data] = await Promise.all([
           getProducts(),
-          gql<{ basket: GqlShoppingCart | null }>(GET_BASKET, { userName }),
+          gql<{ basket: GqlShoppingCart | null }>(GET_BASKET),
         ])
         if (cancelled) return
         const enriched: CartItem[] = (data.basket?.items ?? []).flatMap((item) => {
@@ -81,10 +81,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       return
     }
     const timer = setTimeout(() => {
-      const userName = getGuestUserName()
-      // Fails silently for guests/local-simulated users (no Cognito session to authorize
-      // the write) — same tolerance as the hydrate effect above.
-      syncCartToBasket(userName, items).catch(() => {})
+      // ownerId is injected by the BFF; guests and users both persist through the same path.
+      // Fails silently (e.g. local-simulated users) — same tolerance as the hydrate effect above.
+      syncCartToBasket(items).catch(() => {})
     }, 300)
     return () => clearTimeout(timer)
   }, [items, isLoading])
