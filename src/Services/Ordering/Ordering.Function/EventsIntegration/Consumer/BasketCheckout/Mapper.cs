@@ -22,7 +22,8 @@ public static class BasketCheckoutMapper
 
         return new CreateOrderCommand(
             CustomerId: message.CustomerId,
-            OrderName: message.UserName,
+            // OwnerId is now a prefixed technical id (USER#<sub>); the email is the human-readable name.
+            OrderName: message.EmailAddress,
             ShippingAddress: addressDto,
             Payment: paymentDto,
             OrderItems:

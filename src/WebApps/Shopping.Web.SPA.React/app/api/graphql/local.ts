@@ -14,6 +14,15 @@ import { unmarshall } from '@aws-sdk/util-dynamodb'
 import { randomUUID } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { prepareBasketRequest, guestCookieHeader } from '@/lib/basket-bff'
+import type { Owner } from '@/lib/identity'
+
+type LocalContext = { owner: Owner }
+
+// Ordering CustomerId is a Guid; locally we derive it from the resolved owner (prefix stripped).
+function customerIdFromOwner(ownerId: string): string {
+  return ownerId.replace(/^(USER#|GUEST#)/, '')
+}
 
 // Strip AppSync-only auth directives — graphql-yoga's schema builder doesn't know them.
 const typeDefs = readFileSync(join(process.cwd(), 'graphql/schema.graphql'), 'utf-8')
@@ -182,20 +191,20 @@ const resolvers = {
       return { items, nextToken: nextTokenOut }
     },
 
-    async basket(_: unknown, { userName }: { userName: string }) {
+    async basket(_: unknown, { ownerId }: { ownerId: string }) {
       const result = await dynamoDb.send(
-        new GetItemCommand({ TableName: 'shopping-carts', Key: { UserName: { S: userName } } }),
+        new GetItemCommand({ TableName: 'shopping-carts', Key: { OwnerId: { S: ownerId } } }),
       )
       if (!result.Item) return null
       const item = unmarshall(result.Item)
       // Basket is stored as a JSON blob (PascalCase from .NET serializer) in the Data attribute.
       const cart = JSON.parse(item.Data as string) as {
-        UserName: string
+        OwnerId: string
         Items: Array<{ Quantity: number; Color: string; Price: number; ProductId: string; ProductName: string }>
         TotalPrice: number
       }
       return {
-        userName: cart.UserName,
+        ownerId: cart.OwnerId,
         items: (cart.Items ?? []).map(i => ({
           quantity: i.Quantity,
           color: i.Color || null,
@@ -362,11 +371,11 @@ const resolvers = {
   Mutation: {
     async storeBasket(
       _: unknown,
-      { input }: { input: { userName: string; items: Array<Record<string, unknown>> } },
+      { ownerId, input }: { ownerId: string; input: { items: Array<Record<string, unknown>> } },
     ) {
-      const body = await invokeLambda<{ UserName: string }>('basket-store-basket', {
+      const body = await invokeLambda<{ OwnerId: string }>('basket-store-basket', {
         Cart: {
-          UserName: input.userName,
+          OwnerId: ownerId,
           Items: input.items.map(i => ({
             Quantity: i.quantity,
             Color: (i.color as string) ?? '',
@@ -376,17 +385,21 @@ const resolvers = {
           })),
         },
       })
-      return { userName: body.UserName }
+      return { ownerId: body.OwnerId }
     },
 
     async checkoutBasket(
       _: unknown,
       { input }: { input: Record<string, unknown> },
+      context: LocalContext,
     ) {
+      // Checkout is Cognito-only in prod (resolver derives the owner from the token). Locally
+      // there is no Cognito, so we take the owner from the BFF-resolved context.
+      const ownerId = context.owner.ownerId
       const body = await invokeLambda<{ IsSuccess: boolean }>('basket-checkout-basket', {
         BasketCheckoutDto: {
-          UserName: input.userName,
-          CustomerId: input.customerId,
+          OwnerId: ownerId,
+          CustomerId: customerIdFromOwner(ownerId),
           TotalPrice: input.totalPrice,
           FirstName: input.firstName,
           LastName: input.lastName,
@@ -405,11 +418,23 @@ const resolvers = {
       return { isSuccess: body.IsSuccess }
     },
 
-    async deleteBasket(_: unknown, { userName }: { userName: string }) {
+    async mergeBasket(
+      _: unknown,
+      { guestId }: { guestId: string },
+      context: LocalContext,
+    ) {
+      const body = await invokeLambda<{ OwnerId: string }>('basket-merge-basket', {
+        OwnerId: context.owner.ownerId,
+        GuestId: guestId,
+      })
+      return { ownerId: body.OwnerId }
+    },
+
+    async deleteBasket(_: unknown, { ownerId }: { ownerId: string }) {
       await dynamoDb.send(
         new DeleteItemCommand({
           TableName: 'shopping-carts',
-          Key: { UserName: { S: userName } },
+          Key: { OwnerId: { S: ownerId } },
         }),
       )
       return { isSuccess: true }
@@ -515,12 +540,24 @@ const resolvers = {
   },
 }
 
-const yoga = createYoga({
+const yoga = createYoga<LocalContext>({
   schema: createSchema({ typeDefs, resolvers }),
   graphqlEndpoint: '/api/graphql',
   maskedErrors: true,
 })
 
 export async function handleLocal(request: Request): Promise<Response> {
-  return yoga.handleRequest(request, {})
+  // Same BFF identity path as prod: inject the resolved ownerId into basket operations and
+  // expose the owner to the Yoga resolvers (checkoutBasket/mergeBasket read it from context).
+  const { body, owner, setGuestCookie } = await prepareBasketRequest(await request.text())
+  const forwarded = new Request(request.url, {
+    method: request.method,
+    headers: request.headers,
+    body,
+  })
+
+  const response = await yoga.handleRequest(forwarded, { owner })
+
+  if (setGuestCookie) response.headers.append('Set-Cookie', guestCookieHeader(owner))
+  return response
 }

@@ -1,7 +1,7 @@
 namespace Basket.Function.Features.StoreBasket;
 
 public record StoreBasketCommand(ShoppingCartDto Cart) : ICommand<StoreBasketResult>;
-public record StoreBasketResult(string UserName);
+public record StoreBasketResult(string OwnerId);
 
 public class StoreBasketCommandValidator : AbstractValidator<StoreBasketCommand>
 {
@@ -11,9 +11,9 @@ public class StoreBasketCommandValidator : AbstractValidator<StoreBasketCommand>
             .NotNull()
             .WithMessage("Cart cannot be null");
 
-        RuleFor(x => x.Cart.UserName)
+        RuleFor(x => x.Cart.OwnerId)
             .NotEmpty()
-            .WithMessage("UserName cannot be empty or null")
+            .WithMessage("OwnerId cannot be empty or null")
             .When(x => x.Cart is not null);
     }
 }
@@ -32,12 +32,12 @@ public class StoreBasketCommandHandler(
 
         await repository.StoreCart(cart, cancellationToken);
 
-        return new StoreBasketResult(cart.UserName);
+        return new StoreBasketResult(cart.OwnerId);
     }
 
     private static ShoppingCart ToAggregate(ShoppingCartDto dto) =>
         ShoppingCart.Create(
-            dto.UserName,
+            dto.OwnerId,
             dto.Items.Select(item =>
                 ShoppingCartItem.Create(item.ProductId, item.ProductName, item.Color, item.Quantity, item.Price)));
 

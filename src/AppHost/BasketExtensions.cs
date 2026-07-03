@@ -6,7 +6,8 @@ namespace AppHost.Basket;
 
 public record BasketResources(
     IResourceBuilder<LambdaProjectResource> StoreBasket,
-    IResourceBuilder<LambdaProjectResource> CheckoutBasket
+    IResourceBuilder<LambdaProjectResource> CheckoutBasket,
+    IResourceBuilder<LambdaProjectResource> MergeBasket
 );
 
 public static class BasketExtensions
@@ -45,6 +46,13 @@ public static class BasketExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
-        return new BasketResources(storeBasket, checkoutBasket);
+        var mergeBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(
+                "basket-merge-basket",
+                lambdaHandler: "Basket.Function::Basket.Function.Functions_MergeBasket_Generated::MergeBasket")
+            .WaitForCompletion(basketSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
+        return new BasketResources(storeBasket, checkoutBasket, mergeBasket);
     }
 }

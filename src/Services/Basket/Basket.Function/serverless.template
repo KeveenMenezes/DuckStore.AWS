@@ -44,6 +44,26 @@
           ]
         }
       }
+    },
+    "BasketFunctionFunctionsMergeBasketGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Image",
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Basket.Function::Basket.Function.Functions_MergeBasket_Generated::MergeBasket"
+          ]
+        }
+      }
     }
   },
   "Outputs": {

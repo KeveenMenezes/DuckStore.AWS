@@ -56,7 +56,7 @@ export interface GqlCartItem {
 }
 
 export interface GqlShoppingCart {
-  userName: string
+  ownerId: string
   items: GqlCartItem[]
   totalPrice: number
 }
@@ -68,7 +68,7 @@ export interface GqlCoupon {
 }
 
 export interface GqlStoreBasketResult {
-  userName: string
+  ownerId: string
 }
 
 export interface GqlCheckoutResult {
@@ -77,6 +77,10 @@ export interface GqlCheckoutResult {
 
 export interface GqlDeleteBasketResult {
   isSuccess: boolean
+}
+
+export interface GqlMergeBasketResult {
+  ownerId: string
 }
 
 export interface GqlCreateProductResult {
@@ -146,13 +150,10 @@ export interface CartItemInput {
 }
 
 export interface ShoppingCartInput {
-  userName: string
   items: CartItemInput[]
 }
 
 export interface CheckoutInput {
-  userName: string
-  customerId: string
   totalPrice: number
   firstName: string
   lastName: string
