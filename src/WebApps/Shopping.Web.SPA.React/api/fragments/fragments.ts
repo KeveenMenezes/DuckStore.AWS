@@ -12,7 +12,7 @@ export const CART_ITEM_FIELDS = `
 
 export const SHOPPING_CART_FIELDS = `
   fragment ShoppingCartFields on ShoppingCart {
-    userName totalPrice
+    ownerId totalPrice
     items { ...CartItemFields }
   }
 `

@@ -28,7 +28,7 @@ public class StoreBasketCommandHandlerTests
     {
         // Arrange
         var command = new StoreBasketCommand(new ShoppingCartDto(
-            "testuser",
+            "USER#testuser",
             [new ShoppingCartItemDto(2, "Red", 50.0m, Guid.NewGuid(), "IPhone X")]));
 
         _couponRepositoryMock
@@ -45,7 +45,7 @@ public class StoreBasketCommandHandlerTests
         var result = await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        Assert.Equal("testuser", result.UserName);
+        Assert.Equal("USER#testuser", result.OwnerId);
         Assert.NotNull(storedCart);
         Assert.Equal(40.0m, storedCart!.Items.Single().Price);
     }
@@ -55,7 +55,7 @@ public class StoreBasketCommandHandlerTests
     {
         // Arrange
         var command = new StoreBasketCommand(new ShoppingCartDto(
-            "testuser",
+            "USER#testuser",
             [new ShoppingCartItemDto(1, "Blue", 30.0m, Guid.NewGuid(), "Unknown Product")]));
 
         _couponRepositoryMock
@@ -77,12 +77,12 @@ public class StoreBasketCommandHandlerTests
     }
 
     [Fact]
-    public void Validator_ShouldHaveError_WhenUserNameIsEmpty()
+    public void Validator_ShouldHaveError_WhenOwnerIdIsEmpty()
     {
         var command = new StoreBasketCommand(new ShoppingCartDto(string.Empty, []));
 
         var result = _validator.TestValidate(command);
 
-        result.ShouldHaveValidationErrorFor(x => x.Cart.UserName);
+        result.ShouldHaveValidationErrorFor(x => x.Cart.OwnerId);
     }
 }

@@ -31,16 +31,16 @@ public class CheckoutBasketCommandHandlerTests
         // Arrange
         var basketCheckoutDto = new BasketCheckoutDto
         {
-            UserName = "testuser",
+            OwnerId = "USER#testuser",
             TotalPrice = 100.0m
         };
 
         var basket = ShoppingCart.Create(
-            "testuser",
+            "USER#testuser",
             [ShoppingCartItem.Create(Guid.NewGuid(), "Sample Product", "Red", 2, 50.0m)]);
 
         _basketRepositoryMock.Setup(repo =>
-            repo.GetBasket(basketCheckoutDto.UserName, It.IsAny<CancellationToken>()))
+            repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(basket);
 
         var command = new CheckoutBasketCommand(basketCheckoutDto);
@@ -54,13 +54,13 @@ public class CheckoutBasketCommandHandlerTests
 
         _basketRepositoryMock.Verify(repo =>
             repo.MarkCheckoutAsync(
-                basketCheckoutDto.UserName,
-                It.Is<string>(json => json.Contains(basketCheckoutDto.UserName)),
+                basketCheckoutDto.OwnerId,
+                It.Is<string>(json => json.Contains(basketCheckoutDto.OwnerId)),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 
         _basketRepositoryMock.Verify(repo =>
-            repo.DeleteBasket(basketCheckoutDto.UserName, It.IsAny<CancellationToken>()), Times.Once);
+            repo.DeleteBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -69,13 +69,13 @@ public class CheckoutBasketCommandHandlerTests
         // Arrange
         var basketCheckoutDto = new BasketCheckoutDto
         {
-            UserName = "testuser",
+            OwnerId = "USER#testuser",
             TotalPrice = 100.0m
         };
 
         _basketRepositoryMock
             .Setup(repo =>
-                repo.GetBasket(basketCheckoutDto.UserName, It.IsAny<CancellationToken>()))
+                repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((ShoppingCart)null);
 
         var command = new CheckoutBasketCommand(basketCheckoutDto);
@@ -92,7 +92,7 @@ public class CheckoutBasketCommandHandlerTests
             Times.Never);
 
         _basketRepositoryMock.Verify(repo =>
-            repo.DeleteBasket(basketCheckoutDto.UserName, It.IsAny<CancellationToken>()), Times.Never);
+            repo.DeleteBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -101,7 +101,7 @@ public class CheckoutBasketCommandHandlerTests
         // Arrange
         var command = new CheckoutBasketCommand(new BasketCheckoutDto
         {
-            UserName = "testuser",
+            OwnerId = "USER#testuser",
             TotalPrice = 100.0m
         });
 
@@ -110,7 +110,7 @@ public class CheckoutBasketCommandHandlerTests
 
         // Assert
         result.ShouldNotHaveValidationErrorFor(x => x.BasketCheckoutDto);
-        result.ShouldNotHaveValidationErrorFor(x => x.BasketCheckoutDto.UserName);
+        result.ShouldNotHaveValidationErrorFor(x => x.BasketCheckoutDto.OwnerId);
     }
 
     [Fact]

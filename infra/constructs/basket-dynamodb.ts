@@ -13,9 +13,12 @@ export class BasketDynamoDB extends Construct {
     // NEW_IMAGE is enough: the publisher only reads the new state to build the checkout event.
     this.shoppingCartsTable = new dynamodb.Table(this, 'ShoppingCartsTable', {
       tableName: 'shopping-carts',
-      partitionKey: { name: 'UserName', type: dynamodb.AttributeType.STRING },
+      // OwnerId is USER#<cognito-sub> (authenticated) or GUEST#<guestId> (visitor).
+      partitionKey: { name: 'OwnerId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       stream: dynamodb.StreamViewType.NEW_IMAGE,
+      // Guest carts set ExpiresAt (epoch seconds); user carts omit it so they never expire.
+      timeToLiveAttribute: 'ExpiresAt',
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 

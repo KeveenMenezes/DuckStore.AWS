@@ -15,7 +15,7 @@ internal static class BasketSerializer
 
     private static CartSnapshot ToSnapshot(ShoppingCart cart) =>
         new(
-            cart.UserName,
+            cart.OwnerId,
             cart.Items
                 .Select(item => new ItemSnapshot(
                     item.Quantity, item.Color, item.Price, item.ProductId, item.ProductName))
@@ -24,14 +24,14 @@ internal static class BasketSerializer
 
     private static ShoppingCart ToCart(CartSnapshot snapshot) =>
         ShoppingCart.Load(
-            snapshot.UserName,
+            snapshot.OwnerId,
             snapshot.Items.Select(item =>
                 ShoppingCartItem.Load(item.ProductId, item.ProductName, item.Color, item.Quantity, item.Price)));
 
     // Field names/casing are the cart's stored contract — also read by the SPA `basket`
     // GraphQL resolver (PascalCase from the .NET serializer). TotalPrice is written for that
     // consumer and recomputed from the items on read.
-    private sealed record CartSnapshot(string UserName, List<ItemSnapshot> Items, decimal TotalPrice);
+    private sealed record CartSnapshot(string OwnerId, List<ItemSnapshot> Items, decimal TotalPrice);
 
     private sealed record ItemSnapshot(int Quantity, string Color, decimal Price, Guid ProductId, string ProductName);
 }

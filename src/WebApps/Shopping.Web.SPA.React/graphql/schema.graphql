@@ -54,7 +54,7 @@ type CartItem {
 }
 
 type ShoppingCart {
-  userName: String!
+  ownerId: String!
   items: [CartItem!]!
   totalPrice: Float!
 }
@@ -110,7 +110,7 @@ type DeleteOrderResult {
 }
 
 type StoreBasketResult {
-  userName: String!
+  ownerId: String!
 }
 
 type CheckoutResult {
@@ -119,6 +119,10 @@ type CheckoutResult {
 
 type DeleteBasketResult {
   isSuccess: Boolean!
+}
+
+type MergeBasketResult {
+  ownerId: String!
 }
 
 type CreateProductResult {
@@ -146,13 +150,10 @@ input CartItemInput {
 }
 
 input ShoppingCartInput {
-  userName: String!
   items: [CartItemInput!]!
 }
 
 input CheckoutInput {
-  userName: String!
-  customerId: ID!
   totalPrice: Float!
   firstName: String!
   lastName: String!
@@ -204,8 +205,9 @@ type Query {
   # Direct DynamoDB resolver — public (API_KEY or Cognito)
   categories(pageSize: Int, nextToken: String): CategoryPage! @aws_api_key @aws_cognito_user_pools
 
-  # Direct DynamoDB resolver — Cognito required; resolver enforces ownership (username match)
-  basket(userName: String!): ShoppingCart
+  # Direct DynamoDB resolver — Cognito OR API_KEY (guest via BFF). Resolver derives ownerId from
+  # ctx.identity (USER#<sub>) or validates the injected GUEST# ownerId (see ADR-0016).
+  basket(ownerId: String!): ShoppingCart @aws_api_key @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required
   couponFor(productName: String!): Coupon
@@ -224,14 +226,19 @@ type Query {
 }
 
 type Mutation {
-  # Lambda resolver — Cognito required; MediatR/FluentValidation + in-process coupon lookup (ADR-0009)
-  storeBasket(input: ShoppingCartInput!): StoreBasketResult!
+  # Lambda resolver — Cognito OR API_KEY (guest via BFF); resolver derives/validates ownerId (ADR-0016)
+  storeBasket(ownerId: String!, input: ShoppingCartInput!): StoreBasketResult! @aws_api_key @aws_cognito_user_pools
 
-  # Lambda resolver — Cognito required; resolver injects ctx.identity.sub as CustomerId (ADR-0009)
+  # Lambda resolver — Cognito ONLY (login required, which triggers the merge); resolver injects
+  # ctx.identity.sub as CustomerId and USER#<sub> as OwnerId (ADR-0009, ADR-0016)
   checkoutBasket(input: CheckoutInput!): CheckoutResult!
 
-  # Direct DynamoDB resolver — Cognito required; resolver enforces ownership (username match)
-  deleteBasket(userName: String!): DeleteBasketResult!
+  # Direct DynamoDB resolver — Cognito OR API_KEY (guest via BFF); resolver derives/validates ownerId
+  deleteBasket(ownerId: String!): DeleteBasketResult! @aws_api_key @aws_cognito_user_pools
+
+  # Lambda resolver — Cognito ONLY; called by the BFF right after login to merge the guest cart
+  # (GUEST#<guestId>) into the authenticated USER#<sub> cart (ADR-0016)
+  mergeBasket(guestId: String!): MergeBasketResult!
 
   # Direct DynamoDB resolver — Cognito required; Admin or Seller group only (enforced in resolver)
   createProduct(input: CreateProductInput!): CreateProductResult!

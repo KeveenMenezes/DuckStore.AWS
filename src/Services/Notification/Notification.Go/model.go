@@ -6,7 +6,7 @@ import "time"
 type NotificationEvent struct {
 	ID            string  `json:"id" dynamodbav:"PK"`
 	EventType     string  `json:"eventType" dynamodbav:"EventType"`
-	UserName      string  `json:"userName" dynamodbav:"UserName"`
+	OwnerID       string  `json:"ownerId" dynamodbav:"OwnerId"`
 	CustomerID    string  `json:"customerId" dynamodbav:"CustomerId"`
 	TotalPrice    float64 `json:"totalPrice" dynamodbav:"TotalPrice"`
 	FirstName     string  `json:"firstName" dynamodbav:"FirstName"`

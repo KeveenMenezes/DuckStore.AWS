@@ -6,7 +6,7 @@ export function request(ctx) {
     operation: 'Invoke',
     payload: {
       BasketCheckoutDto: {
-        UserName: input.userName,
+        OwnerId: `USER#${ctx.identity.sub}`,  // Cognito-only mutation — derive owner from the token
         CustomerId: ctx.identity.sub,  // always from Cognito — never trust client value
         TotalPrice: input.totalPrice,
         FirstName: input.firstName,
