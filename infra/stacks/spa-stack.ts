@@ -6,6 +6,7 @@ import { Construct } from 'constructs';
 import { SpaStorage } from '../constructs/spa-storage';
 import { SpaLambdas } from '../constructs/spa-lambdas';
 import { SpaDistribution } from '../constructs/spa-distribution';
+import { SpaInvalidation } from '../constructs/spa-invalidation';
 import { SpaTagRevalidator } from '../constructs/spa-tag-revalidator';
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
@@ -78,6 +79,18 @@ export class SpaStack extends cdk.Stack {
       hostedZoneDomainName: props.hostedZoneDomainName,
       originVerifySecret,
     });
+
+    // Bust the CloudFront edge cache on every new build. The cached HTML/RSC
+    // shells (s-maxage=31536000) reference the previous build's hashed chunks,
+    // so a fresh deploy would otherwise keep serving stale JS until the TTL
+    // expires. Depends on the asset/Lambda deploys so it invalidates only after
+    // the new content is actually live.
+    const invalidation = new SpaInvalidation(this, 'SpaInvalidation', {
+      distribution: distribution.distribution,
+      openNextDir: OPEN_NEXT_DIR,
+    });
+    invalidation.node.addDependency(storage);
+    invalidation.node.addDependency(functions);
 
     // Backend-triggered ISR revalidation (catalog/review changes from
     // outside the SPA) — no HTTP webhook, straight EventBridge -> DynamoDB
