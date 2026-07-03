@@ -21,13 +21,13 @@ export async function GET(req: Request): Promise<Response> {
     state,
   })
 
-  // `?screen=signup` lands on the Cognito Hosted UI sign-up page (same PKCE/OAuth params);
-  // otherwise the default `/oauth2/authorize` sign-in page.
-  const screen = new URL(req.url).searchParams.get('screen')
-  const endpoint = screen === 'signup' ? 'signup' : 'oauth2/authorize'
-
+  // Both sign-in and sign-up go through /oauth2/authorize. The pool uses Cognito Managed Login,
+  // which serves a combined page (sign in + "Create an account") and does NOT expose a standalone
+  // /signup deep-link like the classic Hosted UI did — hitting /signup returns "An error was
+  // encountered with the requested page". The `?screen=signup` hint is kept but only affects the
+  // UX copy, not the endpoint.
   const response = NextResponse.redirect(
-    `${process.env.COGNITO_HOSTED_UI_URL}/${endpoint}?${params}`,
+    `${process.env.COGNITO_HOSTED_UI_URL}/oauth2/authorize?${params}`,
   )
 
   // Temporary cookies — expire in 5 minutes (enough for the login flow)
