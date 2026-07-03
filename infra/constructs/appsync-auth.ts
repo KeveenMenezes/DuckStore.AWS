@@ -23,6 +23,9 @@ export class AppSyncAuth extends Construct {
       autoVerify: { email: true },
       standardAttributes: {
         email: { required: true, mutable: true },
+        // Cognito holds the essentials (email, name, password); the Hosted UI sign-up form
+        // collects `name`, which flows into the token via the `profile` scope (ADR-0017).
+        fullname: { required: true, mutable: true },
       },
       passwordPolicy: {
         minLength: 8,

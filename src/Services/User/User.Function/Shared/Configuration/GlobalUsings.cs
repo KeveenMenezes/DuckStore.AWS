@@ -1,0 +1,9 @@
+global using System.Text.Json.Serialization;
+global using Amazon.Lambda.Annotations;
+global using BuildingBlocks.Core.CQRS;
+global using BuildingBlocks.Core.DomainModel;
+global using FluentValidation;
+global using MediatR;
+global using User.Function.Modules.Users.Data;
+global using User.Function.Modules.Users.Dtos;
+global using User.Function.Modules.Users.Models;

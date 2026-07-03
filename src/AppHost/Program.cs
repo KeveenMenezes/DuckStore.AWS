@@ -5,6 +5,7 @@ using AppHost.Extensions;
 using AppHost.Observability;
 using AppHost.Ordering;
 using AppHost.Review;
+using AppHost.User;
 using Aspire.Hosting.AWS.DynamoDB;
 
 var builder = DistributedApplication.CreateBuilder(args);
@@ -28,6 +29,8 @@ builder.AddOrderingServices(dynamoDb, elasticsearch);
 
 var basketResources = builder.AddBasketLambdas(dynamoDb);
 
+var userLambda = builder.AddUserLambdas(dynamoDb);
+
 builder.AddReviewServices(dynamoDb);
 
 // Reverse proxies
@@ -48,6 +51,7 @@ builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React",
     .WaitFor(basketResources.StoreBasket)
     .WaitFor(basketResources.CheckoutBasket)
     .WaitFor(basketResources.MergeBasket)
+    .WaitFor(userLambda)
     .WithReference(yarpApiGateway)
     .WithReference(dynamoDb)
     .WithEnvironment(ctx =>
