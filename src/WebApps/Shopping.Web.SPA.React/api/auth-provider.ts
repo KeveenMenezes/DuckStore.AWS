@@ -8,9 +8,11 @@
  * shared `gql` client resolved in api/index.ts) talk to AppSync directly —
  * looping back through this app's own /api/graphql would fail during `next
  * build`'s static generation pass, since no server is listening yet. The
- * Access Token is read from the httpOnly cookie set by /api/auth/callback
- * (PKCE flow); requests without a session fall back to the API key so public
- * catalog queries keep working. Client components never need this: they
+ * ID Token is read from the httpOnly cookie set by /api/auth/callback (PKCE
+ * flow) — it carries the identity claims (email, name, sub, cognito:groups)
+ * the AppSync resolvers rely on (the access token has no email/name). Requests
+ * without a session fall back to the API key so public catalog queries keep
+ * working. Client components never need this: they
  * always go through the /api/graphql BFF (app/api/graphql/appsync.ts), which
  * resolves this same header server-side.
  */
@@ -25,8 +27,8 @@ export async function getAuthHeaders(): Promise<Record<string, string> | undefin
     // bundlers don't reject it when this module is pulled into a Client Component.
     const { cookies } = await import('next/headers')
     const cookieStore = await cookies()
-    const accessToken = cookieStore.get('access_token')?.value
-    return accessToken ? { Authorization: `Bearer ${accessToken}` } : apiKeyFallback
+    const idToken = cookieStore.get('id_token')?.value
+    return idToken ? { Authorization: `Bearer ${idToken}` } : apiKeyFallback
   } catch {
     // cookies() throws outside of a request context (e.g. during `next build`'s
     // static generation pass) — fall back to the API key so public catalog

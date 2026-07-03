@@ -21,6 +21,7 @@ export class BasketLambdas extends Construct {
   public readonly streamPublisher: lambda.Function;
   public readonly storeBasket: lambda.Function;
   public readonly checkoutBasket: lambda.Function;
+  public readonly mergeBasket: lambda.Function;
   public readonly storeBasketUrl: lambda.FunctionUrl;
   public readonly checkoutBasketUrl: lambda.FunctionUrl;
 
@@ -137,5 +138,25 @@ export class BasketLambdas extends Construct {
     this.checkoutBasketUrl = this.checkoutBasket.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
     });
+
+    // -------------------------------------------------------------------------
+    // 4. basket-merge-basket  (AppSync Invoke — MergeBasket command)
+    //    Folds a GUEST# cart into the USER# cart on login (ADR-0016): reads both
+    //    carts, writes the merged USER# cart, deletes the GUEST# cart. No Function
+    //    URL — invoked directly by the AppSync mergeBasket resolver (Invoke).
+    // -------------------------------------------------------------------------
+    this.mergeBasket = new lambda.DockerImageFunction(this, 'MergeBasket', {
+      functionName: 'basket-merge-basket',
+      architecture: DOTNET_ARCH,
+      code: basketCode([
+        'Basket.Function::Basket.Function.Functions_MergeBasket_Generated::MergeBasket',
+      ]),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      description: 'Merges a guest cart into the user cart on login (invoked by AppSync)',
+    });
+
+    shoppingCartsTable.grantReadWriteData(this.mergeBasket);
+    couponsTable.grantReadData(this.mergeBasket);
   }
 }
