@@ -6,7 +6,7 @@ import { randomBytes, createHash } from 'node:crypto'
  * Generates verifier + challenge server-side, stores them in httpOnly cookies,
  * then redirects the browser to the Cognito login page.
  */
-export async function GET(req: Request): Promise<Response> {
+export async function GET(): Promise<Response> {
   const verifier = randomBytes(32).toString('base64url')
   const challenge = createHash('sha256').update(verifier).digest('base64url')
   const state = randomBytes(16).toString('hex')
