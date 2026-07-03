@@ -1,5 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { GUEST_COOKIE } from '@/lib/identity'
+import { MERGE_BASKET } from '@/api/mutations/order'
+
+/**
+ * Merges the visitor's GUEST# cart into the just-authenticated USER# cart. Best-effort:
+ * a merge failure must not block login. The AppSync resolver derives USER#<sub> from the
+ * access token; we only supply the GUEST#<guestId> the BFF read from the guest cookie.
+ */
+async function mergeGuestCart(accessToken: string, guestId: string): Promise<void> {
+  try {
+    await fetch(process.env.APPSYNC_URL!, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        query: MERGE_BASKET,
+        variables: { guestId: `GUEST#${guestId}` },
+      }),
+    })
+  } catch {
+    // Swallow — the user is logged in; the guest cart simply isn't merged.
+  }
+}
 
 /**
  * Receives the authorization code from Cognito, exchanges it for tokens
@@ -14,6 +39,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const cookieStore = await cookies()
   const storedState = cookieStore.get('pkce_state')?.value
   const verifier = cookieStore.get('pkce_verifier')?.value
+  const guestId = cookieStore.get(GUEST_COOKIE)?.value
 
   if (!code || !state || state !== storedState || !verifier) {
     return NextResponse.redirect(new URL('/?auth_error=invalid_state', req.url))
@@ -50,11 +76,18 @@ export async function GET(req: NextRequest): Promise<Response> {
     path: '/',
   }
 
+  // Merge the guest cart into the new session before clearing the guest cookie (login → merge).
+  if (guestId && process.env.APPSYNC_URL) {
+    await mergeGuestCart(access_token, guestId)
+  }
+
   const response = NextResponse.redirect(new URL('/', req.url))
   response.cookies.set('access_token', access_token, cookieOpts)
   response.cookies.set('id_token', id_token, cookieOpts)
   response.cookies.delete('pkce_verifier')
   response.cookies.delete('pkce_state')
+  // Guest identity is now merged into the user cart — retire the guest cookie.
+  if (guestId) response.cookies.delete(GUEST_COOKIE)
 
   return response
 }

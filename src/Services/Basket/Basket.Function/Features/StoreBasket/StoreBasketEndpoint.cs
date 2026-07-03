@@ -3,7 +3,7 @@
 namespace Basket.Function;
 
 public record StoreBasketRequest(ShoppingCartDto Cart);
-public record StoreBasketResponse(string UserName);
+public record StoreBasketResponse(string OwnerId);
 
 public partial class Functions
 {

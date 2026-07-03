@@ -116,6 +116,11 @@ export class AppSyncApi extends Construct {
       'CheckoutFn',
       'basket-checkout-basket',
     );
+    const mergeBasketFn = lambda.Function.fromFunctionName(
+      this,
+      'MergeBasketFn',
+      'basket-merge-basket',
+    );
     const getOrdersFn = lambda.Function.fromFunctionName(
       this,
       'GetOrdersFn',
@@ -130,6 +135,7 @@ export class AppSyncApi extends Construct {
     // addLambdaDataSource automatically grants lambda:InvokeFunction to the DS role
     const storeBasketDs = api.addLambdaDataSource('StoreBasketDS', storeBasketFn);
     const checkoutDs = api.addLambdaDataSource('CheckoutDS', checkoutFn);
+    const mergeBasketDs = api.addLambdaDataSource('MergeBasketDS', mergeBasketFn);
     const getOrdersDs = api.addLambdaDataSource('GetOrdersDS', getOrdersFn);
     const deleteOrderDs = api.addLambdaDataSource('DeleteOrderDS', deleteOrderFn);
 
@@ -152,9 +158,11 @@ export class AppSyncApi extends Construct {
     this.resolver(orderingDs, 'OrdersResolver', 'Query', 'orders');
     this.resolver(orderingDs, 'OrdersByNameResolver', 'Query', 'ordersByName');
 
-    // Authenticated mutations — Customer group
+    // Basket mutations — storeBasket/deleteBasket allow Cognito OR API_KEY (guest via BFF);
+    // checkoutBasket/mergeBasket are Cognito-only (see ADR-0016).
     this.resolver(storeBasketDs, 'StoreBasketResolver', 'Mutation', 'storeBasket');
     this.resolver(checkoutDs, 'CheckoutBasketResolver', 'Mutation', 'checkoutBasket');
+    this.resolver(mergeBasketDs, 'MergeBasketResolver', 'Mutation', 'mergeBasket');
     this.resolver(cartsDs, 'DeleteBasketResolver', 'Mutation', 'deleteBasket');
     this.resolver(reviewsDs, 'CreateReviewResolver', 'Mutation', 'createReview');
 

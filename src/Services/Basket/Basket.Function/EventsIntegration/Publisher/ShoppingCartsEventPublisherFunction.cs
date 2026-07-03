@@ -51,11 +51,11 @@ public class ShoppingCartsEventPublisherFunction
             var checkoutEvent = JsonSerializer.Deserialize<BasketCheckoutEvent>(checkoutData.S)!;
             await eventPublisher.PublishAsync(checkoutEvent);
 
-            var userName = record.Dynamodb.NewImage["UserName"].S;
+            var ownerId = record.Dynamodb.NewImage["OwnerId"].S;
             await dynamoDb.DeleteItemAsync(new DeleteItemRequest
             {
                 TableName = BasketRepository.TableName,
-                Key = new Dictionary<string, SdkAttribute> { ["UserName"] = new(userName) }
+                Key = new Dictionary<string, SdkAttribute> { ["OwnerId"] = new(ownerId) }
             });
         }
     }

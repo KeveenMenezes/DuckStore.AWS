@@ -2,7 +2,7 @@
 
 public class BasketCheckoutDto
 {
-    public string UserName { get; init; } = null!;
+    public string OwnerId { get; init; } = null!;
     public Guid CustomerId { get; set; }
     public decimal TotalPrice { get; init; }
 

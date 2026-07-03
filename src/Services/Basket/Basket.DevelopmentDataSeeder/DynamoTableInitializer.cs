@@ -28,8 +28,8 @@ public static class DynamoTableInitializer
             await dynamoDb.CreateTableAsync(new CreateTableRequest
             {
                 TableName = BasketRepository.TableName,
-                AttributeDefinitions = [new AttributeDefinition("UserName", ScalarAttributeType.S)],
-                KeySchema = [new KeySchemaElement("UserName", KeyType.HASH)],
+                AttributeDefinitions = [new AttributeDefinition("OwnerId", ScalarAttributeType.S)],
+                KeySchema = [new KeySchemaElement("OwnerId", KeyType.HASH)],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
                 StreamSpecification = new StreamSpecification
                 {
@@ -37,6 +37,10 @@ public static class DynamoTableInitializer
                     StreamViewType = StreamViewType.NEW_IMAGE
                 }
             });
+
+            // Guest carts carry an ExpiresAt attribute; TTL lets DynamoDB reap them after 15 days.
+            await WaitUntilTableIsActiveAsync(dynamoDb, BasketRepository.TableName);
+            await EnableExpiresAtTtlAsync(dynamoDb);
         }
         catch (ResourceInUseException)
         {
@@ -57,6 +61,28 @@ public static class DynamoTableInitializer
             {
                 // Streams already enabled — idempotent.
             }
+
+            await EnableExpiresAtTtlAsync(dynamoDb);
+        }
+    }
+
+    private static async Task EnableExpiresAtTtlAsync(IAmazonDynamoDB dynamoDb)
+    {
+        try
+        {
+            await dynamoDb.UpdateTimeToLiveAsync(new UpdateTimeToLiveRequest
+            {
+                TableName = BasketRepository.TableName,
+                TimeToLiveSpecification = new TimeToLiveSpecification
+                {
+                    Enabled = true,
+                    AttributeName = "ExpiresAt"
+                }
+            });
+        }
+        catch (Exception)
+        {
+            // TTL already enabled on ExpiresAt — idempotent.
         }
     }
 
@@ -72,7 +98,7 @@ public static class DynamoTableInitializer
                 BillingMode = BillingMode.PAY_PER_REQUEST
             });
 
-            await WaitUntilTableIsActiveAsync(dynamoDb);
+            await WaitUntilTableIsActiveAsync(dynamoDb, DynamoCouponRepository.TableName);
         }
         catch (ResourceInUseException)
         {
@@ -80,11 +106,11 @@ public static class DynamoTableInitializer
         }
     }
 
-    private static async Task WaitUntilTableIsActiveAsync(IAmazonDynamoDB dynamoDb)
+    private static async Task WaitUntilTableIsActiveAsync(IAmazonDynamoDB dynamoDb, string tableName)
     {
         while (true)
         {
-            var response = await dynamoDb.DescribeTableAsync(DynamoCouponRepository.TableName);
+            var response = await dynamoDb.DescribeTableAsync(tableName);
 
             if (response.Table.TableStatus == TableStatus.ACTIVE)
                 return;
