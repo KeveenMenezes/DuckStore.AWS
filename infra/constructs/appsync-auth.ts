@@ -5,7 +5,9 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 
 export interface AppSyncAuthProps {
-  readonly spaBaseUrl: string;
+  /** Base URLs (e.g. http://localhost:3000, https://dev-duckstore.example.com)
+   *  the SPA is served from — each gets a Cognito callback + logout URL. */
+  readonly spaBaseUrls: string[];
 }
 
 export class AppSyncAuth extends Construct {
@@ -103,8 +105,8 @@ exports.handler = async (event) => {
           cognito.OAuthScope.EMAIL,
           cognito.OAuthScope.PROFILE,
         ],
-        callbackUrls: [`${props.spaBaseUrl}/api/auth/callback`],
-        logoutUrls: [props.spaBaseUrl],
+        callbackUrls: props.spaBaseUrls.map((url) => `${url}/api/auth/callback`),
+        logoutUrls: [...props.spaBaseUrls],
       },
       idTokenValidity: cdk.Duration.hours(1),
       accessTokenValidity: cdk.Duration.hours(1),

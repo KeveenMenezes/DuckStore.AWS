@@ -16,12 +16,14 @@ export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
   return (
     <div className="flex gap-4 rounded-lg border border-border bg-card p-3">
       <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-secondary">
+        {/* Served straight from CloudFront/S3, outside the Next optimizer — ADR-0018. */}
         <Image
           src={item.product.imageUrl}
           alt={item.product.name}
           fill
           className="object-cover"
           sizes="80px"
+          unoptimized
         />
       </div>
       <div className="flex flex-1 flex-col justify-between">

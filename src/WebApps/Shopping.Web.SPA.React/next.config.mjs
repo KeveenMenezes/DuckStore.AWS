@@ -17,8 +17,11 @@ const nextConfig = {
     // default — satisfies WebPageTest's "cache static content" for images with
     // no staleness risk (a changed source would use a new URL).
     minimumCacheTTL: 31536000,
-    // All images are currently local (/public). A future product-images bucket
-    // outside the site files will need an images.remotePatterns entry here.
+    // This optimizer config applies only to the app's own UI assets (hero, mentor
+    // avatar) in /public. Product catalog images bypass the optimizer entirely
+    // (next/image `unoptimized`) and are served straight from the product-images/*
+    // CloudFront behavior → S3 bucket (ADR-0018) — so no remotePatterns is needed
+    // (same-origin path, resolved from /public in dev and from S3 in prod).
   },
 }
 
