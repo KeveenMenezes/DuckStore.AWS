@@ -2,7 +2,7 @@ import { gql, gqlPublic } from "@/api"
 import { GET_REVIEWS_BY_PRODUCT } from "@/api/queries/reviews"
 import { CREATE_REVIEW } from "@/api/mutations/review"
 import type { GqlReviewPage, GqlCreateReviewResult, CreateReviewInput } from "@/graphql/types"
-import type { Review, ReviewPage } from "@/features/reviews/types/review.types"
+import type { ReviewPage } from "@/features/reviews/types/review.types"
 
 // Reading reviews is public — use the cookie-free client so the product detail
 // Server Component that fetches them stays statically renderable.
