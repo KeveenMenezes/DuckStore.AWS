@@ -12,6 +12,11 @@ const nextConfig = {
     deviceSizes: [640, 828, 1080, 1200],
     imageSizes: [64, 128, 256],
     qualities: [60, 75, 85],
+    // Optimized images are content-addressed by (url,w,q) and effectively
+    // immutable, so give them a 1-year cache header instead of Next's 4h
+    // default — satisfies WebPageTest's "cache static content" for images with
+    // no staleness risk (a changed source would use a new URL).
+    minimumCacheTTL: 31536000,
     // All images are currently local (/public). A future product-images bucket
     // outside the site files will need an images.remotePatterns entry here.
   },
