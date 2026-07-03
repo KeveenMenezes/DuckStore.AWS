@@ -1,4 +1,4 @@
-namespace User.Function.Modules.Users.Models;
+﻿namespace User.Function.Modules.Users.Models;
 
 // Extended customer profile owned by the User bounded context (ADR-0017). Cognito remains the
 // IdP (email/name/password); everything here lives in the `user-profiles` table.
