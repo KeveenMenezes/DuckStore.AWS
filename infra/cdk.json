@@ -17,6 +17,8 @@
   },
   "context": {
     "@aws-cdk/aws-lambda:recognizeLayerVersion": true,
-    "@aws-cdk/core:checkSecretUsage": true
+    "@aws-cdk/core:checkSecretUsage": true,
+    "googleClientId": "815850258594-91ktc7f4j3v17robnmgppmr0p8gc8e45.apps.googleusercontent.com",
+    "amazonClientId": "amzn1.application-oa2-client.6763ccd88ceb47218e4e5e7e1057adc4"
   }
 }
