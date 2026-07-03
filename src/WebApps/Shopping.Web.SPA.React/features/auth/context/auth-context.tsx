@@ -36,7 +36,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(r => r.json())
       .then((me: { authenticated: boolean; user: { sub: string; email: string; username: string } | null }) => {
         if (me.authenticated && me.user) {
-          setUser({ id: me.user.sub, name: me.user.username, email: me.user.email })
+          // Fall back to email if the token had no username claim, so `name` is
+          // never undefined downstream (user-dropdown, initials, etc.).
+          setUser({ id: me.user.sub, name: me.user.username || me.user.email, email: me.user.email })
         } else {
           const session = authService.getSession()
           if (session) setUser(session)
