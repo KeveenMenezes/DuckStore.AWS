@@ -87,6 +87,7 @@ export class AppSyncApi extends Construct {
     const couponsTable = dynamodb.Table.fromTableName(this, 'CouponsTable', 'coupons');
     const orderingTable = dynamodb.Table.fromTableName(this, 'OrderingTable', 'ordering');
     const reviewsTable = dynamodb.Table.fromTableName(this, 'ReviewsTable', 'reviews');
+    const userProfilesTable = dynamodb.Table.fromTableName(this, 'UserProfilesTable', 'user-profiles');
 
     const productsDs = api.addDynamoDbDataSource('ProductsDS', productsTable);
     const categoriesDs = api.addDynamoDbDataSource('CategoriesDS', categoriesTable);
@@ -94,6 +95,7 @@ export class AppSyncApi extends Construct {
     const couponsDs = api.addDynamoDbDataSource('CouponsDS', couponsTable);
     const orderingDs = api.addDynamoDbDataSource('OrderingDS', orderingTable);
     const reviewsDs = api.addDynamoDbDataSource('ReviewsDS', reviewsTable);
+    const userProfilesDs = api.addDynamoDbDataSource('UserProfilesDS', userProfilesTable);
 
     // Explicit grants — addDynamoDbDataSource creates the role but does not auto-grant
     productsTable.grantReadWriteData(productsDs);
@@ -102,6 +104,7 @@ export class AppSyncApi extends Construct {
     couponsTable.grantReadData(couponsDs);
     orderingTable.grantReadData(orderingDs);
     reviewsTable.grantReadWriteData(reviewsDs);
+    userProfilesTable.grantReadWriteData(userProfilesDs);
 
     // ------------------------------------------------------------------
     // Lambda data sources — imported by function name (no CF coupling)
@@ -131,6 +134,11 @@ export class AppSyncApi extends Construct {
       'DeleteOrderFn',
       'ordering-delete-order',
     );
+    const getProfileFn = lambda.Function.fromFunctionName(
+      this,
+      'GetProfileFn',
+      'user-get-profile',
+    );
 
     // addLambdaDataSource automatically grants lambda:InvokeFunction to the DS role
     const storeBasketDs = api.addLambdaDataSource('StoreBasketDS', storeBasketFn);
@@ -138,6 +146,7 @@ export class AppSyncApi extends Construct {
     const mergeBasketDs = api.addLambdaDataSource('MergeBasketDS', mergeBasketFn);
     const getOrdersDs = api.addLambdaDataSource('GetOrdersDS', getOrdersFn);
     const deleteOrderDs = api.addLambdaDataSource('DeleteOrderDS', deleteOrderFn);
+    const getProfileDs = api.addLambdaDataSource('GetProfileDS', getProfileFn);
 
     // ------------------------------------------------------------------
     // Resolvers — one JS file per (typeName, fieldName) pair
@@ -157,6 +166,11 @@ export class AppSyncApi extends Construct {
     // Admin-only queries (Cognito default + group check in resolver)
     this.resolver(orderingDs, 'OrdersResolver', 'Query', 'orders');
     this.resolver(orderingDs, 'OrdersByNameResolver', 'Query', 'ordersByName');
+
+    // User profile — Cognito-only. myProfile is a Lambda resolver (lazy provisioning),
+    // updateProfile is a direct DynamoDB UpdateItem resolver (ADR-0017).
+    this.resolver(getProfileDs, 'MyProfileResolver', 'Query', 'myProfile');
+    this.resolver(userProfilesDs, 'UpdateProfileResolver', 'Mutation', 'updateProfile');
 
     // Basket mutations — storeBasket/deleteBasket allow Cognito OR API_KEY (guest via BFF);
     // checkoutBasket/mergeBasket are Cognito-only (see ADR-0016).

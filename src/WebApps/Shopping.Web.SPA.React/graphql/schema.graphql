@@ -125,6 +125,18 @@ type MergeBasketResult {
   ownerId: String!
 }
 
+type UserProfile {
+  userId: ID!
+  email: String!
+  name: String!
+  phone: String
+  addressLine: String
+  city: String
+  state: String
+  zipCode: String
+  country: String
+}
+
 type CreateProductResult {
   id: ID!
 }
@@ -195,6 +207,16 @@ input CreateReviewInput {
   comment: String!
 }
 
+input UpdateProfileInput {
+  name: String!
+  phone: String
+  addressLine: String
+  city: String
+  state: String
+  zipCode: String
+  country: String
+}
+
 type Query {
   # Direct DynamoDB resolver — public (API_KEY or Cognito)
   products(pageSize: Int, nextToken: String): ProductPage! @aws_api_key @aws_cognito_user_pools
@@ -220,6 +242,9 @@ type Query {
 
   # Lambda resolver — Cognito required; uses ctx.identity.sub (resolver ignores client customerId)
   ordersByCustomer(customerId: ID!): OrderPage!
+
+  # Lambda resolver — Cognito only (default auth); lazily provisions from token claims (ADR-0017)
+  myProfile: UserProfile!
 
   # Direct DynamoDB resolver — public (API_KEY or Cognito)
   reviewsByProduct(productId: ID!, pageSize: Int, nextToken: String): ReviewPage! @aws_api_key @aws_cognito_user_pools
@@ -254,4 +279,7 @@ type Mutation {
 
   # Direct DynamoDB resolver — Cognito required; CDC updates product rating (ADR-0011)
   createReview(input: CreateReviewInput!): CreateReviewResult!
+
+  # Direct DynamoDB resolver — Cognito only (default auth); UpdateItem keyed by ctx.identity.sub (ADR-0017)
+  updateProfile(input: UpdateProfileInput!): UserProfile!
 }
