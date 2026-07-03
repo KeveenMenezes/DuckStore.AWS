@@ -35,6 +35,16 @@ export class SpaStorage extends Construct {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
+      // Versioned so a broken deploy can be rolled back (DeployAssets/DeployCache
+      // overwrite fixed keys like public/* images on every deploy, with no
+      // content hash to fall back to). Capped at 2 versions per object (current
+      // + 1 noncurrent) so this doesn't grow storage unbounded across deploys.
+      versioned: true,
+      lifecycleRules: [
+        {
+          noncurrentVersionsToRetain: 1,
+        },
+      ],
     });
 
     // Static assets (_next/*, public/*) — long-lived cache; served by CloudFront
