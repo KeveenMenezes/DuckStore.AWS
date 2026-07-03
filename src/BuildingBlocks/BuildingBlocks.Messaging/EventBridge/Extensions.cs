@@ -6,6 +6,10 @@ public static class Extensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        // EventBridgePublisher depends on ILogger<T>; registering logging here keeps this
+        // registration self-sufficient (callers don't have to remember to AddLogging()).
+        services.AddLogging();
+
         services.Configure<EventBridgeOptions>(
             configuration.GetSection(EventBridgeOptions.SectionName));
 
