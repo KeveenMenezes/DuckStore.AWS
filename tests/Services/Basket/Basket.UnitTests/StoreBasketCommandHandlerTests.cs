@@ -1,7 +1,7 @@
-﻿using Basket.Function.Data;
-using Basket.Function.Dtos;
-using Basket.Function.Features.StoreBasket;
-using Basket.Function.Models;
+﻿using Basket.Function.Modules.ShoppingCarts.Data;
+using Basket.Function.Modules.ShoppingCarts.Domain.Dtos;
+using Basket.Function.Modules.ShoppingCarts.Domain.Entities;
+using Basket.Function.Modules.ShoppingCarts.Features.StoreBasket;
 using FluentValidation.TestHelper;
 
 namespace Basket.UnitTests;
@@ -9,7 +9,7 @@ namespace Basket.UnitTests;
 public class StoreBasketCommandHandlerTests
 {
     private readonly AutoMocker _autoMocker;
-    private readonly Mock<IBasketRepository> _basketRepositoryMock;
+    private readonly Mock<IShoppingCartRepository> _basketRepositoryMock;
     private readonly Mock<ICouponRepository> _couponRepositoryMock;
     private readonly StoreBasketCommandValidator _validator;
     private readonly StoreBasketCommandHandler _handler;
@@ -17,7 +17,7 @@ public class StoreBasketCommandHandlerTests
     public StoreBasketCommandHandlerTests()
     {
         _autoMocker = new AutoMocker();
-        _basketRepositoryMock = _autoMocker.GetMock<IBasketRepository>();
+        _basketRepositoryMock = _autoMocker.GetMock<IShoppingCartRepository>();
         _couponRepositoryMock = _autoMocker.GetMock<ICouponRepository>();
         _validator = new StoreBasketCommandValidator();
         _handler = _autoMocker.CreateInstance<StoreBasketCommandHandler>();

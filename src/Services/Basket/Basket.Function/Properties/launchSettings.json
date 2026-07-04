@@ -1,21 +1,9 @@
 {
   "profiles": {
-    "Aspire_basket-get-basket": {
-      "commandName": "Executable",
-      "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Basket.Function.deps.json --runtimeconfig ./Basket.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Basket.Function::Basket.Function.Functions_GetBasket_Generated::GetBasket",
-      "workingDirectory": "bin/Debug/net10.0/"
-    },
     "Aspire_basket-store-basket": {
       "commandName": "Executable",
       "executablePath": "dotnet",
       "commandLineArgs": "exec --depsfile ./Basket.Function.deps.json --runtimeconfig ./Basket.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Basket.Function::Basket.Function.Functions_StoreBasket_Generated::StoreBasket",
-      "workingDirectory": "bin/Debug/net10.0/"
-    },
-    "Aspire_basket-delete-basket": {
-      "commandName": "Executable",
-      "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Basket.Function.deps.json --runtimeconfig ./Basket.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Basket.Function::Basket.Function.Functions_DeleteBasket_Generated::DeleteBasket",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_basket-checkout-basket": {
@@ -24,10 +12,16 @@
       "commandLineArgs": "exec --depsfile ./Basket.Function.deps.json --runtimeconfig ./Basket.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Basket.Function::Basket.Function.Functions_CheckoutBasket_Generated::CheckoutBasket",
       "workingDirectory": "bin/Debug/net10.0/"
     },
+    "Aspire_basket-merge-basket": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "exec --depsfile ./Basket.Function.deps.json --runtimeconfig ./Basket.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Basket.Function::Basket.Function.Functions_MergeBasket_Generated::MergeBasket",
+      "workingDirectory": "bin/Debug/net10.0/"
+    },
     "Aspire_basket-shopping-carts-event-publisher": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Basket.Function.deps.json --runtimeconfig ./Basket.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Basket.Function::Basket.Function.EventsIntegration.Publisher.ShoppingCartsEventPublisherFunction::FunctionHandler",
+      "commandLineArgs": "exec --depsfile ./Basket.Function.deps.json --runtimeconfig ./Basket.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Basket.Function::Basket.Function.Functions_ShoppingCartStreamPublisher_Generated::ShoppingCartStreamPublisher",
       "workingDirectory": "bin/Debug/net10.0/"
     }
   }

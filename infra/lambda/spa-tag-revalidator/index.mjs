@@ -1,5 +1,6 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront'
 
 // Replaces the old HTTP webhook (public POST + shared secret) for
 // backend-triggered ISR revalidation. Consumes CatalogUpdatedEvent /
@@ -15,14 +16,7 @@ import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/li
 // not "products") — see BUILD_ID below; querying the bare tag matches nothing.
 //
 // The SQS revalidation queue (OpenNext's own, consumed by the separate
-// revalidation-function Lambda) is deliberately NOT used here — it expects
-// real page routes (e.g. "/", "/products/123") and only forces regenerating
-// already-cached PAGE-level entries. `/` and `/products/[id]` in this app
-// are fully dynamic (SSR) routes per next build's own prerender-manifest.json
-// (they appear in neither `routes` nor `dynamicRoutes`), so there is no
-// PAGE-level cache to regenerate — only the underlying tagged fetch() calls
-// are cacheable, which is exactly what tag-cache "path" entries key off of
-// (a hash of the fetch's URL+method+headers+body, not a page route).
+// revalidation-function Lambda) is deliberately NOT used here.
 //
 // Tags are granular per product (products:{id}, reviews:{id} — see
 // app/products/[id]/page.tsx) except the home page's blanket "products" tag,
@@ -31,8 +25,49 @@ import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/li
 // CatalogStreamEventPublisherFunction.cs), so a catalog change invalidates
 // both the home page and that one product's own page, without touching
 // every other product's cached page.
+//
+// `/` and `/products/[id]` ARE prerendered ISR routes (confirmed in
+// prerender-manifest.json: both appear under `routes`, and `/products/[id]`
+// also under `dynamicRoutes`, with `initialRevalidateSeconds: false`), and the
+// origin Lambda returns `Cache-Control: s-maxage=31536000` for them (confirmed
+// via response headers in prod) — CloudFront's ServerCachePolicy
+// (spa-distribution.ts) caches that at the edge for up to a year. Marking the
+// DynamoDB tag-cache stale only changes what the origin Lambda serves on its
+// *next* invocation; it does nothing for a CloudFront PoP that already has
+// the page cached, which just keeps serving the old HTML until that edge
+// entry's TTL runs out. So every stale-tag write here is paired with a
+// CloudFront path invalidation for the pages that tag feeds.
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}))
+const cloudfront = new CloudFrontClient({})
+
+// Paths whose cached HTML/RSC depends on a given tag, mirroring the
+// products/{id} and reviews/{id} tags used by app/products/[id]/page.tsx and
+// the blanket "products" tag used by app/page.tsx.
+function pathsForTag(tag) {
+  if (tag === 'products') return ['/']
+  const productMatch = /^products:(.+)$/.exec(tag)
+  if (productMatch) return [`/products/${productMatch[1]}`]
+  const reviewMatch = /^reviews:(.+)$/.exec(tag)
+  if (reviewMatch) return [`/products/${reviewMatch[1]}`]
+  return []
+}
+
+async function invalidatePaths(paths) {
+  if (paths.length === 0) return
+
+  await cloudfront.send(
+    new CreateInvalidationCommand({
+      DistributionId: process.env.CLOUDFRONT_DISTRIBUTION_ID,
+      InvalidationBatch: {
+        CallerReference: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        Paths: { Quantity: paths.length, Items: paths },
+      },
+    }),
+  )
+
+  console.log(`Invalidated CloudFront path(s): ${paths.join(', ')}`)
+}
 
 // OpenNext's DynamoDB tag cache namespaces every partition key with the
 // Next.js build ID — a row's `tag` is stored as "{buildId}/products", not
@@ -92,5 +127,7 @@ export const handler = async (event) => {
     return
   }
 
-  await Promise.all(tags.map(markTagStale))
+  const paths = [...new Set(tags.flatMap(pathsForTag))]
+
+  await Promise.all([...tags.map(markTagStale), invalidatePaths(paths)])
 }
