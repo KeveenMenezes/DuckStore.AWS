@@ -1,4 +1,4 @@
-﻿namespace Catalog.Function.Modules.Categories.Models;
+﻿namespace Catalog.Function.Modules.Categories.Domain.Entities;
 
 public class Category : Aggregate<CategoryId>
 {
@@ -22,7 +22,6 @@ public class Category : Aggregate<CategoryId>
         return category;
     }
 
-    // Reconstitui uma Category já persistida (sem revalidar regras de criação).
     internal static Category Load(
         Guid id, string name, Guid? parentId, List<CategoryId> path) =>
         new()

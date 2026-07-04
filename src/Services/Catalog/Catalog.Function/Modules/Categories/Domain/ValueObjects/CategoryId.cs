@@ -1,4 +1,4 @@
-﻿namespace Catalog.Function.Modules.Categories.ValueObjects;
+﻿namespace Catalog.Function.Modules.Categories.Domain.ValueObjects;
 
 public class CategoryId : ValueObject<Guid>
 {
@@ -7,9 +7,7 @@ public class CategoryId : ValueObject<Guid>
     public static CategoryId Of(Guid value)
     {
         if (value == Guid.Empty)
-        {
             throw new ArgumentException("CategoryId cannot be empty.", nameof(value));
-        }
 
         return new CategoryId(value);
     }
@@ -17,10 +15,7 @@ public class CategoryId : ValueObject<Guid>
     public static List<CategoryId> Of(IEnumerable<Guid> values)
     {
         if (values == null || !values.Any())
-        {
-            //TODO: Create a specific exception for CategoryId
             throw new ArgumentException("Values cannot be null or empty.", nameof(values));
-        }
 
         return [.. values.Select(Of)];
     }
