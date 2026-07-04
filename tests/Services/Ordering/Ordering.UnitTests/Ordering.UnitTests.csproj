@@ -32,7 +32,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\src\Services\Ordering\Ordering.Function\Ordering.Function.csproj" />
-    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.UnitTests\BuildingBlocks.UnitTests.csproj" />
   </ItemGroup>
 
 </Project>

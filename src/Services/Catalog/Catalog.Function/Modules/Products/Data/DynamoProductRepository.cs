@@ -8,59 +8,6 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
 {
     public const string TableName = "products";
 
-    public async Task<Product?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
-    {
-        var response = await dynamoDb.GetItemAsync(
-            new GetItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) }
-            },
-            cancellationToken);
-
-        return response.Item is { Count: > 0 } ? ToProduct(response.Item) : null;
-    }
-
-    public async Task<IReadOnlyList<Product>> GetByCategoryAsync(Guid categoryId, CancellationToken cancellationToken = default)
-    {
-        var response = await dynamoDb.ScanAsync(
-            new ScanRequest
-            {
-                TableName = TableName,
-                FilterExpression = "contains(CategoryIds, :categoryId)",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {
-                    [":categoryId"] = new(categoryId.ToString())
-                }
-            },
-            cancellationToken);
-
-        return [.. (response.Items ?? [])
-            .Select(ToProduct)];
-    }
-
-    public async Task<PaginatedResult<Product>> GetPagedAsync(
-        int pageIndex, int pageSize, CancellationToken cancellationToken = default)
-    {
-        var response = await dynamoDb.ScanAsync(
-            new ScanRequest { TableName = TableName },
-            cancellationToken);
-
-        var items = response.Items ?? [];
-
-        var page = items
-            .Skip((Math.Max(pageIndex, 1) - 1) * pageSize)
-            .Take(pageSize)
-            .Select(ToProduct)
-            .ToList();
-
-        return new PaginatedResult<Product>(
-            pageIndex,
-            pageSize,
-            items.Count,
-            page);
-    }
-
     public async Task<bool> AnyAsync(CancellationToken cancellationToken = default)
     {
         var response = await dynamoDb.ScanAsync(
@@ -73,20 +20,6 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
     public Task AddAsync(Product product, CancellationToken cancellationToken = default) =>
         dynamoDb.PutItemAsync(
             new PutItemRequest { TableName = TableName, Item = ToItem(product) },
-            cancellationToken);
-
-    public Task UpdateAsync(Product product, CancellationToken cancellationToken = default) =>
-        dynamoDb.PutItemAsync(
-            new PutItemRequest { TableName = TableName, Item = ToItem(product) },
-            cancellationToken);
-
-    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
-        dynamoDb.DeleteItemAsync(
-            new DeleteItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) }
-            },
             cancellationToken);
 
     // Intentionally omits AverageRating/RatingCount/RatingSum: those are maintained by the
@@ -108,21 +41,4 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
                 SS = [.. product.CategoryIds.Select(c => c.Value.ToString())]
             }
         };
-
-    private static Product ToProduct(Dictionary<string, AttributeValue> item) =>
-        Product.Load(
-            Guid.Parse(item["Id"].S),
-            item["Name"].S,
-            item["Description"].S,
-            item["ImageUrl"].S,
-            decimal.Parse(item["Price"].N, CultureInfo.InvariantCulture),
-            int.Parse(item["Stock"].N, CultureInfo.InvariantCulture),
-            CategoryId.Of(item["CategoryIds"].SS.Select(Guid.Parse)),
-            // Older products predate ratings — default to 0 when the attributes are absent.
-            item.TryGetValue("AverageRating", out var avg)
-                ? double.Parse(avg.N, CultureInfo.InvariantCulture)
-                : 0,
-            item.TryGetValue("RatingCount", out var count)
-                ? int.Parse(count.N, CultureInfo.InvariantCulture)
-                : 0);
 }

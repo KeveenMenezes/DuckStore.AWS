@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Ordering.Function.Configuration;
+﻿using Ordering.Function.Shared.Configuration;
 
 namespace Ordering.Function;
 
@@ -13,6 +11,9 @@ public class Startup
             .AddEnvironmentVariables()
             .Build();
 
+        // Registered so [LambdaFunction] methods can inject IConfiguration via [FromServices]
+        // (the stream publisher reads the OrderFulfillment feature gate from it).
+        services.AddSingleton<IConfiguration>(configuration);
         services.AddOrderingServices(configuration);
     }
 }

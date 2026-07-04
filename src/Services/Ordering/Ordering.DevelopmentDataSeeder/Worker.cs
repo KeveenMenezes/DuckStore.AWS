@@ -1,5 +1,5 @@
 ﻿using System.Diagnostics;
-using Ordering.Function.Data;
+using Ordering.Function.Modules.Orders.Data;
 
 namespace Ordering.DevelopmentDataSeeder;
 

@@ -1,4 +1,4 @@
-namespace Basket.Function.Data;
+﻿namespace Basket.Function.Data;
 
 public interface ICouponRepository
 {

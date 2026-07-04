@@ -1,5 +1,27 @@
 ﻿namespace BuildingBlocks.Core.DomainModel;
 
+// Base for multi-field value objects: equality is by the ordered sequence of GetEqualityComponents().
+public abstract class ValueObject
+{
+    protected abstract IEnumerable<object?> GetEqualityComponents();
+
+    public override bool Equals(object? obj)
+    {
+        if (obj is null || obj.GetType() != GetType())
+            return false;
+
+        var other = (ValueObject)obj;
+        return GetEqualityComponents().SequenceEqual(other.GetEqualityComponents());
+    }
+
+    public override int GetHashCode() =>
+        GetEqualityComponents().Aggregate(0, (hash, component) => HashCode.Combine(hash, component));
+
+    public static bool operator ==(ValueObject? left, ValueObject? right) => Equals(left, right);
+
+    public static bool operator !=(ValueObject? left, ValueObject? right) => !Equals(left, right);
+}
+
 public class ValueObject<T>
     : IEquatable<ValueObject<T>>
     where T : IComparable<T>

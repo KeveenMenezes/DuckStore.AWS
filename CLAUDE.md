@@ -85,7 +85,6 @@ Shared code referenced across services — check here before adding cross-cuttin
 
 - **src/AppHost** — .NET Aspire AppHost. `Program.cs` is the composition root; per-service wiring lives in `*Extensions.cs` (`BasketExtensions`, `CatalogExtensions`, `OrderingExtensions`, `ReviewExtensions`, `ObservabilityExtensions`). This is the source of truth for what infrastructure exists, Lambda handler names, `WaitFor`/`WaitForCompletion` chains, and DynamoDB Streams sources. Shared helper in `Extensions/Extensions.cs`: `WithAwsDevEnvironment()` (dummy AWS creds + region for local dev). Add new resources/functions here, not in docker-compose.
 - **src/ApiGateways/YarpApiGateway** — YARP reverse proxy. Routes are prefixed per service (prefix stripped before forwarding); the ordering route has a rate-limiter policy.
-- **src/WebApps/Shopping.Web.Server** — Blazor Server frontend (Refit typed clients through the gateway).
 - **src/WebApps/Shopping.Web.SPA** — Angular SPA (legacy; being replaced per ADR-0006).
 - **src/WebApps/Shopping.Web.SPA.React** — React/Next.js SPA (the primary SPA going forward). Uses `pnpm` (`pnpm dev` / `pnpm build` / `pnpm lint`). This directory is slated to move into its own Git repository, linked back into DuckStore as a **git submodule**.
 

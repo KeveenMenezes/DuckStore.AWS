@@ -1,5 +1,4 @@
-global using System.Text.Json.Serialization;
-global using Amazon.Lambda.Annotations;
+﻿global using Amazon.Lambda.Annotations;
 global using BuildingBlocks.Core.CQRS;
 global using BuildingBlocks.Core.DomainModel;
 global using FluentValidation;

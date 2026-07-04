@@ -1,11 +1,1 @@
-﻿global using Catalog.Function.Modules.Categories.Data;
-global using Catalog.Function.Modules.Categories.Models;
-global using Catalog.Function.Modules.Categories.ValueObjects;
-global using Catalog.Function.Modules.Products.Data;
-global using Catalog.Function.Modules.Products.Features.CreateProduct;
-global using Catalog.Function.Modules.Products.Features.DeleteProduct;
-global using Catalog.Function.Modules.Products.Features.UpdateProduct;
-global using Catalog.Function.Modules.Products.Models;
-global using Catalog.Function.Modules.Products.ValueObjects;
-global using Catalog.Function.Shared.Data;
-global using FluentValidation.TestHelper;
+﻿

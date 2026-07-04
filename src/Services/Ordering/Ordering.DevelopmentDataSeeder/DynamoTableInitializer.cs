@@ -1,8 +1,8 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using Microsoft.Extensions.DependencyInjection;
+using Ordering.Function.Shared.Data;
 
-namespace Ordering.Function.Data;
+namespace Ordering.Function.Modules.Orders.Data;
 
 public static class DynamoTableInitializer
 {
@@ -47,7 +47,9 @@ public static class DynamoTableInitializer
                 StreamSpecification = new StreamSpecification
                 {
                     StreamEnabled = true,
-                    StreamViewType = StreamViewType.NEW_IMAGE
+                    // NEW_AND_OLD_IMAGES so stream-publisher rules can detect transitions by
+                    // comparing the old and new images (see ADR-0019).
+                    StreamViewType = StreamViewType.NEW_AND_OLD_IMAGES
                 }
             });
 
