@@ -1,46 +1,63 @@
-﻿namespace Ordering.FunctionalTests;
+﻿using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.Model;
 
+namespace Ordering.FunctionalTests;
+
+// Ordering has no HTTP API — these validate, end-to-end against the seeded DynamoDB Local in the
+// running Aspire graph, the two operations the AppSync direct resolvers rely on (ADR-0009):
+// the GSI1 "orders by customer" query and the "delete order" DeleteItem.
 public class OrderingApiTests(OrderingApiFixture fixture) : IClassFixture<OrderingApiFixture>
 {
-    private readonly HttpClient _httpClient = fixture.HttpClient;
+    private readonly IAmazonDynamoDB _dynamoDb = fixture.DynamoDb;
 
     [Fact]
-    public async Task HealthEndpoint_Should_ReturnSuccess()
+    public async Task OrdersByCustomer_QueriesGsi1_ReturnsSeededOrder()
     {
-        // Act
-        var response = await _httpClient.GetAsync("/health");
+        var response = await _dynamoDb.QueryAsync(new QueryRequest
+        {
+            TableName = OrderingApiFixture.OrderingTable,
+            IndexName = "GSI1",
+            KeyConditionExpression = "GSI1PK = :pk",
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                [":pk"] = new($"CUSTOMER#{OrderingApiFixture.SeededCustomerId}")
+            },
+            ScanIndexForward = false
+        });
 
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.NotEmpty(response.Items);
+        Assert.Contains(response.Items, item => item["Id"].S == OrderingApiFixture.SeededOrderId);
     }
 
     [Fact]
-    public async Task GetOrderById_Should_ReturnOrderDetails()
+    public async Task DeleteOrder_RemovesItemById()
     {
-        // Arrange
-        var orderId = 1;
+        // Self-contained: write a throwaway order, delete it by Id, confirm it's gone — mirrors the
+        // admin deleteOrder DeleteItem resolver without disturbing the seeded data other tests read.
+        var orderId = Guid.NewGuid().ToString();
 
-        // Act
-        var response = await _httpClient.GetAsync($"/orders/{orderId}");
+        await _dynamoDb.PutItemAsync(new PutItemRequest
+        {
+            TableName = OrderingApiFixture.OrderingTable,
+            Item = new Dictionary<string, AttributeValue>
+            {
+                ["Id"] = new(orderId),
+                ["Type"] = new("Order")
+            }
+        });
 
-        // Assert
-        response.EnsureSuccessStatusCode();
-        var content = await response.Content.ReadAsStringAsync();
-        Assert.False(string.IsNullOrEmpty(content));
-    }
+        await _dynamoDb.DeleteItemAsync(new DeleteItemRequest
+        {
+            TableName = OrderingApiFixture.OrderingTable,
+            Key = new Dictionary<string, AttributeValue> { ["Id"] = new(orderId) }
+        });
 
-    [Fact]
-    public async Task DeleteOrder_Should_ReturnNoContent()
-    {
-        // Arrange
-        var orderId = "194ea999-cd0b-498d-9760-dddf0d74cd2f";
+        var afterDelete = await _dynamoDb.GetItemAsync(new GetItemRequest
+        {
+            TableName = OrderingApiFixture.OrderingTable,
+            Key = new Dictionary<string, AttributeValue> { ["Id"] = new(orderId) }
+        });
 
-        // Act
-        var response = await _httpClient.DeleteAsync($"/orders/{orderId}");
-
-        // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.False(afterDelete.IsItemSet);
     }
 }
-
-

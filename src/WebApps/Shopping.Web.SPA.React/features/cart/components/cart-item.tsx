@@ -18,7 +18,7 @@ export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
       <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-md bg-secondary">
         {/* Served straight from CloudFront/S3, outside the Next optimizer — ADR-0018. */}
         <Image
-          src={item.product.imageUrl}
+          src={item.product.imageUrl || '/icon.svg'}
           alt={item.product.name}
           fill
           className="object-cover"
@@ -50,7 +50,7 @@ export function CartItem({ item, onUpdateQuantity, onRemove }: CartItemProps) {
               size="icon"
               className="h-7 w-7"
               onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-              disabled={item.quantity >= item.product.stock}
+              disabled={item.quantity >= (item.product.stock ?? Infinity)}
               aria-label="Increase quantity"
             >
               <Plus className="h-3 w-3" />

@@ -30,6 +30,7 @@ export function response(ctx) {
       price: i.Price,
       productId: `${i.ProductId}`,
       productName: i.ProductName,
+      imageUrl: i.ImageUrl ?? null,
     })),
     totalPrice: cart.TotalPrice,
   }

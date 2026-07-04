@@ -1,4 +1,4 @@
-namespace Basket.Function.Features.StoreBasket;
+﻿namespace Basket.Function.Features.StoreBasket;
 
 public record StoreBasketCommand(ShoppingCartDto Cart) : ICommand<StoreBasketResult>;
 public record StoreBasketResult(string OwnerId);
@@ -39,7 +39,7 @@ public class StoreBasketCommandHandler(
         ShoppingCart.Create(
             dto.OwnerId,
             dto.Items.Select(item =>
-                ShoppingCartItem.Create(item.ProductId, item.ProductName, item.Color, item.Quantity, item.Price)));
+                ShoppingCartItem.Create(item.ProductId, item.ProductName, item.ImageUrl, item.Color, item.Quantity, item.Price)));
 
     private async Task<IReadOnlyCollection<Coupon>> GetCouponsAsync(
         ShoppingCart cart, CancellationToken cancellationToken)

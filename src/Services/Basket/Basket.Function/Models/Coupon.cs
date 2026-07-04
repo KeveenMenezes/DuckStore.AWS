@@ -1,4 +1,4 @@
-using BuildingBlocks.Core.DomainModel;
+﻿using BuildingBlocks.Core.DomainModel;
 
 namespace Basket.Function.Models;
 

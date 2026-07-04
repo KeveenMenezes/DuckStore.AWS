@@ -12,6 +12,9 @@ public class EventBridgePublisher(
         where T : notnull =>
         PublishRawAsync(typeof(T).Name, JsonSerializer.Serialize(message), cancellationToken);
 
+    public Task PublishAsync(PublishInstruction instruction, CancellationToken cancellationToken = default) =>
+        PublishRawAsync(instruction.DetailType, JsonSerializer.Serialize(instruction.Payload), cancellationToken);
+
     public async Task PublishRawAsync(
         string detailType, string detailJson, CancellationToken cancellationToken = default)
     {

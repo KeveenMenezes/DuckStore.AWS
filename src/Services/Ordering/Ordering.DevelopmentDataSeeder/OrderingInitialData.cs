@@ -1,5 +1,5 @@
-﻿using Ordering.Function.Models;
-using Ordering.Function.ValueObjects;
+﻿using Ordering.Function.Modules.Orders.Domain.Entities;
+using Ordering.Function.Modules.Orders.Domain.ValueObjects;
 
 namespace Ordering.DevelopmentDataSeeder;
 
@@ -32,14 +32,14 @@ public static class OrderingInitialData
                 "5555555555554444",
                 "12/28",
                 "355",
-                Ordering.Function.Enums.PaymentMethod.Credit);
+                Ordering.Function.Modules.Orders.Domain.Enums.PaymentMethod.Credit);
 
             var payment2 = Payment.Of(
                 "john",
                 "8885555555554444",
                 "06/30",
                 "222",
-                Ordering.Function.Enums.PaymentMethod.Debit);
+                Ordering.Function.Modules.Orders.Domain.Enums.PaymentMethod.Debit);
 
             var order1 = Order.Create(
                 OrderId.Of(new Guid("194ea999-cd0b-498d-9760-dddf0d74cd2f")),
