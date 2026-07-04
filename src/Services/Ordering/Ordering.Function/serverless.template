@@ -3,7 +3,7 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "An AWS Serverless Application. This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
   "Resources": {
-    "OrderingFunctionFunctionsGetOrdersByCustomerGenerated": {
+    "OrderingFunctionFunctionsBasketCheckoutConsumerGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
         "Tool": "Amazon.Lambda.Annotations"
@@ -15,16 +15,15 @@
           "AWSLambdaBasicExecutionRole"
         ],
         "PackageType": "Image",
-        "Events": {},
         "ImageUri": ".",
         "ImageConfig": {
           "Command": [
-            "Ordering.Function::Ordering.Function.Functions_GetOrdersByCustomer_Generated::GetOrdersByCustomer"
+            "Ordering.Function::Ordering.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer"
           ]
         }
       }
     },
-    "OrderingFunctionFunctionsDeleteOrderGenerated": {
+    "OrderingFunctionFunctionsOrderStreamPublisherGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
         "Tool": "Amazon.Lambda.Annotations"
@@ -36,11 +35,10 @@
           "AWSLambdaBasicExecutionRole"
         ],
         "PackageType": "Image",
-        "Events": {},
         "ImageUri": ".",
         "ImageConfig": {
           "Command": [
-            "Ordering.Function::Ordering.Function.Functions_DeleteOrder_Generated::DeleteOrder"
+            "Ordering.Function::Ordering.Function.Functions_OrderStreamPublisher_Generated::OrderStreamPublisher"
           ]
         }
       }

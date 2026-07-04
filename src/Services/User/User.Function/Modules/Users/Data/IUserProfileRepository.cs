@@ -1,4 +1,4 @@
-namespace User.Function.Modules.Users.Data;
+﻿namespace User.Function.Modules.Users.Data;
 
 public interface IUserProfileRepository
 {

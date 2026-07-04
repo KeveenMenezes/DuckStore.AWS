@@ -1,7 +1,7 @@
 ﻿using Amazon.DynamoDBv2;
 using BuildingBlocks.ServiceDefaults;
 using Ordering.DevelopmentDataSeeder;
-using Ordering.Function.Data;
+using Ordering.Function.Modules.Orders.Data;
 
 var builder = Host.CreateApplicationBuilder(args);
 

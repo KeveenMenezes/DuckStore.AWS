@@ -17,7 +17,8 @@ export class OrderingDynamoDB extends Construct {
       tableName: 'ordering',
       partitionKey: { name: 'Id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      stream: dynamodb.StreamViewType.NEW_IMAGE,
+      // NEW_AND_OLD_IMAGES so stream-publisher rules can detect transitions (ADR-0019).
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 

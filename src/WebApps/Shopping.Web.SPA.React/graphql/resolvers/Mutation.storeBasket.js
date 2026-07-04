@@ -22,6 +22,7 @@ export function request(ctx) {
           Price: i.price,
           ProductId: i.productId,
           ProductName: i.productName,
+          ImageUrl: i.imageUrl ?? '',
         })),
       },
     },

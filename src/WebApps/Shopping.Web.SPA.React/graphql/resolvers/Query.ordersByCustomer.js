@@ -1,39 +1,47 @@
 import { util } from '@aws-appsync/utils'
 
+// AppSync direct DynamoDB resolver (ADR-0009): Query the ordering GSI1 by customer, newest-first.
+// Always uses the authenticated user's sub — never trusts a client-supplied customerId.
 export function request(ctx) {
-  // Always use the authenticated user's sub — never trust the client-supplied customerId
-  return {
-    operation: 'Invoke',
-    payload: { CustomerId: ctx.identity.sub },
+  const req = {
+    operation: 'Query',
+    index: 'GSI1',
+    query: {
+      expression: 'GSI1PK = :pk',
+      expressionValues: util.dynamodb.toMapValues({ ':pk': `CUSTOMER#${ctx.identity.sub}` }),
+    },
+    scanIndexForward: false,
   }
+  if (ctx.args.nextToken) req.nextToken = ctx.args.nextToken
+  return req
 }
 
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
   return {
-    items: (ctx.result.Orders ?? []).map(o => ({
-      id: `${o.Id}`,
-      customerId: `${o.CustomerId}`,
-      orderName: o.OrderName,
-      status: `${o.Status}`,
-      createdAt: null,
+    items: (ctx.result.items ?? []).map(item => ({
+      id: item.Id,
+      customerId: item.CustomerId,
+      orderName: item.OrderName,
+      status: item.Status,
+      createdAt: item.CreatedAt ?? null,
       shippingAddress: {
-        firstName: o.ShippingAddress?.FirstName ?? '',
-        lastName: o.ShippingAddress?.LastName ?? '',
-        emailAddress: o.ShippingAddress?.EmailAddress ?? '',
-        addressLine: o.ShippingAddress?.AddressLine ?? '',
-        country: o.ShippingAddress?.Country ?? '',
-        state: o.ShippingAddress?.State ?? '',
-        zipCode: o.ShippingAddress?.ZipCode ?? '',
+        firstName: item.ShippingAddress?.FirstName ?? '',
+        lastName: item.ShippingAddress?.LastName ?? '',
+        emailAddress: item.ShippingAddress?.EmailAddress ?? '',
+        addressLine: item.ShippingAddress?.AddressLine ?? '',
+        country: item.ShippingAddress?.Country ?? '',
+        state: item.ShippingAddress?.State ?? '',
+        zipCode: item.ShippingAddress?.ZipCode ?? '',
       },
       payment: {
-        cardName: o.Payment?.CardName ?? '',
-        cardNumber: o.Payment?.CardNumber ?? '',
-        expiration: o.Payment?.Expiration ?? '',
-        cvv: o.Payment?.Cvv ?? '',
-        paymentMethod: o.Payment?.PaymentMethod ?? 0,
+        cardName: item.Payment?.CardName ?? '',
+        cardNumber: item.Payment?.CardNumber ?? '',
+        expiration: item.Payment?.Expiration ?? '',
+        cvv: item.Payment?.Cvv ?? '',
+        paymentMethod: item.Payment?.PaymentMethod ?? 0,
       },
     })),
-    nextToken: null,
+    nextToken: ctx.result.nextToken ?? null,
   }
 }

@@ -1,4 +1,4 @@
-namespace Basket.Function.Features.MergeBasket;
+﻿namespace Basket.Function.Features.MergeBasket;
 
 // Called right after login: moves the visitor's GUEST# cart into the authenticated USER# cart.
 public record MergeBasketCommand(string OwnerId, string GuestId) : ICommand<MergeBasketResult>;

@@ -18,6 +18,7 @@
     <Project Path="src/BuildingBlocks/BuildingBlocks.Messaging/BuildingBlocks.Messaging.csproj" />
     <Project Path="src/BuildingBlocks/BuildingBlocks.ServiceDefaults/BuildingBlocks.ServiceDefaults.csproj" />
   </Folder>
+  <Folder Name="/src/Services/" />
   <Folder Name="/src/Services/Basket/">
     <Project Path="src/Services/Basket/Basket.Function/Basket.Function.csproj" />
     <Project Path="src/Services/Basket/Basket.DevelopmentDataSeeder/Basket.DevelopmentDataSeeder.csproj" />
@@ -38,12 +39,11 @@
     <Project Path="src/Services/User/User.Function/User.Function.csproj" />
     <Project Path="src/Services/User/User.DevelopmentDataSeeder/User.DevelopmentDataSeeder.csproj" />
   </Folder>
-  <Folder Name="/src/WebApps/">
-    <Project Path="src/WebApps/Shopping.Web.Server/Shopping.Web.Server.csproj" />
-  </Folder>
+  <Folder Name="/tests/" />
   <Folder Name="/tests/BuildingBlocks/">
     <Project Path="tests/BuildingBlocks/BuildingBlocks.UnitTests/BuildingBlocks.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/tests/Services/" />
   <Folder Name="/tests/Services/Basket/">
     <Project Path="tests/Services/Basket/Basket.UnitTests/Basket.UnitTests.csproj" />
   </Folder>

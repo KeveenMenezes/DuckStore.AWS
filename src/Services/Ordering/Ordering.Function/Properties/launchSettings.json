@@ -1,39 +1,15 @@
 {
   "profiles": {
-    "Aspire_ordering-get-orders": {
-      "commandName": "Executable",
-      "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.Functions_GetOrders_Generated::GetOrders",
-      "workingDirectory": "bin/Debug/net10.0/"
-    },
-    "Aspire_ordering-get-orders-by-customer": {
-      "commandName": "Executable",
-      "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.Functions_GetOrdersByCustomer_Generated::GetOrdersByCustomer",
-      "workingDirectory": "bin/Debug/net10.0/"
-    },
-    "Aspire_ordering-get-orders-by-name": {
-      "commandName": "Executable",
-      "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.Functions_GetOrdersByName_Generated::GetOrdersByName",
-      "workingDirectory": "bin/Debug/net10.0/"
-    },
-    "Aspire_ordering-delete-order": {
-      "commandName": "Executable",
-      "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.Functions_DeleteOrder_Generated::DeleteOrder",
-      "workingDirectory": "bin/Debug/net10.0/"
-    },
     "Aspire_ordering-basket-checkout-consumer": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.EventsIntegration.Consumer.BasketCheckoutConsumerFunction::FunctionHandler",
+      "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_ordering-order-created-publisher": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.EventsIntegration.Publisher.OrderCreatedPublisherFunction::FunctionHandler",
+      "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.Functions_OrderStreamPublisher_Generated::OrderStreamPublisher",
       "workingDirectory": "bin/Debug/net10.0/"
     }
   }

@@ -7,37 +7,6 @@ public class DynamoCategoryRepository(IAmazonDynamoDB dynamoDb) : ICategoryRepos
 {
     public const string TableName = "categories";
 
-    public async Task<PaginatedResult<Category>> GetPagedAsync(
-        int pageIndex, int pageSize, CancellationToken cancellationToken = default)
-    {
-        var response = await dynamoDb.ScanAsync(
-            new ScanRequest { TableName = TableName },
-            cancellationToken);
-
-        var items = response.Items ?? [];
-
-        var page = items
-            .Skip((Math.Max(pageIndex, 1) - 1) * pageSize)
-            .Take(pageSize)
-            .Select(ToCategory)
-            .ToList();
-
-        return new PaginatedResult<Category>(
-            pageIndex,
-            pageSize,
-            items.Count,
-            page);
-    }
-
-    public async Task<bool> AnyAsync(CancellationToken cancellationToken = default)
-    {
-        var response = await dynamoDb.ScanAsync(
-            new ScanRequest { TableName = TableName, Select = Select.COUNT, Limit = 1 },
-            cancellationToken);
-
-        return response.Count > 0;
-    }
-
     public Task AddAsync(Category category, CancellationToken cancellationToken = default) =>
         dynamoDb.PutItemAsync(
             new PutItemRequest { TableName = TableName, Item = ToItem(category) },
@@ -60,11 +29,4 @@ public class DynamoCategoryRepository(IAmazonDynamoDB dynamoDb) : ICategoryRepos
 
         return item;
     }
-
-    private static Category ToCategory(Dictionary<string, AttributeValue> item) =>
-        Category.Load(
-            Guid.Parse(item["Id"].S),
-            item["Name"].S,
-            item.TryGetValue("ParentId", out var parentId) ? Guid.Parse(parentId.S) : null,
-            [.. item["Path"].L.Select(p => CategoryId.Of(Guid.Parse(p.S)))]);
 }

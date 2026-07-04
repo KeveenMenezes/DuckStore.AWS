@@ -268,45 +268,20 @@ const resolvers = {
       return { items, nextToken: nextTokenOut }
     },
 
+    // Direct DynamoDB GSI1 query (ADR-0009) — mirrors the AppSync ordersByCustomer resolver.
+    // Local dev has no Cognito identity, so it scopes by the client-supplied customerId.
     async ordersByCustomer(_: unknown, { customerId }: { customerId: string }) {
-      const body = await invokeLambda<{
-        Orders: Array<{
-          Id: string; CustomerId: string; OrderName: string; Status: number
-          ShippingAddress: Record<string, string>; Payment: Record<string, unknown>
-          OrderItems: Array<{ ProductId: string; Quantity: number; Price: number }>
-        }>
-      }>('ordering-get-orders-by-customer', { CustomerId: customerId })
-      return {
-        items: (body.Orders ?? []).map(o => ({
-          id: String(o.Id),
-          customerId: String(o.CustomerId),
-          orderName: o.OrderName,
-          status: String(o.Status),
-          createdAt: null,
-          shippingAddress: {
-            firstName: o.ShippingAddress?.FirstName ?? '',
-            lastName: o.ShippingAddress?.LastName ?? '',
-            emailAddress: o.ShippingAddress?.EmailAddress ?? '',
-            addressLine: o.ShippingAddress?.AddressLine ?? '',
-            country: o.ShippingAddress?.Country ?? '',
-            state: o.ShippingAddress?.State ?? '',
-            zipCode: o.ShippingAddress?.ZipCode ?? '',
-          },
-          payment: {
-            cardName: (o.Payment?.CardName as string) ?? '',
-            cardNumber: (o.Payment?.CardNumber as string) ?? '',
-            expiration: (o.Payment?.Expiration as string) ?? '',
-            cvv: (o.Payment?.Cvv as string) ?? '',
-            paymentMethod: (o.Payment?.PaymentMethod as number) ?? 0,
-          },
-          orderItems: (o.OrderItems ?? []).map(oi => ({
-            productId: String(oi.ProductId),
-            quantity: Number(oi.Quantity),
-            price: Number(oi.Price),
-          })),
-        })),
-        nextToken: null,
-      }
+      const result = await dynamoDb.send(
+        new QueryCommand({
+          TableName: 'ordering',
+          IndexName: 'GSI1',
+          KeyConditionExpression: 'GSI1PK = :pk',
+          ExpressionAttributeValues: { ':pk': { S: `CUSTOMER#${customerId}` } },
+          ScanIndexForward: false,
+        }),
+      )
+      const items = (result.Items ?? []).map(raw => mapOrder(unmarshall(raw)))
+      return { items, nextToken: null }
     },
 
     async couponFor(_: unknown, { productName }: { productName: string }) {
@@ -584,12 +559,12 @@ const resolvers = {
       return { isSuccess: true }
     },
 
+    // Direct DynamoDB DeleteItem (ADR-0009) — mirrors the AppSync deleteOrder resolver.
     async deleteOrder(_: unknown, { orderId }: { orderId: string }) {
-      const body = await invokeLambda<{ IsDeleted: boolean }>(
-        'ordering-delete-order',
-        { OrderId: orderId },
+      await dynamoDb.send(
+        new DeleteItemCommand({ TableName: 'ordering', Key: { Id: { S: orderId } } }),
       )
-      return { isSuccess: body.IsDeleted }
+      return { isSuccess: true }
     },
 
     async createReview(

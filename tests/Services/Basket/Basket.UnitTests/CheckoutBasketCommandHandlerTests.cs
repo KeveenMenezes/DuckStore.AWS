@@ -37,7 +37,7 @@ public class CheckoutBasketCommandHandlerTests
 
         var basket = ShoppingCart.Create(
             "USER#testuser",
-            [ShoppingCartItem.Create(Guid.NewGuid(), "Sample Product", "Red", 2, 50.0m)]);
+            [ShoppingCartItem.Create(Guid.NewGuid(), "Sample Product", "https://example.com/img.jpg", "Red", 2, 50.0m)]);
 
         _basketRepositoryMock.Setup(repo =>
             repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))

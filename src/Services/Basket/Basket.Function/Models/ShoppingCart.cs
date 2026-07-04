@@ -1,4 +1,4 @@
-using BuildingBlocks.Core.DomainModel;
+﻿using BuildingBlocks.Core.DomainModel;
 
 namespace Basket.Function.Models;
 
@@ -55,7 +55,7 @@ public class ShoppingCart : Aggregate<string>
 
             _items.Remove(existing);
             _items.Add(ShoppingCartItem.Load(
-                existing.ProductId, existing.ProductName, existing.Color,
+                existing.ProductId, existing.ProductName, existing.ImageUrl, existing.Color,
                 existing.Quantity + incoming.Quantity, existing.Price));
         }
     }
