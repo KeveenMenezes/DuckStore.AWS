@@ -8,6 +8,7 @@ import { SpaLambdas } from '../constructs/spa-lambdas';
 import { SpaDistribution } from '../constructs/spa-distribution';
 import { SpaInvalidation } from '../constructs/spa-invalidation';
 import { SpaTagRevalidator } from '../constructs/spa-tag-revalidator';
+import { SpaTagCacheSeeder } from '../constructs/spa-tag-cache-seeder';
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const OPEN_NEXT_DIR = path.join(REPO_ROOT, 'src/WebApps/Shopping.Web.SPA.React/.open-next');
@@ -53,6 +54,16 @@ export class SpaStack extends cdk.Stack {
     const storage = new SpaStorage(this, 'SpaStorage', {
       openNextDir: OPEN_NEXT_DIR,
     });
+
+    // Populates the tag-cache table's tag -> path rows for every prerendered
+    // ISR page's tagged fetch() calls, at deploy time — without this, the
+    // table stays permanently empty and revalidateTag()/SpaTagRevalidator
+    // have no tag -> path mapping to mark stale (see spa-tag-cache-seeder.ts).
+    const tagCacheSeeder = new SpaTagCacheSeeder(this, 'TagCacheSeeder', {
+      tagCacheTable: storage.tagCacheTable,
+      openNextDir: OPEN_NEXT_DIR,
+    });
+    tagCacheSeeder.node.addDependency(storage);
 
     const functions = new SpaLambdas(this, 'SpaLambdas', {
       openNextDir: OPEN_NEXT_DIR,

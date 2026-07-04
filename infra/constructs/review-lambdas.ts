@@ -55,7 +55,7 @@ export class ReviewLambdas extends Construct {
         code: lambda.DockerImageCode.fromEcr(reviewImage.repository, {
           tagOrDigest: reviewImage.imageTag,
           cmd: [
-            'Review.Function::Review.Function.EventsIntegration.Publisher.ReviewCreatedPublisherFunction::FunctionHandler',
+            'Review.Function::Review.Function.Functions_ReviewCreatedPublisher_Generated::ReviewCreatedPublisher',
           ],
         }),
         timeout: cdk.Duration.seconds(30),

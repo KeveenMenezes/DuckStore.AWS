@@ -1,3 +1,5 @@
+import * as fs from 'fs';
+import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
@@ -35,12 +37,17 @@ export interface SpaLambdasProps {
  * the `default` server function (SSR/API routes), the image optimizer, and the
  * revalidation function (SQS-triggered).
  *
- * Intentionally NOT wired: the warmer function and the dynamodb-provider
- * cache-seed function. Both are pure performance optimizations (avoiding cold
- * starts / pre-populating the ISR cache before first request) — the app is
- * fully correct without them (first requests after deploy just render fresh
- * instead of serving a pre-baked page), and their invocation contracts aren't
- * documented precisely enough to wire with confidence. See ADR-0014.
+ * Intentionally NOT wired: the warmer function (a pure performance
+ * optimization — avoiding cold starts — the app is fully correct without it).
+ * The dynamodb-provider cache-seed function IS required, not optional: it
+ * populates the tag-cache table's tag -> path rows for every prerendered ISR
+ * page's tagged fetch() calls, and without it `getByTag()`/`getByPath()`
+ * (used by `revalidateTag()` and by SpaTagRevalidator) have nothing to look
+ * up, silently no-op'ing all on-demand revalidation forever. Its own
+ * Lambda's event contract isn't documented precisely enough to wire with
+ * confidence, so `SpaTagCacheSeeder` (spa-tag-cache-seeder.ts) replicates it
+ * with plain `AwsCustomResource` `batchWriteItem` calls instead. See
+ * ADR-0014.
  */
 export class SpaLambdas extends Construct {
   public readonly defaultServerFunction: lambda.Function;
@@ -53,6 +60,14 @@ export class SpaLambdas extends Construct {
     super(scope, id);
 
     const { openNextDir, assetsBucket, tagCacheTable, revalidationQueue, originVerifySecret, appEnvironment } = props;
+
+    // OpenNext's cache handler prefixes every DynamoDB tag-cache key with this
+    // build ID ("{buildId}/products", not "products") so a new deploy's cache
+    // can't collide with the previous build's — see the bundled cache.cjs
+    // (`{OPEN_NEXT_BUILD_ID: $v} = process.env`). Must match the prefix baked
+    // into dynamodb-cache.json by SpaTagCacheSeeder and read by
+    // SpaTagRevalidator, or tag lookups/writes silently match nothing.
+    const buildId = fs.readFileSync(path.join(openNextDir, 'assets', 'BUILD_ID'), 'utf8').trim();
 
     // -------------------------------------------------------------------------
     // default — SSR/ISR/API routes. Handles every request except static assets
@@ -71,6 +86,7 @@ export class SpaLambdas extends Construct {
         CACHE_BUCKET_REGION: cdk.Stack.of(this).region,
         CACHE_BUCKET_KEY_PREFIX: '_cache',
         CACHE_DYNAMO_TABLE: tagCacheTable.tableName,
+        OPEN_NEXT_BUILD_ID: buildId,
         REVALIDATION_QUEUE_URL: revalidationQueue.queueUrl,
         REVALIDATION_QUEUE_REGION: cdk.Stack.of(this).region,
         ORIGIN_VERIFY_SECRET: originVerifySecret,

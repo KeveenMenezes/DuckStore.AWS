@@ -1,4 +1,4 @@
-﻿namespace Review.Function.Data;
+﻿namespace Review.Function.Modules.Reviews.Data;
 
 // Single source of truth for the reviews table name and its GSI, shared by the
 // development seeder (table creation) and the AppHost stream-source wiring.

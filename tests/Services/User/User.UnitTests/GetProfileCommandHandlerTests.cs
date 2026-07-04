@@ -1,6 +1,6 @@
 ﻿using User.Function.Modules.Users.Data;
+using User.Function.Modules.Users.Domain.Entities;
 using User.Function.Modules.Users.Features.GetProfile;
-using User.Function.Modules.Users.Models;
 
 namespace User.UnitTests;
 
