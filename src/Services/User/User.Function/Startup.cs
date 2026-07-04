@@ -1,6 +1,6 @@
-﻿using Amazon.DynamoDBv2;
-using BuildingBlocks.ServiceDefaults.Behaviors;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using User.Function.Shared.Configuration;
 
 namespace User.Function;
 
@@ -9,20 +9,8 @@ public class Startup
 {
     public void ConfigureServices(IServiceCollection services)
     {
-        services.AddLogging();
-
-        var assembly = typeof(Startup).Assembly;
-        services
-            .AddMediatR(config =>
-            {
-                config.RegisterServicesFromAssembly(assembly);
-                config.AddOpenBehavior(typeof(ValidationBehavior<,>));
-                config.AddOpenBehavior(typeof(LoggingBehavior<,>));
-            })
-            .AddValidatorsFromAssembly(assembly);
-
-        // DynamoDB Local injects AWS_ENDPOINT_URL_DYNAMODB; the SDK resolves it on its own.
-        services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
-        services.AddSingleton<IUserProfileRepository, DynamoUserProfileRepository>();
+        var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddUserServices(configuration);
     }
 }
