@@ -1,4 +1,4 @@
-﻿namespace User.Function.Modules.Users.Dtos;
+﻿namespace User.Function.Modules.Users.Domain.Dtos;
 
 public record UserProfileDto(
     string UserId,

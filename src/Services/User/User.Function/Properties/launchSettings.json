@@ -1,0 +1,10 @@
+{
+  "profiles": {
+    "Aspire_user-get-profile": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "exec --depsfile ./User.Function.deps.json --runtimeconfig ./User.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll User.Function::User.Function.Functions_GetProfile_Generated::GetProfile",
+      "workingDirectory": "bin/Debug/net10.0/"
+    }
+  }
+}
