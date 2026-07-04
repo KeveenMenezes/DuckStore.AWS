@@ -16,8 +16,6 @@ const DOTNET_ARCH = lambda.Architecture.ARM_64;
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const CATALOG_DOCKERFILE = 'src/Services/Catalog/Catalog.Function/Dockerfile';
 
-const HANDLER_PREFIX =
-  'Catalog.Function::Catalog.Function.Modules.Products.EventsIntegration.';
 
 export interface CatalogLambdasProps {
   readonly productsTable: dynamodb.Table;
@@ -70,9 +68,8 @@ export class CatalogLambdas extends Construct {
     this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
       functionName: 'catalog-stream-event-publisher',
       architecture: DOTNET_ARCH,
-      // Full path exceeds Lambda's 128-char limit; relay class at Handlers.CatalogStreamPublisher.
       code: catalogCode([
-        'Catalog.Function::Catalog.Function.Handlers.CatalogStreamPublisher::FunctionHandler',
+        'Catalog.Function::Catalog.Function.Functions_ProductStreamPublisher_Generated::ProductStreamPublisher',
       ]),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
@@ -108,7 +105,9 @@ export class CatalogLambdas extends Construct {
     this.reviewCreatedConsumer = new lambda.DockerImageFunction(this, 'ReviewCreatedConsumer', {
       functionName: 'catalog-review-created-consumer',
       architecture: DOTNET_ARCH,
-      code: catalogCode([`${HANDLER_PREFIX}Consumer.ReviewCreatedConsumerFunction::FunctionHandler`]),
+      code: catalogCode([
+        'Catalog.Function::Catalog.Function.Functions_ReviewCreatedConsumer_Generated::ReviewCreatedConsumer',
+      ]),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       description:
