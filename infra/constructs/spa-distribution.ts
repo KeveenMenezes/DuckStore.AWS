@@ -106,10 +106,12 @@ export class SpaDistribution extends Construct {
       viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
     };
 
-    // The server function returns per-response Cache-Control: SSG/ISR shells
-    // (/cart, /challenges, /checkout, /my-orders, /my-profile) say
-    // `s-maxage=31536000`, while dynamic pages (/, /products/[id]) and the API
-    // routes say `no-store` (or send no header). CACHING_DISABLED ignored all of
+    // The server function returns per-response Cache-Control: every ISR/SSG
+    // shell (/, /products/[id], /cart, /challenges, /checkout, /my-orders,
+    // /my-profile — anything with `revalidate = false`, confirmed via
+    // prerender-manifest.json and prod response headers) says
+    // `s-maxage=31536000`, while genuinely dynamic responses (API routes) say
+    // `no-store` (or send no header). CACHING_DISABLED ignored all of
     // that and forced every request onto the Lambda — so cacheable shells never
     // reached the CloudFront edge (all MISS → high TTFB). This policy instead
     // *respects* the origin's Cache-Control (minTtl/defaultTtl = 0, so a missing

@@ -1,6 +1,6 @@
 ﻿using Amazon.DynamoDBv2;
 using Basket.DevelopmentDataSeeder;
-using Basket.Function.Data;
+using Basket.Function.Modules.ShoppingCarts.Data;
 using BuildingBlocks.ServiceDefaults;
 
 var builder = Host.CreateApplicationBuilder(args);

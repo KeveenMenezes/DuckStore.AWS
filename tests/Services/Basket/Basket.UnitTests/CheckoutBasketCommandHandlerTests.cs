@@ -2,10 +2,11 @@
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
 #pragma warning disable CS8620 // Argument cannot be used for parameter due to differences in the nullability of reference types.
 
-using Basket.Function.Data;
-using Basket.Function.Dtos;
-using Basket.Function.Features.CheckoutBasket;
-using Basket.Function.Models;
+using Basket.Function.Modules.ShoppingCarts.Data;
+using Basket.Function.Modules.ShoppingCarts.Domain.Dtos;
+using Basket.Function.Modules.ShoppingCarts.Domain.Entities;
+using Basket.Function.Modules.ShoppingCarts.Domain.ValueObjects;
+using Basket.Function.Modules.ShoppingCarts.Features.CheckoutBasket;
 using FluentValidation.TestHelper;
 
 namespace Basket.UnitTests;
@@ -13,14 +14,14 @@ namespace Basket.UnitTests;
 public class CheckoutBasketCommandHandlerTests
 {
     private readonly AutoMocker _autoMocker;
-    private readonly Mock<IBasketRepository> _basketRepositoryMock;
+    private readonly Mock<IShoppingCartRepository> _basketRepositoryMock;
     private readonly CheckoutBasketCommandValidator _validator;
     private readonly CheckoutBasketCommandHandler _handler;
 
     public CheckoutBasketCommandHandlerTests()
     {
         _autoMocker = new AutoMocker();
-        _basketRepositoryMock = _autoMocker.GetMock<IBasketRepository>();
+        _basketRepositoryMock = _autoMocker.GetMock<IShoppingCartRepository>();
         _validator = new CheckoutBasketCommandValidator();
         _handler = new CheckoutBasketCommandHandler(_basketRepositoryMock.Object);
     }
@@ -37,7 +38,7 @@ public class CheckoutBasketCommandHandlerTests
 
         var basket = ShoppingCart.Create(
             "USER#testuser",
-            [ShoppingCartItem.Create(Guid.NewGuid(), "Sample Product", "https://example.com/img.jpg", "Red", 2, 50.0m)]);
+            [ShoppingCartItem.Create(ProductId.Of(Guid.NewGuid()), "Sample Product", "https://example.com/img.jpg", "Red", 2, 50.0m)]);
 
         _basketRepositoryMock.Setup(repo =>
             repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))
