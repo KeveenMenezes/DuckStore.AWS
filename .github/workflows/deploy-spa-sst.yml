@@ -1,10 +1,9 @@
-name: Deploy SPA CDK Stack
+name: Deploy SPA (SST)
 
 on:
   push:
     branches: [development]
     paths:
-      - 'infra/**'
       - 'src/WebApps/Shopping.Web.SPA.React/**'
   workflow_dispatch:
 
@@ -15,12 +14,12 @@ permissions:
 env:
   AWS_REGION: us-east-1
   NODE_VERSION: '24'
-  ENVIRONMENT_NAME: dev
+  STAGE: dev
   SPA_URL: https://dev-duckstore.keveenmenezes.com
 
 jobs:
   deploy:
-    name: Build SPA and deploy CDK
+    name: Deploy SPA via SST
     runs-on: ubuntu-latest
     environment: development
 
@@ -37,14 +36,14 @@ jobs:
         with:
           version: 11.9.0
 
-      - name: Setup Node.js for SPA build
+      - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: src/WebApps/Shopping.Web.SPA.React/pnpm-lock.yaml
 
-      - name: Install SPA dependencies
+      - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Configure AWS credentials
@@ -53,52 +52,39 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # Pages fetch product/category data at build time (SSG/ISR prerendering),
-      # so the build needs real AppSync connectivity — not just the Lambda's
-      # runtime env vars, which don't exist yet at this point in the pipeline.
+      # `sst.config.ts` reads AppSync's URL/API key at deploy time via
+      # `aws.cloudformation.getExportOutput` for the deployed Lambda's runtime
+      # env — but `sst deploy` also runs `pnpm build:opennext` internally
+      # (see sst.config.ts's `buildCommand`), and Next.js's SSG/ISR
+      # prerendering needs these as real env vars *during that build*, not
+      # just wired into the Lambda afterwards. Exporting to $GITHUB_ENV (not
+      # $GITHUB_OUTPUT) makes them inherited by every later step, including
+      # the `sst deploy` process and the `build:opennext` child process it
+      # spawns.
       - name: Fetch AppSync connection info
-        id: appsync
         run: |
           OUTPUTS=$(aws cloudformation describe-stacks \
             --stack-name DuckStoreAppSyncStack \
             --query "Stacks[0].Outputs" --output json)
-          echo "api_url=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiUrl") | .OutputValue')" >> "$GITHUB_OUTPUT"
-          echo "api_key=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiKey") | .OutputValue')" >> "$GITHUB_OUTPUT"
+          echo "APPSYNC_URL=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiUrl") | .OutputValue')" >> "$GITHUB_ENV"
+          echo "APPSYNC_API_KEY=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiKey") | .OutputValue')" >> "$GITHUB_ENV"
 
-      - name: Build with OpenNext
+      - name: Set SST secrets
+        run: npx sst secret set ReviewWebhookSecret "${{ secrets.REVIEW_WEBHOOK_SECRET }}" --stage ${{ env.STAGE }}
+
+      - name: Deploy
         env:
           NEXT_PUBLIC_SITE_URL: ${{ env.SPA_URL }}
           GRAPHQL_BACKEND: appsync
-          APPSYNC_URL: ${{ steps.appsync.outputs.api_url }}
-          APPSYNC_API_KEY: ${{ steps.appsync.outputs.api_key }}
-        run: pnpm build:opennext
-
-      - name: Setup Node.js for CDK
-        uses: actions/setup-node@v6
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-          cache: npm
-          cache-dependency-path: infra/package-lock.json
-
-      - name: Install CDK dependencies
-        working-directory: infra
-        run: npm ci
-
-      - name: Deploy SPA CDK stack
-        working-directory: infra
-        run: |
-          npx cdk deploy DuckStoreSpaStack \
-            --require-approval never \
-            --context environmentName=${{ env.ENVIRONMENT_NAME }} \
-            --parameters ReviewWebhookSecret=${{ secrets.REVIEW_WEBHOOK_SECRET }}
+        run: npx sst deploy --stage ${{ env.STAGE }}
 
       - name: Deployment summary
         run: |
-          echo "## SPA CDK Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "## SPA Deployed via SST" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Stack** | DuckStoreSpaStack |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Stage** | ${{ env.STAGE }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **SPA URL** | ${{ env.SPA_URL }} |" >> $GITHUB_STEP_SUMMARY

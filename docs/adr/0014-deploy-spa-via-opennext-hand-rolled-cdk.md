@@ -1,7 +1,7 @@
 # ADR-0014: Deploy the React SPA to AWS via OpenNext, Hand-Rolled CDK
 
 ## Status
-**Proposed** — July 2026
+**Superseded** — July 2026. See [ADR-0020: Migrate the SPA Deploy Layer from Hand-Rolled CDK to SST](./0020-migrate-spa-deploy-to-sst.md).
 
 ---
 
