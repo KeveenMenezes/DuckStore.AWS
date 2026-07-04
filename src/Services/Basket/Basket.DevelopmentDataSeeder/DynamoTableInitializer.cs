@@ -1,7 +1,7 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using Basket.Function.Data;
-using Basket.Function.Models;
+using Basket.Function.Modules.ShoppingCarts.Data;
+using Basket.Function.Modules.ShoppingCarts.Domain.Entities;
 
 
 namespace Basket.DevelopmentDataSeeder;
@@ -28,7 +28,7 @@ public static class DynamoTableInitializer
         {
             await dynamoDb.CreateTableAsync(new CreateTableRequest
             {
-                TableName = BasketRepository.TableName,
+                TableName = DynamoShoppingCartRepository.TableName,
                 AttributeDefinitions = [new AttributeDefinition("OwnerId", ScalarAttributeType.S)],
                 KeySchema = [new KeySchemaElement("OwnerId", KeyType.HASH)],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
@@ -40,7 +40,7 @@ public static class DynamoTableInitializer
             });
 
             // Guest carts carry an ExpiresAt attribute; TTL lets DynamoDB reap them after 15 days.
-            await WaitUntilTableIsActiveAsync(dynamoDb, BasketRepository.TableName);
+            await WaitUntilTableIsActiveAsync(dynamoDb, DynamoShoppingCartRepository.TableName);
             await EnableExpiresAtTtlAsync(dynamoDb);
         }
         catch (ResourceInUseException)
@@ -50,7 +50,7 @@ public static class DynamoTableInitializer
             {
                 await dynamoDb.UpdateTableAsync(new UpdateTableRequest
                 {
-                    TableName = BasketRepository.TableName,
+                    TableName = DynamoShoppingCartRepository.TableName,
                     StreamSpecification = new StreamSpecification
                     {
                         StreamEnabled = true,
@@ -73,7 +73,7 @@ public static class DynamoTableInitializer
         {
             await dynamoDb.UpdateTimeToLiveAsync(new UpdateTimeToLiveRequest
             {
-                TableName = BasketRepository.TableName,
+                TableName = DynamoShoppingCartRepository.TableName,
                 TimeToLiveSpecification = new TimeToLiveSpecification
                 {
                     Enabled = true,

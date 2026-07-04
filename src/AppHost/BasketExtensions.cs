@@ -25,7 +25,7 @@ public static class BasketExtensions
 
         builder.AddAWSLambdaFunction<Projects.Basket_Function>(
                 "basket-shopping-carts-event-publisher",
-                lambdaHandler: "Basket.Function::Basket.Function.EventsIntegration.Publisher.ShoppingCartsEventPublisherFunction::FunctionHandler")
+                lambdaHandler: "Basket.Function::Basket.Function.Functions_ShoppingCartStreamPublisher_Generated::ShoppingCartStreamPublisher")
             .WaitForCompletion(basketSeeder)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(ShoppingCartsTableName)

@@ -59,14 +59,15 @@ export class BasketLambdas extends Construct {
     // -------------------------------------------------------------------------
     // 1. basket-shopping-carts-event-publisher
     //    Trigger: DynamoDB Streams on shopping-carts (NEW_IMAGE, CDC — ADR-0005)
-    //    On each MODIFY record of Type=Checkout, publishes BasketCheckoutEvent and
-    //    deletes the basket item.
+    //    Rule-based publisher (ADR-0019): on each MODIFY record of Type=Checkout,
+    //    CheckoutedRule publishes BasketCheckoutEvent. The basket item's deletion
+    //    happens synchronously in CheckoutBasketCommandHandler, not here.
     // -------------------------------------------------------------------------
     this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
       functionName: 'basket-shopping-carts-event-publisher',
       architecture: DOTNET_ARCH,
       code: basketCode([
-        'Basket.Function::Basket.Function.EventsIntegration.Publisher.ShoppingCartsEventPublisherFunction::FunctionHandler',
+        'Basket.Function::Basket.Function.Functions_ShoppingCartStreamPublisher_Generated::ShoppingCartStreamPublisher',
       ]),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
@@ -86,8 +87,6 @@ export class BasketLambdas extends Construct {
       }),
     );
 
-    // Publisher deletes the basket item after publishing the checkout event.
-    shoppingCartsTable.grantWriteData(this.streamPublisher);
     eventBus.grantPutEventsTo(this.streamPublisher);
 
     // -------------------------------------------------------------------------
