@@ -21,10 +21,6 @@ export interface OrderingLambdasProps {
 export class OrderingLambdas extends Construct {
   public readonly basketCheckoutConsumer: lambda.Function;
   public readonly orderCreatedPublisher: lambda.Function;
-  public readonly getOrdersByCustomer: lambda.Function;
-  public readonly deleteOrder: lambda.Function;
-  public readonly getOrdersByCustomerUrl: lambda.FunctionUrl;
-  public readonly deleteOrderUrl: lambda.FunctionUrl;
 
   constructor(scope: Construct, id: string, props: OrderingLambdasProps) {
     super(scope, id);
@@ -66,7 +62,7 @@ export class OrderingLambdas extends Construct {
         functionName: 'ordering-basket-checkout-consumer',
         architecture: DOTNET_ARCH,
         code: orderingCode([
-          'Ordering.Function::Ordering.Function.EventsIntegration.Consumer.BasketCheckoutConsumerFunction::FunctionHandler',
+          'Ordering.Function::Ordering.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer',
         ]),
         timeout: cdk.Duration.seconds(30),
         memorySize: 512,
@@ -99,8 +95,8 @@ export class OrderingLambdas extends Construct {
 
     // -------------------------------------------------------------------------
     // 2. ordering-order-created-publisher
-    //    Trigger: DynamoDB Streams on ordering table (NEW_IMAGE, CDC — ADR-0005)
-    //    On INSERT records of Type=Order, publishes OrderCreatedEvent to EventBridge.
+    //    Trigger: DynamoDB Streams on ordering table (NEW_AND_OLD_IMAGES, CDC — ADR-0005/0019)
+    //    Rule-based publisher (ADR-0019): OrderCreatedRule emits OrderCreatedEvent on INSERT of Type=Order.
     //    Gated by FeatureManagement__OrderFullfilment=true.
     // -------------------------------------------------------------------------
     this.orderCreatedPublisher = new lambda.DockerImageFunction(
@@ -110,7 +106,7 @@ export class OrderingLambdas extends Construct {
         functionName: 'ordering-order-created-publisher',
         architecture: DOTNET_ARCH,
         code: orderingCode([
-          'Ordering.Function::Ordering.Function.EventsIntegration.Publisher.OrderCreatedPublisherFunction::FunctionHandler',
+          'Ordering.Function::Ordering.Function.Functions_OrderStreamPublisher_Generated::OrderStreamPublisher',
         ]),
         timeout: cdk.Duration.seconds(30),
         memorySize: 512,
@@ -137,58 +133,7 @@ export class OrderingLambdas extends Construct {
     orderingTable.grantReadData(this.orderCreatedPublisher);
     eventBus.grantPutEventsTo(this.orderCreatedPublisher);
 
-    // -------------------------------------------------------------------------
-    // 3. ordering-get-orders-by-customer  (HTTP API)
-    //    Trigger: Lambda Function URL
-    //    Queries GSI1 (GSI1PK=CUSTOMER#{id}, GSI1SK=CreatedAt desc).
-    // -------------------------------------------------------------------------
-    this.getOrdersByCustomer = new lambda.DockerImageFunction(
-      this,
-      'GetOrdersByCustomer',
-      {
-        functionName: 'ordering-get-orders-by-customer',
-        architecture: DOTNET_ARCH,
-        code: orderingCode([
-          'Ordering.Function::Ordering.Function.Functions_GetOrdersByCustomer_Generated::GetOrdersByCustomer',
-        ]),
-        timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
-        description: 'Returns all orders for a customer via GSI1 query',
-        environment: {
-          EventBridge__BusName: eventBus.eventBusName,
-        },
-      },
-    );
-
-    orderingTable.grantReadData(this.getOrdersByCustomer);
-
-    this.getOrdersByCustomerUrl = this.getOrdersByCustomer.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-    });
-
-    // -------------------------------------------------------------------------
-    // 4. ordering-delete-order  (HTTP API)
-    //    Trigger: Lambda Function URL
-    //    DeleteItem by Id.
-    // -------------------------------------------------------------------------
-    this.deleteOrder = new lambda.DockerImageFunction(this, 'DeleteOrder', {
-      functionName: 'ordering-delete-order',
-      architecture: DOTNET_ARCH,
-      code: orderingCode([
-        'Ordering.Function::Ordering.Function.Functions_DeleteOrder_Generated::DeleteOrder',
-      ]),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
-      description: 'Deletes an order by Id',
-      environment: {
-        EventBridge__BusName: eventBus.eventBusName,
-      },
-    });
-
-    orderingTable.grantWriteData(this.deleteOrder);
-
-    this.deleteOrderUrl = this.deleteOrder.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-    });
+    // Note: ordersByCustomer (read) and deleteOrder (delete) are AppSync direct DynamoDB
+    // resolvers (ADR-0009), not Lambdas — see infra/constructs/appsync-api.ts.
   }
 }

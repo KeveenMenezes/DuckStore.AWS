@@ -30,13 +30,5 @@ export class OrderingStack extends cdk.Stack {
       value: lambdas.orderCreatedPublisher.functionArn,
       exportName: `${this.stackName}-OrderCreatedPublisherArn`,
     });
-    new cdk.CfnOutput(this, 'GetOrdersByCustomerUrl', {
-      value: lambdas.getOrdersByCustomerUrl.url,
-      exportName: `${this.stackName}-GetOrdersByCustomerUrl`,
-    });
-    new cdk.CfnOutput(this, 'DeleteOrderUrl', {
-      value: lambdas.deleteOrderUrl.url,
-      exportName: `${this.stackName}-DeleteOrderUrl`,
-    });
   }
 }

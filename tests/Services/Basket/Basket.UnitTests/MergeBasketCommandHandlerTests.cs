@@ -1,4 +1,4 @@
-using Basket.Function.Data;
+﻿using Basket.Function.Data;
 using Basket.Function.Features.MergeBasket;
 using Basket.Function.Models;
 using FluentValidation.TestHelper;
@@ -48,9 +48,9 @@ public class MergeBasketCommandHandlerTests
         var productId = Guid.NewGuid();
 
         var guestCart = ShoppingCart.Create(GuestId,
-            [ShoppingCartItem.Create(productId, "IPhone X", "Red", 2, 50.0m)]);
+            [ShoppingCartItem.Create(productId, "IPhone X", "", "Red", 2, 50.0m)]);
         var userCart = ShoppingCart.Create(UserId,
-            [ShoppingCartItem.Create(productId, "IPhone X", "Red", 1, 50.0m)]);
+            [ShoppingCartItem.Create(productId, "IPhone X", "", "Red", 1, 50.0m)]);
 
         _basketRepositoryMock
             .Setup(repo => repo.TryGetBasket(GuestId, It.IsAny<CancellationToken>()))
@@ -80,7 +80,7 @@ public class MergeBasketCommandHandlerTests
     {
         // Arrange
         var guestCart = ShoppingCart.Create(GuestId,
-            [ShoppingCartItem.Create(Guid.NewGuid(), "IPhone XI", "Blue", 1, 40.0m)]);
+            [ShoppingCartItem.Create(Guid.NewGuid(), "IPhone XI", "", "Blue", 1, 40.0m)]);
 
         _basketRepositoryMock
             .Setup(repo => repo.TryGetBasket(GuestId, It.IsAny<CancellationToken>()))

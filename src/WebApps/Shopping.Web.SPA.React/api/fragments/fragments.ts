@@ -6,7 +6,7 @@ export const PRODUCT_FIELDS = `
 
 export const CART_ITEM_FIELDS = `
   fragment CartItemFields on CartItem {
-    quantity color price productId productName
+    quantity color price productId productName imageUrl
   }
 `
 

@@ -102,7 +102,9 @@ export class AppSyncApi extends Construct {
     categoriesTable.grantReadData(categoriesDs);
     cartsTable.grantReadWriteData(cartsDs);
     couponsTable.grantReadData(couponsDs);
-    orderingTable.grantReadData(orderingDs);
+    // Read for ordersByCustomer/orders/ordersByName queries; write for the deleteOrder DeleteItem
+    // resolver (ADR-0009 — both are direct DynamoDB, no Lambda).
+    orderingTable.grantReadWriteData(orderingDs);
     reviewsTable.grantReadWriteData(reviewsDs);
     userProfilesTable.grantReadWriteData(userProfilesDs);
 
@@ -124,16 +126,6 @@ export class AppSyncApi extends Construct {
       'MergeBasketFn',
       'basket-merge-basket',
     );
-    const getOrdersFn = lambda.Function.fromFunctionName(
-      this,
-      'GetOrdersFn',
-      'ordering-get-orders-by-customer',
-    );
-    const deleteOrderFn = lambda.Function.fromFunctionName(
-      this,
-      'DeleteOrderFn',
-      'ordering-delete-order',
-    );
     const getProfileFn = lambda.Function.fromFunctionName(
       this,
       'GetProfileFn',
@@ -144,8 +136,6 @@ export class AppSyncApi extends Construct {
     const storeBasketDs = api.addLambdaDataSource('StoreBasketDS', storeBasketFn);
     const checkoutDs = api.addLambdaDataSource('CheckoutDS', checkoutFn);
     const mergeBasketDs = api.addLambdaDataSource('MergeBasketDS', mergeBasketFn);
-    const getOrdersDs = api.addLambdaDataSource('GetOrdersDS', getOrdersFn);
-    const deleteOrderDs = api.addLambdaDataSource('DeleteOrderDS', deleteOrderFn);
     const getProfileDs = api.addLambdaDataSource('GetProfileDS', getProfileFn);
 
     // ------------------------------------------------------------------
@@ -161,7 +151,8 @@ export class AppSyncApi extends Construct {
     // Authenticated queries (Cognito default — any group)
     this.resolver(cartsDs, 'BasketResolver', 'Query', 'basket');
     this.resolver(couponsDs, 'CouponForResolver', 'Query', 'couponFor');
-    this.resolver(getOrdersDs, 'OrdersByCustomerResolver', 'Query', 'ordersByCustomer');
+    // Direct DynamoDB GSI1 query — scoped to the caller's Cognito sub in the resolver (ADR-0009).
+    this.resolver(orderingDs, 'OrdersByCustomerResolver', 'Query', 'ordersByCustomer');
 
     // Admin-only queries (Cognito default + group check in resolver)
     this.resolver(orderingDs, 'OrdersResolver', 'Query', 'orders');
@@ -186,6 +177,6 @@ export class AppSyncApi extends Construct {
     this.resolver(productsDs, 'DeleteProductResolver', 'Mutation', 'deleteProduct');
 
     // Admin-only mutations (group check in resolver)
-    this.resolver(deleteOrderDs, 'DeleteOrderResolver', 'Mutation', 'deleteOrder');
+    this.resolver(orderingDs, 'DeleteOrderResolver', 'Mutation', 'deleteOrder');
   }
 }

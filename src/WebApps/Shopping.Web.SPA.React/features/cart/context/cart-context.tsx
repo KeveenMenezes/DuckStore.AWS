@@ -13,9 +13,8 @@ import {
 import { gql } from "@/api"
 import { GET_BASKET } from "@/api/queries/order"
 import type { Product } from "@/features/products/types/product.types"
-import type { CartItem } from "@/features/cart/types/cart.types"
+import type { CartItem, CartProduct } from "@/features/cart/types/cart.types"
 import type { GqlShoppingCart } from "@/graphql/types"
-import { getProducts } from "@/features/products/services/products.service"
 import { syncCartToBasket } from "@/features/cart/services/basket.service"
 
 interface CartContextType {
@@ -48,16 +47,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     async function hydrate() {
       try {
         // No ownerId passed — the /api/graphql BFF injects it from the httpOnly identity cookies.
-        const [catalog, data] = await Promise.all([
-          getProducts(),
-          gql<{ basket: GqlShoppingCart | null }>(GET_BASKET),
-        ])
+        const data = await gql<{ basket: GqlShoppingCart | null }>(GET_BASKET)
         if (cancelled) return
-        const enriched: CartItem[] = (data.basket?.items ?? []).flatMap((item) => {
-          const product = catalog.find((p) => p.id === item.productId)
-          if (!product) return []
-          return [{ product, quantity: item.quantity }]
-        })
+        const enriched: CartItem[] = (data.basket?.items ?? []).map((item) => ({
+          product: {
+            id: item.productId,
+            name: item.productName,
+            price: item.price,
+            imageUrl: item.imageUrl ?? '',
+          },
+          quantity: item.quantity,
+        }))
         if (enriched.length > 0) {
           skipNextSyncRef.current = true
           setItems(enriched)
@@ -105,7 +105,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     if (product.stock <= 0) return false
 
-    setItems((prev) => [...prev, { product, quantity: 1 }])
+    setItems((prev) => [
+      ...prev,
+      {
+        product: { id: product.id, name: product.name, price: product.price, imageUrl: product.imageUrl, stock: product.stock },
+        quantity: 1,
+      },
+    ])
     return true
   }, [])
 
@@ -123,7 +129,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       setItems((prev) => {
         const item = prev.find((i) => i.product.id === productId)
         if (!item) return prev
-        if (quantity > item.product.stock) return prev
+        if (quantity > (item.product.stock ?? Infinity)) return prev
         success = true
         return prev.map((i) => (i.product.id === productId ? { ...i, quantity } : i))
       })

@@ -13,6 +13,7 @@ export async function syncCartToBasket(items: CartItem[]): Promise<void> {
         price: i.product.price,
         productId: i.product.id,
         productName: i.product.name,
+        imageUrl: i.product.imageUrl,
         color: null,
       })),
     },

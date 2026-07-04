@@ -1,4 +1,4 @@
-using Basket.Function.Data;
+﻿using Basket.Function.Data;
 using Basket.Function.Dtos;
 using Basket.Function.Features.StoreBasket;
 using Basket.Function.Models;
@@ -29,7 +29,7 @@ public class StoreBasketCommandHandlerTests
         // Arrange
         var command = new StoreBasketCommand(new ShoppingCartDto(
             "USER#testuser",
-            [new ShoppingCartItemDto(2, "Red", 50.0m, Guid.NewGuid(), "IPhone X")]));
+            [new ShoppingCartItemDto(2, "Red", 50.0m, Guid.NewGuid(), "IPhone X", "")]));
 
         _couponRepositoryMock
             .Setup(repo => repo.GetByProductNameAsync("IPhone X", It.IsAny<CancellationToken>()))
@@ -56,7 +56,7 @@ public class StoreBasketCommandHandlerTests
         // Arrange
         var command = new StoreBasketCommand(new ShoppingCartDto(
             "USER#testuser",
-            [new ShoppingCartItemDto(1, "Blue", 30.0m, Guid.NewGuid(), "Unknown Product")]));
+            [new ShoppingCartItemDto(1, "Blue", 30.0m, Guid.NewGuid(), "Unknown Product", "")]));
 
         _couponRepositoryMock
             .Setup(repo => repo.GetByProductNameAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))

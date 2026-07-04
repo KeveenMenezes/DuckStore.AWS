@@ -53,6 +53,7 @@ export interface GqlCartItem {
   price: number
   productId: string
   productName: string
+  imageUrl: string | null
 }
 
 export interface GqlShoppingCart {
@@ -159,6 +160,7 @@ export interface CartItemInput {
   price: number
   productId: string
   productName: string
+  imageUrl?: string | null
 }
 
 export interface ShoppingCartInput {

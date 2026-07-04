@@ -39,11 +39,6 @@ var yarpApiGateway = builder.AddProject<Projects.YarpApiGateway>(
     .WithExternalHttpEndpoints();
 
 // Apps
-builder.AddProject<Projects.Shopping_Web_Server>(
-    "shopping-web-server", GetHttpForEndpoints())
-    .WithExternalHttpEndpoints()
-    .WithExplicitStart();
-
 builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")
     .WithExternalHttpEndpoints()
     .WaitFor(yarpApiGateway)
@@ -69,5 +64,4 @@ builder.AddCatalogLambdas(dynamoDb);
 await builder.Build().RunAsync();
 return;
 
-static string GetHttpForEndpoints() => "http";
 static string GetHttpsForEndpoints() => "https";

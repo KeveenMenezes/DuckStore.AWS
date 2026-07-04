@@ -53,6 +53,7 @@ type CartItem @aws_api_key @aws_cognito_user_pools {
   price: Float!
   productId: ID!
   productName: String!
+  imageUrl: String
 }
 
 type ShoppingCart @aws_api_key @aws_cognito_user_pools {
@@ -161,6 +162,7 @@ input CartItemInput {
   price: Float!
   productId: ID!
   productName: String!
+  imageUrl: String
 }
 
 input ShoppingCartInput {
