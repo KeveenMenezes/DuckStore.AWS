@@ -1,0 +1,8 @@
+﻿global using Amazon.Lambda.Annotations;
+global using Amazon.Lambda.DynamoDBEvents;
+global using BuildingBlocks.Messaging.EventBridge;
+global using BuildingBlocks.Messaging.Events;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;
+global using Review.Function.Modules.Reviews.EventsIntegration.Publishers;
+global using Review.Function.Shared.Configuration;

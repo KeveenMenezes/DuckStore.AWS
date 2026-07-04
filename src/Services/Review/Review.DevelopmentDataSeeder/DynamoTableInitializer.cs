@@ -1,6 +1,6 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using Review.Function.Data;
+using Review.Function.Modules.Reviews.Data;
 
 namespace Review.DevelopmentDataSeeder;
 
