@@ -2,21 +2,28 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront'
 
-// Replaces the old HTTP webhook (public POST + shared secret) for
-// backend-triggered ISR revalidation. Consumes CatalogUpdatedEvent /
-// ReviewCreatedEvent directly off EventBridge and marks every tag-cache
-// entry for the affected tag(s) as stale, directly in DynamoDB — the same
-// mechanism Next.js's own revalidateTag() uses internally (confirmed by
-// reading the actual bundled cache handler code, not guessed): it re-writes
-// each {tag, path} row with revalidatedAt = now, which the read-side
-// staleness check (a Query against the "revalidate" GSI comparing
-// revalidatedAt against the cached entry's lastModified) picks up on the
-// next request, forcing a fresh fetch instead of serving the cached value.
-// Crucially, those partition keys are build-ID-prefixed ("{buildId}/products",
-// not "products") — see BUILD_ID below; querying the bare tag matches nothing.
+// Backend-triggered ISR revalidation, wired via `sst.aws.Bus.subscribe` in
+// sst.config.ts. Consumes CatalogUpdatedEvent / ReviewCreatedEvent directly
+// off the existing `duckstore-event-bus` (still published to by Catalog,
+// which stays on CDK) and marks every tag-cache entry for the affected
+// tag(s) as stale directly in DynamoDB — the same mechanism Next.js's own
+// revalidateTag() uses internally: it re-writes each {tag, path} row with
+// revalidatedAt = now, which the read-side staleness check (a Query against
+// the "revalidate" GSI comparing revalidatedAt against the cached entry's
+// lastModified) picks up on the next request, forcing a fresh fetch instead
+// of serving the cached value.
 //
-// The SQS revalidation queue (OpenNext's own, consumed by the separate
-// revalidation-function Lambda) is deliberately NOT used here.
+// SST's Nextjs component creates and seeds this DynamoDB table itself as
+// part of `sst deploy` — no separate seeder Lambda needed here, unlike the
+// hand-rolled CDK version this replaces.
+//
+// `/` and `/products/[id]` are prerendered ISR routes that come back from
+// the origin Lambda with `Cache-Control: s-maxage=31536000` — SST's CDN
+// caches that at the edge for up to a year. Marking the DynamoDB tag-cache
+// stale only changes what the origin Lambda serves on its *next*
+// invocation; it does nothing for a CloudFront edge location that already
+// has the page cached. So every stale-tag write here is paired with a
+// CloudFront path invalidation for the pages that tag feeds.
 //
 // Tags are granular per product (products:{id}, reviews:{id} — see
 // app/products/[id]/page.tsx) except the home page's blanket "products" tag,
@@ -25,18 +32,6 @@ import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-clo
 // CatalogStreamEventPublisherFunction.cs), so a catalog change invalidates
 // both the home page and that one product's own page, without touching
 // every other product's cached page.
-//
-// `/` and `/products/[id]` ARE prerendered ISR routes (confirmed in
-// prerender-manifest.json: both appear under `routes`, and `/products/[id]`
-// also under `dynamicRoutes`, with `initialRevalidateSeconds: false`), and the
-// origin Lambda returns `Cache-Control: s-maxage=31536000` for them (confirmed
-// via response headers in prod) — CloudFront's ServerCachePolicy
-// (spa-distribution.ts) caches that at the edge for up to a year. Marking the
-// DynamoDB tag-cache stale only changes what the origin Lambda serves on its
-// *next* invocation; it does nothing for a CloudFront PoP that already has
-// the page cached, which just keeps serving the old HTML until that edge
-// entry's TTL runs out. So every stale-tag write here is paired with a
-// CloudFront path invalidation for the pages that tag feeds.
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}))
 const cloudfront = new CloudFrontClient({})
@@ -72,9 +67,11 @@ async function invalidatePaths(paths) {
 // OpenNext's DynamoDB tag cache namespaces every partition key with the
 // Next.js build ID — a row's `tag` is stored as "{buildId}/products", not
 // "products" (and `path` likewise), so a new deploy's cache can't collide
-// with the previous build's. Querying the bare tag matches nothing, which
-// silently made every revalidation a no-op. The build ID is injected at
-// deploy time from .open-next/assets/BUILD_ID (see spa-tag-revalidator.ts).
+// with the previous build's. Querying the bare tag matches nothing. The
+// build ID is injected at deploy time from .open-next/assets/BUILD_ID (see
+// sst.config.ts) — must match what's set on the server function's own
+// OPEN_NEXT_BUILD_ID env var (also wired in sst.config.ts), or lookups
+// silently match nothing.
 const BUILD_ID = process.env.TAG_CACHE_BUILD_ID
 
 function tagsForEvent(event) {
