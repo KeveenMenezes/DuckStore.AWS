@@ -18,7 +18,7 @@ public static class CatalogExtensions
 
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
                 "catalog-stream-event-publisher",
-                lambdaHandler: "Catalog.Function::Catalog.Function.Modules.Products.EventsIntegration.Publisher.CatalogStreamEventPublisherFunction::FunctionHandler")
+                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_ProductStreamPublisher_Generated::ProductStreamPublisher")
             .WaitForCompletion(catalogSeeder)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(ProductsTableName)
@@ -32,7 +32,7 @@ public static class CatalogExtensions
         // (AverageRating/RatingCount) — ADR-0011.
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
                 "catalog-review-created-consumer",
-                lambdaHandler: "Catalog.Function::Catalog.Function.Modules.Products.EventsIntegration.Consumer.ReviewCreatedConsumerFunction::FunctionHandler")
+                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_ReviewCreatedConsumer_Generated::ReviewCreatedConsumer")
             .WaitForCompletion(catalogSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()

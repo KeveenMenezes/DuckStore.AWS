@@ -1,4 +1,4 @@
-﻿namespace Catalog.Function.Modules.Products.ValueObjects;
+﻿namespace Catalog.Function.Modules.Products.Domain.ValueObjects;
 
 public class ProductId : ValueObject<Guid>
 {
@@ -8,7 +8,6 @@ public class ProductId : ValueObject<Guid>
     public static ProductId Of(Guid value)
     {
         return value == Guid.Empty ? throw
-            // TODO: Create a specific exception for ProductId
             new ArgumentException("ProductId cannot be empty.", nameof(value)) : new ProductId(value);
     }
 }

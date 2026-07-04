@@ -1,6 +1,4 @@
-﻿using BuildingBlocks.Messaging.Events;
-
-namespace Catalog.Function.Modules.Products.EventsIntegration.Events;
+﻿namespace BuildingBlocks.Messaging.Events;
 
 public record CatalogUpdatedEvent : IntegrationEvent
 {
