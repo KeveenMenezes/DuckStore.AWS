@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-import * as fs from 'fs';
-import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import { CatalogStack } from '../stacks/catalog-stack';
 import { BasketStack } from '../stacks/basket-stack';
@@ -8,7 +6,6 @@ import { OrderingStack } from '../stacks/ordering-stack';
 import { ReviewStack } from '../stacks/review-stack';
 import { UserStack } from '../stacks/user-stack';
 import { AppSyncStack } from '../stacks/appsync-stack';
-import { SpaStack } from '../stacks/spa-stack';
 
 const app = new cdk.App();
 
@@ -17,9 +14,10 @@ const env = {
   region: process.env.CDK_DEFAULT_REGION,
 };
 
-// Shared by AppSyncStack (Cognito callback/logout allowlist) and SpaStack
-// (CloudFront custom domain). Must be derived identically in both so the
-// deployed SPA's redirect_uri matches a registered Cognito callback URL.
+// Used by AppSyncStack (Cognito callback/logout allowlist). The SPA itself no
+// longer deploys via CDK (see sst.config.ts in Shopping.Web.SPA.React) — this
+// must still compute the exact same domain that app derives, so the deployed
+// SPA's redirect_uri matches a registered Cognito callback URL.
 const environmentName = app.node.tryGetContext('environmentName') ?? 'dev';
 const hostedZoneDomainName =
   app.node.tryGetContext('hostedZoneDomainName') ?? 'keveenmenezes.com';
@@ -81,33 +79,7 @@ new AppSyncStack(app, 'DuckStoreAppSyncStack', {
     'DuckStore AppSync API — Cognito UserPool (RBAC groups), DynamoDB direct resolvers, Lambda resolvers',
 });
 
-// SpaStack's constructs read .open-next/* build output straight off disk at
-// synthesis time (BucketDeployment/Lambda asset paths). Every `cdk` command
-// constructs the whole App regardless of which stack is targeted, so without
-// this guard, any OTHER stack's deploy (which never runs `open-next build`)
-// would fail here too. Only deploy-spa-cdk.yml builds the SPA first.
-const openNextDir = path.join(
-  __dirname,
-  '..',
-  '..',
-  'src/WebApps/Shopping.Web.SPA.React/.open-next',
-);
-if (fs.existsSync(openNextDir)) {
-  new SpaStack(app, 'DuckStoreSpaStack', {
-    env,
-    environmentName,
-    hostedZoneDomainName,
-    // Cross-stack references into DuckStoreAppSyncStack's CfnOutputs — avoids
-    // duplicating these values as separate GitHub secrets/vars.
-    appsyncUrl: cdk.Fn.importValue('DuckStoreAppSyncStack-ApiUrl'),
-    appsyncApiKey: cdk.Fn.importValue('DuckStoreAppSyncStack-ApiKey'),
-    cognitoClientId: cdk.Fn.importValue('DuckStoreAppSyncStack-UserPoolClientId'),
-    cognitoHostedUiUrl: cdk.Fn.importValue('DuckStoreAppSyncStack-HostedUiUrl'),
-    description:
-      'DuckStore SPA — OpenNext (Next.js on Lambda) behind CloudFront with a custom domain',
-  });
-} else {
-  console.warn(
-    `Skipping DuckStoreSpaStack: ${openNextDir} not found. Run "pnpm build:opennext" in the SPA first.`,
-  );
-}
+// The SPA (OpenNext/Next.js on Lambda + CloudFront) deploys via SST, not CDK
+// — see src/WebApps/Shopping.Web.SPA.React/sst.config.ts (`sst deploy`). It
+// reads DuckStoreAppSyncStack's CloudFormation exports directly
+// (`aws.cloudformation.getExportOutput`) instead of `cdk.Fn.importValue`.
