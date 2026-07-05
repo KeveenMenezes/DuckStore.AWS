@@ -94,15 +94,21 @@ export default async function Page() {
 ```
 
 ```tsx
-// app/api/webhooks/catalog-updated/route.ts
-// Called by the Lambda (or EventBridge → Lambda → HTTP) when DynamoDB changes.
+// app/api/webhooks/revalidate/route.ts
+// A single generic route for every event type — callers just say which tags
+// changed, not what kind of change it was. Called server-to-server only
+// (e.g. an EventBridge-triggered Lambda when DynamoDB changes), authenticated
+// with an HMAC signature over the request body rather than a plain shared
+// secret — see DuckStore.AWS's own app/api/webhooks/revalidate/route.ts for
+// a real implementation (signature + replay-window verification).
 import { revalidateTag } from 'next/cache'
 import { NextResponse } from 'next/server'
 
 export async function POST(req: Request) {
-  // Validate the event source here before trusting the payload.
-  revalidateTag('products')
-  return NextResponse.json({ revalidated: true })
+  // Verify an HMAC signature (or equivalent) here before trusting the payload.
+  const { tags } = await req.json()
+  for (const tag of tags as string[]) revalidateTag(tag)
+  return NextResponse.json({ revalidated: true, tags })
 }
 ```
 

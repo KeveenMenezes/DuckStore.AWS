@@ -73,21 +73,63 @@ the full ISR revalidation trio (`revalidationTable`, `revalidationQueue`, `reval
 **including build-time tag-cache seeding**, via the same `dynamodb-provider` Lambda ADR-0014 deferred,
 which SST already knows how to invoke correctly.
 
-### 3. On-demand CDN invalidation is still a custom Lambda
+### 3. On-demand CDN invalidation is still a custom Lambda — now calling `revalidateTag()` via webhook, not writing DynamoDB directly
 
 `sst.aws.Nextjs`'s `invalidation` config (`paths: "all" | "versioned" | string[]`) only fires at
 **deploy time** — it has no concept of a business event driving cache staleness. The tag-driven
 requirement (`CatalogUpdatedEvent`/`ReviewCreatedEvent` → mark tag stale → invalidate the affected
-CloudFront path) is still a small custom Lambda, `revalidator/index.mjs`, ported near-verbatim from
-the deleted `infra/lambda/spa-tag-revalidator/index.mjs` (same `tagsForEvent`/`markTagStale`/
-`pathsForTag`/`invalidatePaths` logic). It's wired via:
+CloudFront path) is still a small custom Lambda, `revalidator/index.mjs`.
+
+Its first iteration (ported near-verbatim from the deleted `infra/lambda/spa-tag-revalidator/index.mjs`)
+wrote directly to the DynamoDB tag-cache table, mimicking what `revalidateTag()` does internally — a
+schema/key-format reverse-engineered from a minified bundle (see Context). This was revised once the
+inconsistency became clear: the SPA already had a **second, older** revalidation path
+(`app/api/webhooks/review-created/route.ts`, called client-side after a review submission) that calls
+Next.js's real `revalidateTag()` API instead. Having two different mechanisms for the same job — one
+hand-rolled/undocumented, one using the public API — was itself a maintainability risk.
+
+Rather than add a *third* route (`catalog-updated`) alongside it, both were replaced by a single
+generic route, `app/api/webhooks/revalidate/route.ts`: callers just POST `{ tags: string[] }` — the
+route has no idea whether that came from a catalog change, a review, or anything else added later. It
+calls `revalidateTag()` for each tag. `revalidateTag()` alone still doesn't touch CloudFront, so
+`revalidator/index.mjs` separately calls `CreateInvalidation` for the same paths, same as before.
+
+This rewrite also fixed a real, silent bug and a real security weakness in the two routes it replaced:
+
+- The old `review-created` route's *client-side* caller read
+  `NEXT_PUBLIC_REVIEW_WEBHOOK_SECRET` — an env var that was never actually set anywhere in
+  `sst.config.ts` or CI (only the unprefixed `REVIEW_WEBHOOK_SECRET` was, a server-only variable it
+  couldn't see). The client-side call had silently never fired in any real deploy.
+- Comparing a shared secret sent as a plain header (`x-webhook-secret`) is also weaker than it looks:
+  the comparison itself wasn't timing-safe, and — more importantly for the browser-triggered call — a
+  `NEXT_PUBLIC_*` secret is shipped straight into the JS bundle, so it was never actually confidential;
+  anyone could read it from devtools and call the route directly to spam CloudFront invalidations
+  (real money past the first 1,000/month).
+
+The generic route is **server-to-server only** — there is deliberately no browser-triggered path at
+all, not even a session-authenticated one. An earlier iteration had `review-form.tsx` call the webhook
+client-side right after a review submission (for lower latency, since the browser knows about its own
+mutation instantly, without waiting for the CDC pipeline), authenticated by the caller's session
+(`resolveOwner()`) rather than a shared secret. That was removed: a client-triggered call only ever
+covers reviews submitted through that one form, leaving the same kind of silent blind spot for reviews
+created any other way (seed data, another channel) that this ADR's Context describes for Catalog. The
+reviewer already sees their own review instantly via local React state
+(`features/reviews/components/reviews-section.tsx`), independent of any server-side revalidation
+timing, so the client-triggered call bought speed for other users at the cost of correctness — not a
+trade worth making. `revalidateTag()` on this route is now reached exclusively via the event-driven
+path, uniformly, for every tag.
+
+Its one caller (the `revalidator` Lambda) authenticates with an HMAC-SHA256 signature over
+`${timestamp}.${body}` (`x-webhook-signature`/`x-webhook-timestamp` headers) instead of a plain shared
+secret sent as a header, verified with `crypto.timingSafeEqual`, timestamp checked against a 5-minute
+window: the secret itself never goes over the wire, and a captured request/signature pair can't be
+replayed indefinitely or reused for a different payload.
 
 ```ts
-sst.aws.Bus.subscribe("SpaTagRevalidator", eventBusArn, {
+sst.aws.Bus.subscribe("Revalidator", eventBusArn, {
   handler: "revalidator/index.handler",
-  environment: { TAG_CACHE_TABLE_NAME, CLOUDFRONT_DISTRIBUTION_ID, TAG_CACHE_BUILD_ID },
+  environment: { SPA_URL, WEBHOOK_SECRET, CLOUDFRONT_DISTRIBUTION_ID },
   permissions: [
-    { actions: ["dynamodb:Query", "dynamodb:UpdateItem"], resources: [...] },
     { actions: ["cloudfront:CreateInvalidation"], resources: [distribution.arn] },
   ],
 }, {
@@ -98,6 +140,12 @@ sst.aws.Bus.subscribe("SpaTagRevalidator", eventBusArn, {
 `duckstore-event-bus` stays on CDK (created by Catalog) — the subscription targets it by ARN, the
 same fixed-name-lookup relationship `spa-tag-revalidator.ts` (CDK) used via
 `events.EventBus.fromEventBusName`, just expressed as an ARN since `Bus.subscribe` takes one.
+
+This also fixes a client-side gap unrelated to the server/CDN layers: the browser's own Router Cache
+(App Router client-side navigation cache, in-memory, `staleTimes` config) has no channel for a
+server-side `revalidateTag()` call to reach it — there's no "push" from server to an already-open
+tab. That's expected, not a bug: `router.refresh()`/`staleTimes` are the only two levers for that
+layer, and are a separate concern from this ADR's scope (server + CDN consistency).
 
 ### 4. Two SST defaults had to be overridden
 
@@ -123,8 +171,9 @@ same fixed-name-lookup relationship `spa-tag-revalidator.ts` (CDK) used via
 CloudFormation-output-fetch step now exports to `$GITHUB_ENV` (not `$GITHUB_OUTPUT`), since those
 values must be inherited by the `pnpm build:opennext` child process `sst deploy` spawns internally
 during the build — not just wired into the Lambda's runtime environment afterwards. The
-`REVIEW_WEBHOOK_SECRET` GitHub secret is now set via `npx sst secret set ReviewWebhookSecret ...`
-instead of a CDK `CfnParameter`.
+old `REVIEW_WEBHOOK_SECRET` CDK `CfnParameter` is replaced by a single `WEBHOOK_SECRET` GitHub secret
+/ `WebhookSecret` `sst.Secret`, set via `npx sst secret set WebhookSecret ...` — shared by the generic
+`app/api/webhooks/revalidate/route.ts` and `revalidator/index.mjs`'s HMAC-signed calls to it.
 
 ### 6. Cutover: hard cutover, no parallel run
 
@@ -137,8 +186,9 @@ judged worth the added complexity of running two deploy pipelines and two domain
 
 ## Applies To
 
-- `src/WebApps/Shopping.Web.SPA.React` — new `sst.config.ts`, new `revalidator/index.mjs`,
-  `package.json` (`sst` devDependency, `@aws-sdk/client-cloudfront`, `@aws-sdk/lib-dynamodb`).
+- `src/WebApps/Shopping.Web.SPA.React` — new `sst.config.ts`, new `revalidator/index.mjs`, new
+  `app/api/webhooks/revalidate/route.ts` (replaces `catalog-updated`/`review-created`),
+  `package.json` (`sst` devDependency, `@aws-sdk/client-cloudfront`).
 - `infra` — removed `stacks/spa-stack.ts`, `constructs/spa-{storage,lambdas,distribution,invalidation,
   tag-revalidator,tag-cache-seeder}.ts`, `lambda/spa-tag-revalidator/`; `bin/app.ts` no longer
   instantiates a SPA stack (still computes the shared SPA domain for `AppSyncStack`'s Cognito

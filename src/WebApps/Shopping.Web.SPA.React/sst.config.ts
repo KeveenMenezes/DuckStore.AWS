@@ -6,13 +6,16 @@ import * as path from "path";
  * Deploys the SPA to AWS via OpenNext/SST — replaces the hand-rolled CDK
  * stack (infra/stacks/spa-stack.ts and friends, removed) that had to
  * reverse-engineer OpenNext's bundled tag-cache/CloudFront wiring by hand.
- * See docs/adr/0021-migrate-spa-deploy-to-sst.md.
+ * See docs/adr/0020-migrate-spa-deploy-to-sst.md.
  *
  * On-demand ISR revalidation (CatalogUpdatedEvent/ReviewCreatedEvent ->
- * mark tag stale -> invalidate the affected CloudFront path) is still a
+ * revalidateTag() -> invalidate the affected CloudFront path) is still a
  * custom Lambda (revalidator/index.mjs) subscribed to the existing
  * `duckstore-event-bus` — SST's Nextjs component only invalidates CloudFront
- * at deploy time, not on business events.
+ * at deploy time, not on business events. The Lambda calls the SPA's single
+ * generic, HMAC-signed webhook (app/api/webhooks/revalidate/route.ts) to
+ * trigger revalidateTag() — the real Next.js API — rather than writing to
+ * the OpenNext DynamoDB tag-cache table directly.
  */
 export default $config({
   app(input) {
@@ -44,10 +47,12 @@ export default $config({
       name: "DuckStoreAppSyncStack-HostedUiUrl",
     }).value;
 
-    // Matches infra/stacks/spa-stack.ts's ReviewWebhookSecret CfnParameter —
-    // still only used by the client-triggered review-created webhook
-    // (app/api/webhooks/review-created/route.ts), not by catalog updates.
-    const reviewWebhookSecret = new sst.Secret("ReviewWebhookSecret");
+    // Secret for the generic revalidation webhook
+    // (app/api/webhooks/revalidate/route.ts) — verifies the HMAC signature
+    // on the `revalidator` Lambda's calls below. That route is
+    // server-to-server only (no browser ever calls it — see ADR-0020), so
+    // this is the only auth path it has.
+    const webhookSecret = new sst.Secret("WebhookSecret");
 
     const nextjs = new sst.aws.Nextjs("Spa", {
       // SST defaults to downloading its own pinned OpenNext version
@@ -74,7 +79,7 @@ export default $config({
         APPSYNC_API_KEY: appsyncApiKey,
         COGNITO_CLIENT_ID: cognitoClientId,
         COGNITO_HOSTED_UI_URL: cognitoHostedUiUrl,
-        REVIEW_WEBHOOK_SECRET: reviewWebhookSecret.value,
+        WEBHOOK_SECRET: webhookSecret.value,
         NEXT_PUBLIC_SITE_URL: `https://${domainName}`,
       },
       transform: {
@@ -89,8 +94,9 @@ export default $config({
           // hand-rolled CDK stack had before this migration (see git history /
           // the superseded ADR-0014) — fixing it here defensively rather than
           // assuming SST's Nextjs component already accounts for OpenNext v4's
-          // key-prefixing scheme. Validate on first real deploy: confirm the
-          // tag-revalidator's `Marked N entries stale` log shows N > 0.
+          // key-prefixing scheme. Validate on first real deploy: submit a
+          // review/update a product and confirm `/api/webhooks/revalidate`
+          // actually serves fresh data afterwards, not the pre-existing cache.
           const buildId = fs
             .readFileSync(path.join(process.cwd(), ".open-next", "assets", "BUILD_ID"), "utf8")
             .trim();
@@ -102,18 +108,11 @@ export default $config({
       },
     });
 
-    // The revalidation table/CDN distribution SST created and already seeded
-    // for this build — the tag-revalidator writes into the same table
-    // in-process Next.js reads from, and invalidates paths on the same CDN.
-    const revalidationTable = nextjs.nodes.revalidationTable;
+    // The CDN distribution SST created — the revalidator invalidates paths
+    // on it directly. It no longer touches the tag-cache DynamoDB table at
+    // all: that's now Next.js's own job, via revalidateTag() inside the
+    // generic revalidate webhook the revalidator calls over HTTP instead.
     const distribution = nextjs.nodes.cdn!.nodes.distribution;
-
-    // Read after `nextjs` finishes constructing (buildCommand has already
-    // run by then) — same build ID injected above, so the revalidator's
-    // DynamoDB keys match what the server function/seed actually wrote.
-    const tagCacheBuildId = fs
-      .readFileSync(path.join(process.cwd(), ".open-next", "assets", "BUILD_ID"), "utf8")
-      .trim();
 
     // Catalog (still CDK) publishes to this bus by fixed name — same lookup
     // infra/constructs/spa-tag-revalidator.ts (removed) used via
@@ -121,21 +120,14 @@ export default $config({
     // `Bus.subscribe` takes an ARN, not a bus name.
     const eventBusArn = $interpolate`arn:aws:events:${aws.getRegionOutput().name}:${aws.getCallerIdentityOutput().accountId}:event-bus/duckstore-event-bus`;
 
-    sst.aws.Bus.subscribe("SpaTagRevalidator", eventBusArn, {
+    sst.aws.Bus.subscribe("Revalidator", eventBusArn, {
       handler: "revalidator/index.handler",
       environment: {
-        TAG_CACHE_TABLE_NAME: revalidationTable.apply((t) => t!.name),
+        SPA_URL: `https://${domainName}`,
+        WEBHOOK_SECRET: webhookSecret.value,
         CLOUDFRONT_DISTRIBUTION_ID: distribution.id,
-        TAG_CACHE_BUILD_ID: tagCacheBuildId,
       },
       permissions: [
-        {
-          actions: ["dynamodb:Query", "dynamodb:UpdateItem"],
-          resources: [
-            revalidationTable.apply((t) => t!.arn),
-            revalidationTable.apply((t) => `${t!.arn}/index/*`),
-          ],
-        },
         {
           actions: ["cloudfront:CreateInvalidation"],
           resources: [distribution.arn],

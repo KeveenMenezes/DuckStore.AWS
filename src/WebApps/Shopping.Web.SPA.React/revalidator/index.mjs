@@ -1,40 +1,43 @@
-import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb'
+import { createHmac } from 'crypto'
 import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront'
 
 // Backend-triggered ISR revalidation, wired via `sst.aws.Bus.subscribe` in
 // sst.config.ts. Consumes CatalogUpdatedEvent / ReviewCreatedEvent directly
 // off the existing `duckstore-event-bus` (still published to by Catalog,
-// which stays on CDK) and marks every tag-cache entry for the affected
-// tag(s) as stale directly in DynamoDB — the same mechanism Next.js's own
-// revalidateTag() uses internally: it re-writes each {tag, path} row with
-// revalidatedAt = now, which the read-side staleness check (a Query against
-// the "revalidate" GSI comparing revalidatedAt against the cached entry's
-// lastModified) picks up on the next request, forcing a fresh fetch instead
-// of serving the cached value.
+// which stays on CDK).
 //
-// SST's Nextjs component creates and seeds this DynamoDB table itself as
-// part of `sst deploy` — no separate seeder Lambda needed here, unlike the
-// hand-rolled CDK version this replaces.
+// Calls the SPA's single generic webhook (app/api/webhooks/revalidate/route.ts),
+// which calls Next.js's real revalidateTag() — instead of writing to the
+// OpenNext DynamoDB tag-cache table directly. That table's schema/env vars
+// were reverse-engineered from a minified bundle; the public revalidateTag()
+// API is the maintained, documented mechanism.
 //
-// `/` and `/products/[id]` are prerendered ISR routes that come back from
-// the origin Lambda with `Cache-Control: s-maxage=31536000` — SST's CDN
-// caches that at the edge for up to a year. Marking the DynamoDB tag-cache
-// stale only changes what the origin Lambda serves on its *next*
-// invocation; it does nothing for a CloudFront edge location that already
-// has the page cached. So every stale-tag write here is paired with a
-// CloudFront path invalidation for the pages that tag feeds.
+// Requests are signed with HMAC-SHA256 over `${timestamp}.${body}` (like
+// Stripe/GitHub webhooks) instead of sending a shared secret as a plain
+// header — the secret itself never goes over the wire, and the timestamp
+// keeps a captured request from being replayed indefinitely.
 //
-// Tags are granular per product (products:{id}, reviews:{id} — see
-// app/products/[id]/page.tsx) except the home page's blanket "products" tag,
-// which every product's data feeds into. CatalogUpdatedEvent carries the
-// changed product's Id (from the DynamoDB Streams record key — see
-// CatalogStreamEventPublisherFunction.cs), so a catalog change invalidates
-// both the home page and that one product's own page, without touching
-// every other product's cached page.
+// revalidateTag() alone doesn't touch CloudFront — it only marks the
+// DynamoDB tag-cache stale, which changes what the origin Lambda serves on
+// its *next* invocation. `/` and `/products/[id]` are prerendered ISR routes
+// cached at the CloudFront edge for up to a year (`s-maxage=31536000`), so a
+// PoP that already has the page cached would keep serving it regardless.
+// Hence the explicit CreateInvalidation call below, for the same paths the
+// webhook just revalidated.
 
-const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}))
 const cloudfront = new CloudFrontClient({})
+
+function tagsForEvent(event) {
+  const detailType = event['detail-type']
+  const productId = event.detail?.ProductId
+  if (detailType === 'CatalogUpdatedEvent') {
+    return productId ? ['products', `products:${productId}`] : ['products']
+  }
+  if (detailType === 'ReviewCreatedEvent') {
+    return productId ? [`reviews:${productId}`] : []
+  }
+  return []
+}
 
 // Paths whose cached HTML/RSC depends on a given tag, mirroring the
 // products/{id} and reviews/{id} tags used by app/products/[id]/page.tsx and
@@ -46,6 +49,28 @@ function pathsForTag(tag) {
   const reviewMatch = /^reviews:(.+)$/.exec(tag)
   if (reviewMatch) return [`/products/${reviewMatch[1]}`]
   return []
+}
+
+async function callRevalidateWebhook(tags) {
+  const body = JSON.stringify({ tags })
+  const timestamp = Date.now().toString()
+  const signature = createHmac('sha256', process.env.WEBHOOK_SECRET).update(`${timestamp}.${body}`).digest('hex')
+
+  const response = await fetch(`${process.env.SPA_URL}/api/webhooks/revalidate`, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-webhook-timestamp': timestamp,
+      'x-webhook-signature': `sha256=${signature}`,
+    },
+    body,
+  })
+
+  if (!response.ok) {
+    throw new Error(`revalidate webhook responded ${response.status}: ${await response.text()}`)
+  }
+
+  console.log('Called revalidate webhook', await response.json())
 }
 
 async function invalidatePaths(paths) {
@@ -64,67 +89,16 @@ async function invalidatePaths(paths) {
   console.log(`Invalidated CloudFront path(s): ${paths.join(', ')}`)
 }
 
-// OpenNext's DynamoDB tag cache namespaces every partition key with the
-// Next.js build ID — a row's `tag` is stored as "{buildId}/products", not
-// "products" (and `path` likewise), so a new deploy's cache can't collide
-// with the previous build's. Querying the bare tag matches nothing. The
-// build ID is injected at deploy time from .open-next/assets/BUILD_ID (see
-// sst.config.ts) — must match what's set on the server function's own
-// OPEN_NEXT_BUILD_ID env var (also wired in sst.config.ts), or lookups
-// silently match nothing.
-const BUILD_ID = process.env.TAG_CACHE_BUILD_ID
-
-function tagsForEvent(event) {
-  const detailType = event['detail-type']
-  const productId = event.detail?.ProductId
-  if (detailType === 'CatalogUpdatedEvent') {
-    return productId ? ['products', `products:${productId}`] : ['products']
-  }
-  if (detailType === 'ReviewCreatedEvent') {
-    return productId ? [`reviews:${productId}`] : []
-  }
-  return []
-}
-
-async function markTagStale(tag) {
-  const key = BUILD_ID ? `${BUILD_ID}/${tag}` : tag
-
-  const { Items = [] } = await ddb.send(
-    new QueryCommand({
-      TableName: process.env.TAG_CACHE_TABLE_NAME,
-      KeyConditionExpression: '#tag = :tag',
-      ExpressionAttributeNames: { '#tag': 'tag' },
-      ExpressionAttributeValues: { ':tag': key },
-    }),
-  )
-
-  const now = Date.now()
-
-  await Promise.all(
-    Items.map((item) =>
-      ddb.send(
-        new UpdateCommand({
-          TableName: process.env.TAG_CACHE_TABLE_NAME,
-          // item.path is already build-ID-prefixed (read back from the query).
-          Key: { tag: key, path: item.path },
-          UpdateExpression: 'SET revalidatedAt = :now',
-          ExpressionAttributeValues: { ':now': now },
-        }),
-      ),
-    ),
-  )
-
-  console.log(`Marked ${Items.length} entr${Items.length === 1 ? 'y' : 'ies'} stale for tag "${key}"`)
-}
-
 export const handler = async (event) => {
+  const detailType = event['detail-type']
   const tags = tagsForEvent(event)
   if (tags.length === 0) {
-    console.warn(`No tags derived for detail-type "${event['detail-type']}", skipping`)
+    console.warn(`No tags derived for detail-type "${detailType}", skipping`)
     return
   }
 
   const paths = [...new Set(tags.flatMap(pathsForTag))]
 
-  await Promise.all([...tags.map(markTagStale), invalidatePaths(paths)])
+  await callRevalidateWebhook(tags)
+  await invalidatePaths(paths)
 }
