@@ -64,15 +64,15 @@ export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
           comment,
           createdAt: new Date().toISOString(),
         })
-        // Trigger ISR revalidation so other users see the new review on next visit.
-        const secret = process.env.NEXT_PUBLIC_REVIEW_WEBHOOK_SECRET
-        if (secret) {
-          fetch('/api/webhooks/review-created', {
-            method: 'POST',
-            headers: { 'x-webhook-secret': secret, 'content-type': 'application/json' },
-            body: JSON.stringify({ productId }),
-          }).catch(() => undefined)
-        }
+        // ISR revalidation for other users happens server-side only, via
+        // ReviewCreatedEvent (DynamoDB Streams -> EventBridge -> the
+        // `revalidator` Lambda -> /api/webhooks/revalidate, see
+        // sst.config.ts). No client-side trigger here — it would only cover
+        // reviews submitted through this exact form, leaving a silent blind
+        // spot for reviews created any other way (the same category of bug
+        // this project already hit once with Catalog updates never
+        // reaching the CDN). The reviewer already sees their own review
+        // instantly via the local state update above.
         setSubmitted(true)
       } catch {
         setError("Failed to submit review. Please try again.")
