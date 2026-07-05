@@ -1,6 +1,4 @@
 /// <reference path="./.sst/platform/config.d.ts" />
-import * as fs from "fs";
-import * as path from "path";
 
 /**
  * Deploys the SPA to AWS via OpenNext/SST — replaces the hand-rolled CDK
@@ -27,6 +25,13 @@ export default $config({
     };
   },
   async run() {
+    // sst.config.ts can't have top-level imports at all (SST refuses to even
+    // run `sst secret set`/`sst deploy` otherwise: "Your sst.config.ts has
+    // top level imports - this is not allowed") — Node built-ins have to be
+    // dynamically imported inside run() instead.
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+
     const environmentName = $app.stage;
     const hostedZoneDomainName = "keveenmenezes.com";
     const domainName = `${environmentName}-duckstore.${hostedZoneDomainName}`;
@@ -97,9 +102,7 @@ export default $config({
           // key-prefixing scheme. Validate on first real deploy: submit a
           // review/update a product and confirm `/api/webhooks/revalidate`
           // actually serves fresh data afterwards, not the pre-existing cache.
-          const buildId = fs
-            .readFileSync(path.join(process.cwd(), ".open-next", "assets", "BUILD_ID"), "utf8")
-            .trim();
+          const buildId = readFileSync(join(process.cwd(), ".open-next", "assets", "BUILD_ID"), "utf8").trim();
           args.environment = {
             ...(args.environment as Record<string, string>),
             OPEN_NEXT_BUILD_ID: buildId,
