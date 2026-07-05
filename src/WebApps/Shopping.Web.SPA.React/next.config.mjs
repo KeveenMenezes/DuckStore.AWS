@@ -8,13 +8,13 @@ const nextConfig = {
     // `static`/ISR routes (/, /products/[id]) for 5 minutes by default on soft
     // navigation (<Link>), regardless of server/CDN tag revalidation — there's
     // no mechanism for revalidateTag() to bust an already-mounted client's
-    // cache remotely (see docs/adr/0020-migrate-spa-deploy-to-sst.md). Zeroing
-    // it means every soft navigation re-fetches, so a CatalogUpdatedEvent/
-    // ReviewCreatedEvent-driven revalidation is visible immediately instead of
-    // only after the client cache entry expires or a hard reload.
+    // cache remotely (see docs/adr/0020-migrate-spa-deploy-to-sst.md). Next.js
+    // rejects 0 here ("must be >= 30"), so 30s (its own floor, and the same
+    // value already used for `dynamic`) is the closest to "always revalidate"
+    // this config actually allows.
     staleTimes: {
       dynamic: 30,
-      static: 0,
+      static: 30,
     },
   },
   images: {
