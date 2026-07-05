@@ -70,7 +70,7 @@ jobs:
           echo "APPSYNC_API_KEY=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiKey") | .OutputValue')" >> "$GITHUB_ENV"
 
       - name: Set SST secrets
-        run: npx sst secret set ReviewWebhookSecret "${{ secrets.REVIEW_WEBHOOK_SECRET }}" --stage ${{ env.STAGE }}
+        run: npx sst secret set WebhookSecret "${{ secrets.WEBHOOK_SECRET }}" --stage ${{ env.STAGE }}
 
       - name: Deploy
         env:
