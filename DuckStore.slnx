@@ -10,13 +10,11 @@
   <Folder Name="/src/">
     <Project Path="src/AppHost/AppHost.csproj" />
   </Folder>
-  <Folder Name="/src/ApiGateways/">
-    <Project Path="src/ApiGateways/YarpApiGateway/YarpApiGateway.csproj" />
-  </Folder>
   <Folder Name="/src/BuildingBlocks/">
     <Project Path="src/BuildingBlocks/BuildingBlocks.Core/BuildingBlocks.Core.csproj" />
     <Project Path="src/BuildingBlocks/BuildingBlocks.Messaging/BuildingBlocks.Messaging.csproj" />
     <Project Path="src/BuildingBlocks/BuildingBlocks.ServiceDefaults/BuildingBlocks.ServiceDefaults.csproj" />
+    <Project Path="src/BuildingBlocks/BuildingBlocks.ServiceDefaults.Lambda/BuildingBlocks.ServiceDefaults.Lambda.csproj" />
   </Folder>
   <Folder Name="/src/Services/" />
   <Folder Name="/src/Services/Basket/">

@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using BuildingBlocks.ServiceDefaults.Lambda;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using User.Function.Shared.Configuration;
 
@@ -11,6 +12,7 @@ public class Startup
     {
         var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
         services.AddSingleton<IConfiguration>(configuration);
+        services.AddLambdaDefaults(configuration);
         services.AddUserServices(configuration);
     }
 }

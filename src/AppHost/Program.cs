@@ -33,21 +33,14 @@ var userLambda = builder.AddUserLambdas(dynamoDb);
 
 builder.AddReviewServices(dynamoDb);
 
-// Reverse proxies
-var yarpApiGateway = builder.AddProject<Projects.YarpApiGateway>(
-    "yarp-api-gateway", GetHttpsForEndpoints())
-    .WithExternalHttpEndpoints();
-
 // Apps
 builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")
     .WithExternalHttpEndpoints()
-    .WaitFor(yarpApiGateway)
     .WaitFor(dynamoDb)
     .WaitFor(basketResources.StoreBasket)
     .WaitFor(basketResources.CheckoutBasket)
     .WaitFor(basketResources.MergeBasket)
     .WaitFor(userLambda)
-    .WithReference(yarpApiGateway)
     .WithReference(dynamoDb)
     .WithEnvironment(ctx =>
     {
@@ -62,6 +55,3 @@ builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React",
 builder.AddCatalogLambdas(dynamoDb);
 
 await builder.Build().RunAsync();
-return;
-
-static string GetHttpsForEndpoints() => "https";

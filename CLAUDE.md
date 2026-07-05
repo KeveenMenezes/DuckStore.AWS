@@ -79,14 +79,13 @@ Shared code referenced across services — check here before adding cross-cuttin
 - **BuildingBlocks.Core** — `ICommand`/`IQuery`/handler interfaces, `IUnitOfWork`, DDD base types (`Aggregate<TId>`/`IAggregate` as markers, `ValueObject`), pagination helpers (`PaginatedResult<T>`). Note: `IDomainEvent` and the domain-event machinery were deleted (ADR-0005).
 - **BuildingBlocks.Messaging** — `IntegrationEvent` base record and the EventBridge integration: `AddEventBridgeMessaging()` registers `IAmazonEventBridge` + `IEventPublisher` (`EventBridgePublisher`).
 - **BuildingBlocks.ServiceDefaults** — `AddServiceDefaults()` (service discovery, Polly resilience, health checks, OpenTelemetry, Serilog → Elasticsearch), the shared MediatR `Behaviors`, and `CustomExceptionHandler` for ProblemDetails responses.
-- **BuildingBlocks.ServiceDefaults.Lambda** — Lambda hosting equivalents of the above.
+- **BuildingBlocks.ServiceDefaults.Lambda** — `AddLambdaDefaults()` (ADR-0022): the Lambda-shaped subset of ServiceDefaults — structured JSON logging to stdout/CloudWatch when running on AWS (plain console locally) and OpenTelemetry tracing of AWS SDK calls exported via OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set. Called by every `[LambdaStartup]` `Startup.ConfigureServices`. No Elasticsearch/health checks/service discovery (those assume a long-lived host).
 
 ### Orchestration and routing
 
 - **src/AppHost** — .NET Aspire AppHost. `Program.cs` is the composition root; per-service wiring lives in `*Extensions.cs` (`BasketExtensions`, `CatalogExtensions`, `OrderingExtensions`, `ReviewExtensions`, `ObservabilityExtensions`). This is the source of truth for what infrastructure exists, Lambda handler names, `WaitFor`/`WaitForCompletion` chains, and DynamoDB Streams sources. Shared helper in `Extensions/Extensions.cs`: `WithAwsDevEnvironment()` (dummy AWS creds + region for local dev). Add new resources/functions here, not in docker-compose.
-- **src/ApiGateways/YarpApiGateway** — YARP reverse proxy. Routes are prefixed per service (prefix stripped before forwarding); the ordering route has a rate-limiter policy.
-- **src/WebApps/Shopping.Web.SPA** — Angular SPA (legacy; being replaced per ADR-0006).
-- **src/WebApps/Shopping.Web.SPA.React** — React/Next.js SPA (the primary SPA going forward). Uses `pnpm` (`pnpm dev` / `pnpm build` / `pnpm lint`). This directory is slated to move into its own Git repository, linked back into DuckStore as a **git submodule**.
+- AppSync (direct DynamoDB resolvers, per ADR-0007/ADR-0009) fronted by the Next.js BFF is the only client entry point, in every environment — there is no self-hosted HTTP gateway. See ADR-0023.
+- **src/WebApps/Shopping.Web.SPA.React** — React/Next.js SPA (the only SPA). Uses `pnpm` (`pnpm dev` / `pnpm build` / `pnpm lint`). This directory is slated to move into its own Git repository, linked back into DuckStore as a **git submodule**.
 
 ## Testing
 

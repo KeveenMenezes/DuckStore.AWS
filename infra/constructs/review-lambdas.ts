@@ -51,6 +51,8 @@ export class ReviewLambdas extends Construct {
       'ReviewCreatedPublisher',
       {
         functionName: 'review-reviews-event-publisher',
+        // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+        tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         code: lambda.DockerImageCode.fromEcr(reviewImage.repository, {
           tagOrDigest: reviewImage.imageTag,

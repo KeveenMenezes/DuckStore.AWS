@@ -51,9 +51,8 @@ Each service is responsible for a specific capability — such as cart managemen
 
 - **C# and .NET**: Main language and framework for development.
 - **Aspire**: Framework that simplifies building APIs and services.
-- **Angular**: Framework for front-end development.
+- **React / Next.js**: Framework for front-end development.
 - **Blazor**: Framework for building interactive web interfaces.
-- **YARP**: Reverse proxy for request routing.
 - **Entity Framework Core**: ORM for data manipulation.
 - **SQLite**: Lightweight database for local persistence.
 - **SQL Server**: Robust relational database for data persistence.
