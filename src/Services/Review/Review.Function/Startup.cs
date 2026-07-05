@@ -1,4 +1,5 @@
-﻿using Review.Function.Shared.Configuration;
+﻿using BuildingBlocks.ServiceDefaults.Lambda;
+using Review.Function.Shared.Configuration;
 
 namespace Review.Function;
 
@@ -12,6 +13,7 @@ public class Startup
             .Build();
 
         services.AddSingleton<IConfiguration>(configuration);
+        services.AddLambdaDefaults(configuration);
         services.AddReviewServices(configuration);
     }
 }

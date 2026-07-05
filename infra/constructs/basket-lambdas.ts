@@ -65,6 +65,8 @@ export class BasketLambdas extends Construct {
     // -------------------------------------------------------------------------
     this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
       functionName: 'basket-shopping-carts-event-publisher',
+      // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+      tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: basketCode([
         'Basket.Function::Basket.Function.Functions_ShoppingCartStreamPublisher_Generated::ShoppingCartStreamPublisher',
@@ -97,6 +99,8 @@ export class BasketLambdas extends Construct {
     // -------------------------------------------------------------------------
     this.storeBasket = new lambda.DockerImageFunction(this, 'StoreBasket', {
       functionName: 'basket-store-basket',
+      // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+      tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: basketCode([
         'Basket.Function::Basket.Function.Functions_StoreBasket_Generated::StoreBasket',
@@ -121,6 +125,8 @@ export class BasketLambdas extends Construct {
     // -------------------------------------------------------------------------
     this.checkoutBasket = new lambda.DockerImageFunction(this, 'CheckoutBasket', {
       functionName: 'basket-checkout-basket',
+      // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+      tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: basketCode([
         'Basket.Function::Basket.Function.Functions_CheckoutBasket_Generated::CheckoutBasket',
@@ -146,6 +152,8 @@ export class BasketLambdas extends Construct {
     // -------------------------------------------------------------------------
     this.mergeBasket = new lambda.DockerImageFunction(this, 'MergeBasket', {
       functionName: 'basket-merge-basket',
+      // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+      tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: basketCode([
         'Basket.Function::Basket.Function.Functions_MergeBasket_Generated::MergeBasket',

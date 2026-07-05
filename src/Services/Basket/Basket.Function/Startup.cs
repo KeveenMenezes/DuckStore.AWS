@@ -1,4 +1,5 @@
 ﻿using Basket.Function.Shared.Configuration;
+using BuildingBlocks.ServiceDefaults.Lambda;
 
 namespace Basket.Function;
 
@@ -13,6 +14,7 @@ public class Startup
             .Build();
 
         services.AddSingleton<IConfiguration>(configuration);
+        services.AddLambdaDefaults(configuration);
         services.AddBasketServices(configuration);
     }
 }

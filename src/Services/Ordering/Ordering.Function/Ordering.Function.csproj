@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.ServiceDefaults\BuildingBlocks.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.ServiceDefaults.Lambda\BuildingBlocks.ServiceDefaults.Lambda.csproj" />
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Messaging\BuildingBlocks.Messaging.csproj" />
   </ItemGroup>
   <!--
