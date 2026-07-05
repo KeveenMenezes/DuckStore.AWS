@@ -25,13 +25,6 @@ export default $config({
     };
   },
   async run() {
-    // sst.config.ts can't have top-level imports at all (SST refuses to even
-    // run `sst secret set`/`sst deploy` otherwise: "Your sst.config.ts has
-    // top level imports - this is not allowed") — Node built-ins have to be
-    // dynamically imported inside run() instead.
-    const { readFileSync } = await import("fs");
-    const { join } = await import("path");
-
     const environmentName = $app.stage;
     const hostedZoneDomainName = "keveenmenezes.com";
     const domainName = `${environmentName}-duckstore.${hostedZoneDomainName}`;
@@ -87,28 +80,13 @@ export default $config({
         WEBHOOK_SECRET: webhookSecret.value,
         NEXT_PUBLIC_SITE_URL: `https://${domainName}`,
       },
-      transform: {
-        server: (args) => {
-          // SST (this version) doesn't set OPEN_NEXT_BUILD_ID for the server
-          // function. `@opennextjs/aws@^4.0.3`'s bundled DynamoDB cache
-          // handler prefixes every tag-cache key with this build ID
-          // ("{buildId}/products", not "products") — without it, reads/writes
-          // silently target the wrong (unprefixed) key and never match the
-          // build-ID-prefixed rows OpenNext's own build-time cache seed
-          // writes into `revalidationTable`. This is the exact bug the
-          // hand-rolled CDK stack had before this migration (see git history /
-          // the superseded ADR-0014) — fixing it here defensively rather than
-          // assuming SST's Nextjs component already accounts for OpenNext v4's
-          // key-prefixing scheme. Validate on first real deploy: submit a
-          // review/update a product and confirm `/api/webhooks/revalidate`
-          // actually serves fresh data afterwards, not the pre-existing cache.
-          const buildId = readFileSync(join(process.cwd(), ".open-next", "assets", "BUILD_ID"), "utf8").trim();
-          args.environment = {
-            ...(args.environment as Record<string, string>),
-            OPEN_NEXT_BUILD_ID: buildId,
-          };
-        },
-      },
+      // No OPEN_NEXT_BUILD_ID env var needed here, even though the bundled
+      // tag-cache handler prefixes every DynamoDB key with it: OpenNext v4's
+      // server adapter self-assigns it at startup from the build-time-baked
+      // BuildId (`process.env.OPEN_NEXT_BUILD_ID = NextConfig.deploymentId ??
+      // BuildId`, @opennextjs/aws dist/adapters/config/index.js) — confirmed
+      // in practice, since revalidateTag() worked on a deployment whose
+      // Lambda never had the env var set externally.
     });
 
     // The CDN distribution SST created — the revalidator invalidates paths
