@@ -85,8 +85,16 @@ export class AppSyncApi extends Construct {
     const categoriesTable = dynamodb.Table.fromTableName(this, 'CategoriesTable', 'categories');
     const cartsTable = dynamodb.Table.fromTableName(this, 'CartsTable', 'shopping-carts');
     const couponsTable = dynamodb.Table.fromTableName(this, 'CouponsTable', 'coupons');
-    const orderingTable = dynamodb.Table.fromTableName(this, 'OrderingTable', 'ordering');
-    const reviewsTable = dynamodb.Table.fromTableName(this, 'ReviewsTable', 'reviews');
+    // fromTableAttributes + grantIndexPermissions is required (not fromTableName) so that
+    // grantReadWriteData below also covers the GSI1 ARN used by ordersByCustomer/reviewsByProduct.
+    const orderingTable = dynamodb.Table.fromTableAttributes(this, 'OrderingTable', {
+      tableName: 'ordering',
+      grantIndexPermissions: true,
+    });
+    const reviewsTable = dynamodb.Table.fromTableAttributes(this, 'ReviewsTable', {
+      tableName: 'reviews',
+      grantIndexPermissions: true,
+    });
     const userProfilesTable = dynamodb.Table.fromTableName(this, 'UserProfilesTable', 'user-profiles');
 
     const productsDs = api.addDynamoDbDataSource('ProductsDS', productsTable);
