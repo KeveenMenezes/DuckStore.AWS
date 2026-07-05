@@ -25,6 +25,13 @@ export default $config({
     };
   },
   async run() {
+    // sst.config.ts can't have top-level imports at all (SST refuses to even
+    // run `sst secret set`/`sst deploy` otherwise: "Your sst.config.ts has
+    // top level imports - this is not allowed") — Node built-ins have to be
+    // dynamically imported inside run() instead.
+    const { readFileSync } = await import("fs");
+    const { join } = await import("path");
+
     const environmentName = $app.stage;
     const hostedZoneDomainName = "keveenmenezes.com";
     const domainName = `${environmentName}-duckstore.${hostedZoneDomainName}`;
