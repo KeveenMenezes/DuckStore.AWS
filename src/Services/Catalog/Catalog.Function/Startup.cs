@@ -1,4 +1,6 @@
-﻿namespace Catalog.Function;
+﻿using BuildingBlocks.ServiceDefaults.Lambda;
+
+namespace Catalog.Function;
 
 [LambdaStartup]
 public class Startup
@@ -7,7 +9,7 @@ public class Startup
     {
         var configuration = new ConfigurationBuilder().AddEnvironmentVariables().Build();
         services.AddSingleton<IConfiguration>(configuration);
-        services.AddLogging();
+        services.AddLambdaDefaults(configuration);
         services.AddCatalogServices(configuration);
     }
 }

@@ -60,6 +60,8 @@ export class OrderingLambdas extends Construct {
       'BasketCheckoutConsumer',
       {
         functionName: 'ordering-basket-checkout-consumer',
+        // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+        tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         code: orderingCode([
           'Ordering.Function::Ordering.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer',
@@ -104,6 +106,8 @@ export class OrderingLambdas extends Construct {
       'OrderCreatedPublisher',
       {
         functionName: 'ordering-order-created-publisher',
+        // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+        tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         code: orderingCode([
           'Ordering.Function::Ordering.Function.Functions_OrderStreamPublisher_Generated::OrderStreamPublisher',
