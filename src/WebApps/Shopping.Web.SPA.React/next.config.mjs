@@ -3,6 +3,20 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  experimental: {
+    // The client-side Router Cache reuses an already-fetched RSC payload for
+    // `static`/ISR routes (/, /products/[id]) for 5 minutes by default on soft
+    // navigation (<Link>), regardless of server/CDN tag revalidation — there's
+    // no mechanism for revalidateTag() to bust an already-mounted client's
+    // cache remotely (see docs/adr/0020-migrate-spa-deploy-to-sst.md). Zeroing
+    // it means every soft navigation re-fetches, so a CatalogUpdatedEvent/
+    // ReviewCreatedEvent-driven revalidation is visible immediately instead of
+    // only after the client cache entry expires or a hard reload.
+    staleTimes: {
+      dynamic: 30,
+      static: 0,
+    },
+  },
   images: {
     // AVIF/WebP negotiated via the Accept header — modern browsers get a
     // compact modern format, older ones fall back to the source. We do NOT
