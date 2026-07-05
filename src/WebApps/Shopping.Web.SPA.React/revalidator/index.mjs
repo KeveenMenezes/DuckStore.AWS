@@ -51,6 +51,10 @@ function pathsForTag(tag) {
   return []
 }
 
+function withRscVariants(paths) {
+  return paths.flatMap((path) => [path, `${path}?_rsc=*`])
+}
+
 async function callRevalidateWebhook(tags) {
   const body = JSON.stringify({ tags })
   const timestamp = Date.now().toString()
@@ -97,7 +101,7 @@ export const handler = async (event) => {
     return
   }
 
-  const paths = [...new Set(tags.flatMap(pathsForTag))]
+  const paths = withRscVariants([...new Set(tags.flatMap(pathsForTag))])
 
   await callRevalidateWebhook(tags)
   await invalidatePaths(paths)
