@@ -147,7 +147,7 @@ server-side `revalidateTag()` call to reach it — there's no "push" from server
 tab. That's expected, not a bug: `router.refresh()`/`staleTimes` are the only two levers for that
 layer, and are a separate concern from this ADR's scope (server + CDN consistency).
 
-### 4. Two SST defaults had to be overridden
+### 4. One SST default had to be overridden
 
 - **OpenNext version.** SST defaults to running its own pinned OpenNext version (`3.9.14` at the
   time of writing) via `npx open-next@<version> build`, ignoring this repo's intentionally-pinned
@@ -155,14 +155,15 @@ layer, and are a separate concern from this ADR's scope (server + CDN consistenc
   cross-build fix for the image optimizer, needed for cross-compiling from a Mac). Fixed by setting
   `buildCommand: "pnpm build:opennext"` explicitly, so SST runs our own script/version instead of its
   bundled default.
-- **`OPEN_NEXT_BUILD_ID`.** The installed SST version does not set this env var on the server
-  function — the exact env var whose absence caused the original bug in the CDK version. Mitigated
-  defensively with a `transform.server` hook in `sst.config.ts` that reads `.open-next/assets/BUILD_ID`
-  (guaranteed to exist by the time the hook runs, since `buildCommand` has already executed as part
-  of the component's own construction) and injects it into the server function's environment. **Not
-  yet validated against a real deploy** — the verification step is to confirm the tag-revalidator's
-  `Marked N entries stale` log shows `N > 0` on the first real `CatalogUpdatedEvent` after deploy,
-  not the old `N = 0` bug recurring.
+- **`OPEN_NEXT_BUILD_ID` — investigated, no override needed.** SST does not set this env var on the
+  server function, and its absence was implicated in the CDK version's tag-cache bug, so a defensive
+  `transform.server` hook initially injected it from `.open-next/assets/BUILD_ID`. Removed after
+  source-verifying that OpenNext v4's server adapter self-assigns it at startup from the
+  build-time-baked BuildId (`process.env.OPEN_NEXT_BUILD_ID = NextConfig.deploymentId ?? BuildId`,
+  `@opennextjs/aws` `dist/adapters/config/index.js`), before any cache-handler module reads it —
+  confirmed in practice by `revalidateTag()` working on a deployment whose Lambda never had the env
+  var set externally. (The CDK-era bug was in the *separate* revalidator Lambda querying with
+  unprefixed keys against a never-seeded table, not in the server function.)
 
 ### 5. CI/CD
 
@@ -220,16 +221,17 @@ judged worth the added complexity of running two deploy pipelines and two domain
 - SST's own OpenNext version defaults silently diverge from this repo's pinned version and
   `open-next.config.ts` overrides unless explicitly overridden (`buildCommand`) — an easy trap to
   reintroduce on a future SST upgrade if this ADR's reasoning isn't rechecked.
-- The `OPEN_NEXT_BUILD_ID` gap was mitigated defensively but has not been validated against a real
-  deploy as of this ADR — there is a real chance the fix is incomplete or unnecessary in ways that
-  can only be confirmed by actually deploying and checking the revalidator's logs.
 
 ### Mitigation Strategies
-- Re-derive `buildCommand`/`transform.server` reasoning whenever `sst` or `@opennextjs/aws` is
-  upgraded — don't assume either still needs (or still lacks) today's workarounds.
-- On the first real deploy, explicitly verify: (1) the tag-revalidator Lambda logs `Marked N entries
-  stale` with `N > 0` after a real `CatalogUpdatedEvent`; (2) `curl -I` on the affected product path
-  shows `x-cache: Miss from cloudfront` immediately after, with updated content.
+- Re-derive the `buildCommand` reasoning whenever `sst` or `@opennextjs/aws` is upgraded — don't
+  assume either still needs (or still lacks) today's workarounds. Ditto for the "no
+  `OPEN_NEXT_BUILD_ID` override needed" finding in Decision §4, which depends on OpenNext's adapter
+  continuing to self-assign it.
+- After each deploy touching this pipeline, verify end to end: trigger a real
+  `CatalogUpdatedEvent`/`ReviewCreatedEvent`, confirm the revalidator Lambda logs both the webhook
+  call and the CloudFront invalidation (page paths *and* their `?_rsc=*` variants — soft navigations
+  fetch the RSC payload as a separate CloudFront cache entry), then `curl -I` the affected path and
+  confirm `x-cache: Miss from cloudfront` with updated content.
 - If a second stage/environment is added later, prefer validating SST's Nextjs component there
   before promoting further, even though this migration itself used a hard cutover for `dev`.
 

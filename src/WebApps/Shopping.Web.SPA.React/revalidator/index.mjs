@@ -51,15 +51,6 @@ function pathsForTag(tag) {
   return []
 }
 
-// Soft navigations (<Link>) don't fetch the page's HTML — they fetch the RSC
-// payload at the same path with an `?_rsc=<hash>` query string, which
-// CloudFront caches as SEPARATE entries from the HTML. Invalidating only
-// `/products/{id}` leaves every `?_rsc=*` variant stale, so hard reloads show
-// fresh data while soft navigations keep serving snapshots of different ages
-// (the "13 -> 12 -> 11" symptom). OpenNext's own cloudfront cdnInvalidation
-// override invalidates both forms for App Router routes
-// (node_modules/@opennextjs/aws/dist/overrides/cdnInvalidation/cloudfront.js)
-// — mirror that here.
 function withRscVariants(paths) {
   return paths.flatMap((path) => [path, `${path}?_rsc=*`])
 }
