@@ -67,6 +67,8 @@ export class CatalogLambdas extends Construct {
     // -------------------------------------------------------------------------
     this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
       functionName: 'catalog-stream-event-publisher',
+      // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+      tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: catalogCode([
         'Catalog.Function::Catalog.Function.Functions_ProductStreamPublisher_Generated::ProductStreamPublisher',
@@ -104,6 +106,8 @@ export class CatalogLambdas extends Construct {
     // -------------------------------------------------------------------------
     this.reviewCreatedConsumer = new lambda.DockerImageFunction(this, 'ReviewCreatedConsumer', {
       functionName: 'catalog-review-created-consumer',
+      // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+      tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: catalogCode([
         'Catalog.Function::Catalog.Function.Functions_ReviewCreatedConsumer_Generated::ReviewCreatedConsumer',

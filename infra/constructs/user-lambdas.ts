@@ -47,6 +47,8 @@ export class UserLambdas extends Construct {
     // -------------------------------------------------------------------------
     this.getProfile = new lambda.DockerImageFunction(this, 'GetProfile', {
       functionName: 'user-get-profile',
+      // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
+      tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: userCode([
         'User.Function::User.Function.Functions_GetProfile_Generated::GetProfile',

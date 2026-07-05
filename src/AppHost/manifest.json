@@ -220,29 +220,6 @@
         }
       }
     },
-    "shopping": {
-      "type": "container.v1",
-      "build": {
-        "context": "../WebApps/Shopping.Web.SPA",
-        "dockerfile": "../WebApps/Shopping.Web.SPA/Dockerfile"
-      },
-      "env": {
-        "NODE_ENV": "development",
-        "services__catalogapi__http__0": "{catalogapi.bindings.http.url}",
-        "services__catalogapi__https__0": "{catalogapi.bindings.https.url}",
-        "services__basketapi__http__0": "{basketapi.bindings.http.url}",
-        "services__basketapi__https__0": "{basketapi.bindings.https.url}",
-        "PORT": "{shopping.bindings.https.targetPort}"
-      },
-      "bindings": {
-        "https": {
-          "scheme": "https",
-          "protocol": "tcp",
-          "transport": "http",
-          "targetPort": 8000
-        }
-      }
-    },
     "catalogDb-password": {
       "type": "parameter.v0",
       "value": "{catalogDb-password.inputs.value}",
