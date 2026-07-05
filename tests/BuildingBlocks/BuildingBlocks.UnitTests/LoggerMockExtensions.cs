@@ -21,4 +21,23 @@ public static class LoggerMockExtensions
             Times.Once
         );
     }
+
+    // Matches calls like logger.LogError(ex, ...), where VerifyLog's exact-null exception match fails.
+    public static void VerifyLogWithException<T>(
+        this Mock<ILogger<T>> loggerMock,
+        LogLevel level,
+        string expectedMessage)
+    {
+        loggerMock.Verify(
+            x => x.Log(
+                level,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, _) =>
+                    v != null && v.ToString()!.Contains(expectedMessage)),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+            ),
+            Times.Once
+        );
+    }
 }
