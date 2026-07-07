@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import { CatalogStack } from '../stacks/catalog-stack';
 import { BasketStack } from '../stacks/basket-stack';
 import { OrderingStack } from '../stacks/ordering-stack';
+import { PricingStack } from '../stacks/pricing-stack';
 import { ReviewStack } from '../stacks/review-stack';
 import { UserStack } from '../stacks/user-stack';
 import { AppSyncStack } from '../stacks/appsync-stack';
@@ -40,13 +41,19 @@ new CatalogStack(app, 'DuckStoreCatalogStack', {
 new BasketStack(app, 'DuckStoreBasketStack', {
   env,
   description:
-    'DuckStore Basket service — DynamoDB tables (shopping-carts, coupons) and Lambda functions',
+    'DuckStore Basket service — DynamoDB table (shopping-carts) and Lambda functions',
 });
 
 new OrderingStack(app, 'DuckStoreOrderingStack', {
   env,
   description:
     'DuckStore Ordering service — DynamoDB tables (ordering + GSI1, ordering-processed-events) and Lambda functions',
+});
+
+new PricingStack(app, 'DuckStorePricingStack', {
+  env,
+  description:
+    'DuckStore Pricing service — DynamoDB tables (prices, campaigns, product-discounts, pricing-processed-events) and Lambda functions (ADR-0026)',
 });
 
 new ReviewStack(app, 'DuckStoreReviewStack', {

@@ -8,7 +8,7 @@ public static class ReviewExtensions
     // Must match ReviewSchema.TableName in Review.Function (table created by the seeder).
     private const string ReviewsTableName = "reviews";
 
-    public static void AddReviewServices(
+    public static IResourceBuilder<ProjectResource> AddReviewServices(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb)
     {
@@ -17,14 +17,17 @@ public static class ReviewExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
-        // CDC publisher: reviews INSERT → DynamoDB Stream → publish ReviewCreated to EventBridge.
+        // CDC publisher: reviews INSERT/MODIFY → DynamoDB Stream → ReviewCreated/ReviewUpdated on
+        // EventBridge (ADR-0011/ADR-0029), dispatched via the rule-based StreamRuleDispatcher (ADR-0019).
         builder.AddAWSLambdaFunction<Projects.Review_Function>(
                 "review-reviews-event-publisher",
-                lambdaHandler: "Review.Function::Review.Function.Functions_ReviewCreatedPublisher_Generated::ReviewCreatedPublisher")
+                lambdaHandler: "Review.Function::Review.Function.Functions_ReviewStreamPublisher_Generated::ReviewStreamPublisher")
             .WaitForCompletion(reviewSeeder)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(ReviewsTableName)
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+
+        return reviewSeeder;
     }
 }

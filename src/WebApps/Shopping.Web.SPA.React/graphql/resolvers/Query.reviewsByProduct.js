@@ -27,6 +27,7 @@ export function response(ctx) {
     rating: Math.floor(+item.Rating),
     comment: item.Comment,
     createdAt: item.CreatedAt,
+    updatedAt: item.UpdatedAt,
   }))
 
   return { items, nextToken: ctx.result.nextToken ?? null }

@@ -1,6 +1,12 @@
+// originalPrice/price/cashPrice/maxInstallmentsWithoutInterest are denormalized onto CatalogView's
+// search document via CDC (ADR-0026/0027/0028) and returned directly on Product — no separate
+// Pricing query/merge needed. The detailed per-installment plan is NOT here: it's fetched on demand
+// via installmentPlanFor when the product detail page needs it, so it never gets indexed into
+// OpenSearch just for a table nobody reads off the catalog/card views.
 export const PRODUCT_FIELDS = `
   fragment ProductFields on Product {
-    id name description imageUrl price stock categoryIds averageRating ratingCount
+    id name description imageUrl stock categoryIds averageRating ratingCount
+    originalPrice price cashPrice maxInstallmentsWithoutInterest maxInstallmentValue
   }
 `
 

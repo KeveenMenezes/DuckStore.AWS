@@ -61,49 +61,49 @@ public class CatalogInitialData(IProductRepository productRepository, ICategoryR
                 new Guid("b1000000-0000-0000-0000-000000000001"),
                 "Debug Duck Classic",
                 "The classic rubber duck for debugging. Your most loyal coding companion.",
-                DuckImage, 29.90m, 50, classics),
+                DuckImage, 50, classics),
 
             Product.Create(
                 new Guid("b1000000-0000-0000-0000-000000000002"),
                 "Python Duck",
                 "Duck with a Python snake skin. Ideal for devs who love indentation.",
-                DuckImage, 39.90m, 30, languages),
+                DuckImage, 30, languages),
 
             Product.Create(
                 new Guid("b1000000-0000-0000-0000-000000000003"),
                 "JavaScript Duck",
                 "Vibrant yellow duck with the JS logo. For those who live in console.log().",
-                DuckImage, 39.90m, 45, languages),
+                DuckImage, 45, languages),
 
             Product.Create(
                 new Guid("b1000000-0000-0000-0000-000000000004"),
                 "Full Stack Duck",
                 "Premium duck with layers representing frontend, backend and database.",
-                DuckImage, 59.90m, 15, specials),
+                DuckImage, 15, specials),
 
             Product.Create(
                 new Guid("b1000000-0000-0000-0000-000000000005"),
                 "DevOps Duck",
                 "Duck with a construction helmet and Docker logo. Deploy without fear!",
-                DuckImage, 49.90m, 25, specials),
+                DuckImage, 25, specials),
 
             Product.Create(
                 new Guid("b1000000-0000-0000-0000-000000000006"),
                 "TypeScript Duck",
                 "A typed and safe duck. A guarantee of zero any in your code.",
-                DuckImage, 44.90m, 35, languages),
+                DuckImage, 35, languages),
 
             Product.Create(
                 new Guid("b1000000-0000-0000-0000-000000000007"),
                 "React Duck",
                 "Duck with a spinning propeller on its hat. An infinite re-render of cuteness!",
-                DuckImage, 44.90m, 40, frameworks),
+                DuckImage, 40, frameworks),
 
             Product.Create(
                 new Guid("b1000000-0000-0000-0000-000000000008"),
                 "Ratuna Duck",
                 "Duck with a relational database on its chest. SELECT * FROM ducks.",
-                DuckImage, 39.90m, 20, languages),
+                DuckImage, 20, languages),
         ];
     }
 }

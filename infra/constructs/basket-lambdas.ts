@@ -14,7 +14,6 @@ const BASKET_DOCKERFILE = 'src/Services/Basket/Basket.Function/Dockerfile';
 
 export interface BasketLambdasProps {
   readonly shoppingCartsTable: dynamodb.Table;
-  readonly couponsTable: dynamodb.Table;
 }
 
 export class BasketLambdas extends Construct {
@@ -28,7 +27,7 @@ export class BasketLambdas extends Construct {
   constructor(scope: Construct, id: string, props: BasketLambdasProps) {
     super(scope, id);
 
-    const { shoppingCartsTable, couponsTable } = props;
+    const { shoppingCartsTable } = props;
 
     // -------------------------------------------------------------------------
     // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
@@ -111,7 +110,6 @@ export class BasketLambdas extends Construct {
     });
 
     shoppingCartsTable.grantReadWriteData(this.storeBasket);
-    couponsTable.grantReadData(this.storeBasket);
 
     this.storeBasketUrl = this.storeBasket.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
@@ -138,7 +136,6 @@ export class BasketLambdas extends Construct {
     });
 
     shoppingCartsTable.grantReadWriteData(this.checkoutBasket);
-    couponsTable.grantReadData(this.checkoutBasket);
 
     this.checkoutBasketUrl = this.checkoutBasket.addFunctionUrl({
       authType: lambda.FunctionUrlAuthType.NONE,
@@ -164,6 +161,5 @@ export class BasketLambdas extends Construct {
     });
 
     shoppingCartsTable.grantReadWriteData(this.mergeBasket);
-    couponsTable.grantReadData(this.mergeBasket);
   }
 }

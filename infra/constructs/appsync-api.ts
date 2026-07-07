@@ -75,6 +75,42 @@ export class AppSyncApi extends Construct {
     });
   }
 
+  // Pipeline resolver (ADR-0029) — this repo's first: every other resolver here is a single-step
+  // unit resolver against one data source. `steps` are the intermediate AppSync Functions (each its
+  // own request/response, e.g. `Mutation.createReview.checkExisting.js`), run in order and sharing
+  // `ctx.stash`/`ctx.prev.result`; the top-level `${typeName}.${fieldName}.js` file is just the
+  // pipeline's own pass-through request/response (returns `ctx.prev.result`).
+  private pipelineResolver(
+    dataSource: appsync.BaseDataSource,
+    id: string,
+    typeName: string,
+    fieldName: string,
+    steps: string[],
+  ) {
+    const runtime = appsync.FunctionRuntime.JS_1_0_0;
+    const readResolverCode = (fileName: string) =>
+      appsync.Code.fromInline(readFileSync(path.join(RESOLVERS_DIR, fileName), 'utf-8'));
+
+    const functions = steps.map(
+      (fileName, index) =>
+        new appsync.AppsyncFunction(this, `${id}Fn${index}`, {
+          api: this.api,
+          dataSource,
+          name: `${id}Fn${index}`,
+          runtime,
+          code: readResolverCode(fileName),
+        }),
+    );
+
+    this.api.createResolver(id, {
+      typeName,
+      fieldName,
+      pipelineConfig: functions,
+      runtime,
+      code: readResolverCode(`${typeName}.${fieldName}.js`),
+    });
+  }
+
   private addDataSources() {
     const { api } = this;
 
@@ -84,7 +120,14 @@ export class AppSyncApi extends Construct {
     const productsTable = dynamodb.Table.fromTableName(this, 'ProductsTable', 'products');
     const categoriesTable = dynamodb.Table.fromTableName(this, 'CategoriesTable', 'categories');
     const cartsTable = dynamodb.Table.fromTableName(this, 'CartsTable', 'shopping-carts');
-    const couponsTable = dynamodb.Table.fromTableName(this, 'CouponsTable', 'coupons');
+    // Pricing tables (ADR-0026) — nominal price and the product-discounts projection are both
+    // simple key lookups, read via direct DynamoDB data sources like everything else here.
+    const pricesTable = dynamodb.Table.fromTableName(this, 'PricesTable', 'prices');
+    const productDiscountsTable = dynamodb.Table.fromTableName(
+      this,
+      'ProductDiscountsTable',
+      'product-discounts',
+    );
     // fromTableAttributes + grantIndexPermissions is required (not fromTableName) so that
     // grantReadWriteData below also covers the GSI1 ARN used by ordersByCustomer/reviewsByProduct.
     const orderingTable = dynamodb.Table.fromTableAttributes(this, 'OrderingTable', {
@@ -100,7 +143,8 @@ export class AppSyncApi extends Construct {
     const productsDs = api.addDynamoDbDataSource('ProductsDS', productsTable);
     const categoriesDs = api.addDynamoDbDataSource('CategoriesDS', categoriesTable);
     const cartsDs = api.addDynamoDbDataSource('CartsDS', cartsTable);
-    const couponsDs = api.addDynamoDbDataSource('CouponsDS', couponsTable);
+    const pricesDs = api.addDynamoDbDataSource('PricesDS', pricesTable);
+    const productDiscountsDs = api.addDynamoDbDataSource('ProductDiscountsDS', productDiscountsTable);
     const orderingDs = api.addDynamoDbDataSource('OrderingDS', orderingTable);
     const reviewsDs = api.addDynamoDbDataSource('ReviewsDS', reviewsTable);
     const userProfilesDs = api.addDynamoDbDataSource('UserProfilesDS', userProfilesTable);
@@ -109,7 +153,8 @@ export class AppSyncApi extends Construct {
     productsTable.grantReadWriteData(productsDs);
     categoriesTable.grantReadData(categoriesDs);
     cartsTable.grantReadWriteData(cartsDs);
-    couponsTable.grantReadData(couponsDs);
+    pricesTable.grantReadData(pricesDs);
+    productDiscountsTable.grantReadData(productDiscountsDs);
     // Read for ordersByCustomer/orders/ordersByName queries; write for the deleteOrder DeleteItem
     // resolver (ADR-0009 — both are direct DynamoDB, no Lambda).
     orderingTable.grantReadWriteData(orderingDs);
@@ -139,26 +184,74 @@ export class AppSyncApi extends Construct {
       'GetProfileFn',
       'user-get-profile',
     );
+    const setNominalPriceFn = lambda.Function.fromFunctionName(
+      this,
+      'SetNominalPriceFn',
+      'pricing-set-nominal-price',
+    );
+    const createCampaignFn = lambda.Function.fromFunctionName(
+      this,
+      'CreateCampaignFn',
+      'pricing-create-campaign',
+    );
+    const endCampaignFn = lambda.Function.fromFunctionName(
+      this,
+      'EndCampaignFn',
+      'pricing-end-campaign',
+    );
+    const getInstallmentPlanFn = lambda.Function.fromFunctionName(
+      this,
+      'GetInstallmentPlanFn',
+      'pricing-get-installment-plan',
+    );
+    const setGatewayCostFn = lambda.Function.fromFunctionName(
+      this,
+      'SetGatewayCostFn',
+      'pricing-set-gateway-cost',
+    );
+    // CatalogView (ADR-0027) — product read/search now lives in OpenSearch, not Catalog's
+    // DynamoDB table. createProduct/updateProduct/deleteProduct stay Direct DynamoDB on Catalog.
+    const getProductFn = lambda.Function.fromFunctionName(
+      this,
+      'GetProductFn',
+      'catalogview-get-product',
+    );
+    const searchProductsFn = lambda.Function.fromFunctionName(
+      this,
+      'SearchProductsFn',
+      'catalogview-search-products',
+    );
 
     // addLambdaDataSource automatically grants lambda:InvokeFunction to the DS role
     const storeBasketDs = api.addLambdaDataSource('StoreBasketDS', storeBasketFn);
     const checkoutDs = api.addLambdaDataSource('CheckoutDS', checkoutFn);
     const mergeBasketDs = api.addLambdaDataSource('MergeBasketDS', mergeBasketFn);
     const getProfileDs = api.addLambdaDataSource('GetProfileDS', getProfileFn);
+    const setNominalPriceDs = api.addLambdaDataSource('SetNominalPriceDS', setNominalPriceFn);
+    const createCampaignDs = api.addLambdaDataSource('CreateCampaignDS', createCampaignFn);
+    const endCampaignDs = api.addLambdaDataSource('EndCampaignDS', endCampaignFn);
+    const getInstallmentPlanDs = api.addLambdaDataSource('GetInstallmentPlanDS', getInstallmentPlanFn);
+    const setGatewayCostDs = api.addLambdaDataSource('SetGatewayCostDS', setGatewayCostFn);
+    const getProductDs = api.addLambdaDataSource('GetProductDS', getProductFn);
+    const searchProductsDs = api.addLambdaDataSource('SearchProductsDS', searchProductsFn);
 
     // ------------------------------------------------------------------
     // Resolvers — one JS file per (typeName, fieldName) pair
     // ------------------------------------------------------------------
 
     // Public queries (also accessible via API_KEY — @aws_api_key in schema)
-    this.resolver(productsDs, 'ProductsResolver', 'Query', 'products');
-    this.resolver(productsDs, 'ProductResolver', 'Query', 'product');
+    // Product read/search — CatalogView Lambda over OpenSearch (ADR-0027), not Catalog DynamoDB.
+    this.resolver(searchProductsDs, 'ProductsResolver', 'Query', 'products');
+    this.resolver(getProductDs, 'ProductResolver', 'Query', 'product');
     this.resolver(categoriesDs, 'CategoriesResolver', 'Query', 'categories');
     this.resolver(reviewsDs, 'ReviewsByProductResolver', 'Query', 'reviewsByProduct');
+    this.resolver(pricesDs, 'NominalPriceForResolver', 'Query', 'nominalPriceFor');
+    // Direct DynamoDB GetItem + read-time expiry check (ADR-0026) — replaces couponFor.
+    this.resolver(productDiscountsDs, 'CurrentDiscountForProductResolver', 'Query', 'currentDiscountForProduct');
+    this.resolver(getInstallmentPlanDs, 'InstallmentPlanForResolver', 'Query', 'installmentPlanFor');
 
     // Authenticated queries (Cognito default — any group)
     this.resolver(cartsDs, 'BasketResolver', 'Query', 'basket');
-    this.resolver(couponsDs, 'CouponForResolver', 'Query', 'couponFor');
     // Direct DynamoDB GSI1 query — scoped to the caller's Cognito sub in the resolver (ADR-0009).
     this.resolver(orderingDs, 'OrdersByCustomerResolver', 'Query', 'ordersByCustomer');
 
@@ -177,7 +270,10 @@ export class AppSyncApi extends Construct {
     this.resolver(checkoutDs, 'CheckoutBasketResolver', 'Mutation', 'checkoutBasket');
     this.resolver(mergeBasketDs, 'MergeBasketResolver', 'Mutation', 'mergeBasket');
     this.resolver(cartsDs, 'DeleteBasketResolver', 'Mutation', 'deleteBasket');
-    this.resolver(reviewsDs, 'CreateReviewResolver', 'Mutation', 'createReview');
+    this.pipelineResolver(reviewsDs, 'CreateReviewResolver', 'Mutation', 'createReview', [
+      'Mutation.createReview.checkExisting.js',
+      'Mutation.createReview.upsert.js',
+    ]);
 
     // Admin/Seller mutations (group check in resolver)
     this.resolver(productsDs, 'CreateProductResolver', 'Mutation', 'createProduct');
@@ -186,5 +282,14 @@ export class AppSyncApi extends Construct {
 
     // Admin-only mutations (group check in resolver)
     this.resolver(orderingDs, 'DeleteOrderResolver', 'Mutation', 'deleteOrder');
+
+    // Admin/Seller mutations — Pricing (ADR-0026). setNominalPrice is decoupled from
+    // createProduct/updateProduct (see Mutation.createProduct.js); campaigns are Admin-only.
+    this.resolver(setNominalPriceDs, 'SetNominalPriceResolver', 'Mutation', 'setNominalPrice');
+    this.resolver(createCampaignDs, 'CreateCampaignResolver', 'Mutation', 'createCampaign');
+    this.resolver(endCampaignDs, 'EndCampaignResolver', 'Mutation', 'endCampaign');
+
+    // Admin-only mutation — configures a payment-gateway provider's cost table (ADR-0028).
+    this.resolver(setGatewayCostDs, 'SetGatewayCostResolver', 'Mutation', 'setGatewayCost');
   }
 }

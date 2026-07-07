@@ -29,6 +29,21 @@
     <Project Path="src/Services/Ordering/Ordering.Function/Ordering.Function.csproj" />
     <Project Path="src/Services/Ordering/Ordering.DevelopmentDataSeeder/Ordering.DevelopmentDataSeeder.csproj" />
   </Folder>
+  <Folder Name="/src/Services/Pricing/">
+    <Project Path="src/Services/Pricing/Pricing.Function/Pricing.Function.csproj" />
+    <Project Path="src/Services/Pricing/Pricing.DevelopmentDataSeeder/Pricing.DevelopmentDataSeeder.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/CatalogView/">
+    <Project Path="src/Services/CatalogView/CatalogView.Function/CatalogView.Function.csproj" />
+    <Project Path="src/Services/CatalogView/CatalogView.DevelopmentDataSeeder/CatalogView.DevelopmentDataSeeder.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/Payment/">
+    <Project Path="src/Services/Payment/Payment.Function/Payment.Function.csproj" />
+    <Project Path="src/Services/Payment/Payment.DevelopmentDataSeeder/Payment.DevelopmentDataSeeder.csproj" />
+  </Folder>
+  <Folder Name="/src/Services/PaymentGateway/">
+    <Project Path="src/Services/PaymentGateway/PaymentGateway.Function/PaymentGateway.Function.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Review/">
     <Project Path="src/Services/Review/Review.Function/Review.Function.csproj" />
     <Project Path="src/Services/Review/Review.DevelopmentDataSeeder/Review.DevelopmentDataSeeder.csproj" />
@@ -51,6 +66,21 @@
   <Folder Name="/tests/Services/Ordering/">
     <Project Path="tests/Services/Ordering/Ordering.UnitTests/Ordering.UnitTests.csproj" />
     <Project Path="tests/Services/Ordering/Ordering.FunctionalTests/Ordering.FunctionalTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Services/Review/">
+    <Project Path="tests/Services/Review/Review.UnitTests/Review.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Services/Pricing/">
+    <Project Path="tests/Services/Pricing/Pricing.UnitTests/Pricing.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Services/CatalogView/">
+    <Project Path="tests/Services/CatalogView/CatalogView.UnitTests/CatalogView.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Services/Payment/">
+    <Project Path="tests/Services/Payment/Payment.UnitTests/Payment.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Services/PaymentGateway/">
+    <Project Path="tests/Services/PaymentGateway/PaymentGateway.UnitTests/PaymentGateway.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tests/Services/User/">
     <Project Path="tests/Services/User/User.UnitTests/User.UnitTests.csproj" />
