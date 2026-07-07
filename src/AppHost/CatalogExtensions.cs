@@ -7,7 +7,7 @@ public static class CatalogExtensions
 {
     private const string ProductsTableName = "products";
 
-    public static IDistributedApplicationBuilder AddCatalogLambdas(
+    public static IResourceBuilder<ProjectResource> AddCatalogLambdas(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb)
     {
@@ -28,16 +28,10 @@ public static class CatalogExtensions
         // ISR revalidation for catalog changes is production-only (SpaTagRevalidator
         // in infra/) — `next dev` doesn't do ISR caching, so there's no local equivalent.
 
-        // Consumes ReviewCreated from EventBridge and folds the rating into the product
-        // (AverageRating/RatingCount) — ADR-0011.
-        builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
-                "catalog-review-created-consumer",
-                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_ReviewCreatedConsumer_Generated::ReviewCreatedConsumer")
-            .WaitForCompletion(catalogSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment()
-            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+        // Rating aggregation moved to CatalogView (OpenSearch) — the old catalog-review-created-
+        // consumer Lambda is gone (ADR-0027, supersedes ADR-0011 §4). ProductStreamPublisher now
+        // also emits CatalogProductSyncEvent (CatalogSearchSyncRule) for CatalogView to consume.
 
-        return builder;
+        return catalogSeeder;
     }
 }

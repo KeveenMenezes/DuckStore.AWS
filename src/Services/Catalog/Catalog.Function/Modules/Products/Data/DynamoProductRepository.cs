@@ -22,11 +22,8 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
             new PutItemRequest { TableName = TableName, Item = ToItem(product) },
             cancellationToken);
 
-    // Intentionally omits AverageRating/RatingCount/RatingSum: those are maintained by the
-    // ReviewCreated consumer Lambda (ADR-0011). A full-item write here must never clobber them,
-    // so they are left untouched — DynamoDB keeps the existing values on PutItem only for the
-    // keys present; since product updates go through partial UpdateItem resolvers, the counters
-    // survive regardless.
+    // Rating fields no longer live here — they are materialized exclusively in CatalogView's
+    // OpenSearch index (ADR-0027, supersedes ADR-0011 §4).
     private static Dictionary<string, AttributeValue> ToItem(Product product) =>
         new()
         {
@@ -34,7 +31,6 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
             ["Name"] = new(product.Name),
             ["Description"] = new(product.Description),
             ["ImageUrl"] = new(product.ImageUrl),
-            ["Price"] = new AttributeValue { N = product.Price.ToString(CultureInfo.InvariantCulture) },
             ["Stock"] = new AttributeValue { N = product.Stock.ToString(CultureInfo.InvariantCulture) },
             ["CategoryIds"] = new AttributeValue
             {

@@ -1,4 +1,5 @@
 import { createYoga, createSchema, createGraphQLError } from 'graphql-yoga'
+import { GraphQLScalarType, Kind } from 'graphql'
 import {
   DynamoDBClient,
   ScanCommand,
@@ -25,9 +26,24 @@ function customerIdFromOwner(ownerId: string): string {
 }
 
 // Strip AppSync-only auth directives — graphql-yoga's schema builder doesn't know them.
-const typeDefs = readFileSync(join(process.cwd(), 'graphql/schema.graphql'), 'utf-8')
-  .replace(/\s*@aws_api_key\b/g, '')
-  .replace(/\s*@aws_cognito_user_pools\b/g, '')
+// AppSync provides the AWSJSON scalar built in; graphql-yoga doesn't, so it's declared and
+// resolved below as a passthrough (arbitrary JSON value in, same value out).
+const typeDefs =
+  'scalar AWSJSON\n' +
+  readFileSync(join(process.cwd(), 'graphql/schema.graphql'), 'utf-8')
+    .replace(/\s*@aws_api_key\b/g, '')
+    .replace(/\s*@aws_cognito_user_pools\b/g, '')
+
+const awsJsonScalar = new GraphQLScalarType({
+  name: 'AWSJSON',
+  description: 'Arbitrary JSON value, passed through as-is (local dev stand-in for AppSync AWSJSON).',
+  serialize: (value) => value,
+  parseValue: (value) => value,
+  parseLiteral: (ast) => {
+    if (ast.kind === Kind.STRING) return JSON.parse(ast.value)
+    throw createGraphQLError('AWSJSON literals must be strings containing JSON')
+  },
+})
 
 // AWS SDK v3 respects AWS_ENDPOINT_URL_DYNAMODB automatically, but we set it explicitly
 // because Aspire injects it via WithReference(dynamoDb).
@@ -103,60 +119,76 @@ function mapOrder(item: Record<string, unknown>) {
 
 // Lambda JSON uses PascalCase (DefaultLambdaJsonSerializer, no camelCase policy).
 const resolvers = {
+  AWSJSON: awsJsonScalar,
   Query: {
+    // CatalogView Lambda resolvers (ADR-0027 amends ADR-0009) — search/read now lives in
+    // OpenSearch, not the products DynamoDB table. Mirrors graphql/resolvers/Query.products.js.
     async products(
       _: unknown,
-      { pageSize = 20, nextToken }: { pageSize?: number; nextToken?: string },
+      args: {
+        query?: string
+        sortBy?: string
+        minRating?: number
+        maxRating?: number
+        pageSize?: number
+        nextToken?: string
+      },
     ) {
-      const result = await dynamoDb.send(
-        new ScanCommand({
-          TableName: 'products',
-          Limit: pageSize,
-          ...(nextToken
-            ? { ExclusiveStartKey: JSON.parse(Buffer.from(nextToken, 'base64').toString()) }
-            : {}),
-        }),
-      )
-
-      const items = (result.Items ?? []).map(raw => {
-        const item = unmarshall(raw)
-        return {
-          id: item.Id as string,
-          name: item.Name as string,
-          description: item.Description as string,
-          imageUrl: item.ImageUrl as string,
-          price: Number(item.Price),
-          stock: Number(item.Stock),
-          // CategoryIds is a SS type — unmarshall returns a Set; spread to array.
-          categoryIds: item.CategoryIds ? [...(item.CategoryIds as Set<string>)] : [],
-          averageRating: item.AverageRating ? Number(item.AverageRating) : 0,
-          ratingCount: item.RatingCount ? Number(item.RatingCount) : 0,
-        }
+      const body = await invokeLambda<{
+        Items: Array<Record<string, unknown>>
+        NextToken: string | null
+      }>('catalogview-search-products', {
+        Query: args.query ?? null,
+        SortBy: args.sortBy ?? null,
+        MinRating: args.minRating ?? null,
+        MaxRating: args.maxRating ?? null,
+        PageSize: args.pageSize ?? 20,
+        NextToken: args.nextToken ?? null,
       })
 
-      const nextTokenOut = result.LastEvaluatedKey
-        ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
-        : null
+      const items = (body.Items ?? []).map(item => ({
+        id: item.Id as string,
+        name: item.Name as string,
+        description: item.Description as string,
+        imageUrl: item.ImageUrl as string,
+        stock: Number(item.Stock),
+        categoryIds: Array.isArray(item.CategoryIds) ? (item.CategoryIds as string[]) : [],
+        averageRating: item.AverageRating ? Number(item.AverageRating) : 0,
+        ratingCount: item.RatingCount ? Number(item.RatingCount) : 0,
+        originalPrice: item.OriginalPrice ? Number(item.OriginalPrice) : 0,
+        price: item.Price ? Number(item.Price) : 0,
+        cashPrice: item.CashPrice ? Number(item.CashPrice) : 0,
+        maxInstallmentsWithoutInterest: item.MaxInstallmentsWithoutInterest
+          ? Number(item.MaxInstallmentsWithoutInterest)
+          : 0,
+        maxInstallmentValue: item.MaxInstallmentValue ? Number(item.MaxInstallmentValue) : 0,
+      }))
 
-      return { items, nextToken: nextTokenOut }
+      return { items, nextToken: body.NextToken ?? null }
     },
 
     async product(_: unknown, { id }: { id: string }) {
-      const result = await dynamoDb.send(
-        new GetItemCommand({ TableName: 'products', Key: { Id: { S: id } } }),
-      )
-      if (!result.Item) return null
-      const item = unmarshall(result.Item)
+      const item = await invokeLambda<Record<string, unknown> | null>('catalogview-get-product', {
+        Id: id,
+      })
+      if (!item) return null
+
       return {
         id: item.Id as string,
         name: item.Name as string,
         description: item.Description as string,
         imageUrl: item.ImageUrl as string,
-        price: Number(item.Price),
         stock: Number(item.Stock),
-        categoryIds: item.CategoryIds ? [...(item.CategoryIds as Set<string>)] : [],
+        categoryIds: Array.isArray(item.CategoryIds) ? (item.CategoryIds as string[]) : [],
         averageRating: item.AverageRating ? Number(item.AverageRating) : 0,
         ratingCount: item.RatingCount ? Number(item.RatingCount) : 0,
+        originalPrice: item.OriginalPrice ? Number(item.OriginalPrice) : 0,
+        price: item.Price ? Number(item.Price) : 0,
+        cashPrice: item.CashPrice ? Number(item.CashPrice) : 0,
+        maxInstallmentsWithoutInterest: item.MaxInstallmentsWithoutInterest
+          ? Number(item.MaxInstallmentsWithoutInterest)
+          : 0,
+        maxInstallmentValue: item.MaxInstallmentValue ? Number(item.MaxInstallmentValue) : 0,
       }
     },
 
@@ -284,24 +316,63 @@ const resolvers = {
       return { items, nextToken: null }
     },
 
-    async couponFor(_: unknown, { productName }: { productName: string }) {
-      // Direct DynamoDB GetItem on the coupons table (ADR-0009: a key lookup needs no Lambda).
+    // Direct DynamoDB GetItem on Pricing's "prices" table (ADR-0026: a key lookup needs no Lambda).
+    async nominalPriceFor(_: unknown, { productId }: { productId: string }) {
       const result = await dynamoDb.send(
-        new GetItemCommand({
-          TableName: 'coupons',
-          Key: { ProductName: { S: productName } },
-        }),
+        new GetItemCommand({ TableName: 'prices', Key: { ProductId: { S: productId } } }),
       )
-
-      if (!result.Item) {
-        return { productName, description: 'No Discount', amount: 0 }
-      }
-
-      const coupon = unmarshall(result.Item)
+      if (!result.Item) return null
+      const item = unmarshall(result.Item)
       return {
-        productName: coupon.ProductName,
-        description: coupon.Description,
-        amount: Number(coupon.Amount),
+        productId: item.ProductId,
+        nominalPrice: Number(item.NominalPrice),
+        cost: Number(item.Cost ?? 0),
+        updatedAt: item.UpdatedAt,
+      }
+    },
+
+    // Direct DynamoDB GetItem on Pricing's "product-discounts" projection, expiry checked at read
+    // time (ADR-0026). Replaces couponFor.
+    async currentDiscountForProduct(_: unknown, { productId }: { productId: string }) {
+      const result = await dynamoDb.send(
+        new GetItemCommand({ TableName: 'product-discounts', Key: { ProductId: { S: productId } } }),
+      )
+      if (!result.Item) return null
+      const item = unmarshall(result.Item)
+      const now = new Date().toISOString()
+      if ((item.EndsAt as string) < now || (item.StartsAt as string) > now) return null
+      return {
+        productId: item.ProductId,
+        campaignId: item.CampaignId,
+        discountType: item.DiscountType,
+        value: Number(item.Value),
+        startsAt: item.StartsAt,
+        endsAt: item.EndsAt,
+      }
+    },
+
+    // Non-trivial calculation — Lambda resolver (ADR-0009).
+    async installmentPlanFor(_: unknown, { productId }: { productId: string }) {
+      const body = await invokeLambda<{
+        ProductId: string
+        OriginalPrice: number
+        Price: number
+        CashPrice: number
+        MaxInstallmentsWithoutInterest: number
+        InstallmentPlan: { Count: number; Value: number; TotalValue: number; HasInterest: boolean }[]
+      }>('pricing-get-installment-plan', { ProductId: productId })
+      return {
+        productId: body.ProductId,
+        originalPrice: body.OriginalPrice,
+        price: body.Price,
+        cashPrice: body.CashPrice,
+        maxInstallmentsWithoutInterest: body.MaxInstallmentsWithoutInterest,
+        installments: (body.InstallmentPlan ?? []).map(e => ({
+          count: e.Count,
+          value: e.Value,
+          totalValue: e.TotalValue,
+          hasInterest: e.HasInterest,
+        })),
       }
     },
 
@@ -332,6 +403,7 @@ const resolvers = {
           rating: Number(item.Rating),
           comment: item.Comment as string,
           createdAt: item.CreatedAt as string,
+          updatedAt: item.UpdatedAt as string,
         }
       })
 
@@ -498,6 +570,7 @@ const resolvers = {
       { input }: { input: Record<string, unknown> },
     ) {
       const id = randomUUID()
+      // Price is set separately via setNominalPrice (ADR-0026) — Catalog no longer stores it.
       await dynamoDb.send(
         new PutItemCommand({
           TableName: 'products',
@@ -506,7 +579,6 @@ const resolvers = {
             Name: { S: input.name as string },
             Description: { S: input.description as string },
             ImageUrl: { S: input.imageUrl as string },
-            Price: { N: String(input.price) },
             Stock: { N: String(input.stock) },
             CategoryIds: { SS: input.categoryIds as string[] },
           },
@@ -525,13 +597,12 @@ const resolvers = {
             TableName: 'products',
             Key: { Id: { S: input.id as string } },
             UpdateExpression:
-              'SET #Name = :name, Description = :desc, ImageUrl = :img, Price = :price, Stock = :stock, CategoryIds = :cats',
+              'SET #Name = :name, Description = :desc, ImageUrl = :img, Stock = :stock, CategoryIds = :cats',
             ExpressionAttributeNames: { '#Name': 'Name' },
             ExpressionAttributeValues: {
               ':name': { S: input.name as string },
               ':desc': { S: input.description as string },
               ':img': { S: input.imageUrl as string },
-              ':price': { N: String(input.price) },
               ':stock': { N: String(input.stock) },
               ':cats': { SS: input.categoryIds as string[] },
             },
@@ -547,6 +618,87 @@ const resolvers = {
         }
         throw err
       }
+    },
+
+    async setNominalPrice(
+      _: unknown,
+      { productId, price, cost }: { productId: string; price: number; cost: number },
+    ) {
+      const body = await invokeLambda<{ ProductId: string; NominalPrice: number; Cost: number }>(
+        'pricing-set-nominal-price',
+        { ProductId: productId, NominalPrice: price, Cost: cost },
+      )
+      return {
+        productId: body.ProductId,
+        nominalPrice: body.NominalPrice,
+        cost: body.Cost,
+        updatedAt: new Date().toISOString(),
+      }
+    },
+
+    async setGatewayCost(
+      _: unknown,
+      args: {
+        provider: string
+        flatFeePerTransaction: number
+        avistaRatePercent: number
+        installmentRates: Record<string, number>
+      },
+    ) {
+      const body = await invokeLambda<{
+        Provider: string
+        FlatFeePerTransaction: number
+        AvistaRatePercent: number
+        InstallmentRates: Record<string, number>
+      }>('pricing-set-gateway-cost', {
+        Provider: args.provider,
+        FlatFeePerTransaction: args.flatFeePerTransaction,
+        AvistaRatePercent: args.avistaRatePercent,
+        InstallmentRates: args.installmentRates,
+      })
+      return {
+        provider: body.Provider,
+        flatFeePerTransaction: body.FlatFeePerTransaction,
+        avistaRatePercent: body.AvistaRatePercent,
+        installmentRates: body.InstallmentRates,
+      }
+    },
+
+    async createCampaign(
+      _: unknown,
+      args: {
+        name: string
+        discountType: string
+        value: number
+        startsAt: string
+        endsAt: string
+        productIds: string[]
+      },
+    ) {
+      const body = await invokeLambda<{ Id: string }>('pricing-create-campaign', {
+        Name: args.name,
+        DiscountType: args.discountType,
+        Value: args.value,
+        StartsAt: args.startsAt,
+        EndsAt: args.endsAt,
+        ProductIds: args.productIds,
+      })
+      return {
+        id: body.Id,
+        name: args.name,
+        discountType: args.discountType,
+        value: args.value,
+        startsAt: args.startsAt,
+        endsAt: args.endsAt,
+        productIds: args.productIds,
+      }
+    },
+
+    async endCampaign(_: unknown, { campaignId }: { campaignId: string }) {
+      const body = await invokeLambda<{ Ended: boolean }>('pricing-end-campaign', {
+        CampaignId: campaignId,
+      })
+      return body.Ended
     },
 
     async deleteProduct(_: unknown, { id }: { id: string }) {
@@ -567,12 +719,22 @@ const resolvers = {
       return { isSuccess: true }
     },
 
+    // Upserts by composite Id `${productId}#${base64(userName)}` (ADR-0029) — the same key the
+    // AppSync JS pipeline resolver computes in production, since AppSync JS resolvers don't run
+    // locally (see CLAUDE.md). CreatedAt is preserved from the existing item on an edit so GSI1SK
+    // never moves; UpdatedAt is always refreshed.
     async createReview(
       _: unknown,
       { input }: { input: { productId: string; userName: string; rating: number; comment: string } },
     ) {
-      const id = randomUUID()
-      const createdAt = new Date().toISOString()
+      const id = `${input.productId}#${Buffer.from(input.userName, 'utf-8').toString('base64')}`
+
+      const existing = await dynamoDb.send(
+        new GetItemCommand({ TableName: 'reviews', Key: { Id: { S: id } } }),
+      )
+      const createdAt = existing.Item ? unmarshall(existing.Item).CreatedAt as string : new Date().toISOString()
+      const updatedAt = new Date().toISOString()
+
       await dynamoDb.send(
         new PutItemCommand({
           TableName: 'reviews',
@@ -583,6 +745,7 @@ const resolvers = {
             Rating: { N: String(input.rating) },
             Comment: { S: input.comment },
             CreatedAt: { S: createdAt },
+            UpdatedAt: { S: updatedAt },
             GSI1PK: { S: input.productId },
             GSI1SK: { S: createdAt },
           },

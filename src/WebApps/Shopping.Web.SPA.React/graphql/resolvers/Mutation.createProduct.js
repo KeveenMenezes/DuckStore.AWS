@@ -4,9 +4,11 @@ export function request(ctx) {
   const groups = ctx.identity?.groups ?? []
   if (!groups.includes('Admin') && !groups.includes('Seller')) util.unauthorized()
 
-  const { name, description, imageUrl, price, stock, categoryIds } = ctx.args.input
+  const { name, description, imageUrl, stock, categoryIds } = ctx.args.input
   const id = util.autoId()
   ctx.stash.id = id
+  // Price is set separately via Pricing's setNominalPrice mutation (ADR-0026) — Catalog no
+  // longer stores it.
   return {
     operation: 'PutItem',
     key: { Id: util.dynamodb.toDynamoDB(id) },
@@ -14,7 +16,6 @@ export function request(ctx) {
       Name: util.dynamodb.toDynamoDB(name),
       Description: util.dynamodb.toDynamoDB(description),
       ImageUrl: util.dynamodb.toDynamoDB(imageUrl),
-      Price: util.dynamodb.toDynamoDB(price),
       Stock: util.dynamodb.toDynamoDB(stock),
       CategoryIds: util.dynamodb.toStringSet(categoryIds),
     },

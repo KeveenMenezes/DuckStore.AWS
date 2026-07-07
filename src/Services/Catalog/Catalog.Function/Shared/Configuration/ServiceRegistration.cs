@@ -20,11 +20,11 @@ public static class ServiceRegistration
         services.AddScoped<ICategoryRepository, DynamoCategoryRepository>();
 
         services.AddEventBridgeMessaging(configuration);
-        services.AddIdempotentEventConsumer(ProcessedIntegrationEvent.TableName);
 
-        services.AddScoped<ReviewCreatedHandler>();
-
+        // Rating aggregation moved to CatalogView (OpenSearch) — Catalog no longer needs an
+        // idempotent-consumer inbox (ADR-0027, supersedes ADR-0011 §4).
         services.AddScoped<IStreamRule<CatalogStreamImage>, CatalogProductChangedRule>();
+        services.AddScoped<IStreamRule<CatalogStreamImage>, CatalogSearchSyncRule>();
         services.AddScoped<StreamRuleDispatcher<CatalogStreamImage>>();
 
         return services;

@@ -124,7 +124,7 @@ export default $config({
     }, {
       pattern: {
         source: ["duckstore"],
-        detailType: ["CatalogUpdatedEvent", "ReviewCreatedEvent"],
+        detailType: ["CatalogUpdatedEvent", "ReviewCreatedEvent", "ReviewUpdatedEvent"],
       },
     });
 

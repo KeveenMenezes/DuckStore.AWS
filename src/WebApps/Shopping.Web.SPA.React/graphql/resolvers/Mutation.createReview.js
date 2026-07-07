@@ -1,29 +1,15 @@
 import { util } from '@aws-appsync/utils'
 
-// AppSync direct DynamoDB resolver: PutItem on Reviews. GSI1 (GSI1PK=ProductId, GSI1SK=CreatedAt)
-// backs reviewsByProduct. The insert drives the ReviewCreated CDC flow that updates the
-// product's rating (ADR-0011) — the resolver itself does NOT publish any event.
+// Top-level pipeline resolver (ADR-0029) — the first pipeline resolver in this repo. Both steps
+// are DynamoDB operations on the same table/aggregate (GetItem to recover CreatedAt, then PutItem
+// as an upsert keyed by productId+userName), so this stays a Direct classification per ADR-0009:
+// no Lambda, no EventBridge publish, no cross-aggregate transaction. See
+// Mutation.createReview.checkExisting.js and Mutation.createReview.upsert.js for the two functions.
 export function request(ctx) {
-  const { productId, userName, rating, comment } = ctx.args.input
-  const id = util.autoId()
-  const createdAt = util.time.nowISO8601()
-  ctx.stash.id = id
-  return {
-    operation: 'PutItem',
-    key: { Id: util.dynamodb.toDynamoDB(id) },
-    attributeValues: {
-      ProductId: util.dynamodb.toDynamoDB(productId),
-      UserName: util.dynamodb.toDynamoDB(userName),
-      Rating: util.dynamodb.toDynamoDB(rating),
-      Comment: util.dynamodb.toDynamoDB(comment),
-      CreatedAt: util.dynamodb.toDynamoDB(createdAt),
-      GSI1PK: util.dynamodb.toDynamoDB(productId),
-      GSI1SK: util.dynamodb.toDynamoDB(createdAt),
-    },
-  }
+  return {}
 }
 
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
-  return { id: ctx.stash.id }
+  return ctx.prev.result
 }

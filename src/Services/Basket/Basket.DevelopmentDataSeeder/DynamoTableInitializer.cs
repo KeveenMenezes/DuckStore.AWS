@@ -1,8 +1,6 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Basket.Function.Modules.ShoppingCarts.Data;
-using Basket.Function.Modules.ShoppingCarts.Domain.Entities;
-
 
 namespace Basket.DevelopmentDataSeeder;
 
@@ -13,13 +11,6 @@ public static class DynamoTableInitializer
         var dynamoDb = services.GetRequiredService<IAmazonDynamoDB>();
 
         await EnsureShoppingCartsTableAsync(dynamoDb);
-        await EnsureCouponsTableAsync(dynamoDb);
-
-        using var scope = services.CreateScope();
-        var couponRepository = scope.ServiceProvider.GetRequiredService<ICouponRepository>();
-
-        if (!await couponRepository.AnyAsync())
-            await SeedCouponsAsync(couponRepository);
     }
 
     private static async Task EnsureShoppingCartsTableAsync(IAmazonDynamoDB dynamoDb)
@@ -87,26 +78,6 @@ public static class DynamoTableInitializer
         }
     }
 
-    private static async Task EnsureCouponsTableAsync(IAmazonDynamoDB dynamoDb)
-    {
-        try
-        {
-            await dynamoDb.CreateTableAsync(new CreateTableRequest
-            {
-                TableName = DynamoCouponRepository.TableName,
-                AttributeDefinitions = [new AttributeDefinition("ProductName", ScalarAttributeType.S)],
-                KeySchema = [new KeySchemaElement("ProductName", KeyType.HASH)],
-                BillingMode = BillingMode.PAY_PER_REQUEST
-            });
-
-            await WaitUntilTableIsActiveAsync(dynamoDb, DynamoCouponRepository.TableName);
-        }
-        catch (ResourceInUseException)
-        {
-            // Table already exists.
-        }
-    }
-
     private static async Task WaitUntilTableIsActiveAsync(IAmazonDynamoDB dynamoDb, string tableName)
     {
         while (true)
@@ -117,20 +88,6 @@ public static class DynamoTableInitializer
                 return;
 
             await Task.Delay(TimeSpan.FromSeconds(1));
-        }
-    }
-
-    private static async Task SeedCouponsAsync(ICouponRepository couponRepository)
-    {
-        var coupons = new[]
-        {
-            new Coupon { Id = "IPhone X", Description = "IPhone Description X", Amount = 1 },
-            new Coupon { Id = "IPhone XI", Description = "IPhone Description XI", Amount = 2 }
-        };
-
-        foreach (var coupon in coupons)
-        {
-            await couponRepository.AddAsync(coupon);
         }
     }
 }

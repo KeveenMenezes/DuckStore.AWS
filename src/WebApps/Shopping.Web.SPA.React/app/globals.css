@@ -123,6 +123,12 @@
   * {
     @apply border-border outline-ring/50;
   }
+  *:focus {
+    outline: none;
+  }
+  *:focus-visible {
+    outline-style: solid;
+  }
   html {
     transition: color 0.2s ease, background-color 0.2s ease;
   }
