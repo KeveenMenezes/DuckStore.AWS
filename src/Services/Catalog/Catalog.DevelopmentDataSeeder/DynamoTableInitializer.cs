@@ -2,7 +2,6 @@
 using Amazon.DynamoDBv2.Model;
 using Catalog.Function.Modules.Categories.Data;
 using Catalog.Function.Modules.Products.Data;
-using Catalog.Function.Shared.Data;
 
 namespace Catalog.DevelopmentDataSeeder;
 
@@ -14,8 +13,8 @@ public static class DynamoTableInitializer
 
         await EnsureTableAsync(dynamoDb, DynamoProductRepository.TableName);
         await EnsureTableAsync(dynamoDb, DynamoCategoryRepository.TableName);
-        // Inbox for the ReviewCreated consumer's idempotency (ADR-0011).
-        await EnsureTableAsync(dynamoDb, ProcessedIntegrationEvent.TableName, partitionKey: "PK");
+        // catalog-processed-events was the ReviewCreated consumer's idempotency inbox — removed
+        // along with rating ownership (ADR-0027, supersedes ADR-0011 §4).
     }
 
     private static async Task EnsureTableAsync(

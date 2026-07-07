@@ -22,6 +22,13 @@
     <ProjectReference Include="..\Services\Ordering\Ordering.Function\Ordering.Function.csproj" />
     <ProjectReference Include="..\Services\Catalog\Catalog.DevelopmentDataSeeder\Catalog.DevelopmentDataSeeder.csproj" />
     <ProjectReference Include="..\Services\Ordering\Ordering.DevelopmentDataSeeder\Ordering.DevelopmentDataSeeder.csproj" />
+    <ProjectReference Include="..\Services\Payment\Payment.Function\Payment.Function.csproj" />
+    <ProjectReference Include="..\Services\Payment\Payment.DevelopmentDataSeeder\Payment.DevelopmentDataSeeder.csproj" />
+    <ProjectReference Include="..\Services\PaymentGateway\PaymentGateway.Function\PaymentGateway.Function.csproj" />
+    <ProjectReference Include="..\Services\Pricing\Pricing.Function\Pricing.Function.csproj" />
+    <ProjectReference Include="..\Services\Pricing\Pricing.DevelopmentDataSeeder\Pricing.DevelopmentDataSeeder.csproj" />
+    <ProjectReference Include="..\Services\CatalogView\CatalogView.Function\CatalogView.Function.csproj" />
+    <ProjectReference Include="..\Services\CatalogView\CatalogView.DevelopmentDataSeeder\CatalogView.DevelopmentDataSeeder.csproj" />
     <ProjectReference Include="..\Services\Review\Review.Function\Review.Function.csproj" />
     <ProjectReference Include="..\Services\Review\Review.DevelopmentDataSeeder\Review.DevelopmentDataSeeder.csproj" />
     <ProjectReference Include="..\Services\User\User.Function\User.Function.csproj" />

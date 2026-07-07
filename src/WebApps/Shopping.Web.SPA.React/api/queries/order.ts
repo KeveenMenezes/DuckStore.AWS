@@ -8,10 +8,3 @@ export const GET_BASKET = `
   }
 `
 
-export const GET_COUPON_FOR = `
-  query GetCouponFor($productName: String!) {
-    couponFor(productName: $productName) {
-      productName description amount
-    }
-  }
-`

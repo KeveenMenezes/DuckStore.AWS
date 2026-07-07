@@ -36,5 +36,23 @@ public static class OrderingExtensions
             .WithDynamoDBStreamsEventSource(OrderingTableName)
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+
+        builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
+                "ordering-payment-authorized-consumer",
+                lambdaHandler:
+                "Ordering.Function::Ordering.Function.Functions_OrderPaymentAuthorizedConsumer_Generated::OrderPaymentAuthorizedConsumer")
+            .WaitForCompletion(orderingMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+
+        builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
+                "ordering-payment-declined-consumer",
+                lambdaHandler:
+                "Ordering.Function::Ordering.Function.Functions_OrderPaymentDeclinedConsumer_Generated::OrderPaymentDeclinedConsumer")
+            .WaitForCompletion(orderingMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
     }
 }

@@ -17,7 +17,7 @@ public class ShoppingCartItem
     public string ImageUrl { get; }
     public string Color { get; }
     public int Quantity { get; }
-    public decimal Price { get; private set; }
+    public decimal Price { get; }
 
     public static ShoppingCartItem Create(
         ProductId productId, string productName, string imageUrl, string color, int quantity, decimal price)
@@ -33,7 +33,4 @@ public class ShoppingCartItem
     public static ShoppingCartItem Load(
         Guid productId, string productName, string? imageUrl, string color, int quantity, decimal price) =>
         new(ProductId.Of(productId), productName, imageUrl ?? string.Empty, color, quantity, price);
-
-    // A coupon reduces the unit price, but never below zero.
-    public void ApplyDiscount(int amount) => Price = Math.Max(0, Price - amount);
 }

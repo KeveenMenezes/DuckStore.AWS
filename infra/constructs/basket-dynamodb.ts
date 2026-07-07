@@ -4,7 +4,6 @@ import { Construct } from 'constructs';
 
 export class BasketDynamoDB extends Construct {
   public readonly shoppingCartsTable: dynamodb.Table;
-  public readonly couponsTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -22,13 +21,7 @@ export class BasketDynamoDB extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Coupons are read in-process by the Basket aggregate (ADR-0012 merged Discount into Basket).
-    // No stream needed — coupons are read-only from the Basket function's perspective.
-    this.couponsTable = new dynamodb.Table(this, 'CouponsTable', {
-      tableName: 'coupons',
-      partitionKey: { name: 'ProductName', type: dynamodb.AttributeType.STRING },
-      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
-    });
+    // Coupons/discounts moved to Pricing's "campaigns"/"product-discounts" tables (ADR-0026);
+    // Basket no longer owns a coupons table.
   }
 }

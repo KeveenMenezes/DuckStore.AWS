@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Backfill (one-time, see BackfillService) reads Catalog's products table and Review's
+         reviews table directly — an explicit, scoped exception to "no cross-context table reads"
+         since this is a migration tool, not a runtime coupling (ADR-0027). -->
+    <PackageReference Include="AWSSDK.DynamoDBv2" />
+    <PackageReference Include="OpenSearch.Net" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.ServiceDefaults\BuildingBlocks.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\CatalogView.Function\CatalogView.Function.csproj" />
+  </ItemGroup>
+
+</Project>

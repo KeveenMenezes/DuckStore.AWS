@@ -1,0 +1,10 @@
+﻿global using FluentValidation.TestHelper;
+global using Pricing.Function.Modules.Campaigns.Data;
+global using Pricing.Function.Modules.Campaigns.Domain.Entities;
+global using Pricing.Function.Modules.Campaigns.Domain.Enums;
+global using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
+global using Pricing.Function.Modules.Prices.Data;
+global using Pricing.Function.Modules.Prices.Domain.Entities;
+global using Pricing.Function.Modules.Prices.Domain.ValueObjects;
+global using Pricing.Function.Shared.Configuration;
+global using Pricing.Function.Shared.Exceptions;

@@ -11,16 +11,11 @@ export class BasketStack extends cdk.Stack {
 
     const lambdas = new BasketLambdas(this, 'BasketLambdas', {
       shoppingCartsTable: dynamoDB.shoppingCartsTable,
-      couponsTable: dynamoDB.couponsTable,
     });
 
     new cdk.CfnOutput(this, 'ShoppingCartsTableName', {
       value: dynamoDB.shoppingCartsTable.tableName,
       exportName: `${this.stackName}-ShoppingCartsTable`,
-    });
-    new cdk.CfnOutput(this, 'CouponsTableName', {
-      value: dynamoDB.couponsTable.tableName,
-      exportName: `${this.stackName}-CouponsTable`,
     });
     new cdk.CfnOutput(this, 'StreamPublisherArn', {
       value: lambdas.streamPublisher.functionArn,

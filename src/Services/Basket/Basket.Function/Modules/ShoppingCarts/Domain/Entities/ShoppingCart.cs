@@ -55,17 +55,4 @@ public class ShoppingCart : Aggregate<OwnerId>
                 existing.Quantity + incoming.Quantity, existing.Price));
         }
     }
-
-    // Cart business rule: each product's coupon reduces the matching item's price.
-    // This used to be a per-item cross-service Lambda call to Discount.
-    public void ApplyDiscounts(IEnumerable<Coupon> coupons)
-    {
-        var couponsByProduct = coupons.ToDictionary(coupon => coupon.Id);
-
-        foreach (var item in _items)
-        {
-            if (couponsByProduct.TryGetValue(item.ProductName, out var coupon))
-                item.ApplyDiscount(coupon.Amount);
-        }
-    }
 }

@@ -7,14 +7,17 @@
  *                       generation pass, since no server is listening yet)
  * Server, DEV        → /api/graphql (loops back into the in-process local
  *                       GraphQL Yoga handler; safe because `next dev` already
- *                       has a server running when this runs)
+ *                       has a server running when this runs). GRAPHQL_BACKEND=local
+ *                       forces this path even when APPSYNC_URL is also set.
  */
 export function resolveEndpoint(): string {
   if (process.env.NEXT_PUBLIC_APPSYNC_URL) return process.env.NEXT_PUBLIC_APPSYNC_URL
 
   if (globalThis.window !== undefined) return '/api/graphql'
 
-  if (process.env.APPSYNC_URL) return process.env.APPSYNC_URL
+  if (process.env.APPSYNC_URL && process.env.GRAPHQL_BACKEND !== 'local') {
+    return process.env.APPSYNC_URL
+  }
 
   const origin = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
   return `${origin}/api/graphql`

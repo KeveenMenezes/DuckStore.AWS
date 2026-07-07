@@ -56,8 +56,8 @@ Apply the following criteria for each field before implementation:
 
 | Field | Direct or Lambda? | Escalation criterion |
 |---|---|---|
-| `products(pageSize, nextToken)` | **Direct** | — |
-| `product(id)` | **Direct** | — |
+| `products(query, sortBy, minRating, maxRating, pageSize, nextToken)` | **Lambda** | **Criterion 3** — external, non-DynamoDB integration (OpenSearch). Reclassified from Direct by [ADR-0027](./0027-catalogview-opensearch-product-search-and-rating-sync.md); invokes CatalogView's `SearchProducts` |
+| `product(id)` | **Lambda** | **Criterion 3** — external, non-DynamoDB integration (OpenSearch). Reclassified from Direct by [ADR-0027](./0027-catalogview-opensearch-product-search-and-rating-sync.md); invokes CatalogView's `GetProduct` |
 | `categories(pageSize, nextToken)` | **Direct** | — |
 | `basket(userName)` | **Direct** | — (Redis removed from read path; AppSync cache for performance) |
 | `createProduct(input)` | **Direct** | — |
@@ -187,6 +187,7 @@ public async Task<GetBasketResponse?> GetBasket(GetBasketRequest request, ...)
 - `src/Services/Basket/Basket.Function` — `basket` and `deleteBasket` reclassified to direct resolvers and decommissioned; `storeBasket` and `checkoutBasket` remain Lambda (criteria 1 and 2 apply).
 - `src/Services/Discount/Discount.Function` — `couponFor` remains Lambda (criterion 1: Discount domain logic).
 - `src/Services/Ordering/Ordering.Function` — `orders` and `ordersByName` reclassified to direct resolvers (decommissioned from AppHost); `ordersByCustomer` and `deleteOrder` remain Lambda resolvers (criterion 1 applies to both).
+- `src/Services/CatalogView/CatalogView.Function` — `products` and `product` reclassified **from** direct resolvers **to** Lambda (criterion 3: OpenSearch integration), per [ADR-0027](./0027-catalogview-opensearch-product-search-and-rating-sync.md).
 
 ---
 
