@@ -1,7 +1,10 @@
 # ADR-0012: Merge Discount into Basket — Coupon as an In-Process Entity of the ShoppingCart Aggregate
 
 ## Status
-**Proposed** — June 2026
+**Superseded** — July 2026, by [ADR-0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md)
+for §1/§2 ("`Coupon` lives in Basket as an in-process entity") — `Coupon`/discount ownership moves
+to a new Pricing service. This ADR's core prohibition (no synchronous per-item cross-service
+Lambda invoke) remains in force and is explicitly reaffirmed by ADR-0026 §3.
 
 ---
 

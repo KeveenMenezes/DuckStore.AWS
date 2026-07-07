@@ -43,11 +43,12 @@ public static class DynamoTableInitializer
                     }
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
-                // Streams drive the ReviewCreated CDC publisher (ADR-0011).
+                // Streams drive the rule-based ReviewStreamPublisher (ADR-0011/ADR-0019/ADR-0029).
+                // NEW_AND_OLD_IMAGES lets ReviewUpdatedRule diff the old/new rating on a MODIFY.
                 StreamSpecification = new StreamSpecification
                 {
                     StreamEnabled = true,
-                    StreamViewType = StreamViewType.NEW_IMAGE
+                    StreamViewType = StreamViewType.NEW_AND_OLD_IMAGES
                 }
             });
 

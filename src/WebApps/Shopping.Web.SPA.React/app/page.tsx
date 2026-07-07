@@ -1,7 +1,11 @@
 import type { Metadata } from "next"
 import { HeroSection } from "@/shared/layout/hero-section"
 import { ProductCatalog } from "@/features/products/components/product-catalog"
-import { getProducts, getRawCategories, buildCategories } from "@/features/products/services/products.service"
+import {
+  getProducts,
+  getRawCategories,
+  buildCategories,
+} from "@/features/products/services/products.service"
 
 // ISR: product catalog — invalidated via webhook when DynamoDB changes.
 export const revalidate = false

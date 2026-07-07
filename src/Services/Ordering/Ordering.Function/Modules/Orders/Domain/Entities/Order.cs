@@ -32,6 +32,24 @@ public class Order : Aggregate<OrderId>
         _orderItems.Add(orderItem);
     }
 
+    // Applied when Payment publishes its authorize/decline result (see ADR-0025). Guards against
+    // re-applying a duplicate result delivery beyond what the idempotency inbox already prevents.
+    public void MarkCompleted()
+    {
+        if (Status != OrderStatus.Pending)
+            return;
+
+        Status = OrderStatus.Completed;
+    }
+
+    public void MarkCancelled()
+    {
+        if (Status != OrderStatus.Pending)
+            return;
+
+        Status = OrderStatus.Cancelled;
+    }
+
     public static Order Load(
         Guid id,
         Guid customerId,

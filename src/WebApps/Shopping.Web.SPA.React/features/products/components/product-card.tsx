@@ -8,12 +8,20 @@ import { Card, CardContent } from "@/components/ui/card"
 import { useCart } from "@/features/cart/hooks/use-cart"
 import { StarRatingDisplay } from "@/features/reviews/components/star-rating"
 import type { Product } from "@/features/products/types/product.types"
-import { formatBRL } from "@/shared/lib/format"
+import { formatUSD, percentOff } from "@/shared/lib/format"
 import { ROUTES } from "@/shared/constants/routes"
 import { useState } from "react"
 
-export function ProductCard({ product }: { product: Product }) {
+interface ProductCardProps {
+  product: Product
+}
+
+export function ProductCard({ product }: ProductCardProps) {
   const { addItem, setIsOpen } = useCart()
+  const hasCashPerk = product.cashPrice > 0 && product.cashPrice < product.price
+  const payNowPrice = hasCashPerk ? product.cashPrice : product.price
+  const savingsPercent = percentOff(product.originalPrice, payNowPrice)
+  const hasInstallments = product.maxInstallmentsWithoutInterest > 1
   const [feedback, setFeedback] = useState<"success" | "error" | null>(null)
 
   const handleAddToCart = () => {
@@ -53,10 +61,28 @@ export function ProductCard({ product }: { product: Product }) {
             </div>
           )}
         </Link>
-        <div className="flex items-center justify-between">
-          <span className="text-2xl font-bold text-primary">
-            {formatBRL(product.price)}
-          </span>
+        <div className="flex items-end justify-between gap-2">
+          <div className="flex flex-col gap-0.5">
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-2xl font-bold text-primary">{formatUSD(payNowPrice)}</span>
+              {savingsPercent > 0 && (
+                <span className="rounded bg-primary/10 px-1 py-0.5 text-[10px] font-semibold text-primary">
+                  Save {savingsPercent}%
+                </span>
+              )}
+            </div>
+            {product.originalPrice > payNowPrice && (
+              <span className="text-xs text-muted-foreground line-through">
+                Reg. {formatUSD(product.originalPrice)}
+              </span>
+            )}
+            {hasInstallments && (
+              <span className="text-xs text-muted-foreground">
+                Or up to {product.maxInstallmentsWithoutInterest} interest-free payments of{" "}
+                {formatUSD(product.maxInstallmentValue)}
+              </span>
+            )}
+          </div>
           <Button
             size="sm"
             className="gap-1.5"

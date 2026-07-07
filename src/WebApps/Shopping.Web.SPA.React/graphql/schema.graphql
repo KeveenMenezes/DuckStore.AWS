@@ -6,12 +6,89 @@ type Product @aws_api_key @aws_cognito_user_pools {
   name: String!
   description: String!
   imageUrl: String!
-  price: Float!
   stock: Int!
   categoryIds: [ID!]!
-  # Aggregate rating materialized from the Review context via CDC (ADR-0011); 0 when no reviews.
+  # Sourced from CatalogView's OpenSearch index, not Catalog's DynamoDB item (ADR-0027, supersedes
+  # ADR-0011 §4); 0 when no reviews. Kept in sync via CatalogProductSyncEvent/ReviewCreated CDC.
   averageRating: Float!
   ratingCount: Int!
+  # Sticker/"De" price, denormalized onto the search document via PriceChangedEvent CDC
+  # (ADR-0026/0027) — never discounted, also the ceiling the store subsidizes card-installment
+  # fees up to.
+  originalPrice: Float!
+  # Payment highlights, carried on the same PriceChangedEvent CDC above — cost-derived and, when a
+  # campaign is active, already discounted server-side. Recomputed only when the price changes, so
+  # a gateway-cost-only or campaign-only change goes stale until then. Scalars only — the detailed
+  # per-installment plan is deliberately not denormalized here (see installmentPlanFor) to avoid
+  # indexing an array nobody reads off the catalog/card views.
+  price: Float!
+  cashPrice: Float!
+  maxInstallmentsWithoutInterest: Int!
+  # The per-installment $ value at maxInstallmentsWithoutInterest — a lone scalar (not the full
+  # plan array) so the catalog card can show an exact "up to Nx of $Y" line without pulling the
+  # entire per-installment breakdown (see installmentPlanFor for that).
+  maxInstallmentValue: Float!
+}
+
+# Per-installment-count entry (count >= 2 — 1x is Product.price itself, so it's omitted here).
+type InstallmentOption @aws_api_key @aws_cognito_user_pools {
+  count: Int!
+  value: Float!
+  totalValue: Float!
+  hasInterest: Boolean!
+}
+
+enum ProductSort {
+  RELEVANCE
+  AVERAGE_RATING
+}
+
+# Nominal price and current discount live in Pricing, not Catalog (ADR-0026) — Product no longer
+# carries a price field. CatalogView joins the two via PriceChangedEvent CDC and denormalizes the
+# nominal price onto its own search document (ADR-0027) for display.
+type Price @aws_api_key @aws_cognito_user_pools {
+  productId: ID!
+  nominalPrice: Float!
+  cost: Float!
+  updatedAt: String!
+}
+
+type Discount @aws_api_key @aws_cognito_user_pools {
+  productId: ID!
+  campaignId: ID!
+  discountType: String!
+  value: Float!
+  startsAt: String!
+  endsAt: String!
+}
+
+type InstallmentPlan @aws_api_key @aws_cognito_user_pools {
+  productId: ID!
+  originalPrice: Float!
+  price: Float!
+  cashPrice: Float!
+  maxInstallmentsWithoutInterest: Int!
+  installments: [InstallmentOption!]!
+}
+
+type Campaign {
+  id: ID!
+  name: String!
+  discountType: String!
+  value: Float!
+  startsAt: String!
+  endsAt: String!
+  productIds: [ID!]!
+}
+
+# One payment-gateway provider's operating costs (ADR-0028): a flat fee per transaction, a
+# discount rate for upfront (à vista) payment, and an explicit rate per installment count.
+# installmentRates is a sparse map keyed by installment count (e.g. {"1": 3.0, "2": 4.2}).
+type GatewayCost {
+  provider: String!
+  flatFeePerTransaction: Float!
+  avistaRatePercent: Float!
+  installmentRates: AWSJSON!
 }
 
 type Review @aws_api_key @aws_cognito_user_pools {
@@ -21,6 +98,9 @@ type Review @aws_api_key @aws_cognito_user_pools {
   rating: Int!
   comment: String!
   createdAt: String!
+  # Set on every write, including the first (ADR-0029) — distinct from createdAt once a customer
+  # edits their existing review (same productId+userName upserts in place, createdAt unchanged).
+  updatedAt: String!
 }
 
 type ReviewPage @aws_api_key @aws_cognito_user_pools {
@@ -60,12 +140,6 @@ type ShoppingCart @aws_api_key @aws_cognito_user_pools {
   ownerId: String!
   items: [CartItem!]!
   totalPrice: Float!
-}
-
-type Coupon {
-  productName: String!
-  description: String!
-  amount: Int!
 }
 
 type ShippingAddress {
@@ -189,7 +263,6 @@ input CreateProductInput {
   name: String!
   description: String!
   imageUrl: String!
-  price: Float!
   stock: Int!
   categoryIds: [ID!]!
 }
@@ -199,7 +272,6 @@ input UpdateProductInput {
   name: String!
   description: String!
   imageUrl: String!
-  price: Float!
   stock: Int!
   categoryIds: [ID!]!
 }
@@ -222,10 +294,18 @@ input UpdateProfileInput {
 }
 
 type Query {
-  # Direct DynamoDB resolver — public (API_KEY or Cognito)
-  products(pageSize: Int, nextToken: String): ProductPage! @aws_api_key @aws_cognito_user_pools
+  # Lambda resolver (ADR-0027 amends ADR-0009: OpenSearch is an external, non-DynamoDB
+  # integration) — full-text search, rating range filter, sort; public (API_KEY or Cognito)
+  products(
+    query: String
+    sortBy: ProductSort
+    minRating: Float
+    maxRating: Float
+    pageSize: Int
+    nextToken: String
+  ): ProductPage! @aws_api_key @aws_cognito_user_pools
 
-  # Direct DynamoDB resolver — public (API_KEY or Cognito)
+  # Lambda resolver (ADR-0027 amends ADR-0009) — public (API_KEY or Cognito)
   product(id: ID!): Product @aws_api_key @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — public (API_KEY or Cognito)
@@ -235,8 +315,15 @@ type Query {
   # ctx.identity (USER#<sub>) or validates the injected GUEST# ownerId (see ADR-0016).
   basket(ownerId: String!): ShoppingCart @aws_api_key @aws_cognito_user_pools
 
-  # Direct DynamoDB resolver — Cognito required
-  couponFor(productName: String!): Coupon
+  # Direct DynamoDB resolver — public (API_KEY or Cognito); GetItem on Pricing's "prices" table
+  nominalPriceFor(productId: ID!): Price @aws_api_key @aws_cognito_user_pools
+
+  # Direct DynamoDB resolver — public (API_KEY or Cognito); GetItem on Pricing's "product-discounts"
+  # projection, expiry checked at read time against StartsAt/EndsAt (ADR-0026). Replaces couponFor.
+  currentDiscountForProduct(productId: ID!): Discount @aws_api_key @aws_cognito_user_pools
+
+  # Lambda resolver — public (API_KEY or Cognito); non-trivial calculation, not a key lookup (ADR-0009)
+  installmentPlanFor(productId: ID!): InstallmentPlan @aws_api_key @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
   orders(pageSize: Int, nextToken: String): OrderPage!
@@ -278,10 +365,32 @@ type Mutation {
   # Direct DynamoDB resolver — Cognito required; Admin or Seller group only (enforced in resolver)
   deleteProduct(id: ID!): DeleteProductResult!
 
+  # Lambda resolver — Cognito required; Admin or Seller group only. Sets/updates the nominal price,
+  # decoupled from createProduct/updateProduct (ADR-0026).
+  setNominalPrice(productId: ID!, price: Float!, cost: Float!): Price!
+
+  # Lambda resolver — Cognito required; Admin group only. Fans out a TransactWriteItems across
+  # campaigns + product-discounts (ADR-0026).
+  createCampaign(name: String!, discountType: String!, value: Float!, startsAt: String!, endsAt: String!, productIds: [ID!]!): Campaign!
+
+  # Lambda resolver — Cognito required; Admin group only.
+  endCampaign(campaignId: ID!): Boolean!
+
+  # Lambda resolver — Cognito required; Admin group only. Configures a payment-gateway provider's
+  # flat fee, à vista rate, and per-installment-count rate table (ADR-0028).
+  setGatewayCost(
+    provider: String!
+    flatFeePerTransaction: Float!
+    avistaRatePercent: Float!
+    installmentRates: AWSJSON!
+  ): GatewayCost!
+
   # Lambda resolver — Cognito required; Admin group only (enforced in resolver)
   deleteOrder(orderId: ID!): DeleteOrderResult!
 
-  # Direct DynamoDB resolver — Cognito required; CDC updates product rating (ADR-0011)
+  # Direct DynamoDB pipeline resolver — Cognito required; upserts by (productId, userName) so a
+  # customer has exactly one active review per product (ADR-0029); CDC updates product rating
+  # (ADR-0011 for new reviews, ADR-0029 for edits)
   createReview(input: CreateReviewInput!): CreateReviewResult!
 
   # Direct DynamoDB resolver — Cognito only (default auth); UpdateItem keyed by ctx.identity.sub (ADR-0017)

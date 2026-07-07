@@ -3,6 +3,16 @@
 ## Status
 **Proposed** — June 2026
 
+**Superseded** — July 2026 — for §4 (rating aggregation living in Catalog's DynamoDB item) only,
+by [ADR-0027](./0027-catalogview-opensearch-product-search-and-rating-sync.md), which moves the
+aggregate rating to the new CatalogView service (OpenSearch). §1–3 of this ADR (the `Review`
+bounded context, its `reviews` table, and the `ReviewCreated` CDC publisher) remain in effect
+unchanged — ADR-0027 consumes the same `ReviewCreatedEvent` this ADR defines.
+
+**Extended** — July 2026 — the "Future Constraints" note below (MODIFY/REMOVE handling, negative
+deltas) is fulfilled by [ADR-0029](./0029-review-upsert-composite-key-and-rating-delta.md), which
+also changes the `reviews` table's `Id` from a random GUID to a deterministic composite key.
+
 ---
 
 ## Context

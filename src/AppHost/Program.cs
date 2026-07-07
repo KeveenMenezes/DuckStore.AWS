@@ -1,9 +1,12 @@
 ﻿#pragma warning disable CA2252 // Opt in to preview features
 using AppHost.Basket;
 using AppHost.Catalog;
+using AppHost.CatalogView;
 using AppHost.Extensions;
 using AppHost.Observability;
 using AppHost.Ordering;
+using AppHost.Payment;
+using AppHost.Pricing;
 using AppHost.Review;
 using AppHost.User;
 using Aspire.Hosting.AWS.DynamoDB;
@@ -27,11 +30,19 @@ var elasticsearch = builder.AddObservability();
 
 builder.AddOrderingServices(dynamoDb, elasticsearch);
 
+builder.AddPaymentServices(dynamoDb);
+
+var pricingSeeder = builder.AddPricingServices(dynamoDb);
+
 var basketResources = builder.AddBasketLambdas(dynamoDb);
 
 var userLambda = builder.AddUserLambdas(dynamoDb);
 
-builder.AddReviewServices(dynamoDb);
+var reviewSeeder = builder.AddReviewServices(dynamoDb);
+
+var catalogSeeder = builder.AddCatalogLambdas(dynamoDb);
+
+builder.AddCatalogViewLambdas(dynamoDb, catalogSeeder, reviewSeeder, pricingSeeder);
 
 // Apps
 builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")
@@ -51,7 +62,5 @@ builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React",
     .WithEndpoint(port: 3000, targetPort: 3000, scheme: "http", name: "http", env: "PORT", isProxied: false)
     .PublishAsDockerFile()
     .WithExplicitStart();
-
-builder.AddCatalogLambdas(dynamoDb);
 
 await builder.Build().RunAsync();

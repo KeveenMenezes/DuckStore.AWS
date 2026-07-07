@@ -1,15 +1,72 @@
 /** TypeScript interfaces aligned with graphql/schema.graphql. Keep in sync when the schema changes. */
 
+export interface GqlInstallmentOption {
+  count: number
+  value: number
+  totalValue: number
+  hasInterest: boolean
+}
+
 export interface GqlProduct {
   id: string
   name: string
   description: string
   imageUrl: string
-  price: number
   stock: number
   categoryIds: string[]
   averageRating: number
   ratingCount: number
+  // Denormalized onto CatalogView's search document via CDC (ADR-0026/0027/0028/0030) — scalars
+  // only; the detailed per-installment plan is fetched separately via installmentPlanFor.
+  originalPrice: number
+  price: number
+  cashPrice: number
+  maxInstallmentsWithoutInterest: number
+  maxInstallmentValue: number
+}
+
+// Nominal price and current discount live in Pricing, not Catalog (ADR-0026).
+export interface GqlPrice {
+  productId: string
+  nominalPrice: number
+  cost: number
+  updatedAt: string
+}
+
+export interface GqlDiscount {
+  productId: string
+  campaignId: string
+  discountType: string
+  value: number
+  startsAt: string
+  endsAt: string
+}
+
+export interface GqlInstallmentPlan {
+  productId: string
+  originalPrice: number
+  price: number
+  cashPrice: number
+  maxInstallmentsWithoutInterest: number
+  installments: GqlInstallmentOption[]
+}
+
+// One payment-gateway provider's operating costs (ADR-0028).
+export interface GqlGatewayCost {
+  provider: string
+  flatFeePerTransaction: number
+  avistaRatePercent: number
+  installmentRates: Record<string, number>
+}
+
+export interface GqlCampaign {
+  id: string
+  name: string
+  discountType: string
+  value: number
+  startsAt: string
+  endsAt: string
+  productIds: string[]
 }
 
 export interface GqlReview {
@@ -19,6 +76,7 @@ export interface GqlReview {
   rating: number
   comment: string
   createdAt: string
+  updatedAt: string
 }
 
 export interface GqlReviewPage {
@@ -60,12 +118,6 @@ export interface GqlShoppingCart {
   ownerId: string
   items: GqlCartItem[]
   totalPrice: number
-}
-
-export interface GqlCoupon {
-  productName: string
-  description: string
-  amount: number
 }
 
 export interface GqlStoreBasketResult {
@@ -187,7 +239,6 @@ export interface CreateProductInput {
   name: string
   description: string
   imageUrl: string
-  price: number
   stock: number
   categoryIds: string[]
 }
@@ -197,7 +248,6 @@ export interface UpdateProductInput {
   name: string
   description: string
   imageUrl: string
-  price: number
   stock: number
   categoryIds: string[]
 }

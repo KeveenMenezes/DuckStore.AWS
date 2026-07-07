@@ -8,9 +8,13 @@ import { Separator } from "@/components/ui/separator"
 import { StarRatingDisplay } from "@/features/reviews/components/star-rating"
 import { ReviewsSection } from "@/features/reviews/components/reviews-section"
 import { AddToCartButton } from "@/app/products/[id]/add-to-cart-button"
-import { getProduct, getProducts } from "@/features/products/services/products.service"
+import { ProductPrice } from "@/features/products/components/product-price"
+import {
+  getProduct,
+  getProducts,
+  getInstallmentPlan,
+} from "@/features/products/services/products.service"
 import { getReviewsByProduct } from "@/features/reviews/services/reviews.service"
-import { formatBRL } from "@/shared/lib/format"
 import { ROUTES } from "@/shared/constants/routes"
 
 // ISR: product detail is the same for all users; invalidated per-product via
@@ -49,9 +53,12 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const productInit: RequestInit = { cache: 'force-cache', next: { tags: [`products:${id}`] } }
   const reviewsInit: RequestInit = { cache: 'force-cache', next: { tags: [`reviews:${id}`] } }
 
-  const [product, reviewPage] = await Promise.all([
+  const [product, reviewPage, installmentPlan] = await Promise.all([
     getProduct(id, productInit).catch(() => null),
     getReviewsByProduct(id, 10, undefined, reviewsInit).catch(() => ({ items: [], nextToken: null })),
+    // Synchronous, on-demand calculation (never denormalized onto Product/OpenSearch) — fetched
+    // here, alongside the product itself, so the payment-methods modal has real figures at render.
+    getInstallmentPlan(id, productInit).catch(() => null),
   ])
 
   if (!product) notFound()
@@ -105,9 +112,9 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
           <Separator />
 
-          <div className="flex items-center justify-between">
-            <span className="text-4xl font-bold text-primary">{formatBRL(product.price)}</span>
-            <div className="flex items-center gap-1.5 text-sm">
+          <div className="flex items-start justify-between gap-4">
+            <ProductPrice product={product} installmentPlan={installmentPlan} />
+            <div className="flex shrink-0 items-center gap-1.5 text-sm">
               <Package className="h-4 w-4 text-muted-foreground" />
               <span className={inStock ? "text-foreground" : "text-muted-foreground"}>
                 {inStock ? `${product.stock} in stock` : "Out of stock"}

@@ -23,10 +23,6 @@ public static class ServiceRegistration
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
         services.AddScoped<IShoppingCartRepository, DynamoShoppingCartRepository>();
 
-        // Discount was merged into Basket: coupons are read in-process from DynamoDB,
-        // replacing the previous cross-service Lambda invoke of the Discount function.
-        services.AddSingleton<ICouponRepository, DynamoCouponRepository>();
-
         services.AddEventBridgeMessaging(configuration);
 
         // Stream-publisher rule + dispatcher (see ADR-0019). Scoped for consistency with the

@@ -3,7 +3,7 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
   "Resources": {
-    "ReviewFunctionFunctionsReviewCreatedPublisherGenerated": {
+    "ReviewFunctionFunctionsReviewStreamPublisherGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
         "Tool": "Amazon.Lambda.Annotations"
@@ -18,7 +18,7 @@
         "ImageUri": ".",
         "ImageConfig": {
           "Command": [
-            "Review.Function::Review.Function.Functions_ReviewCreatedPublisher_Generated::ReviewCreatedPublisher"
+            "Review.Function::Review.Function.Functions_ReviewStreamPublisher_Generated::ReviewStreamPublisher"
           ]
         }
       }
