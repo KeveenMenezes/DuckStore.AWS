@@ -1,4 +1,4 @@
-using BuildingBlocks.Messaging.Events;
+﻿using BuildingBlocks.Messaging.Events;
 using CatalogView.Function.Modules.Products.Data;
 using CatalogView.Function.Modules.Products.Domain;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
@@ -23,7 +23,8 @@ public class CatalogProductSyncHandlerTests
             Description = "A duck",
             ImageUrl = "/duck.jpg",
             Stock = 10,
-            CategoryIds = ["cat-1"]
+            CategoryIds = ["cat-1"],
+            CategoryNames = ["Languages"]
         };
 
         await handler.HandleAsync(evt);
@@ -36,7 +37,10 @@ public class CatalogProductSyncHandlerTests
                     d.Description == evt.Description &&
                     d.ImageUrl == evt.ImageUrl &&
                     d.Stock == evt.Stock &&
-                    d.CategoryIds.SequenceEqual(evt.CategoryIds)),
+                    d.CategoryIds.SequenceEqual(evt.CategoryIds) &&
+                    d.Categories.Count == 1 &&
+                    d.Categories[0].Id == "cat-1" &&
+                    d.Categories[0].Name == "Languages"),
                 It.IsAny<CancellationToken>()),
             Times.Once);
 

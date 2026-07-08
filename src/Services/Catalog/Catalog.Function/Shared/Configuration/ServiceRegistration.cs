@@ -27,6 +27,9 @@ public static class ServiceRegistration
         services.AddScoped<IStreamRule<CatalogStreamImage>, CatalogSearchSyncRule>();
         services.AddScoped<StreamRuleDispatcher<CatalogStreamImage>>();
 
+        services.AddScoped<IStreamRule<CategoryStreamImage>, CatalogCategorySyncRule>();
+        services.AddScoped<StreamRuleDispatcher<CategoryStreamImage>>();
+
         return services;
     }
 }

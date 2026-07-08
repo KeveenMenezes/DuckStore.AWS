@@ -19,6 +19,10 @@ public interface IProductSearchIndex
 
     Task DeleteAsync(string productId, CancellationToken cancellationToken = default);
 
+    // Rewrites a category's denormalized name on every product document that references it
+    // (CategorySyncHandler, triggered by a category rename — ADR-0027 extension).
+    Task RenameCategoryAsync(string categoryId, string name, CancellationToken cancellationToken = default);
+
     // Atomic, idempotent Painless script update (see OpenSearchProductIndex): applies the rating
     // delta only if lastRatingEventId doesn't already match eventId (ADR-0027).
     Task ApplyRatingAsync(

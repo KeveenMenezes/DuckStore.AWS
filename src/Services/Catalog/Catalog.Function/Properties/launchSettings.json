@@ -11,6 +11,12 @@
       "executablePath": "dotnet",
       "commandLineArgs": "exec --depsfile ./Catalog.Function.deps.json --runtimeconfig ./Catalog.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Catalog.Function::Catalog.Function.Functions_ReviewCreatedConsumer_Generated::ReviewCreatedConsumer",
       "workingDirectory": "bin/Debug/net10.0/"
+    },
+    "Aspire_catalog-category-stream-publisher": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "exec --depsfile ./Catalog.Function.deps.json --runtimeconfig ./Catalog.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Catalog.Function::Catalog.Function.Functions_CategoryStreamPublisher_Generated::CategoryStreamPublisher",
+      "workingDirectory": "bin/Debug/net10.0/"
     }
   }
 }

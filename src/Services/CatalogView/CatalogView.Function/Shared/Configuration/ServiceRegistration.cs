@@ -1,4 +1,5 @@
 ﻿using CatalogView.Function.Modules.Products.Data;
+using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CategorySync;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.PriceChanged;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;
@@ -29,6 +30,7 @@ public static class ServiceRegistration
         services.AddScoped<IProductSearchIndex, OpenSearchProductIndex>();
 
         services.AddScoped<CatalogProductSyncHandler>();
+        services.AddScoped<CategorySyncHandler>();
         services.AddScoped<PriceSyncHandler>();
         services.AddScoped<ReviewAggregateHandler>();
         services.AddScoped<ReviewUpdateAggregateHandler>();
