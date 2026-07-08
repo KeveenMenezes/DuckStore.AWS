@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Messaging.Events;
+﻿namespace BuildingBlocks.Messaging.Events;
 
 // Carries the full product payload (hydrated from the DynamoDB Streams image) so CatalogView can
 // index a complete search document without an out-of-band call back into Catalog. Sibling to
@@ -14,4 +14,6 @@ public record CatalogProductSyncEvent : IntegrationEvent
     public string ImageUrl { get; init; } = string.Empty;
     public int Stock { get; init; }
     public List<string> CategoryIds { get; init; } = [];
+
+    public List<string> CategoryNames { get; init; } = [];
 }

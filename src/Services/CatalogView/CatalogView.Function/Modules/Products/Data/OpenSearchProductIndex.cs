@@ -29,12 +29,51 @@ public sealed class OpenSearchProductIndex(IOpenSearchLowLevelClient client) : I
                 description = document.Description,
                 imageUrl = document.ImageUrl,
                 stock = document.Stock,
-                categoryIds = document.CategoryIds
+                categoryIds = document.CategoryIds,
+                categories = document.Categories
             },
             doc_as_upsert = true
         });
 
         await client.UpdateAsync<StringResponse>(IndexName, document.Id, body, ctx: cancellationToken);
+    }
+
+    // Rewrites the name field of every entry in the nested "categories" array whose id matches, on
+    // every product that references it — fanned out with _update_by_query rather than a per-product
+    // Streams round-trip (CategorySyncHandler / CatalogCategorySyncEvent, ADR-0027 extension).
+    public async Task RenameCategoryAsync(
+        string categoryId, string name, CancellationToken cancellationToken = default)
+    {
+        const string script = """
+            for (int i = 0; i < ctx._source.categories.size(); i++) {
+                if (ctx._source.categories[i].id == params.categoryId) {
+                    ctx._source.categories[i].name = params.name;
+                }
+            }
+            """;
+
+        var body = PostData.Serializable(new
+        {
+            query = new
+            {
+                nested = new
+                {
+                    path = "categories",
+                    query = new
+                    {
+                        term = new Dictionary<string, string> { ["categories.id"] = categoryId }
+                    }
+                }
+            },
+            script = new
+            {
+                source = script,
+                lang = "painless",
+                @params = new { categoryId, name }
+            }
+        });
+
+        await client.UpdateByQueryAsync<StringResponse>(IndexName, body, ctx: cancellationToken);
     }
 
     public async Task ApplyPricingAsync(
@@ -244,6 +283,15 @@ public sealed class OpenSearchProductIndex(IOpenSearchLowLevelClient client) : I
                     price = new { type = "double" },
                     stock = new { type = "integer" },
                     categoryIds = new { type = "keyword" },
+                    categories = new
+                    {
+                        type = "nested",
+                        properties = new
+                        {
+                            id = new { type = "keyword" },
+                            name = new { type = "text" }
+                        }
+                    },
                     averageRating = new { type = "double" },
                     ratingCount = new { type = "integer" },
                     cashPrice = new { type = "double" },

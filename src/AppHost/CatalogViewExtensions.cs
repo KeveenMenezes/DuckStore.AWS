@@ -127,6 +127,19 @@ public static class CatalogViewExtensions
             });
 
         builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
+                "catalogview-category-sync-consumer",
+                lambdaHandler:
+                "CatalogView.Function::CatalogView.Function.Functions_CategorySyncConsumer_Generated::CategorySyncConsumer")
+            .WaitForCompletion(catalogViewSeeder)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
+            .WithEnvironment(ctx =>
+            {
+                if (!ctx.ExecutionContext.IsPublishMode)
+                    ctx.EnvironmentVariables["OpenSearch__Endpoint"] = opensearch.GetEndpoint("http");
+            });
+
+        builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
                 "catalogview-get-product",
                 lambdaHandler: "CatalogView.Function::CatalogView.Function.Functions_GetProduct_Generated::GetProduct")
             .WaitForCompletion(catalogViewSeeder)

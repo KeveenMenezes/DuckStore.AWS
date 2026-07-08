@@ -22,6 +22,26 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
             new PutItemRequest { TableName = TableName, Item = ToItem(product) },
             cancellationToken);
 
+    public async Task<bool> AnyReferencingCategoryAsync(
+        Guid categoryId, CancellationToken cancellationToken = default)
+    {
+        var response = await dynamoDb.ScanAsync(
+            new ScanRequest
+            {
+                TableName = TableName,
+                Select = Select.COUNT,
+                Limit = 1,
+                FilterExpression = "contains(CategoryIds, :categoryId)",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":categoryId"] = new(categoryId.ToString())
+                }
+            },
+            cancellationToken);
+
+        return response.Count > 0;
+    }
+
     // Rating fields no longer live here — they are materialized exclusively in CatalogView's
     // OpenSearch index (ADR-0027, supersedes ADR-0011 §4).
     private static Dictionary<string, AttributeValue> ToItem(Product product) =>

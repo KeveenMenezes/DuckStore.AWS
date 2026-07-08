@@ -4,6 +4,7 @@ global using BuildingBlocks.Messaging.EventBridge;
 global using BuildingBlocks.Messaging.Events;
 global using CatalogView.Function.Modules.Products.Data;
 global using CatalogView.Function.Modules.Products.Domain;
+global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CategorySync;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.PriceChanged;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;

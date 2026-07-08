@@ -26,12 +26,13 @@ export interface CatalogLambdasProps {
 export class CatalogLambdas extends Construct {
   public readonly eventBus: events.EventBus;
   public readonly streamPublisher: lambda.Function;
+  public readonly categoryStreamPublisher: lambda.Function;
   public readonly reviewCreatedConsumer: lambda.Function;
 
   constructor(scope: Construct, id: string, props: CatalogLambdasProps) {
     super(scope, id);
 
-    const { productsTable, processedEventsTable } = props;
+    const { productsTable, categoriesTable, processedEventsTable } = props;
 
     // All Catalog integration events flow through this bus (ADR-0004).
     this.eventBus = new events.EventBus(this, 'EventBus', {
@@ -98,6 +99,40 @@ export class CatalogLambdas extends Construct {
     // CatalogUpdatedEvent's ISR revalidation trigger moved to
     // SpaTagRevalidator (infra/constructs/spa-tag-revalidator.ts), which
     // subscribes to this same bus directly — no HTTP webhook needed.
+
+    // -------------------------------------------------------------------------
+    // 1b. catalog-category-stream-publisher
+    //    Trigger: DynamoDB Streams on categories
+    //    Fires only on a rename (CatalogCategorySyncRule) — publishes
+    //    CatalogCategorySyncEvent so CatalogView can rewrite the denormalized
+    //    category name on every product document that references it.
+    // -------------------------------------------------------------------------
+    this.categoryStreamPublisher = new lambda.DockerImageFunction(this, 'CategoryStreamPublisher', {
+      functionName: 'catalog-category-stream-publisher',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      code: catalogCode([
+        'Catalog.Function::Catalog.Function.Functions_CategoryStreamPublisher_Generated::CategoryStreamPublisher',
+      ]),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      description:
+        'CDC: reads DynamoDB Streams on categories and publishes CatalogCategorySyncEvent on rename',
+      environment: {
+        EventBridge__BusName: this.eventBus.eventBusName,
+      },
+    });
+
+    this.categoryStreamPublisher.addEventSource(
+      new lambdaEventSources.DynamoEventSource(categoriesTable, {
+        startingPosition: lambda.StartingPosition.TRIM_HORIZON,
+        batchSize: 10,
+        bisectBatchOnError: true,
+        retryAttempts: 3,
+      }),
+    );
+
+    this.eventBus.grantPutEventsTo(this.categoryStreamPublisher);
 
     // -------------------------------------------------------------------------
     // 2. catalog-review-created-consumer

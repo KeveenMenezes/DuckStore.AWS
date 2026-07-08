@@ -25,6 +25,7 @@ public sealed class CatalogProductSyncHandler(IProductSearchIndex index)
             Description = evt.Description,
             ImageUrl = evt.ImageUrl,
             Stock = evt.Stock,
-            CategoryIds = evt.CategoryIds
+            CategoryIds = evt.CategoryIds,
+            Categories = [.. evt.CategoryIds.Zip(evt.CategoryNames, (id, name) => new CategoryRef(id, name))]
         };
 }
