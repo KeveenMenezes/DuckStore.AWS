@@ -30,7 +30,8 @@ public class CreateOrderCommandValidator
 
         RuleFor(x => x.Payment.CardNumber)
             .CreditCard()
-            .WithMessage("Invalid card number");
+            .WithMessage("Invalid card number")
+            .When(x => x.Payment.PaymentMethod != PaymentMethod.Cash);
 
         RuleFor(x => x.Payment.PaymentMethod)
             .IsInEnum()

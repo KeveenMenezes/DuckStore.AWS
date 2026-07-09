@@ -25,6 +25,15 @@ public class CardDetailsTests
     }
 
     [Fact]
+    public void Of_ShouldCreateCardDetails_ForCash_WithEmptyCardNumberAndCvv()
+    {
+        var card = CardDetails.Of("", "", "", PaymentMethod.Cash);
+
+        Assert.Equal(PaymentMethod.Cash, card.PaymentMethod);
+        Assert.Equal("", card.CardNumber);
+    }
+
+    [Fact]
     public void Equality_ShouldBeByValue()
     {
         var card1 = CardDetails.Of("4111111111111111", "12/28", "123", PaymentMethod.Credit);

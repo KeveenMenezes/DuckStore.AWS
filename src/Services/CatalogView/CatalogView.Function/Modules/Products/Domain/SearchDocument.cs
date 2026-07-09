@@ -29,6 +29,11 @@ public sealed class SearchDocument
     [JsonPropertyName("categoryIds")]
     public List<string> CategoryIds { get; set; } = [];
 
+    // Denormalized display names, index-aligned with CategoryIds — kept in sync with Catalog's
+    // categories table by CategorySyncHandler whenever a category is renamed (ADR-0027 extension).
+    [JsonPropertyName("categories")]
+    public List<CategoryRef> Categories { get; set; } = [];
+
     [JsonPropertyName("averageRating")]
     public double AverageRating { get; set; }
 
@@ -64,3 +69,9 @@ public sealed class SearchDocument
     [JsonPropertyName("lastRatingEventId")]
     public string? LastRatingEventId { get; set; }
 }
+
+// One entry per category a product directly belongs to — id for filtering, name for display
+// (breadcrumb-ready once the category hierarchy is surfaced through GraphQL).
+public sealed record CategoryRef(
+    [property: JsonPropertyName("id")] string Id,
+    [property: JsonPropertyName("name")] string Name);

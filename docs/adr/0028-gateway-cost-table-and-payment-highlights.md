@@ -63,7 +63,20 @@ concerns remain deliberately separate.
 `InstallmentCalculator.CalculateInstallmentPlan` walks the active provider's actual
 `InstallmentRates` keys (not an assumed `1..12` range) and returns the highest installment count N
 whose cumulative fee (`FlatFeePerTransaction + nominalPrice * rate[N]/100`) still leaves at least
-`MinMarginPercent` of the nominal price as margin.
+`MinMarginPercent` of the nominal price as margin (`marginBasedLimit`).
+
+The cap is **hybrid**, not margin-only: a second, independent signal — `tierBasedLimit` — is looked
+up from a new `InstallmentOptions.ValueTiers` list (`ValueTier(MinAmount, MaxInstallments)`,
+ascending by `MinAmount`) against `originalPrice`, which doubles as the caller's total basket value
+for both the single-product flow (`GetInstallmentPlanHandler`, a "cart of one") and the real
+basket flow (`GetBasketInstallmentPlanHandler`, the summed cart total). The final cap is
+`finalLimit = Math.Max(marginBasedLimit, tierBasedLimit)`, capped to the highest installment count
+the active `GatewayCost.InstallmentRates` actually offers — a tier can unlock more installments than
+margin alone would allow (e.g. a large multi-unit cart), but it can never pull the cap *below* what
+margin already grants. `ValueTiers` is configured the same way as `MinMarginPercent` — manually
+parsed, gap-stopping, defensive `Installments__ValueTiers__{index}__MinAmount` /
+`__MaxInstallments` env vars in `InstallmentOptions.FromConfiguration` — and defaults to an empty
+list, which reduces the hybrid cap to today's pure-margin behavior.
 
 ### 3. À vista price is a computed value, not a label
 
@@ -152,6 +165,9 @@ shape.
   `InstallmentOptions`/`InstallmentCalculator`/`GetInstallmentPlanHandler`; extended
   `PriceStreamPublisherFunction`), `Pricing.DevelopmentDataSeeder` (new `GatewayCostInitialData`
   seed)
+- `src/Services/CatalogView/CatalogView.DevelopmentDataSeeder` (`ProductBackfill`'s deliberate local
+  mirror of `InstallmentCalculator` — see §6 — updated to compute the same hybrid
+  `Math.Max(marginBasedLimit, tierBasedLimit)` cap, including its own `ValueTiers` config parsing)
 - `src/BuildingBlocks/BuildingBlocks.Messaging/Events` (`PriceChangedEvent`, extended with the
   three payment-highlight fields)
 - `src/Services/CatalogView/CatalogView.Function` (`SearchDocument`, `IProductSearchIndex`/

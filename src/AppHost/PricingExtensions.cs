@@ -31,7 +31,25 @@ public static class PricingExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
             .WithEnvironment("Installments__ActiveProvider", "Simulated")
-            .WithEnvironment("Installments__MinMarginPercent", "5");
+            .WithEnvironment("Installments__MinMarginPercent", "5")
+            .WithEnvironment("Installments__ValueTiers__0__MinAmount", "150")
+            .WithEnvironment("Installments__ValueTiers__0__MaxInstallments", "6")
+            .WithEnvironment("Installments__ValueTiers__1__MinAmount", "300")
+            .WithEnvironment("Installments__ValueTiers__1__MaxInstallments", "10");
+
+        builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
+                "pricing-get-basket-installment-plan",
+                lambdaHandler:
+                "Pricing.Function::Pricing.Function.Functions_GetBasketInstallmentPlan_Generated::GetBasketInstallmentPlan")
+            .WaitForCompletion(pricingMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("Installments__ActiveProvider", "Simulated")
+            .WithEnvironment("Installments__MinMarginPercent", "5")
+            .WithEnvironment("Installments__ValueTiers__0__MinAmount", "150")
+            .WithEnvironment("Installments__ValueTiers__0__MaxInstallments", "6")
+            .WithEnvironment("Installments__ValueTiers__1__MinAmount", "300")
+            .WithEnvironment("Installments__ValueTiers__1__MaxInstallments", "10");
 
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
                 "pricing-set-gateway-cost",
@@ -76,7 +94,11 @@ public static class PricingExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
             .WithEnvironment("Installments__ActiveProvider", "Simulated")
-            .WithEnvironment("Installments__MinMarginPercent", "5");
+            .WithEnvironment("Installments__MinMarginPercent", "5")
+            .WithEnvironment("Installments__ValueTiers__0__MinAmount", "150")
+            .WithEnvironment("Installments__ValueTiers__0__MaxInstallments", "6")
+            .WithEnvironment("Installments__ValueTiers__1__MinAmount", "300")
+            .WithEnvironment("Installments__ValueTiers__1__MaxInstallments", "10");
 
         return pricingMigration;
     }

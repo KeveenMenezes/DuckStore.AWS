@@ -5,6 +5,7 @@ using Pricing.Function.Modules.GatewayCosts.Data;
 using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
 using Pricing.Function.Modules.GatewayCosts.Domain.ValueObjects;
 using Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
+using Pricing.Function.Shared.Configuration;
 
 namespace Pricing.UnitTests.Application.Queries;
 
@@ -31,7 +32,7 @@ public class InstallmentCalculatorTests
         var gatewayCost = SimulatedGatewayCost(flatFee: 1m, rates: new Dictionary<int, decimal> { [1] = 0m });
 
         var breakdown = InstallmentCalculator.Calculate(
-            cost: 10m, originalPrice: 100m, gatewayCost, minMarginPercent: 15m);
+            cost: 10m, originalPrice: 100m, gatewayCost, minMarginPercent: 15m, valueTiers: []);
 
         Assert.Equal(12.50m, breakdown.CashPrice);
         Assert.Equal(12.50m, breakdown.Price);
@@ -45,7 +46,7 @@ public class InstallmentCalculatorTests
         var gatewayCost = SimulatedGatewayCost(flatFee: 1m, rates: new Dictionary<int, decimal> { [1] = 10m });
 
         var breakdown = InstallmentCalculator.Calculate(
-            cost: 10m, originalPrice: 100m, gatewayCost, minMarginPercent: 15m);
+            cost: 10m, originalPrice: 100m, gatewayCost, minMarginPercent: 15m, valueTiers: []);
 
         Assert.Equal(12.50m, breakdown.CashPrice);
         Assert.Equal(13.89m, breakdown.Price);
@@ -61,7 +62,7 @@ public class InstallmentCalculatorTests
             rates: new Dictionary<int, decimal> { [1] = 10m, [2] = 5m, [3] = 8m });
 
         var breakdown = InstallmentCalculator.Calculate(
-            cost: 10m, originalPrice: 1000m, gatewayCost, minMarginPercent: 15m);
+            cost: 10m, originalPrice: 1000m, gatewayCost, minMarginPercent: 15m, valueTiers: []);
 
         Assert.Equal(3, breakdown.MaxInstallmentsWithoutInterest);
         Assert.All(breakdown.InstallmentPlan, e => Assert.False(e.HasInterest));
@@ -79,7 +80,7 @@ public class InstallmentCalculatorTests
             rates: new Dictionary<int, decimal> { [1] = 10m, [2] = 1m, [3] = 50m, [4] = 1m });
 
         var breakdown = InstallmentCalculator.Calculate(
-            cost: 10m, originalPrice: 15m, gatewayCost, minMarginPercent: 15m);
+            cost: 10m, originalPrice: 15m, gatewayCost, minMarginPercent: 15m, valueTiers: []);
 
         Assert.Equal(2, breakdown.MaxInstallmentsWithoutInterest);
 
@@ -99,7 +100,7 @@ public class InstallmentCalculatorTests
             flatFee: 1m, rates: new Dictionary<int, decimal> { [1] = 0m, [2] = 500m });
 
         var breakdown = InstallmentCalculator.Calculate(
-            cost: 10m, originalPrice: 1m, gatewayCost, minMarginPercent: 15m);
+            cost: 10m, originalPrice: 1m, gatewayCost, minMarginPercent: 15m, valueTiers: []);
 
         Assert.Equal(1, breakdown.MaxInstallmentsWithoutInterest);
         Assert.True(breakdown.InstallmentPlan.Single(e => e.Count == 2).HasInterest);
@@ -111,7 +112,7 @@ public class InstallmentCalculatorTests
         var gatewayCost = SimulatedGatewayCost(rates: new Dictionary<int, decimal> { [1] = 5m });
 
         var breakdown = InstallmentCalculator.Calculate(
-            cost: 10m, originalPrice: 100m, gatewayCost, minMarginPercent: 15m);
+            cost: 10m, originalPrice: 100m, gatewayCost, minMarginPercent: 15m, valueTiers: []);
 
         Assert.Equal(1, breakdown.MaxInstallmentsWithoutInterest);
         Assert.Empty(breakdown.InstallmentPlan);
@@ -124,7 +125,7 @@ public class InstallmentCalculatorTests
             flatFee: 1m, rates: new Dictionary<int, decimal> { [1] = 5m, [2] = 8m, [3] = 12m, [12] = 40m });
 
         var breakdown = InstallmentCalculator.Calculate(
-            cost: 20m, originalPrice: 200m, gatewayCost, minMarginPercent: 10m);
+            cost: 20m, originalPrice: 200m, gatewayCost, minMarginPercent: 10m, valueTiers: []);
 
         Assert.All(breakdown.InstallmentPlan, e => Assert.Equal(e.TotalValue, e.Value * e.Count));
     }
@@ -136,15 +137,75 @@ public class InstallmentCalculatorTests
             flatFee: 1m, rates: new Dictionary<int, decimal> { [1] = 10m, [2] = 5m, [3] = 8m });
 
         var breakdown = InstallmentCalculator.Calculate(
-            cost: 10m, originalPrice: 1000m, gatewayCost, minMarginPercent: 15m);
+            cost: 10m, originalPrice: 1000m, gatewayCost, minMarginPercent: 15m, valueTiers: []);
 
         var discount = DiscountValue.Of(DiscountType.Percentage, 10m);
-        var discounted = InstallmentCalculator.ApplyDiscount(breakdown, originalPrice: 1000m, gatewayCost, discount);
+        var discounted = InstallmentCalculator.ApplyDiscount(
+            breakdown, originalPrice: 1000m, gatewayCost, discount, valueTiers: []);
 
         Assert.Equal(breakdown.CashPrice, discounted.CashPrice);
         Assert.Equal(Math.Round(breakdown.Price * 0.9m, 2), discounted.Price);
         Assert.True(discounted.Price < breakdown.Price);
         Assert.All(discounted.InstallmentPlan, e => Assert.Equal(e.TotalValue, e.Value * e.Count));
+    }
+
+    [Fact]
+    public void Calculate_ShouldUnlockCountsAboveMarginLimit_WhenTierBasedLimitIsHigher()
+    {
+        // Same setup as the margin-latch test: price ~13.89, originalPrice=15 tight enough that
+        // margin alone only clears count=2 (marginBasedLimit=2). A value tier that this basket
+        // qualifies for (MinAmount <= originalPrice) promises up to count=4 instead.
+        var gatewayCost = SimulatedGatewayCost(
+            flatFee: 1m,
+            rates: new Dictionary<int, decimal> { [1] = 10m, [2] = 1m, [3] = 50m, [4] = 1m });
+        var valueTiers = new List<ValueTier> { new(MinAmount: 10m, MaxInstallments: 4) };
+
+        var breakdown = InstallmentCalculator.Calculate(
+            cost: 10m, originalPrice: 15m, gatewayCost, minMarginPercent: 15m, valueTiers);
+
+        Assert.Equal(4, breakdown.MaxInstallmentsWithoutInterest);
+
+        var count3 = breakdown.InstallmentPlan.Single(e => e.Count == 3);
+        var count4 = breakdown.InstallmentPlan.Single(e => e.Count == 4);
+
+        // Tier-unlock only waives HasInterest — the fee-table value/total at that count is untouched.
+        Assert.False(count3.HasInterest);
+        Assert.False(count4.HasInterest);
+        Assert.Equal(count3.Value * 3, count3.TotalValue);
+        Assert.Equal(count4.Value * 4, count4.TotalValue);
+    }
+
+    [Fact]
+    public void Calculate_ShouldCapTierBasedLimit_ToHighestInstallmentCountInRateTable()
+    {
+        // Rate table tops out at count=2, but the tier promises far more — the cap must not claim
+        // a count the active provider's rate table has no fee for.
+        var gatewayCost = SimulatedGatewayCost(
+            flatFee: 0m, rates: new Dictionary<int, decimal> { [1] = 0m, [2] = 5m });
+        var valueTiers = new List<ValueTier> { new(MinAmount: 0m, MaxInstallments: 24) };
+
+        var breakdown = InstallmentCalculator.Calculate(
+            cost: 10m, originalPrice: 1m, gatewayCost, minMarginPercent: 15m, valueTiers);
+
+        Assert.Equal(2, breakdown.MaxInstallmentsWithoutInterest);
+        Assert.DoesNotContain(breakdown.InstallmentPlan, e => e.Count > 2);
+    }
+
+    [Fact]
+    public void Calculate_ShouldIgnoreTierBasedLimit_WhenLowerThanMarginBasedLimit()
+    {
+        // Generous originalPrice lets margin alone reach count=3 (mirrors
+        // Calculate_ShouldMarkInstallmentsInterestFree_WhileWithinOriginalPriceBuffer); a qualifying
+        // tier that only promises count=1 must never pull the cap down.
+        var gatewayCost = SimulatedGatewayCost(
+            flatFee: 1m,
+            rates: new Dictionary<int, decimal> { [1] = 10m, [2] = 5m, [3] = 8m });
+        var valueTiers = new List<ValueTier> { new(MinAmount: 0m, MaxInstallments: 1) };
+
+        var breakdown = InstallmentCalculator.Calculate(
+            cost: 10m, originalPrice: 1000m, gatewayCost, minMarginPercent: 15m, valueTiers);
+
+        Assert.Equal(3, breakdown.MaxInstallmentsWithoutInterest);
     }
 }
 
@@ -218,7 +279,7 @@ public class GetInstallmentPlanTests
 
         var handler = CreateHandler();
 
-        var withoutDiscount = InstallmentCalculator.Calculate(10m, 1200m, SimulatedGatewayCost(), 15m);
+        var withoutDiscount = InstallmentCalculator.Calculate(10m, 1200m, SimulatedGatewayCost(), 15m, []);
         var result = await handler.Handle(new GetInstallmentPlanQuery(productId), CancellationToken.None);
 
         Assert.Equal(1200m, result.OriginalPrice);

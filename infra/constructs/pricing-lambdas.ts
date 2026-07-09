@@ -24,6 +24,7 @@ export interface PricingLambdasProps {
 export class PricingLambdas extends Construct {
   public readonly setNominalPrice: lambda.Function;
   public readonly getInstallmentPlan: lambda.Function;
+  public readonly getBasketInstallmentPlan: lambda.Function;
   public readonly createCampaign: lambda.Function;
   public readonly endCampaign: lambda.Function;
   public readonly catalogProductRemovedConsumer: lambda.Function;
@@ -95,6 +96,29 @@ export class PricingLambdas extends Construct {
     });
     pricesTable.grantReadData(this.getInstallmentPlan);
     gatewayCostsTable.grantReadData(this.getInstallmentPlan);
+
+    // -------------------------------------------------------------------------
+    // 2b. pricing-get-basket-installment-plan  (AppSync Invoke — Query.basketInstallmentPlan)
+    //     Same cost-floor calculation, but summed across every cart item first — the whole cart
+    //     is treated as one checkout transaction (ADR-0009).
+    // -------------------------------------------------------------------------
+    this.getBasketInstallmentPlan = new lambda.DockerImageFunction(this, 'GetBasketInstallmentPlan', {
+      functionName: 'pricing-get-basket-installment-plan',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      code: pricingCode([
+        'Pricing.Function::Pricing.Function.Functions_GetBasketInstallmentPlan_Generated::GetBasketInstallmentPlan',
+      ]),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      description: 'Computes the unified interest-free installment plan for an entire cart',
+      environment: {
+        Installments__ActiveProvider: 'Simulated',
+        Installments__MinMarginPercent: '5',
+      },
+    });
+    pricesTable.grantReadData(this.getBasketInstallmentPlan);
+    gatewayCostsTable.grantReadData(this.getBasketInstallmentPlan);
 
     // -------------------------------------------------------------------------
     // 3. pricing-create-campaign  (AppSync Invoke — Mutation.createCampaign)

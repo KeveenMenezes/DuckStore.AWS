@@ -1,4 +1,4 @@
-﻿namespace Ordering.Function.Modules.Orders.Domain.ValueObjects;
+namespace Ordering.Function.Modules.Orders.Domain.ValueObjects;
 
 public class Payment : ValueObject
 {
@@ -7,6 +7,7 @@ public class Payment : ValueObject
     public string Expiration { get; } = default!;
     public string Cvv { get; } = default!;
     public PaymentMethod PaymentMethod { get; } = default!;
+    public int Installments { get; } = default!;
 
     protected Payment()
     {
@@ -17,13 +18,15 @@ public class Payment : ValueObject
         string cardNumber,
         string expiration,
         string cvv,
-        PaymentMethod paymentMethod)
+        PaymentMethod paymentMethod,
+        int installments)
     {
         CardName = cardName;
         CardNumber = cardNumber;
         Expiration = expiration;
         Cvv = cvv;
         PaymentMethod = paymentMethod;
+        Installments = installments;
     }
 
     public static Payment Of(
@@ -31,14 +34,19 @@ public class Payment : ValueObject
         string cardNumber,
         string expiration,
         string cvv,
-        PaymentMethod paymentMethod)
+        PaymentMethod paymentMethod,
+        int installments)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(cardName);
-        ArgumentException.ThrowIfNullOrWhiteSpace(cardNumber);
-        ArgumentException.ThrowIfNullOrWhiteSpace(cvv);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(cvv.Length, 3);
+        // Cash carries no card at all — only Card payments (Debit/Credit) require one.
+        if (paymentMethod != PaymentMethod.Cash)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(cardName);
+            ArgumentException.ThrowIfNullOrWhiteSpace(cardNumber);
+            ArgumentException.ThrowIfNullOrWhiteSpace(cvv);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(cvv.Length, 3);
+        }
 
-        return new Payment(cardName, cardNumber, expiration, cvv, paymentMethod);
+        return new Payment(cardName, cardNumber, expiration, cvv, paymentMethod, installments);
     }
 
     protected override IEnumerable<object?> GetEqualityComponents()
@@ -48,5 +56,6 @@ public class Payment : ValueObject
         yield return Expiration;
         yield return Cvv;
         yield return PaymentMethod;
+        yield return Installments;
     }
 }

@@ -46,5 +46,6 @@ public static class OrderDataTests
             "5555555555554444",
             "12/28",
             "123",
-            PaymentMethod.Credit);
+            PaymentMethod.Credit,
+            1);
 }

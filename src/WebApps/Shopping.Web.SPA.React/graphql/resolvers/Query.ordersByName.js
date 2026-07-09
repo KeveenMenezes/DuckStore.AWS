@@ -44,6 +44,7 @@ export function response(ctx) {
         expiration: item.Payment?.Expiration ?? '',
         cvv: item.Payment?.Cvv ?? '',
         paymentMethod: item.Payment?.PaymentMethod ?? 0,
+        installments: item.Payment?.Installments ?? 1,
       },
     })),
     nextToken: ctx.result.nextToken ?? null,

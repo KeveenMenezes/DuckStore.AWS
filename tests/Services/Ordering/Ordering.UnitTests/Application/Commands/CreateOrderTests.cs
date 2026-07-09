@@ -123,6 +123,23 @@ public class CreateOrderTests
     }
 
     [Fact]
+    public void Validator_ShouldNotError_ForCash_EvenWithEmptyCardNumber()
+    {
+        // Arrange
+        var baseCommand = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems();
+        var command = baseCommand with
+        {
+            Payment = baseCommand.Payment with { CardNumber = "", Cvv = "", PaymentMethod = PaymentMethod.Cash }
+        };
+
+        // Act
+        var result = _validator.TestValidate(command);
+
+        // Assert
+        result.ShouldNotHaveValidationErrorFor(x => x.Payment.CardNumber);
+    }
+
+    [Fact]
     public void Validator_ShouldHaveMultipleErrors_WhenMultiplePropertiesAreInvalid()
     {
         // Arrange

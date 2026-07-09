@@ -19,7 +19,8 @@ public static class CreateOrderCommandTestsDataTests
                 "4111111111111111",
                 "12/25",
                 "123",
-                PaymentMethod.Debit),
+                PaymentMethod.Debit,
+                1),
             [
                 new CreateOrderItemDto(
                     Guid.NewGuid(),
@@ -45,6 +46,7 @@ public static class CreateOrderCommandTestsDataTests
                 "invalid-card-number",
                 "invalid-expiration",
                 "invalid-cvv",
-                0),
+                0,
+                1),
             []);
 }

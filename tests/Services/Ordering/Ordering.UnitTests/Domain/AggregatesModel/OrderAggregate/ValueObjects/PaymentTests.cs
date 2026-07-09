@@ -13,7 +13,7 @@ public class PaymentTests
         var paymentMethod = PaymentMethod.Credit;
 
         // Act
-        var payment = Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod);
+        var payment = Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod, 1);
 
         // Assert
         Assert.NotNull(payment);
@@ -22,6 +22,7 @@ public class PaymentTests
         Assert.Equal(expiration, payment.Expiration);
         Assert.Equal(cvv, payment.Cvv);
         Assert.Equal(paymentMethod, payment.PaymentMethod);
+        Assert.Equal(1, payment.Installments);
     }
 
     [Fact]
@@ -35,7 +36,7 @@ public class PaymentTests
         var paymentMethod = PaymentMethod.Credit;
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod));
+        Assert.Throws<ArgumentException>(() => Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod, 1));
     }
 
     [Fact]
@@ -49,7 +50,7 @@ public class PaymentTests
         var paymentMethod = PaymentMethod.Credit;
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod));
+        Assert.Throws<ArgumentException>(() => Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod, 1));
     }
 
     [Fact]
@@ -63,7 +64,7 @@ public class PaymentTests
         var paymentMethod = PaymentMethod.Credit;
 
         // Act & Assert
-        Assert.Throws<ArgumentException>(() => Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod));
+        Assert.Throws<ArgumentException>(() => Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod, 1));
     }
 
     [Fact]
@@ -77,6 +78,17 @@ public class PaymentTests
         var paymentMethod = PaymentMethod.Credit;
 
         // Act & Assert
-        Assert.Throws<ArgumentOutOfRangeException>(() => Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod));
+        Assert.Throws<ArgumentOutOfRangeException>(() => Payment.Of(cardName, cardNumber, expiration, cvv, paymentMethod, 1));
+    }
+
+    [Fact]
+    public void Of_ShouldCreatePayment_ForCash_WithEmptyCardFields()
+    {
+        // Arrange & Act
+        var payment = Payment.Of("", "", "", "", PaymentMethod.Cash, 1);
+
+        // Assert
+        Assert.Equal(PaymentMethod.Cash, payment.PaymentMethod);
+        Assert.Equal("", payment.CardNumber);
     }
 }

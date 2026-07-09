@@ -6,12 +6,28 @@ import { Button } from "@/components/ui/button"
 import { useCart } from "@/features/cart/hooks/use-cart"
 import { CartItem } from "@/features/cart/components/cart-item"
 import { CartSummary } from "@/features/cart/components/cart-summary"
+import { useAuth } from "@/features/auth/hooks/use-auth"
 import { ROUTES } from "@/shared/constants/routes"
 
 export function CartDrawer() {
-  const { items, removeItem, updateQuantity, totalItems, totalPrice, isOpen, setIsOpen } = useCart()
+  const { items, removeItem, updateQuantity, totalItems, totalPrice, isOpen, setIsOpen, flushCart } = useCart()
+  const { user, isLoading, loginWithCognito } = useAuth()
 
   if (!isOpen) return null
+
+  const handleCheckoutClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isLoading) {
+      e.preventDefault()
+      return
+    }
+    if (!user) {
+      e.preventDefault()
+      await flushCart()
+      loginWithCognito(ROUTES.checkout)
+      return
+    }
+    setIsOpen(false)
+  }
 
   return (
     <>
@@ -67,7 +83,7 @@ export function CartDrawer() {
               </div>
             </div>
 
-            <CartSummary totalPrice={totalPrice} onCheckout={() => setIsOpen(false)} />
+            <CartSummary totalPrice={totalPrice} isAuthLoading={isLoading} onCheckout={handleCheckoutClick} />
           </>
         )}
       </div>

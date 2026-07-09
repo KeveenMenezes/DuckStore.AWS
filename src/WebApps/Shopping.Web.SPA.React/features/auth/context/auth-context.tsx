@@ -10,7 +10,7 @@ interface AuthContextType {
   orders: Order[]
   isLoading: boolean
   ordersLoading: boolean
-  loginWithCognito: () => void
+  loginWithCognito: (returnTo?: string) => void
   signUpWithCognito: () => void
   logout: () => void
   addOrder: (order: NewOrderInput) => void
@@ -52,8 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => { cancelled = true }
   }, [])
 
-  const loginWithCognito = useCallback(() => {
-    window.location.href = '/api/auth/login'
+  const loginWithCognito = useCallback((returnTo?: string) => {
+    window.location.href = returnTo
+      ? `/api/auth/login?next=${encodeURIComponent(returnTo)}`
+      : '/api/auth/login'
   }, [])
 
   const signUpWithCognito = useCallback(() => {

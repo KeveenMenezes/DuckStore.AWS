@@ -7,7 +7,8 @@ public class Category : Aggregate<CategoryId>
     public List<CategoryId> Path { get; private set; } = default!;
     public bool IsRoot => ParentId is null;
 
-    public static Category Create(CategoryId id, string name, CategoryId? parentId = null)
+    public static Category Create(
+        CategoryId id, string name, CategoryId? parentId = null, List<CategoryId>? parentPath = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
 
@@ -16,10 +17,27 @@ public class Category : Aggregate<CategoryId>
             Id = id,
             Name = name,
             ParentId = parentId,
-            Path = []
+            Path = parentId is null ? [] : [.. parentPath ?? [], parentId]
         };
 
         return category;
+    }
+
+    public void Rename(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        Name = name;
+    }
+
+    // Cycle detection (new parent cannot be the category itself or one of its own descendants) is
+    // orchestration done by the caller (UpdateCategoryHandler), which already has the repository
+    // access needed to resolve descendants — the aggregate only applies the already-validated
+    // result. newPath is the new parent's own Path with newParentId appended (empty for a root move).
+    public void Move(CategoryId? newParentId, List<CategoryId> newPath)
+    {
+        ParentId = newParentId;
+        Path = newPath;
     }
 
     internal static Category Load(

@@ -6,10 +6,24 @@ import { Button } from "@/components/ui/button"
 import { useCart } from "@/features/cart/hooks/use-cart"
 import { CartItem } from "@/features/cart/components/cart-item"
 import { CartSummary } from "@/features/cart/components/cart-summary"
+import { useAuth } from "@/features/auth/hooks/use-auth"
 import { ROUTES } from "@/shared/constants/routes"
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, totalItems, totalPrice } = useCart()
+  const { items, removeItem, updateQuantity, totalItems, totalPrice, flushCart } = useCart()
+  const { user, isLoading, loginWithCognito } = useAuth()
+
+  const handleCheckoutClick = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isLoading) {
+      e.preventDefault()
+      return
+    }
+    if (!user) {
+      e.preventDefault()
+      await flushCart()
+      loginWithCognito(ROUTES.checkout)
+    }
+  }
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
@@ -61,7 +75,7 @@ export default function CartPage() {
 
           <div className="lg:col-span-1">
             <div className="rounded-lg border border-border bg-background">
-              <CartSummary totalPrice={totalPrice} onCheckout={() => {}} />
+              <CartSummary totalPrice={totalPrice} isAuthLoading={isLoading} onCheckout={handleCheckoutClick} />
             </div>
           </div>
         </div>

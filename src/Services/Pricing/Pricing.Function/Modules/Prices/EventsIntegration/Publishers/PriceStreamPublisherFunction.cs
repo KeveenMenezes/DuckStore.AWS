@@ -46,7 +46,8 @@ public partial class Functions
             if (gatewayCost is not null)
             {
                 breakdown = InstallmentCalculator.Calculate(
-                    price.Cost, price.NominalPrice, gatewayCost, installmentOptions.MinMarginPercent);
+                    price.Cost, price.NominalPrice, gatewayCost, installmentOptions.MinMarginPercent,
+                    installmentOptions.ValueTiers);
 
                 var activeDiscount = await campaignRepository.GetActiveDiscountForProductAsync(
                     Guid.Parse(price.ProductId));
@@ -54,7 +55,8 @@ public partial class Functions
                 if (activeDiscount is not null)
                 {
                     var discount = DiscountValue.Of(activeDiscount.Type, activeDiscount.Amount);
-                    breakdown = InstallmentCalculator.ApplyDiscount(breakdown, price.NominalPrice, gatewayCost, discount);
+                    breakdown = InstallmentCalculator.ApplyDiscount(
+                        breakdown, price.NominalPrice, gatewayCost, discount, installmentOptions.ValueTiers);
                 }
             }
 
