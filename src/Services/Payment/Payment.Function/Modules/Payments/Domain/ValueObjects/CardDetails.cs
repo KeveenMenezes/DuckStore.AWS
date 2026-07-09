@@ -21,9 +21,13 @@ public class CardDetails : ValueObject
 
     public static CardDetails Of(string cardNumber, string expiration, string cvv, PaymentMethod paymentMethod)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(cardNumber);
-        ArgumentException.ThrowIfNullOrWhiteSpace(cvv);
-        ArgumentOutOfRangeException.ThrowIfGreaterThan(cvv.Length, 3);
+        // Cash carries no card at all — only Card payments (Debit/Credit) require one.
+        if (paymentMethod != PaymentMethod.Cash)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(cardNumber);
+            ArgumentException.ThrowIfNullOrWhiteSpace(cvv);
+            ArgumentOutOfRangeException.ThrowIfGreaterThan(cvv.Length, 3);
+        }
 
         return new CardDetails(cardNumber, expiration, cvv, paymentMethod);
     }

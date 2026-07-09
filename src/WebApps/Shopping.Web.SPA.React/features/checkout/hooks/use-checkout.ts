@@ -5,21 +5,29 @@ import type { FormEvent } from "react"
 import { useCart } from "@/features/cart/hooks/use-cart"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { getMyProfile } from "@/features/auth/services/profile.service"
-import { submitCheckout, validateCheckoutForm } from "@/features/checkout/services/checkout.service"
+import {
+  submitCheckout,
+  validateCheckoutForm,
+  getBasketInstallmentPlan,
+} from "@/features/checkout/services/checkout.service"
 import type {
   CheckoutFieldErrors,
   CheckoutFormData,
+  CheckoutPaymentMethod,
   CheckoutState,
 } from "@/features/checkout/types/checkout.types"
+import type { GqlBasketInstallmentPlan } from "@/graphql/types"
 
 const EMPTY_FORM: CheckoutFormData = {
   name: "",
   email: "",
   address: "",
   city: "",
+  paymentMethod: "card",
   cardNumber: "",
   cardExpiry: "",
   cardCvc: "",
+  installments: "1",
 }
 
 /**
@@ -35,6 +43,28 @@ export function useCheckout() {
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [formData, setFormData] = useState<CheckoutFormData>(EMPTY_FORM)
   const [errors, setErrors] = useState<CheckoutFieldErrors>({})
+  const [installmentPlan, setInstallmentPlan] = useState<GqlBasketInstallmentPlan | null>(null)
+
+  // Fetch the unified cart-level installment plan whenever the cart contents change, and default
+  // the selected installment count to the max interest-free option.
+  useEffect(() => {
+    let cancelled = false
+    const fetchPlan = items.length === 0
+      ? Promise.resolve(null)
+      : getBasketInstallmentPlan(items).catch(() => null)
+
+    fetchPlan.then((plan) => {
+      if (cancelled) return
+      setInstallmentPlan(plan)
+      if (plan) {
+        setFormData((prev) => ({
+          ...prev,
+          installments: String(plan.maxInstallmentsWithoutInterest),
+        }))
+      }
+    })
+    return () => { cancelled = true }
+  }, [items])
 
   // Pre-fill the shipping fields from the user's profile once authenticated. Only fills empty
   // fields so it never clobbers what the user has already typed.
@@ -56,8 +86,12 @@ export function useCheckout() {
     return () => { cancelled = true }
   }, [user])
 
-  const updateField = (field: keyof CheckoutFormData, value: string) => {
+  const updateField = (field: Exclude<keyof CheckoutFormData, "paymentMethod">, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const updatePaymentMethod = (paymentMethod: CheckoutPaymentMethod) => {
+    setFormData((prev) => ({ ...prev, paymentMethod }))
   }
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -101,7 +135,9 @@ export function useCheckout() {
     items,
     totalItems,
     totalPrice,
+    installmentPlan,
     updateField,
+    updatePaymentMethod,
     handleSubmit,
   }
 }

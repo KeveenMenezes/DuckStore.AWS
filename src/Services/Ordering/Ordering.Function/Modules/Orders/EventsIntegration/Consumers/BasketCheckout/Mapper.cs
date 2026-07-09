@@ -18,7 +18,8 @@ public static class BasketCheckoutMapper
             message.CardNumber,
             message.Expiration,
             message.Cvv,
-            (PaymentMethod)message.PaymentMethod);
+            (PaymentMethod)message.PaymentMethod,
+            message.Installments);
 
         return new CreateOrderCommand(
             CustomerId: message.CustomerId,

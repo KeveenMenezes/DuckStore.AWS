@@ -84,4 +84,14 @@ public class CreatePaymentTests
         result.ShouldHaveValidationErrorFor(x => x.CardNumber)
             .WithErrorMessage("Invalid card number");
     }
+
+    [Fact]
+    public void Validator_ShouldNotError_ForCash_EvenWithEmptyCardNumber()
+    {
+        var command = ValidCommand() with { CardNumber = "", Cvv = "", PaymentMethod = PaymentMethod.Cash };
+
+        var result = _validator.TestValidate(command);
+
+        result.ShouldNotHaveValidationErrorFor(x => x.CardNumber);
+    }
 }

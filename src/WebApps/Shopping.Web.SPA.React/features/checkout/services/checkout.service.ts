@@ -1,7 +1,33 @@
-import { gql } from "@/api"
+import { gql, gqlPublic } from "@/api"
 import { CHECKOUT_BASKET } from "@/api/mutations/order"
+import { GET_BASKET_INSTALLMENT_PLAN } from "@/api/queries/pricing"
 import type { CheckoutFormData, CheckoutFieldErrors } from "@/features/checkout/types/checkout.types"
-import type { GqlCheckoutResult } from "@/graphql/types"
+import type { CartItem } from "@/features/cart/types/cart.types"
+import type { GqlCheckoutResult, GqlBasketInstallmentPlan } from "@/graphql/types"
+
+// Mirrors Ordering.Function's PaymentMethod enum (Debit=1, Credit=2, Cash=3). The UI only ever
+// offers a Card/Cash choice — Card always maps to Credit, matching the previous card-only flow.
+const PAYMENT_METHOD_CODE: Record<CheckoutFormData["paymentMethod"], number> = {
+  card: 2,
+  cash: 3,
+}
+
+/**
+ * Fetch the unified, cart-level installment plan (sums cost/originalPrice across every item,
+ * then runs the whole cart through InstallmentCalculator as a single checkout transaction).
+ * Public/cookie-free — the caller supplies the items directly, same trust model as
+ * installmentPlanFor.
+ */
+export async function getBasketInstallmentPlan(
+  items: CartItem[],
+): Promise<GqlBasketInstallmentPlan | null> {
+  if (items.length === 0) return null
+  const data = await gqlPublic<{ basketInstallmentPlan: GqlBasketInstallmentPlan | null }>(
+    GET_BASKET_INSTALLMENT_PLAN,
+    { items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })) },
+  )
+  return data.basketInstallmentPlan
+}
 
 /**
  * Submit the cart for checkout via GraphQL. Checkout is Cognito-only: the AppSync resolver
@@ -17,6 +43,8 @@ export async function submitCheckout(
   const firstName = nameParts[0] ?? "Guest"
   const lastName = nameParts.slice(1).join(" ") || "-"
 
+  const isCash = formData.paymentMethod === "cash"
+
   // Parse "MM/YY" → "MM/20YY"
   const [month = "01", year = "26"] = formData.cardExpiry.split("/")
   const expiration = `${month.padStart(2, "0")}/20${year.trim()}`
@@ -31,11 +59,14 @@ export async function submitCheckout(
       country: "US",
       state: formData.city,
       zipCode: "00000",
-      cardName: formData.name,
-      cardNumber: formData.cardNumber.replace(/\s/g, ""),
-      expiration,
-      cvv: formData.cardCvc,
-      paymentMethod: 0,
+      // Cash carries no card at all — the payment confirmation (QR code) is a separate,
+      // later step. Only the name/email already collected above link the order to the customer.
+      cardName: isCash ? null : formData.name,
+      cardNumber: isCash ? null : formData.cardNumber.replace(/\s/g, ""),
+      expiration: isCash ? null : expiration,
+      cvv: isCash ? null : formData.cardCvc,
+      paymentMethod: PAYMENT_METHOD_CODE[formData.paymentMethod],
+      installments: isCash ? 1 : Number(formData.installments) || 1,
     },
   })
 
@@ -53,10 +84,13 @@ export function validateCheckoutForm(data: CheckoutFormData): CheckoutFieldError
   if (!data.email.trim() || !data.email.includes("@")) errors.email = "Invalid email"
   // Address is optional (users can complete it later in /my-profile).
   if (!data.city.trim()) errors.city = "City is required"
-  if (!data.cardNumber.trim() || data.cardNumber.replace(/\s/g, "").length < 16) {
-    errors.cardNumber = "Invalid card number"
+  // Cash needs no card at all — payment confirmation is a separate, later step.
+  if (data.paymentMethod === "card") {
+    if (!data.cardNumber.trim() || data.cardNumber.replace(/\s/g, "").length < 16) {
+      errors.cardNumber = "Invalid card number"
+    }
+    if (!data.cardExpiry.trim()) errors.cardExpiry = "Expiry is required"
+    if (!data.cardCvc.trim() || data.cardCvc.length < 3) errors.cardCvc = "Invalid CVC"
   }
-  if (!data.cardExpiry.trim()) errors.cardExpiry = "Expiry is required"
-  if (!data.cardCvc.trim() || data.cardCvc.length < 3) errors.cardCvc = "Invalid CVC"
   return errors
 }

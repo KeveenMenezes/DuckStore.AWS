@@ -6,6 +6,7 @@ const eslintConfig = [
     ignores: [
       '.next/**',
       '.open-next/**',
+      '.sst/**',
       'node_modules/**',
       'components/ui/**', // shadcn/ui primitives — not hand-maintained (see CLAUDE.md)
     ],

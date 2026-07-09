@@ -204,6 +204,11 @@ export class AppSyncApi extends Construct {
       'GetInstallmentPlanFn',
       'pricing-get-installment-plan',
     );
+    const getBasketInstallmentPlanFn = lambda.Function.fromFunctionName(
+      this,
+      'GetBasketInstallmentPlanFn',
+      'pricing-get-basket-installment-plan',
+    );
     const setGatewayCostFn = lambda.Function.fromFunctionName(
       this,
       'SetGatewayCostFn',
@@ -231,6 +236,10 @@ export class AppSyncApi extends Construct {
     const createCampaignDs = api.addLambdaDataSource('CreateCampaignDS', createCampaignFn);
     const endCampaignDs = api.addLambdaDataSource('EndCampaignDS', endCampaignFn);
     const getInstallmentPlanDs = api.addLambdaDataSource('GetInstallmentPlanDS', getInstallmentPlanFn);
+    const getBasketInstallmentPlanDs = api.addLambdaDataSource(
+      'GetBasketInstallmentPlanDS',
+      getBasketInstallmentPlanFn,
+    );
     const setGatewayCostDs = api.addLambdaDataSource('SetGatewayCostDS', setGatewayCostFn);
     const getProductDs = api.addLambdaDataSource('GetProductDS', getProductFn);
     const searchProductsDs = api.addLambdaDataSource('SearchProductsDS', searchProductsFn);
@@ -249,6 +258,7 @@ export class AppSyncApi extends Construct {
     // Direct DynamoDB GetItem + read-time expiry check (ADR-0026) — replaces couponFor.
     this.resolver(productDiscountsDs, 'CurrentDiscountForProductResolver', 'Query', 'currentDiscountForProduct');
     this.resolver(getInstallmentPlanDs, 'InstallmentPlanForResolver', 'Query', 'installmentPlanFor');
+    this.resolver(getBasketInstallmentPlanDs, 'BasketInstallmentPlanResolver', 'Query', 'basketInstallmentPlan');
 
     // Authenticated queries (Cognito default — any group)
     this.resolver(cartsDs, 'BasketResolver', 'Query', 'basket');
