@@ -36,7 +36,8 @@ public class CreateOrderHandler(
                 orderDto.Payment.CardNumber,
                 orderDto.Payment.Expiration,
                 orderDto.Payment.Cvv,
-                orderDto.Payment.PaymentMethod));
+                orderDto.Payment.PaymentMethod,
+                orderDto.Payment.Installments));
 
         foreach (var orderItemDto in orderDto.OrderItems)
         {

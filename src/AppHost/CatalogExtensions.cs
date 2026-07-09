@@ -6,6 +6,7 @@ namespace AppHost.Catalog;
 public static class CatalogExtensions
 {
     private const string ProductsTableName = "products";
+    private const string CategoriesTableName = "categories";
 
     public static IResourceBuilder<ProjectResource> AddCatalogLambdas(
         this IDistributedApplicationBuilder builder,
@@ -31,6 +32,15 @@ public static class CatalogExtensions
         // Rating aggregation moved to CatalogView (OpenSearch) — the old catalog-review-created-
         // consumer Lambda is gone (ADR-0027, supersedes ADR-0011 §4). ProductStreamPublisher now
         // also emits CatalogProductSyncEvent (CatalogSearchSyncRule) for CatalogView to consume.
+
+        builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
+                "catalog-category-stream-publisher",
+                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_CategoryStreamPublisher_Generated::CategoryStreamPublisher")
+            .WaitForCompletion(catalogSeeder)
+            .WithReference(dynamoDb)
+            .WithDynamoDBStreamsEventSource(CategoriesTableName)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
         return catalogSeeder;
     }

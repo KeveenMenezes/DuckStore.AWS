@@ -3,18 +3,30 @@ import { cookies } from 'next/headers'
 import { GUEST_COOKIE } from '@/lib/identity'
 import { MERGE_BASKET } from '@/api/mutations/order'
 
+// Only same-origin relative paths are accepted (rejects "//host", "http://host", etc.)
+// to avoid turning the stored redirect into an open redirect.
+function sanitizeReturnTo(next: string | null | undefined): string | null {
+  if (!next || !/^\/(?!\/)/.test(next)) return null
+  return next
+}
+
 /**
  * Merges the visitor's GUEST# cart into the just-authenticated USER# cart. Best-effort:
- * a merge failure must not block login. The AppSync resolver derives USER#<sub> from the
- * access token; we only supply the GUEST#<guestId> the BFF read from the guest cookie.
+ * a merge failure must not block login. Goes through this app's own /api/graphql (same
+ * endpoint every other GraphQL call uses, whichever GRAPHQL_BACKEND is active) instead of
+ * calling AppSync directly, so it also works locally against the Yoga backend — not just
+ * when APPSYNC_URL is set. The access_token/guest_id cookies aren't on this request (the
+ * browser doesn't have them yet), so we forward them explicitly via a synthesized Cookie
+ * header — resolveOwner()/prepareBasketRequest resolve identity from it exactly as they
+ * would for any browser-originated request.
  */
-async function mergeGuestCart(accessToken: string, guestId: string): Promise<void> {
+async function mergeGuestCart(siteUrl: string, accessToken: string, guestId: string): Promise<void> {
   try {
-    await fetch(process.env.APPSYNC_URL!, {
+    await fetch(new URL('/api/graphql', siteUrl), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${accessToken}`,
+        Cookie: `access_token=${accessToken}; ${GUEST_COOKIE}=${guestId}`,
       },
       body: JSON.stringify({
         query: MERGE_BASKET,
@@ -47,6 +59,7 @@ export async function GET(req: NextRequest): Promise<Response> {
   const storedState = cookieStore.get('pkce_state')?.value
   const verifier = cookieStore.get('pkce_verifier')?.value
   const guestId = cookieStore.get(GUEST_COOKIE)?.value
+  const returnTo = sanitizeReturnTo(cookieStore.get('post_login_redirect')?.value)
 
   if (!code || !state || state !== storedState || !verifier) {
     return NextResponse.redirect(new URL('/?auth_error=invalid_state', siteUrl))
@@ -84,15 +97,16 @@ export async function GET(req: NextRequest): Promise<Response> {
   }
 
   // Merge the guest cart into the new session before clearing the guest cookie (login → merge).
-  if (guestId && process.env.APPSYNC_URL) {
-    await mergeGuestCart(access_token, guestId)
+  if (guestId) {
+    await mergeGuestCart(siteUrl, access_token, guestId)
   }
 
-  const response = NextResponse.redirect(new URL('/', siteUrl))
+  const response = NextResponse.redirect(new URL(returnTo ?? '/', siteUrl))
   response.cookies.set('access_token', access_token, cookieOpts)
   response.cookies.set('id_token', id_token, cookieOpts)
   response.cookies.delete('pkce_verifier')
   response.cookies.delete('pkce_state')
+  response.cookies.delete('post_login_redirect')
   // Guest identity is now merged into the user cart — retire the guest cookie.
   if (guestId) response.cookies.delete(GUEST_COOKIE)
 

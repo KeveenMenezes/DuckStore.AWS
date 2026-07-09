@@ -5,5 +5,6 @@ namespace Payment.Function.Modules.Payments.Domain.Enums;
 public enum PaymentMethod
 {
     Debit = 1,
-    Credit = 2
+    Credit = 2,
+    Cash = 3
 }

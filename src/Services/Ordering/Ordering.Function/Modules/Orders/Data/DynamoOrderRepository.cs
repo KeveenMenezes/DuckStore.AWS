@@ -75,7 +75,9 @@ public class DynamoOrderRepository(IAmazonDynamoDB dynamoDb) : IOrderRepository
                     ["CardNumber"] = new(order.Payment.CardNumber),
                     ["Expiration"] = new(order.Payment.Expiration),
                     ["Cvv"] = new(order.Payment.Cvv),
-                    ["PaymentMethod"] = new(order.Payment.PaymentMethod.ToString())
+                    ["PaymentMethod"] = new(order.Payment.PaymentMethod.ToString()),
+                    ["Installments"] = new AttributeValue
+                        { N = order.Payment.Installments.ToString(CultureInfo.InvariantCulture) }
                 }
             },
             ["OrderItems"] = new AttributeValue
@@ -115,7 +117,8 @@ public class DynamoOrderRepository(IAmazonDynamoDB dynamoDb) : IOrderRepository
             paymentMap["CardNumber"].S,
             paymentMap["Expiration"].S,
             paymentMap["Cvv"].S,
-            Enum.Parse<PaymentMethod>(paymentMap["PaymentMethod"].S));
+            Enum.Parse<PaymentMethod>(paymentMap["PaymentMethod"].S),
+            int.Parse(paymentMap["Installments"].N, CultureInfo.InvariantCulture));
 
         var orderItems = (item.TryGetValue("OrderItems", out var items) ? items.L : [])
             .Select(i => OrderItem.Load(

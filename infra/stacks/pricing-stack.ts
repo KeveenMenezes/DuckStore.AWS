@@ -37,6 +37,10 @@ export class PricingStack extends cdk.Stack {
       value: lambdas.getInstallmentPlan.functionArn,
       exportName: `${this.stackName}-GetInstallmentPlanArn`,
     });
+    new cdk.CfnOutput(this, 'GetBasketInstallmentPlanArn', {
+      value: lambdas.getBasketInstallmentPlan.functionArn,
+      exportName: `${this.stackName}-GetBasketInstallmentPlanArn`,
+    });
     new cdk.CfnOutput(this, 'CreateCampaignArn', {
       value: lambdas.createCampaign.functionArn,
       exportName: `${this.stackName}-CreateCampaignArn`,

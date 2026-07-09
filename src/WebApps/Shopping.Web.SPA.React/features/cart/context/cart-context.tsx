@@ -28,6 +28,7 @@ interface CartContextType {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
   isLoading: boolean
+  flushCart: () => Promise<void>
 }
 
 const CartContext = createContext<CartContextType | null>(null)
@@ -41,6 +42,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Always-current snapshot of items — lets addItem read state without being in its dep array.
   const itemsRef = useRef(items)
   useEffect(() => { itemsRef.current = items }, [items])
+  // Pending debounced sync timer — flushCart cancels it and syncs immediately instead.
+  const pendingSyncRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -83,10 +86,22 @@ export function CartProvider({ children }: { children: ReactNode }) {
     const timer = setTimeout(() => {
       // ownerId is injected by the BFF; guests and users both persist through the same path.
       // Fails silently (e.g. local-simulated users) — same tolerance as the hydrate effect above.
+      pendingSyncRef.current = null
       syncCartToBasket(items).catch(() => {})
     }, 300)
+    pendingSyncRef.current = timer
     return () => clearTimeout(timer)
   }, [items, isLoading])
+
+  // Cancels any pending debounced sync and persists immediately — used before a hard
+  // navigation (e.g. redirecting to login) that would otherwise abandon the debounce timer.
+  const flushCart = useCallback(async (): Promise<void> => {
+    if (pendingSyncRef.current) {
+      clearTimeout(pendingSyncRef.current)
+      pendingSyncRef.current = null
+    }
+    await syncCartToBasket(itemsRef.current).catch(() => {})
+  }, [])
 
   const addItem = useCallback((product: Product): boolean => {
     const existing = itemsRef.current.find((item) => item.product.id === product.id)
@@ -163,8 +178,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       isOpen,
       setIsOpen,
       isLoading,
+      flushCart,
     }),
-    [items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen, isLoading],
+    [items, addItem, removeItem, updateQuantity, clearCart, totalItems, totalPrice, isOpen, isLoading, flushCart],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

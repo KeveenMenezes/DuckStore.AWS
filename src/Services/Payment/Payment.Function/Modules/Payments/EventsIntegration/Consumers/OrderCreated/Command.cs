@@ -30,7 +30,8 @@ public class CreatePaymentCommandValidator : AbstractValidator<CreatePaymentComm
 
         RuleFor(x => x.CardNumber)
             .CreditCard()
-            .WithMessage("Invalid card number");
+            .WithMessage("Invalid card number")
+            .When(x => x.PaymentMethod != PaymentMethod.Cash);
 
         RuleFor(x => x.PaymentMethod)
             .IsInEnum()

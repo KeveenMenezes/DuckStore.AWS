@@ -16,11 +16,14 @@ export function request(ctx) {
         Country: input.country,
         State: input.state,
         ZipCode: input.zipCode,
-        CardName: input.cardName,
-        CardNumber: input.cardNumber,
-        Expiration: input.expiration,
-        Cvv: input.cvv,
+        // Optional — empty for Cash, which carries no card (BasketCheckoutDto's fields are
+        // plain non-nullable strings, so default explicitly rather than passing null through).
+        CardName: input.cardName ?? '',
+        CardNumber: input.cardNumber ?? '',
+        Expiration: input.expiration ?? '',
+        Cvv: input.cvv ?? '',
         PaymentMethod: input.paymentMethod,
+        Installments: input.installments,
       },
     },
   }

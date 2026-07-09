@@ -1,12 +1,20 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes, createHash } from 'node:crypto'
+
+// Only same-origin relative paths are accepted (rejects "//host", "http://host", etc.)
+// to avoid turning `next` into an open redirect.
+function sanitizeReturnTo(next: string | null): string | null {
+  if (!next || !/^\/(?!\/)/.test(next)) return null
+  return next
+}
 
 /**
  * Initiates the Cognito Hosted UI PKCE authorization code flow.
  * Generates verifier + challenge server-side, stores them in httpOnly cookies,
  * then redirects the browser to the Cognito login page.
  */
-export async function GET(): Promise<Response> {
+export async function GET(req: NextRequest): Promise<Response> {
+  const returnTo = sanitizeReturnTo(req.nextUrl.searchParams.get('next'))
   const verifier = randomBytes(32).toString('base64url')
   const challenge = createHash('sha256').update(verifier).digest('base64url')
   const state = randomBytes(16).toString('hex')
@@ -34,6 +42,7 @@ export async function GET(): Promise<Response> {
   const cookieOpts = { httpOnly: true, sameSite: 'lax' as const, maxAge: 300, path: '/' }
   response.cookies.set('pkce_verifier', verifier, cookieOpts)
   response.cookies.set('pkce_state', state, cookieOpts)
+  if (returnTo) response.cookies.set('post_login_redirect', returnTo, cookieOpts)
 
   return response
 }
