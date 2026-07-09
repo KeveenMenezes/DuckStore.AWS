@@ -71,6 +71,17 @@ type InstallmentPlan @aws_api_key @aws_cognito_user_pools {
   installments: [InstallmentOption!]!
 }
 
+# Cart-level equivalent of InstallmentPlan: every item's Cost/NominalPrice is summed first (the
+# whole cart is billed as a single checkout transaction) and run through the same cost-floor
+# calculation, so a mixed-margin cart resolves to one unified plan instead of N per-product ones.
+type BasketInstallmentPlan @aws_api_key @aws_cognito_user_pools {
+  totalOriginalPrice: Float!
+  price: Float!
+  cashPrice: Float!
+  maxInstallmentsWithoutInterest: Int!
+  installments: [InstallmentOption!]!
+}
+
 type Campaign {
   id: ID!
   name: String!
@@ -153,11 +164,13 @@ type ShippingAddress {
 }
 
 type OrderPayment {
-  cardName: String!
-  cardNumber: String!
-  expiration: String!
-  cvv: String!
+  # Null for Cash — no card is collected for that method.
+  cardName: String
+  cardNumber: String
+  expiration: String
+  cvv: String
   paymentMethod: Int!
+  installments: Int!
 }
 
 type OrderItem {
@@ -252,11 +265,18 @@ input CheckoutInput {
   country: String!
   state: String!
   zipCode: String!
-  cardName: String!
-  cardNumber: String!
-  expiration: String!
-  cvv: String!
+  # Optional — omitted (or null) when paymentMethod is Cash.
+  cardName: String
+  cardNumber: String
+  expiration: String
+  cvv: String
   paymentMethod: Int!
+  installments: Int!
+}
+
+input BasketInstallmentItemInput {
+  productId: ID!
+  quantity: Int!
 }
 
 input CreateProductInput {
@@ -324,6 +344,10 @@ type Query {
 
   # Lambda resolver — public (API_KEY or Cognito); non-trivial calculation, not a key lookup (ADR-0009)
   installmentPlanFor(productId: ID!): InstallmentPlan @aws_api_key @aws_cognito_user_pools
+
+  # Lambda resolver — public (API_KEY or Cognito); sums cost/originalPrice across every cart item
+  # first, then runs the same InstallmentCalculator over the whole cart as one transaction (ADR-0009)
+  basketInstallmentPlan(items: [BasketInstallmentItemInput!]!): BasketInstallmentPlan @aws_api_key @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
   orders(pageSize: Int, nextToken: String): OrderPage!

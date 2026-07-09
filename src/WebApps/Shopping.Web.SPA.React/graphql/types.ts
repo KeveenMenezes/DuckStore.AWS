@@ -51,6 +51,21 @@ export interface GqlInstallmentPlan {
   installments: GqlInstallmentOption[]
 }
 
+// Cart-level equivalent of GqlInstallmentPlan — totals summed across every item first, then run
+// through the same cost-floor calculation as a single checkout transaction.
+export interface GqlBasketInstallmentPlan {
+  totalOriginalPrice: number
+  price: number
+  cashPrice: number
+  maxInstallmentsWithoutInterest: number
+  installments: GqlInstallmentOption[]
+}
+
+export interface BasketInstallmentItemInput {
+  productId: string
+  quantity: number
+}
+
 // One payment-gateway provider's operating costs (ADR-0028).
 export interface GqlGatewayCost {
   provider: string
@@ -171,11 +186,13 @@ export interface GqlShippingAddress {
 }
 
 export interface GqlOrderPayment {
-  cardName: string
-  cardNumber: string
-  expiration: string
-  cvv: string
+  // Null for Cash — no card is collected for that method.
+  cardName: string | null
+  cardNumber: string | null
+  expiration: string | null
+  cvv: string | null
   paymentMethod: number
+  installments: number
 }
 
 export interface GqlOrderItem {
@@ -228,11 +245,13 @@ export interface CheckoutInput {
   country: string
   state: string
   zipCode: string
-  cardName: string
-  cardNumber: string
-  expiration: string
-  cvv: string
+  // Optional — omitted (or null) when paymentMethod is Cash.
+  cardName?: string | null
+  cardNumber?: string | null
+  expiration?: string | null
+  cvv?: string | null
   paymentMethod: number
+  installments: number
 }
 
 export interface CreateProductInput {

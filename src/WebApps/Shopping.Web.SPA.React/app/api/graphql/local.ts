@@ -108,6 +108,7 @@ function mapOrder(item: Record<string, unknown>) {
       expiration: (pay.Expiration as string) ?? '',
       cvv: (pay.Cvv as string) ?? '',
       paymentMethod: (pay.PaymentMethod as number) ?? 0,
+      installments: (pay.Installments as number) ?? 1,
     },
     orderItems: rawItems.map(oi => ({
       productId: String(oi.ProductId ?? ''),
@@ -376,6 +377,35 @@ const resolvers = {
       }
     },
 
+    // Sums cost/originalPrice across every cart item, then runs the whole cart through the same
+    // cost-floor calculation as a single checkout transaction (ADR-0009).
+    async basketInstallmentPlan(
+      _: unknown,
+      { items }: { items: Array<{ productId: string; quantity: number }> },
+    ) {
+      const body = await invokeLambda<{
+        TotalOriginalPrice: number
+        Price: number
+        CashPrice: number
+        MaxInstallmentsWithoutInterest: number
+        InstallmentPlan: { Count: number; Value: number; TotalValue: number; HasInterest: boolean }[]
+      }>('pricing-get-basket-installment-plan', {
+        Items: items.map(i => ({ ProductId: i.productId, Quantity: i.quantity })),
+      })
+      return {
+        totalOriginalPrice: body.TotalOriginalPrice,
+        price: body.Price,
+        cashPrice: body.CashPrice,
+        maxInstallmentsWithoutInterest: body.MaxInstallmentsWithoutInterest,
+        installments: (body.InstallmentPlan ?? []).map(e => ({
+          count: e.Count,
+          value: e.Value,
+          totalValue: e.TotalValue,
+          hasInterest: e.HasInterest,
+        })),
+      }
+    },
+
     async reviewsByProduct(
       _: unknown,
       { productId, pageSize = 20, nextToken }: { productId: string; pageSize?: number; nextToken?: string },
@@ -477,11 +507,13 @@ const resolvers = {
           Country: input.country,
           State: input.state,
           ZipCode: input.zipCode,
-          CardName: input.cardName,
-          CardNumber: input.cardNumber,
-          Expiration: input.expiration,
-          Cvv: input.cvv,
+          // Optional — empty for Cash, which carries no card.
+          CardName: input.cardName ?? '',
+          CardNumber: input.cardNumber ?? '',
+          Expiration: input.expiration ?? '',
+          Cvv: input.cvv ?? '',
           PaymentMethod: input.paymentMethod,
+          Installments: input.installments,
         },
       })
       return { isSuccess: body.IsSuccess }

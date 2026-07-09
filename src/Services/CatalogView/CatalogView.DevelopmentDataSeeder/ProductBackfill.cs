@@ -102,7 +102,31 @@ public sealed class ProductBackfill(IAmazonDynamoDB dynamoDb, IProductSearchInde
             ? margin
             : 5m;
 
-        return new BackfillGatewayCost(flatFee, installmentRates, minMarginPercent);
+        return new BackfillGatewayCost(flatFee, installmentRates, minMarginPercent, ParseValueTiers(configuration));
+    }
+
+    // Mirrors InstallmentOptions.ParseValueTiers (Pricing.Function) — same defensive, gap-stops
+    // parsing, same ascending sort so BackfillGatewayCost can do a simple forward scan.
+    private static List<(decimal MinAmount, int MaxInstallments)> ParseValueTiers(IConfiguration configuration)
+    {
+        var tiers = new List<(decimal MinAmount, int MaxInstallments)>();
+
+        for (var index = 0; ; index++)
+        {
+            var minAmountParsed = decimal.TryParse(
+                configuration[$"Installments:ValueTiers:{index}:MinAmount"],
+                NumberStyles.Number, CultureInfo.InvariantCulture, out var minAmount);
+            var maxInstallmentsParsed = int.TryParse(
+                configuration[$"Installments:ValueTiers:{index}:MaxInstallments"],
+                NumberStyles.Integer, CultureInfo.InvariantCulture, out var maxInstallments);
+
+            if (!minAmountParsed || !maxInstallmentsParsed)
+                break;
+
+            tiers.Add((minAmount, maxInstallments));
+        }
+
+        return [.. tiers.OrderBy(t => t.MinAmount)];
     }
 
     private async Task<Dictionary<string, (int Sum, int Count)>> ScanRatingTotalsAsync(
@@ -259,7 +283,8 @@ public sealed class ProductBackfill(IAmazonDynamoDB dynamoDb, IProductSearchInde
     private sealed record BackfillGatewayCost(
         decimal FlatFeePerTransaction,
         Dictionary<int, decimal> InstallmentRates,
-        decimal MinMarginPercent)
+        decimal MinMarginPercent,
+        List<(decimal MinAmount, int MaxInstallments)> ValueTiers)
     {
         public (decimal Price, decimal CashPrice, int MaxInstallments, decimal MaxInstallmentValue, List<(int, decimal, decimal, bool)> Plan)
             Calculate(decimal cost, decimal originalPrice)
@@ -290,38 +315,67 @@ public sealed class ProductBackfill(IAmazonDynamoDB dynamoDb, IProductSearchInde
             return (discountedPrice, cashPrice, maxInstallments, maxInstallmentValue, plan);
         }
 
+        // Hybrid cap (ADR-0028 §2): final limit is the higher of the margin-based ceiling walk and
+        // the value-tier lookup on originalPrice (this product's own price, i.e. a "cart of 1"),
+        // capped to the highest installment count the active provider's rate table actually offers.
         private (int MaxInstallments, decimal MaxInstallmentValue, List<(int, decimal, decimal, bool)> Plan) BuildPlan(
             decimal price, decimal originalPrice)
         {
-            var maxInstallments = 1;
+            var marginBasedLimit = ComputeMarginBasedLimit(price, originalPrice);
+            var tierBasedLimit = ComputeTierBasedLimit(originalPrice);
+            var highestAvailableCount = InstallmentRates.Keys.Count == 0 ? 1 : InstallmentRates.Keys.Max();
+            var finalLimit = Math.Min(Math.Max(marginBasedLimit, tierBasedLimit), highestAvailableCount);
+
             var maxInstallmentValue = price;
             var plan = new List<(int, decimal, decimal, bool)>();
-            var bufferExhausted = false;
 
             foreach (var count in InstallmentRates.Keys.Where(k => k >= 2).OrderBy(k => k))
             {
                 var rate = InstallmentRates[count];
                 var totalAtCount = price * (1 + rate / 100m);
-
-                bool hasInterest;
                 var value = Round(totalAtCount / count);
+                var hasInterest = count > finalLimit;
 
-                if (!bufferExhausted && totalAtCount <= originalPrice)
-                {
-                    maxInstallments = count;
+                if (!hasInterest)
                     maxInstallmentValue = value;
-                    hasInterest = false;
-                }
-                else
-                {
-                    bufferExhausted = true;
-                    hasInterest = true;
-                }
 
                 plan.Add((count, value, value * count, hasInterest));
             }
 
-            return (maxInstallments, maxInstallmentValue, plan);
+            return (finalLimit, maxInstallmentValue, plan);
+        }
+
+        private int ComputeMarginBasedLimit(decimal price, decimal originalPrice)
+        {
+            var limit = 1;
+            var bufferExhausted = false;
+
+            foreach (var count in InstallmentRates.Keys.Where(k => k >= 2).OrderBy(k => k))
+            {
+                var totalAtCount = price * (1 + InstallmentRates[count] / 100m);
+
+                if (!bufferExhausted && totalAtCount <= originalPrice)
+                    limit = count;
+                else
+                    bufferExhausted = true;
+            }
+
+            return limit;
+        }
+
+        private int ComputeTierBasedLimit(decimal totalBasketPrice)
+        {
+            var limit = 0;
+
+            foreach (var tier in ValueTiers)
+            {
+                if (tier.MinAmount > totalBasketPrice)
+                    break;
+
+                limit = tier.MaxInstallments;
+            }
+
+            return limit;
         }
 
         private static decimal Round(decimal value) => Math.Round(value, 2, MidpointRounding.AwayFromZero);

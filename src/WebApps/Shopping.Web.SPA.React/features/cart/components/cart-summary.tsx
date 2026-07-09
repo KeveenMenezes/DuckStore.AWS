@@ -9,10 +9,11 @@ import { ROUTES } from "@/shared/constants/routes"
 
 interface CartSummaryProps {
   totalPrice: number
-  onCheckout: () => void
+  isAuthLoading: boolean
+  onCheckout: (e: React.MouseEvent<HTMLAnchorElement>) => void
 }
 
-export function CartSummary({ totalPrice, onCheckout }: CartSummaryProps) {
+export function CartSummary({ totalPrice, isAuthLoading, onCheckout }: CartSummaryProps) {
   return (
     <div className="border-t border-border p-4">
       <div className="flex flex-col gap-2">
@@ -30,8 +31,13 @@ export function CartSummary({ totalPrice, onCheckout }: CartSummaryProps) {
           <span className="text-primary">{formatBRL(totalPrice)}</span>
         </div>
       </div>
-      <Link href={ROUTES.checkout} onClick={onCheckout}>
-        <Button className="mt-4 w-full gap-2" size="lg">
+      <Link
+        href={ROUTES.checkout}
+        onClick={onCheckout}
+        aria-disabled={isAuthLoading}
+        className={isAuthLoading ? "pointer-events-none" : undefined}
+      >
+        <Button className="mt-4 w-full gap-2" size="lg" disabled={isAuthLoading}>
           <ShoppingBag className="h-4 w-4" />
           Checkout
         </Button>

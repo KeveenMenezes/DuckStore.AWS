@@ -83,7 +83,7 @@ export function Header() {
                     variant="ghost"
                     size="sm"
                     className="gap-1.5 text-muted-foreground hover:text-foreground"
-                    onClick={loginWithCognito}
+                    onClick={() => loginWithCognito()}
                   >
                     <LogIn className="h-4 w-4" />
                     Sign in
@@ -137,7 +137,7 @@ export function Header() {
                     variant="outline"
                     size="sm"
                     className="flex-1 gap-1.5"
-                    onClick={loginWithCognito}
+                    onClick={() => loginWithCognito()}
                   >
                     <LogIn className="h-4 w-4" />
                     Sign in

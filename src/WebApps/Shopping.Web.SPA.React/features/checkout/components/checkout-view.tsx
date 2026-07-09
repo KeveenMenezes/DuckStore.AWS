@@ -12,7 +12,20 @@ import { CheckoutProcessing } from "@/features/checkout/components/checkout-proc
 import { CheckoutSuccess } from "@/features/checkout/components/checkout-success"
 
 export function CheckoutView() {
-  const { state, orderId, formData, errors, checkoutError, items, totalItems, totalPrice, updateField, handleSubmit } = useCheckout()
+  const {
+    state,
+    orderId,
+    formData,
+    errors,
+    checkoutError,
+    items,
+    totalItems,
+    totalPrice,
+    installmentPlan,
+    updateField,
+    updatePaymentMethod,
+    handleSubmit,
+  } = useCheckout()
 
   if (items.length === 0 && state !== "success") {
     return <CheckoutEmpty />
@@ -48,10 +61,18 @@ export function CheckoutView() {
           formData={formData}
           errors={errors}
           totalPrice={totalPrice}
+          installmentPlan={installmentPlan}
           onFieldChange={updateField}
+          onPaymentMethodChange={updatePaymentMethod}
           onSubmit={handleSubmit}
         />
-        <CheckoutOrderSummary items={items} totalItems={totalItems} totalPrice={totalPrice} />
+        <CheckoutOrderSummary
+          items={items}
+          totalItems={totalItems}
+          totalPrice={totalPrice}
+          installmentPlan={installmentPlan}
+          selectedInstallments={Number(formData.installments) || 1}
+        />
       </div>
     </div>
   )

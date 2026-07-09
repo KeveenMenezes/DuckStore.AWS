@@ -5,4 +5,5 @@ public record PaymentDto(
     string CardNumber,
     string Expiration,
     string Cvv,
-    PaymentMethod PaymentMethod);
+    PaymentMethod PaymentMethod,
+    int Installments);

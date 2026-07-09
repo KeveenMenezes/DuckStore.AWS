@@ -21,4 +21,5 @@ public class BasketCheckoutDto
     public string Expiration { get; set; } = null!;
     public string Cvv { get; set; } = null!;
     public int PaymentMethod { get; set; }
+    public int Installments { get; set; }
 }

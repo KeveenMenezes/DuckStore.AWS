@@ -5,19 +5,52 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { CreditCard } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { CreditCard, Wallet } from "lucide-react"
 import { formatBRL } from "@/shared/lib/format"
-import type { CheckoutFieldErrors, CheckoutFormData } from "@/features/checkout/types/checkout.types"
+import type {
+  CheckoutFieldErrors,
+  CheckoutFormData,
+  CheckoutPaymentMethod,
+} from "@/features/checkout/types/checkout.types"
+import type { GqlBasketInstallmentPlan } from "@/graphql/types"
 
 interface CheckoutFormProps {
   formData: CheckoutFormData
   errors: CheckoutFieldErrors
   totalPrice: number
-  onFieldChange: (field: keyof CheckoutFormData, value: string) => void
+  // The unified, cart-level installment plan (null while loading or when the cart is empty).
+  installmentPlan: GqlBasketInstallmentPlan | null
+  onFieldChange: (field: Exclude<keyof CheckoutFormData, "paymentMethod">, value: string) => void
+  onPaymentMethodChange: (method: CheckoutPaymentMethod) => void
   onSubmit: (e: FormEvent<HTMLFormElement>) => void | Promise<void>
 }
 
-export function CheckoutForm({ formData, errors, totalPrice, onFieldChange, onSubmit }: CheckoutFormProps) {
+export function CheckoutForm({
+  formData,
+  errors,
+  totalPrice,
+  installmentPlan,
+  onFieldChange,
+  onPaymentMethodChange,
+  onSubmit,
+}: CheckoutFormProps) {
+  const isCash = formData.paymentMethod === "cash"
+  // count=1 is the plan's own 1x card price — not returned in `installments` (spec: redundant to
+  // repeat), so it's prepended here, same convention as ProductPrice's payment-methods dialog.
+  const installmentOptions = installmentPlan
+    ? [
+        { count: 1, value: installmentPlan.price, hasInterest: false },
+        ...installmentPlan.installments,
+      ]
+    : []
   return (
     <form onSubmit={onSubmit} className="flex flex-col gap-6 lg:col-span-3">
       <Card className="border-border bg-card">
@@ -69,35 +102,89 @@ export function CheckoutForm({ formData, errors, totalPrice, onFieldChange, onSu
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          <FormField
-            id="cardNumber"
-            label="Card Number"
-            placeholder="0000 0000 0000 0000"
-            maxLength={19}
-            value={formData.cardNumber}
-            error={errors.cardNumber}
-            onChange={(value) => onFieldChange("cardNumber", value)}
-          />
-          <div className="grid grid-cols-2 gap-4">
-            <FormField
-              id="cardExpiry"
-              label="Expiry"
-              placeholder="MM/YY"
-              maxLength={5}
-              value={formData.cardExpiry}
-              error={errors.cardExpiry}
-              onChange={(value) => onFieldChange("cardExpiry", value)}
-            />
-            <FormField
-              id="cardCvc"
-              label="CVC"
-              placeholder="123"
-              maxLength={4}
-              value={formData.cardCvc}
-              error={errors.cardCvc}
-              onChange={(value) => onFieldChange("cardCvc", value)}
-            />
-          </div>
+          <RadioGroup
+            value={formData.paymentMethod}
+            onValueChange={(value) => onPaymentMethodChange(value as CheckoutPaymentMethod)}
+            className="grid grid-cols-2 gap-4"
+          >
+            <Label
+              htmlFor="payment-card"
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 has-[button[data-state=checked]]:border-primary"
+            >
+              <RadioGroupItem value="card" id="payment-card" />
+              <CreditCard className="h-4 w-4" />
+              Card
+            </Label>
+            <Label
+              htmlFor="payment-cash"
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-border p-3 has-[button[data-state=checked]]:border-primary"
+            >
+              <RadioGroupItem value="cash" id="payment-cash" />
+              <Wallet className="h-4 w-4" />
+              Cash
+            </Label>
+          </RadioGroup>
+
+          {isCash ? (
+            <p className="text-sm text-muted-foreground">
+              Pay in cash — a payment confirmation (QR code) will be generated after you confirm the order.
+            </p>
+          ) : (
+            <>
+              <FormField
+                id="cardNumber"
+                label="Card Number"
+                placeholder="0000 0000 0000 0000"
+                maxLength={19}
+                value={formData.cardNumber}
+                error={errors.cardNumber}
+                onChange={(value) => onFieldChange("cardNumber", value)}
+              />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  id="cardExpiry"
+                  label="Expiry"
+                  placeholder="MM/YY"
+                  maxLength={5}
+                  value={formData.cardExpiry}
+                  error={errors.cardExpiry}
+                  onChange={(value) => onFieldChange("cardExpiry", value)}
+                />
+                <FormField
+                  id="cardCvc"
+                  label="CVC"
+                  placeholder="123"
+                  maxLength={4}
+                  value={formData.cardCvc}
+                  error={errors.cardCvc}
+                  onChange={(value) => onFieldChange("cardCvc", value)}
+                />
+              </div>
+            </>
+          )}
+
+          {!isCash && installmentOptions.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="installments" className="text-foreground">
+                Installments
+              </Label>
+              <Select
+                value={formData.installments}
+                onValueChange={(value) => onFieldChange("installments", value)}
+              >
+                <SelectTrigger id="installments" className="w-full">
+                  <SelectValue placeholder="Select installments" />
+                </SelectTrigger>
+                <SelectContent>
+                  {installmentOptions.map(({ count, value, hasInterest }) => (
+                    <SelectItem key={count} value={String(count)}>
+                      {count}x of {formatBRL(value)} {hasInterest ? "(with interest)" : "(interest-free)"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </CardContent>
       </Card>
 
