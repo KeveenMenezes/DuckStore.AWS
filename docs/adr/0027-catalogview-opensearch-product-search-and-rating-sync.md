@@ -1,7 +1,12 @@
 # ADR-0027: CatalogView — Product Search and Rating Aggregation via Amazon OpenSearch
 
 ## Status
-**Proposed** — July 2026
+**Superseded** — July 2026 — by [ADR-0030](./0030-catalogview-dynamodb-drop-opensearch.md). A
+cost analysis of every way to actually run OpenSearch on AWS (managed domain, self-hosted EC2,
+OpenSearch Serverless) found all three disproportionate to CatalogView's actual needs; CatalogView
+is DynamoDB-backed instead, and `products`/`product` revert to Direct DynamoDB resolvers (§5 below
+is reversed). This ADR is kept for historical context on the CDC event design
+(`CatalogProductSyncEvent`, `PriceChangedEvent`), which ADR-0030 reuses unchanged.
 
 Supersedes [ADR-0011](./0011-review-bounded-context-rating-aggregation-via-cdc.md) §4 (the
 DynamoDB-based rating aggregation model in Catalog). ADR-0011 §1–3 (the `Review` bounded context,
