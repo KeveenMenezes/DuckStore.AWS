@@ -139,6 +139,13 @@ export class AppSyncApi extends Construct {
       grantIndexPermissions: true,
     });
     const userProfilesTable = dynamodb.Table.fromTableName(this, 'UserProfilesTable', 'user-profiles');
+    // CatalogView (ADR-0030, supersedes ADR-0027) — product read/search is DynamoDB-backed again;
+    // products/product are Direct resolvers, not Lambda.
+    const catalogViewProductsTable = dynamodb.Table.fromTableName(
+      this,
+      'CatalogViewProductsTable',
+      'catalogview-products',
+    );
 
     const productsDs = api.addDynamoDbDataSource('ProductsDS', productsTable);
     const categoriesDs = api.addDynamoDbDataSource('CategoriesDS', categoriesTable);
@@ -148,6 +155,10 @@ export class AppSyncApi extends Construct {
     const orderingDs = api.addDynamoDbDataSource('OrderingDS', orderingTable);
     const reviewsDs = api.addDynamoDbDataSource('ReviewsDS', reviewsTable);
     const userProfilesDs = api.addDynamoDbDataSource('UserProfilesDS', userProfilesTable);
+    const catalogViewProductsDs = api.addDynamoDbDataSource(
+      'CatalogViewProductsDS',
+      catalogViewProductsTable,
+    );
 
     // Explicit grants — addDynamoDbDataSource creates the role but does not auto-grant
     productsTable.grantReadWriteData(productsDs);
@@ -160,6 +171,7 @@ export class AppSyncApi extends Construct {
     orderingTable.grantReadWriteData(orderingDs);
     reviewsTable.grantReadWriteData(reviewsDs);
     userProfilesTable.grantReadWriteData(userProfilesDs);
+    catalogViewProductsTable.grantReadData(catalogViewProductsDs);
 
     // ------------------------------------------------------------------
     // Lambda data sources — imported by function name (no CF coupling)
@@ -214,19 +226,6 @@ export class AppSyncApi extends Construct {
       'SetGatewayCostFn',
       'pricing-set-gateway-cost',
     );
-    // CatalogView (ADR-0027) — product read/search now lives in OpenSearch, not Catalog's
-    // DynamoDB table. createProduct/updateProduct/deleteProduct stay Direct DynamoDB on Catalog.
-    const getProductFn = lambda.Function.fromFunctionName(
-      this,
-      'GetProductFn',
-      'catalogview-get-product',
-    );
-    const searchProductsFn = lambda.Function.fromFunctionName(
-      this,
-      'SearchProductsFn',
-      'catalogview-search-products',
-    );
-
     // addLambdaDataSource automatically grants lambda:InvokeFunction to the DS role
     const storeBasketDs = api.addLambdaDataSource('StoreBasketDS', storeBasketFn);
     const checkoutDs = api.addLambdaDataSource('CheckoutDS', checkoutFn);
@@ -241,17 +240,16 @@ export class AppSyncApi extends Construct {
       getBasketInstallmentPlanFn,
     );
     const setGatewayCostDs = api.addLambdaDataSource('SetGatewayCostDS', setGatewayCostFn);
-    const getProductDs = api.addLambdaDataSource('GetProductDS', getProductFn);
-    const searchProductsDs = api.addLambdaDataSource('SearchProductsDS', searchProductsFn);
 
     // ------------------------------------------------------------------
     // Resolvers — one JS file per (typeName, fieldName) pair
     // ------------------------------------------------------------------
 
     // Public queries (also accessible via API_KEY — @aws_api_key in schema)
-    // Product read/search — CatalogView Lambda over OpenSearch (ADR-0027), not Catalog DynamoDB.
-    this.resolver(searchProductsDs, 'ProductsResolver', 'Query', 'products');
-    this.resolver(getProductDs, 'ProductResolver', 'Query', 'product');
+    // Product read/search — CatalogView Direct DynamoDB resolvers (ADR-0030, supersedes ADR-0027's
+    // OpenSearch/Lambda design), not Catalog's products table.
+    this.resolver(catalogViewProductsDs, 'ProductsResolver', 'Query', 'products');
+    this.resolver(catalogViewProductsDs, 'ProductResolver', 'Query', 'product');
     this.resolver(categoriesDs, 'CategoriesResolver', 'Query', 'categories');
     this.resolver(reviewsDs, 'ReviewsByProductResolver', 'Query', 'reviewsByProduct');
     this.resolver(pricesDs, 'NominalPriceForResolver', 'Query', 'nominalPriceFor');

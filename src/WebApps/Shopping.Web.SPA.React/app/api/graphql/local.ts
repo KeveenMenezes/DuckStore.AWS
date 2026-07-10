@@ -122,8 +122,9 @@ function mapOrder(item: Record<string, unknown>) {
 const resolvers = {
   AWSJSON: awsJsonScalar,
   Query: {
-    // CatalogView Lambda resolvers (ADR-0027 amends ADR-0009) — search/read now lives in
-    // OpenSearch, not the products DynamoDB table. Mirrors graphql/resolvers/Query.products.js.
+    // Direct DynamoDB on CatalogView's "catalogview-products" table (ADR-0030, supersedes
+    // ADR-0027's OpenSearch/Lambda design). Mirrors graphql/resolvers/Query.products.js — Scan +
+    // contains() filter, no relevance ranking; sortBy is best-effort (only sorts this page).
     async products(
       _: unknown,
       args: {
@@ -135,51 +136,87 @@ const resolvers = {
         nextToken?: string
       },
     ) {
-      const body = await invokeLambda<{
-        Items: Array<Record<string, unknown>>
-        NextToken: string | null
-      }>('catalogview-search-products', {
-        Query: args.query ?? null,
-        SortBy: args.sortBy ?? null,
-        MinRating: args.minRating ?? null,
-        MaxRating: args.maxRating ?? null,
-        PageSize: args.pageSize ?? 20,
-        NextToken: args.nextToken ?? null,
+      const expressionNames: Record<string, string> = {}
+      const expressionValues: Record<string, unknown> = {}
+      const clauses: string[] = []
+
+      if (args.query) {
+        expressionNames['#Name'] = 'Name'
+        expressionNames['#Description'] = 'Description'
+        expressionValues[':q'] = { S: args.query }
+        clauses.push('(contains(#Name, :q) OR contains(#Description, :q))')
+      }
+
+      if (args.minRating != null || args.maxRating != null) {
+        expressionNames['#AverageRating'] = 'AverageRating'
+        expressionValues[':min'] = { N: String(args.minRating ?? 0) }
+        expressionValues[':max'] = { N: String(args.maxRating ?? 5) }
+        clauses.push('#AverageRating BETWEEN :min AND :max')
+      }
+
+      const result = await dynamoDb.send(
+        new ScanCommand({
+          TableName: 'catalogview-products',
+          Limit: args.pageSize ?? 20,
+          ...(clauses.length > 0
+            ? {
+                FilterExpression: clauses.join(' AND '),
+                ExpressionAttributeNames: expressionNames,
+                ExpressionAttributeValues: expressionValues,
+              }
+            : {}),
+          ...(args.nextToken
+            ? { ExclusiveStartKey: JSON.parse(Buffer.from(args.nextToken, 'base64').toString()) }
+            : {}),
+        }),
+      )
+
+      const items = (result.Items ?? []).map(raw => {
+        const item = unmarshall(raw)
+        return {
+          id: item.Id as string,
+          name: item.Name as string,
+          description: item.Description as string,
+          imageUrl: item.ImageUrl as string,
+          stock: Number(item.Stock ?? 0),
+          categoryIds: Array.isArray(item.CategoryIds) ? (item.CategoryIds as string[]) : [],
+          averageRating: item.AverageRating ? Number(item.AverageRating) : 0,
+          ratingCount: item.RatingCount ? Number(item.RatingCount) : 0,
+          originalPrice: item.OriginalPrice ? Number(item.OriginalPrice) : 0,
+          price: item.Price ? Number(item.Price) : 0,
+          cashPrice: item.CashPrice ? Number(item.CashPrice) : 0,
+          maxInstallmentsWithoutInterest: item.MaxInstallmentsWithoutInterest
+            ? Number(item.MaxInstallmentsWithoutInterest)
+            : 0,
+          maxInstallmentValue: item.MaxInstallmentValue ? Number(item.MaxInstallmentValue) : 0,
+        }
       })
 
-      const items = (body.Items ?? []).map(item => ({
-        id: item.Id as string,
-        name: item.Name as string,
-        description: item.Description as string,
-        imageUrl: item.ImageUrl as string,
-        stock: Number(item.Stock),
-        categoryIds: Array.isArray(item.CategoryIds) ? (item.CategoryIds as string[]) : [],
-        averageRating: item.AverageRating ? Number(item.AverageRating) : 0,
-        ratingCount: item.RatingCount ? Number(item.RatingCount) : 0,
-        originalPrice: item.OriginalPrice ? Number(item.OriginalPrice) : 0,
-        price: item.Price ? Number(item.Price) : 0,
-        cashPrice: item.CashPrice ? Number(item.CashPrice) : 0,
-        maxInstallmentsWithoutInterest: item.MaxInstallmentsWithoutInterest
-          ? Number(item.MaxInstallmentsWithoutInterest)
-          : 0,
-        maxInstallmentValue: item.MaxInstallmentValue ? Number(item.MaxInstallmentValue) : 0,
-      }))
+      // Best-effort sort — only orders the current page, not the full result set (ADR-0030).
+      if (args.sortBy === 'AVERAGE_RATING') {
+        items.sort((a, b) => b.averageRating - a.averageRating)
+      }
 
-      return { items, nextToken: body.NextToken ?? null }
+      const nextTokenOut = result.LastEvaluatedKey
+        ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+        : null
+
+      return { items, nextToken: nextTokenOut }
     },
 
     async product(_: unknown, { id }: { id: string }) {
-      const item = await invokeLambda<Record<string, unknown> | null>('catalogview-get-product', {
-        Id: id,
-      })
-      if (!item) return null
+      const result = await dynamoDb.send(
+        new GetItemCommand({ TableName: 'catalogview-products', Key: { Id: { S: id } } }),
+      )
+      if (!result.Item) return null
+      const item = unmarshall(result.Item)
 
       return {
         id: item.Id as string,
         name: item.Name as string,
         description: item.Description as string,
         imageUrl: item.ImageUrl as string,
-        stock: Number(item.Stock),
+        stock: Number(item.Stock ?? 0),
         categoryIds: Array.isArray(item.CategoryIds) ? (item.CategoryIds as string[]) : [],
         averageRating: item.AverageRating ? Number(item.AverageRating) : 0,
         ratingCount: item.RatingCount ? Number(item.RatingCount) : 0,

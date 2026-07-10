@@ -1,12 +1,12 @@
 import { util } from '@aws-appsync/utils'
 
-// AppSync Lambda resolver — invokes CatalogView's GetProduct (ADR-0027 amends ADR-0009: OpenSearch
-// is an external, non-DynamoDB integration). Price moved to Pricing (ADR-0026) but is denormalized
-// onto CatalogView's search document via CDC (ADR-0027), along with the payment badge (ADR-0028).
+// AppSync direct DynamoDB resolver — GetItem on CatalogView's "catalogview-products" table
+// (ADR-0030, supersedes ADR-0027's OpenSearch/Lambda design). Price moved to Pricing (ADR-0026)
+// but is denormalized onto this table via CDC, along with the payment badge (ADR-0028).
 export function request(ctx) {
   return {
-    operation: 'Invoke',
-    payload: { Id: ctx.args.id },
+    operation: 'GetItem',
+    key: { Id: util.dynamodb.toDynamoDB(ctx.args.id) },
   }
 }
 

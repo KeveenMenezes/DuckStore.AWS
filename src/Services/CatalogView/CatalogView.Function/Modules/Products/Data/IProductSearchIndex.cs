@@ -1,17 +1,4 @@
-﻿namespace CatalogView.Function.Modules.Products.Data;
-
-public enum ProductSortField { Relevance, Price, AverageRating }
-
-public sealed record ProductSearchCriteria(
-    string? Query,
-    ProductSortField SortBy,
-    bool Descending,
-    double? MinRating,
-    double? MaxRating,
-    int PageSize,
-    string? NextToken);
-
-public sealed record ProductSearchResult(IReadOnlyList<SearchDocument> Items, string? NextToken);
+namespace CatalogView.Function.Modules.Products.Data;
 
 public interface IProductSearchIndex
 {
@@ -20,16 +7,17 @@ public interface IProductSearchIndex
     Task DeleteAsync(string productId, CancellationToken cancellationToken = default);
 
     // Rewrites a category's denormalized name on every product document that references it
-    // (CategorySyncHandler, triggered by a category rename — ADR-0027 extension).
+    // (CategorySyncHandler, triggered by a category rename — ADR-0027 extension, ADR-0030).
     Task RenameCategoryAsync(string categoryId, string name, CancellationToken cancellationToken = default);
 
-    // Atomic, idempotent Painless script update (see OpenSearchProductIndex): applies the rating
-    // delta only if lastRatingEventId doesn't already match eventId (ADR-0027).
+    // Idempotent two-step update (see DynamoProductIndex): a conditional ADD applies the rating
+    // delta only if LastRatingEventId doesn't already match eventId, then a second read+recompute
+    // sets AverageRating (ADR-0030 — DynamoDB can't divide two attributes in one UpdateExpression).
     Task ApplyRatingAsync(
         string productId, string eventId, int rating, CancellationToken cancellationToken = default);
 
-    // Sibling to ApplyRatingAsync for the edit path (ADR-0029): ratingCount stays unchanged,
-    // ratingSum moves by (newRating - oldRating). Same idempotency-marker guard.
+    // Sibling to ApplyRatingAsync for the edit path (ADR-0029): RatingCount stays unchanged,
+    // RatingSum moves by (newRating - oldRating). Same idempotency-marker guard.
     Task ApplyRatingUpdateAsync(
         string productId, string eventId, int oldRating, int newRating,
         CancellationToken cancellationToken = default);
@@ -48,14 +36,9 @@ public interface IProductSearchIndex
 
     Task<SearchDocument?> GetAsync(string productId, CancellationToken cancellationToken = default);
 
-    Task<ProductSearchResult> SearchAsync(
-        ProductSearchCriteria criteria, CancellationToken cancellationToken = default);
-
-    // Seeder-only operations (CatalogView.DevelopmentDataSeeder): create the index with an
-    // explicit mapping if missing, and bulk-write the historical backfill. Both are full-document
-    // writes (not the partial merge UpsertAsync uses), which is safe here because they run once,
-    // before any steady-state traffic (ADR-0027 §"Historical backfill").
-    Task EnsureIndexAsync(CancellationToken cancellationToken = default);
-
+    // Seeder-only operation (CatalogView.DevelopmentDataSeeder): bulk-writes the historical
+    // backfill via BatchWriteItem, chunked to DynamoDB's 25-item-per-call limit. A full-document
+    // write is safe here because it runs once, before any steady-state traffic (ADR-0027 §"Historical
+    // backfill", ADR-0030).
     Task BulkIndexAsync(IEnumerable<SearchDocument> documents, CancellationToken cancellationToken = default);
 }

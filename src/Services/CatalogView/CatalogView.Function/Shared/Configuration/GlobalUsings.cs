@@ -9,8 +9,6 @@ global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.P
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewUpdated;
-global using CatalogView.Function.Modules.Products.Queries.GetProduct;
-global using CatalogView.Function.Modules.Products.Queries.SearchProducts;
 global using CatalogView.Function.Shared.Configuration;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;

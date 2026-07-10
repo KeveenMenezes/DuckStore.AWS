@@ -9,9 +9,8 @@
   <ItemGroup>
     <!-- Backfill (one-time, see BackfillService) reads Catalog's products table and Review's
          reviews table directly — an explicit, scoped exception to "no cross-context table reads"
-         since this is a migration tool, not a runtime coupling (ADR-0027). -->
+         since this is a migration tool, not a runtime coupling (ADR-0027, ADR-0030). -->
     <PackageReference Include="AWSSDK.DynamoDBv2" />
-    <PackageReference Include="OpenSearch.Net" />
   </ItemGroup>
 
   <ItemGroup>

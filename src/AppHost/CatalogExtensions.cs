@@ -29,9 +29,10 @@ public static class CatalogExtensions
         // ISR revalidation for catalog changes is production-only (SpaTagRevalidator
         // in infra/) — `next dev` doesn't do ISR caching, so there's no local equivalent.
 
-        // Rating aggregation moved to CatalogView (OpenSearch) — the old catalog-review-created-
-        // consumer Lambda is gone (ADR-0027, supersedes ADR-0011 §4). ProductStreamPublisher now
-        // also emits CatalogProductSyncEvent (CatalogSearchSyncRule) for CatalogView to consume.
+        // Rating aggregation moved to CatalogView's DynamoDB table (ADR-0030, supersedes ADR-0027's
+        // OpenSearch design) — the old catalog-review-created-consumer Lambda is gone (ADR-0011
+        // §4). ProductStreamPublisher now also emits CatalogProductSyncEvent (CatalogSearchSyncRule)
+        // for CatalogView to consume.
 
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
                 "catalog-category-stream-publisher",

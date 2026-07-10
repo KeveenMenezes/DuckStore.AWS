@@ -12,11 +12,13 @@ public class Worker(
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         using var activity = s_activitySource.StartActivity(
-            "Provisioning CatalogView OpenSearch index and backfill", ActivityKind.Client);
+            "Provisioning catalogview-products table and backfill", ActivityKind.Client);
 
         try
         {
             using var scope = serviceProvider.CreateScope();
+
+            await scope.ServiceProvider.EnsureCatalogViewTablesCreatedAsync();
 
             var backfill = scope.ServiceProvider.GetRequiredService<ProductBackfill>();
             await backfill.RunAsync(stoppingToken);
