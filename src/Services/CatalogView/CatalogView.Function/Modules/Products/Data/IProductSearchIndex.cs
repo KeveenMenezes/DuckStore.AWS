@@ -1,4 +1,4 @@
-namespace CatalogView.Function.Modules.Products.Data;
+﻿﻿namespace CatalogView.Function.Modules.Products.Data;
 
 public interface IProductSearchIndex
 {

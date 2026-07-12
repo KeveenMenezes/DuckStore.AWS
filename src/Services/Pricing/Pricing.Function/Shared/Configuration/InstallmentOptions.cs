@@ -1,4 +1,4 @@
-namespace Pricing.Function.Shared.Configuration;
+﻿namespace Pricing.Function.Shared.Configuration;
 
 // Store-level installment policy — which gateway provider's cost table is authoritative
 // (Installments:ActiveProvider, only one active at a time per ADR-0028) and the store's own

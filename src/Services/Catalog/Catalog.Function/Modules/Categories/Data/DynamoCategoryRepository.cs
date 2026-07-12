@@ -30,81 +30,59 @@ public class DynamoCategoryRepository(IAmazonDynamoDB dynamoDb) : ICategoryRepos
         if (keys.Count == 0)
             return [];
 
-        var response = await dynamoDb.BatchGetItemAsync(
-            new BatchGetItemRequest
-            {
-                RequestItems = new Dictionary<string, KeysAndAttributes>
-                {
-                    [TableName] = new() { Keys = keys }
-                }
-            },
-            cancellationToken);
+        // BatchGetItem caps at 100 keys per call, and can return UnprocessedKeys under
+        // throttling — retry those rather than silently dropping categories from the result.
+        const int batchSize = 100;
+        var items = new List<Dictionary<string, AttributeValue>>();
 
-        return [.. response.Responses[TableName].Select(MapCategory)];
+        foreach (var chunk in keys.Chunk(batchSize))
+        {
+            var requestItems = new Dictionary<string, KeysAndAttributes>
+            {
+                [TableName] = new() { Keys = [.. chunk] }
+            };
+
+            while (requestItems.Count > 0)
+            {
+                var response = await dynamoDb.BatchGetItemAsync(
+                    new BatchGetItemRequest { RequestItems = requestItems }, cancellationToken);
+
+                if (response.Responses.TryGetValue(TableName, out var batch))
+                    items.AddRange(batch);
+
+                requestItems = response.UnprocessedKeys is { Count: > 0 } ? response.UnprocessedKeys : [];
+            }
+        }
+
+        return [.. items.Select(MapCategory)];
     }
 
-    public async Task<List<Category>> ListAsync(CancellationToken cancellationToken = default)
+    public async Task<List<Category>> ListAsync(CancellationToken cancellationToken = default) =>
+        await ScanAllAsync(new ScanRequest { TableName = TableName }, cancellationToken);
+
+    // Scans have no GSI to lean on at this table's scale (see class comment), but must still
+    // follow LastEvaluatedKey — a single unpaginated Scan silently truncates once results exceed
+    // DynamoDB's 1MB page limit.
+    private async Task<List<Category>> ScanAllAsync(ScanRequest request, CancellationToken cancellationToken)
     {
-        var response = await dynamoDb.ScanAsync(
-            new ScanRequest { TableName = TableName }, cancellationToken);
+        var items = new List<Dictionary<string, AttributeValue>>();
+        Dictionary<string, AttributeValue>? lastKey = null;
 
-        return [.. response.Items.Select(MapCategory)];
-    }
+        do
+        {
+            request.ExclusiveStartKey = lastKey;
+            var response = await dynamoDb.ScanAsync(request, cancellationToken);
+            items.AddRange(response.Items);
 
-    public async Task<List<Category>> ListChildrenAsync(
-        Guid parentId, CancellationToken cancellationToken = default)
-    {
-        var response = await dynamoDb.ScanAsync(
-            new ScanRequest
-            {
-                TableName = TableName,
-                FilterExpression = "ParentId = :parentId",
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {
-                    [":parentId"] = new(parentId.ToString())
-                }
-            },
-            cancellationToken);
+            lastKey = response.LastEvaluatedKey is { Count: > 0 } ? response.LastEvaluatedKey : null;
+        } while (lastKey is not null);
 
-        return [.. response.Items.Select(MapCategory)];
-    }
-
-    public async Task<List<Category>> ListDescendantsAsync(
-        Guid id, CancellationToken cancellationToken = default)
-    {
-        var response = await dynamoDb.ScanAsync(
-            new ScanRequest
-            {
-                TableName = TableName,
-                FilterExpression = "contains(#path, :id)",
-                ExpressionAttributeNames = new Dictionary<string, string> { ["#path"] = "Path" },
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {
-                    [":id"] = new(id.ToString())
-                }
-            },
-            cancellationToken);
-
-        return [.. response.Items.Select(MapCategory)];
+        return [.. items.Select(MapCategory)];
     }
 
     public Task AddAsync(Category category, CancellationToken cancellationToken = default) =>
         dynamoDb.PutItemAsync(
             new PutItemRequest { TableName = TableName, Item = ToItem(category) },
-            cancellationToken);
-
-    public Task UpdateAsync(Category category, CancellationToken cancellationToken = default) =>
-        dynamoDb.PutItemAsync(
-            new PutItemRequest { TableName = TableName, Item = ToItem(category) },
-            cancellationToken);
-
-    public Task DeleteAsync(Guid id, CancellationToken cancellationToken = default) =>
-        dynamoDb.DeleteItemAsync(
-            new DeleteItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) }
-            },
             cancellationToken);
 
     private static Dictionary<string, AttributeValue> ToItem(Category category)

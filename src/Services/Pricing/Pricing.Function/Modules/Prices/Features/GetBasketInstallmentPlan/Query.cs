@@ -1,4 +1,4 @@
-namespace Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
+﻿namespace Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
 
 public record BasketInstallmentItem(Guid ProductId, int Quantity);
 

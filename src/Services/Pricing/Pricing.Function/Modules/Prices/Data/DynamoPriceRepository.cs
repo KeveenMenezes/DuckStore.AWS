@@ -20,6 +20,42 @@ public class DynamoPriceRepository(IAmazonDynamoDB dynamoDb) : IPriceRepository
         return response.Item is { Count: > 0 } ? MapPrice(response.Item) : null;
     }
 
+    public async Task<List<Price>> GetByProductIdsAsync(
+        IEnumerable<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        var keys = productIds.Distinct()
+            .Select(id => new Dictionary<string, AttributeValue> { ["ProductId"] = new(id.ToString()) })
+            .ToList();
+
+        if (keys.Count == 0)
+            return [];
+
+        // BatchGetItem caps at 100 keys per call.
+        const int batchSize = 100;
+        var items = new List<Dictionary<string, AttributeValue>>();
+
+        foreach (var chunk in keys.Chunk(batchSize))
+        {
+            var requestItems = new Dictionary<string, KeysAndAttributes>
+            {
+                [TableName] = new() { Keys = [.. chunk] }
+            };
+
+            while (requestItems.Count > 0)
+            {
+                var response = await dynamoDb.BatchGetItemAsync(
+                    new BatchGetItemRequest { RequestItems = requestItems }, cancellationToken);
+
+                if (response.Responses.TryGetValue(TableName, out var batch))
+                    items.AddRange(batch);
+
+                requestItems = response.UnprocessedKeys is { Count: > 0 } ? response.UnprocessedKeys : [];
+            }
+        }
+
+        return [.. items.Select(MapPrice)];
+    }
+
     public Task PutAsync(Price price, CancellationToken cancellationToken = default) =>
         dynamoDb.PutItemAsync(
             new PutItemRequest { TableName = TableName, Item = ToItem(price) },

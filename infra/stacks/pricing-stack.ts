@@ -29,10 +29,6 @@ export class PricingStack extends cdk.Stack {
       value: dynamoDB.productDiscountsTable.tableName,
       exportName: `${this.stackName}-ProductDiscountsTable`,
     });
-    new cdk.CfnOutput(this, 'SetNominalPriceArn', {
-      value: lambdas.setNominalPrice.functionArn,
-      exportName: `${this.stackName}-SetNominalPriceArn`,
-    });
     new cdk.CfnOutput(this, 'GetInstallmentPlanArn', {
       value: lambdas.getInstallmentPlan.functionArn,
       exportName: `${this.stackName}-GetInstallmentPlanArn`,
@@ -49,17 +45,13 @@ export class PricingStack extends cdk.Stack {
       value: lambdas.endCampaign.functionArn,
       exportName: `${this.stackName}-EndCampaignArn`,
     });
-    new cdk.CfnOutput(this, 'CatalogProductRemovedConsumerArn', {
-      value: lambdas.catalogProductRemovedConsumer.functionArn,
-      exportName: `${this.stackName}-CatalogProductRemovedConsumerArn`,
+    new cdk.CfnOutput(this, 'ProductDeletedConsumerArn', {
+      value: lambdas.productDeletedConsumer.functionArn,
+      exportName: `${this.stackName}-ProductDeletedConsumerArn`,
     });
     new cdk.CfnOutput(this, 'GatewayCostsTableName', {
       value: dynamoDB.gatewayCostsTable.tableName,
       exportName: `${this.stackName}-GatewayCostsTable`,
-    });
-    new cdk.CfnOutput(this, 'SetGatewayCostArn', {
-      value: lambdas.setGatewayCost.functionArn,
-      exportName: `${this.stackName}-SetGatewayCostArn`,
     });
   }
 }

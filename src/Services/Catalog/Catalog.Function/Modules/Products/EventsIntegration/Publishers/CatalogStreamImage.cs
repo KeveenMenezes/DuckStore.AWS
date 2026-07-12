@@ -1,9 +1,9 @@
 ﻿namespace Catalog.Function.Modules.Products.EventsIntegration.Publishers;
 
 // The subset of a persisted product item the publisher rules reason about, projected from a
-// DynamoDB Streams image. Widened beyond just Id (ADR-0027) so CatalogSearchSyncRule can hydrate
-// a complete CatalogProductSyncEvent without a callback into Catalog — CatalogProductChangedRule
-// still only needs Id.
+// DynamoDB Streams image. Widened beyond just Id (ADR-0027) so ProductSyncedRule can hydrate
+// a complete ProductSyncedEvent without a callback into Catalog — Product{Created,Updated,Deleted}Rule
+// still only need Id.
 public sealed record CatalogStreamImage(
     string Id,
     string Name,

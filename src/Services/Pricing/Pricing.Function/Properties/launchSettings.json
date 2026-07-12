@@ -30,10 +30,10 @@
       "commandLineArgs": "exec --depsfile ./Pricing.Function.deps.json --runtimeconfig ./Pricing.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Pricing.Function::Pricing.Function.Functions_PriceStreamPublisher_Generated::PriceStreamPublisher",
       "workingDirectory": "bin/Debug/net10.0/"
     },
-    "Aspire_pricing-catalog-product-removed-consumer": {
+    "Aspire_pricing-product-deleted-consumer": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Pricing.Function.deps.json --runtimeconfig ./Pricing.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Pricing.Function::Pricing.Function.Functions_CatalogProductRemovedConsumer_Generated::CatalogProductRemovedConsumer",
+      "commandLineArgs": "exec --depsfile ./Pricing.Function.deps.json --runtimeconfig ./Pricing.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Pricing.Function::Pricing.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_pricing-set-gateway-cost": {

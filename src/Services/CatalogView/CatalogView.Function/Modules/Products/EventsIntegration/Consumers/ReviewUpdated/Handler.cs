@@ -1,4 +1,4 @@
-using CatalogView.Function.Modules.Products.Data;
+﻿using CatalogView.Function.Modules.Products.Data;
 
 namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewUpdated;
 

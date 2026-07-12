@@ -8,7 +8,8 @@ description: Use when implementing or migrating a DuckStore Lambda service (Bask
 **Copy the patterns from `src/Services/Ordering/Ordering.Function`.** It is the finished
 implementation of everything below. When unsure, open the matching Ordering file and mirror it.
 
-Related: `docs/adr/0019-*.md` (module layout + publishers), `docs/adr/0009-*.md` (resolver
+Related: `docs/adr/0019-*.md` (module layout + publishers), `docs/adr/0031-*.md` (events named
+after the domain occurrence, no ChangeType discriminator), `docs/adr/0009-*.md` (resolver
 selection), skills `resolver-selection` and `adr`.
 
 ## Migration order (do these steps in sequence)
@@ -154,8 +155,10 @@ needs real logic (see `resolver-selection` skill / ADR-0009). Simple key/GSI rea
 PutItem/UpdateItem → direct resolver.
 
 To make an operation a **direct resolver** (like Ordering's `ordersByCustomer`/`deleteOrder`):
-1. Write a JS resolver file `src/WebApps/Shopping.Web.SPA.React/graphql/resolvers/<Type>.<field>.js`.
-   References: `Query.ordersByCustomer.js` (GSI query), `Mutation.deleteOrder.js` (admin DeleteItem).
+1. Write a JS resolver file `src/WebApps/Shopping.Web.SPA.React/graphql/resolvers/<domain>/queries|mutations/<Type>.<field>.js`
+   (resolvers are grouped by bounded context first, then by operation kind — e.g. Ordering's
+   resolvers live under `graphql/resolvers/orders/`).
+   References: `orders/queries/Query.ordersByCustomer.js` (GSI query), `orders/mutations/Mutation.deleteOrder.js` (admin DeleteItem).
    ```js
    import { util } from '@aws-appsync/utils'
    export function request(ctx) {
@@ -173,8 +176,9 @@ To make an operation a **direct resolver** (like Ordering's `ordersByCustomer`/`
    }
    ```
 2. Wire it in `infra/constructs/appsync-api.ts` on the DynamoDB data source (not a Lambda DS):
-   `this.resolver(<table>Ds, '<Name>Resolver', 'Query'|'Mutation', '<field>');`
-   Grant `grantReadWriteData` if it writes/deletes.
+   `this.resolver(<table>Ds, '<Name>Resolver', 'Query'|'Mutation', '<field>', '<domain>');`
+   — the trailing `domain` string must match the folder from step 1. Grant `grantReadWriteData`
+   if it writes/deletes.
 3. Update local dev resolver `src/WebApps/Shopping.Web.SPA.React/app/api/graphql/local.ts` to hit
    DynamoDB Local directly (AWS SDK `QueryCommand`/`DeleteItemCommand`) — mirror the `orders`/
    `ordersByName` resolvers there.
@@ -211,6 +215,15 @@ Shared abstractions (`src/BuildingBlocks/BuildingBlocks.Messaging/Streams/*` + `
 
 **RULE: a rule holds only domain logic. It returns a `PublishInstruction` and NEVER references
 `IAmazonEventBridge`/`PutEventsRequest`.** `IEventPublisher` is the only EventBridge-aware component.
+
+**RULE (ADR-0031): an event MUST NOT carry a `ChangeType`/`EventName`-shaped discriminator field.**
+If a publisher would need one because it fires on 2+ distinct occurrences (INSERT vs MODIFY vs
+REMOVE) with different consumer-relevant meaning, split it into one `IStreamRule<TImage>` per
+occurrence, each with its own narrow `Match` and its own named event/detail-type — see
+`ProductCreatedRule`/`ProductUpdatedRule`/`ProductDeletedRule`/`ProductSyncedRule` in
+`Catalog.Function`. A thin, id-only event MAY be shared by multiple consumers when the occurrence
+itself is all any of them need (e.g. `ProductDeletedEvent` is consumed by both Pricing and
+CatalogView via two independent EventBridge rules).
 
 **Integration event types live in `BuildingBlocks.Messaging.Events`** (a published event is a
 cross-service contract, so it belongs in the shared library — like `BasketCheckoutEvent`). Use
@@ -357,6 +370,9 @@ DeleteItem).
 - **Singleton rule/dispatcher depending on Scoped repo** → captive dependency. Register Scoped.
 - **Deleting a Lambda feature but leaving its AppSync resolver on a Lambda data source** → the
   resolver targets a deleted function. Repoint the resolver to the DynamoDB data source (§5).
+- **Rule matches on any `EventName` / event carries a `ChangeType` field** → consumers branch on
+  persistence vocabulary instead of subscribing to a named domain event (ADR-0031). Split into one
+  rule per occurrence, each emitting its own event.
 
 ## Verify (per service)
 ```bash

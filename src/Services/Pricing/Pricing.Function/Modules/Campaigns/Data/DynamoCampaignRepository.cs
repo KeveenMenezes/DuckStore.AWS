@@ -14,7 +14,7 @@ public class DynamoCampaignRepository(IAmazonDynamoDB dynamoDb) : ICampaignRepos
     public const string TableName = "campaigns";
     public const string ProductDiscountsTableName = "product-discounts";
 
-    // Used by the CatalogProductRemoved consumer to retract a stale product-discounts row when its
+    // Used by the ProductDeleted consumer to retract a stale product-discounts row when its
     // product is deleted in Catalog — a no-op if the product wasn't enrolled in a campaign.
     internal static TransactWriteItem ToDeleteProductDiscountTransactWriteItem(Guid productId) =>
         new()

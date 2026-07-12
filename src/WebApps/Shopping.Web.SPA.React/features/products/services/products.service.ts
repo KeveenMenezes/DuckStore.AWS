@@ -24,8 +24,8 @@ export async function getProduct(id: string, init?: RequestInit): Promise<Produc
 
 /**
  * Fetch the full, synchronously-computed installment breakdown for one product (used by the
- * product detail page to render the payment-methods modal). Not part of the Product/OpenSearch
- * document — recomputed live by Pricing on every call.
+ * product detail page to render the payment-methods modal). Not part of the Product document —
+ * recomputed live by Pricing on every call.
  */
 export async function getInstallmentPlan(
   productId: string,

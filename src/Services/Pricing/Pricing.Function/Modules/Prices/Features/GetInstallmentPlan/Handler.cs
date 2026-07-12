@@ -1,4 +1,4 @@
-using Pricing.Function.Shared.Configuration;
+﻿using Pricing.Function.Shared.Configuration;
 
 namespace Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
 

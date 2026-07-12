@@ -24,6 +24,6 @@ global using Pricing.Function.Modules.GatewayCosts.Domain.ValueObjects;
 global using Pricing.Function.Modules.Prices.Data;
 global using Pricing.Function.Modules.Prices.Domain.Entities;
 global using Pricing.Function.Modules.Prices.Domain.ValueObjects;
-global using Pricing.Function.Modules.Prices.EventsIntegration.Consumers.CatalogProductRemoved;
+global using Pricing.Function.Modules.Prices.EventsIntegration.Consumers.ProductDeleted;
 global using Pricing.Function.Shared.Data;
 global using Pricing.Function.Shared.Exceptions;

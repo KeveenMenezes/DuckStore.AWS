@@ -1,4 +1,4 @@
-namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.PriceChanged;
+﻿namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.PriceChanged;
 
 // Consumes PriceChangedEvent (ADR-0026 — Pricing owns the nominal price and, per ADR-0028, the
 // payment badge computed alongside it) and merges every field into the product's

@@ -22,14 +22,12 @@ export interface PricingLambdasProps {
 }
 
 export class PricingLambdas extends Construct {
-  public readonly setNominalPrice: lambda.Function;
   public readonly getInstallmentPlan: lambda.Function;
   public readonly getBasketInstallmentPlan: lambda.Function;
   public readonly createCampaign: lambda.Function;
   public readonly endCampaign: lambda.Function;
-  public readonly catalogProductRemovedConsumer: lambda.Function;
+  public readonly productDeletedConsumer: lambda.Function;
   public readonly priceStreamPublisher: lambda.Function;
-  public readonly setGatewayCost: lambda.Function;
 
   constructor(scope: Construct, id: string, props: PricingLambdasProps) {
     super(scope, id);
@@ -58,25 +56,12 @@ export class PricingLambdas extends Construct {
         cmd,
       });
 
-    // -------------------------------------------------------------------------
-    // 1. pricing-set-nominal-price  (AppSync Invoke — Mutation.setNominalPrice)
-    //    Decoupled from Catalog's createProduct/updateProduct (ADR-0026 §4).
-    // -------------------------------------------------------------------------
-    this.setNominalPrice = new lambda.DockerImageFunction(this, 'SetNominalPrice', {
-      functionName: 'pricing-set-nominal-price',
-      tracing: lambda.Tracing.ACTIVE,
-      architecture: DOTNET_ARCH,
-      code: pricingCode([
-        'Pricing.Function::Pricing.Function.Functions_SetNominalPrice_Generated::SetNominalPrice',
-      ]),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
-      description: 'Sets or updates a product\'s nominal price',
-    });
-    pricesTable.grantReadWriteData(this.setNominalPrice);
+    // Note: pricing-set-nominal-price (SetNominalPrice command) is gone — setNominalPrice is now
+    // an AppSync direct DynamoDB UpdateItem resolver (ADR-0009); see appsync-api.ts and
+    // graphql/resolvers/pricing/mutations/Mutation.setNominalPrice.js.
 
     // -------------------------------------------------------------------------
-    // 2. pricing-get-installment-plan  (AppSync Invoke — Query.installmentPlanFor)
+    // 1. pricing-get-installment-plan  (AppSync Invoke — Query.installmentPlanFor)
     //    Non-trivial calculation over simulated gateway fee/margin config — Lambda per ADR-0009.
     // -------------------------------------------------------------------------
     this.getInstallmentPlan = new lambda.DockerImageFunction(this, 'GetInstallmentPlan', {
@@ -98,7 +83,7 @@ export class PricingLambdas extends Construct {
     gatewayCostsTable.grantReadData(this.getInstallmentPlan);
 
     // -------------------------------------------------------------------------
-    // 2b. pricing-get-basket-installment-plan  (AppSync Invoke — Query.basketInstallmentPlan)
+    // 1b. pricing-get-basket-installment-plan  (AppSync Invoke — Query.basketInstallmentPlan)
     //     Same cost-floor calculation, but summed across every cart item first — the whole cart
     //     is treated as one checkout transaction (ADR-0009).
     // -------------------------------------------------------------------------
@@ -121,7 +106,7 @@ export class PricingLambdas extends Construct {
     gatewayCostsTable.grantReadData(this.getBasketInstallmentPlan);
 
     // -------------------------------------------------------------------------
-    // 3. pricing-create-campaign  (AppSync Invoke — Mutation.createCampaign)
+    // 2. pricing-create-campaign  (AppSync Invoke — Mutation.createCampaign)
     //    Fans out a TransactWriteItems across campaigns + product-discounts (ADR-0026 §6).
     // -------------------------------------------------------------------------
     this.createCampaign = new lambda.DockerImageFunction(this, 'CreateCampaign', {
@@ -139,7 +124,7 @@ export class PricingLambdas extends Construct {
     productDiscountsTable.grantReadWriteData(this.createCampaign);
 
     // -------------------------------------------------------------------------
-    // 4. pricing-end-campaign  (AppSync Invoke — Mutation.endCampaign)
+    // 3. pricing-end-campaign  (AppSync Invoke — Mutation.endCampaign)
     //    Reads the campaign, then retracts its product-discounts rows transactionally.
     // -------------------------------------------------------------------------
     this.endCampaign = new lambda.DockerImageFunction(this, 'EndCampaign', {
@@ -157,49 +142,49 @@ export class PricingLambdas extends Construct {
     productDiscountsTable.grantReadWriteData(this.endCampaign);
 
     // -------------------------------------------------------------------------
-    // 5. pricing-catalog-product-removed-consumer
-    //    Trigger: EventBridge rule (CatalogUpdatedEvent, source=duckstore, ChangeType=REMOVE
-    //    filtered in-handler). Cleans up prices/product-discounts rows for the deleted product,
-    //    idempotent via pricing-processed-events (ADR-0026 §5).
+    // 4. pricing-product-deleted-consumer
+    //    Trigger: EventBridge rule (ProductDeletedEvent, source=duckstore — ADR-0031: named after
+    //    the domain occurrence, no ChangeType discriminator). Cleans up prices/product-discounts
+    //    rows for the deleted product, idempotent via pricing-processed-events (ADR-0026 §5).
     // -------------------------------------------------------------------------
-    this.catalogProductRemovedConsumer = new lambda.DockerImageFunction(
+    this.productDeletedConsumer = new lambda.DockerImageFunction(
       this,
-      'CatalogProductRemovedConsumer',
+      'ProductDeletedConsumer',
       {
-        functionName: 'pricing-catalog-product-removed-consumer',
+        functionName: 'pricing-product-deleted-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         code: pricingCode([
-          'Pricing.Function::Pricing.Function.Functions_CatalogProductRemovedConsumer_Generated::CatalogProductRemovedConsumer',
+          'Pricing.Function::Pricing.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer',
         ]),
         timeout: cdk.Duration.seconds(30),
         memorySize: 512,
-        description: 'Consumes CatalogUpdatedEvent and cleans up Pricing rows for a removed product',
+        description: 'Consumes ProductDeletedEvent and cleans up Pricing rows for the deleted product',
         environment: {
           EventBridge__BusName: eventBus.eventBusName,
         },
       },
     );
-    pricesTable.grantWriteData(this.catalogProductRemovedConsumer);
-    productDiscountsTable.grantWriteData(this.catalogProductRemovedConsumer);
-    processedEventsTable.grantWriteData(this.catalogProductRemovedConsumer);
+    pricesTable.grantWriteData(this.productDeletedConsumer);
+    productDiscountsTable.grantWriteData(this.productDeletedConsumer);
+    processedEventsTable.grantWriteData(this.productDeletedConsumer);
 
-    const catalogProductRemovedRule = new events.Rule(this, 'CatalogProductRemovedRule', {
+    const productDeletedRule = new events.Rule(this, 'ProductDeletedRule', {
       eventBus,
-      ruleName: 'pricing-catalog-product-removed-consumer-rule',
+      ruleName: 'pricing-product-deleted-consumer-rule',
       description:
-        'Routes CatalogUpdatedEvent (source=duckstore) to pricing-catalog-product-removed-consumer',
+        'Routes ProductDeletedEvent (source=duckstore) to pricing-product-deleted-consumer',
       eventPattern: {
         source: ['duckstore'],
-        detailType: ['CatalogUpdatedEvent'],
+        detailType: ['ProductDeletedEvent'],
       },
     });
-    catalogProductRemovedRule.addTarget(
-      new targets.LambdaFunction(this.catalogProductRemovedConsumer),
+    productDeletedRule.addTarget(
+      new targets.LambdaFunction(this.productDeletedConsumer),
     );
 
     // -------------------------------------------------------------------------
-    // 6. pricing-prices-event-publisher
+    // 5. pricing-prices-event-publisher
     //    Trigger: DynamoDB Streams on prices. CDC: publishes a single PriceChangedEvent (nominal
     //    price + payment badge computed from the active GatewayCost) to EventBridge on
     //    INSERT/MODIFY so CatalogView syncs both in one merge (ADR-0026/0027/0028).
@@ -234,25 +219,7 @@ export class PricingLambdas extends Construct {
     eventBus.grantPutEventsTo(this.priceStreamPublisher);
     gatewayCostsTable.grantReadData(this.priceStreamPublisher);
 
-    // -------------------------------------------------------------------------
-    // 7. pricing-set-gateway-cost  (AppSync Invoke — Mutation.setGatewayCost)
-    //    Configures a payment-gateway provider's flat fee, à vista rate, and per-installment-count
-    //    rate table (ADR-0028) — validated server-side before writing, like setNominalPrice.
-    // -------------------------------------------------------------------------
-    this.setGatewayCost = new lambda.DockerImageFunction(this, 'SetGatewayCost', {
-      functionName: 'pricing-set-gateway-cost',
-      tracing: lambda.Tracing.ACTIVE,
-      architecture: DOTNET_ARCH,
-      code: pricingCode([
-        'Pricing.Function::Pricing.Function.Functions_SetGatewayCost_Generated::SetGatewayCost',
-      ]),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
-      description: 'Configures a payment-gateway provider\'s cost table',
-    });
-    gatewayCostsTable.grantReadWriteData(this.setGatewayCost);
-
-    // Note: nominalPriceFor/currentDiscountForProduct are AppSync direct DynamoDB resolvers
-    // (ADR-0009), not Lambdas — see infra/constructs/appsync-api.ts.
+    // Note: nominalPriceFor/currentDiscountForProduct/setGatewayCost are AppSync direct DynamoDB
+    // resolvers (ADR-0009), not Lambdas — see infra/constructs/appsync-api.ts.
   }
 }

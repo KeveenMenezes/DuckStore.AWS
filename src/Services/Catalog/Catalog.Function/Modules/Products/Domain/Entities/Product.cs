@@ -62,9 +62,9 @@ public class Product : Aggregate<ProductId>
     public int Stock { get; private set; } = default!;
     public List<CategoryId> CategoryIds { get; private set; } = default!;
 
-    // Rating aggregation (AverageRating/RatingCount) moved to the CatalogView service, backed by
-    // OpenSearch — it is no longer materialized on the product item (ADR-0027, supersedes ADR-0011
-    // §4). Catalog now owns only the product's own write-side fields.
+    // Rating aggregation (AverageRating/RatingCount) moved to the CatalogView service — it is no
+    // longer materialized on the product item (ADR-0027, supersedes ADR-0011 §4; ADR-0030).
+    // Catalog now owns only the product's own write-side fields.
     internal static Product Load(
         Guid id,
         string name,
