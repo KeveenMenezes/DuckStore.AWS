@@ -1,11 +1,4 @@
 ﻿using Amazon.DynamoDBv2;
-using CatalogView.Function.Modules.Products.Data;
-using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CategorySync;
-using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.PriceChanged;
-using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductDeleted;
-using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
-using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;
-using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewUpdated;
 
 namespace CatalogView.Function.Shared.Configuration;
 
