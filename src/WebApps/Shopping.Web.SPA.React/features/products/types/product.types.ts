@@ -8,7 +8,7 @@ export interface InstallmentOption {
 /**
  * Full installment breakdown for one product, computed synchronously by Pricing's
  * GetInstallmentPlan query (installmentPlanFor) — fetched on demand by the product detail page,
- * never denormalized onto Product/OpenSearch.
+ * never denormalized onto Product.
  */
 export interface InstallmentPlan {
   productId: string
@@ -19,7 +19,7 @@ export interface InstallmentPlan {
   installments: InstallmentOption[]
 }
 
-/** Product as returned by the GraphQL API (sourced from CatalogView's OpenSearch index). */
+/** Product as returned by the GraphQL API (sourced from CatalogView's DynamoDB index). */
 export interface Product {
   id: string
   name: string

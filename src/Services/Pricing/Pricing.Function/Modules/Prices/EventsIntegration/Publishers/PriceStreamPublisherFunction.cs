@@ -13,7 +13,7 @@ public partial class Functions
     // catalog/card display — computed from the currently active GatewayCost provider plus any
     // active campaign discount (ADR-0005/0026/0027/0028). The detailed per-installment plan
     // is NOT published: it's computed synchronously by GetInstallmentPlan when the product detail
-    // page needs it, so it never lands in OpenSearch. One event per trigger, not one event per
+    // page needs it, so it never lands in the search document. One event per trigger, not one event per
     // concern, so CatalogView applies everything in a single merge. REMOVE is skipped: a price row
     // only disappears when the product itself is removed, and CatalogView deletes the whole
     // document via CatalogProductSyncEvent in that case.

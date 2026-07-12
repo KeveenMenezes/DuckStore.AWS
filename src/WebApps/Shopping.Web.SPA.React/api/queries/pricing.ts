@@ -1,5 +1,5 @@
 // Detailed per-installment breakdown, computed synchronously by Pricing on every call — never
-// denormalized onto Product/OpenSearch (see fragments.ts). Fetched by the product detail page only.
+// denormalized onto Product (see fragments.ts). Fetched by the product detail page only.
 export const GET_INSTALLMENT_PLAN = `
   query GetInstallmentPlan($productId: ID!) {
     installmentPlanFor(productId: $productId) {

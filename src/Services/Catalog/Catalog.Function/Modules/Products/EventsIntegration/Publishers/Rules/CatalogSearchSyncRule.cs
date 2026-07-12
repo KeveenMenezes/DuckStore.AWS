@@ -2,7 +2,7 @@
 
 // Fires for any INSERT, MODIFY, or REMOVE on the products table and produces a
 // CatalogProductSyncEvent carrying the full product payload, so CatalogView can upsert/delete its
-// OpenSearch document without a synchronous call back into Catalog (ADR-0027). Runs alongside
+// search document without a synchronous call back into Catalog (ADR-0027). Runs alongside
 // CatalogProductChangedRule in the same StreamRuleDispatcher<CatalogStreamImage> — one Streams
 // record can fan out to more than one integration event.
 public sealed class CatalogSearchSyncRule(ICategoryRepository categoryRepository) : IStreamRule<CatalogStreamImage>
@@ -17,7 +17,7 @@ public sealed class CatalogSearchSyncRule(ICategoryRepository categoryRepository
         var image = context.New ?? context.Old!;
 
         // Resolve category names here (CDC-only — no synchronous call back into Catalog from
-        // CatalogView) so the product's OpenSearch document can display names without CatalogView
+        // CatalogView) so the product's search document can display names without CatalogView
         // needing to know anything about the categories table (ADR-0027 extension).
         var categoryIds = image.CategoryIds.Select(Guid.Parse).ToList();
         var categories = categoryIds.Count == 0

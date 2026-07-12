@@ -12,9 +12,9 @@ public static class CatalogViewExtensions
         IResourceBuilder<ProjectResource> reviewSeeder,
         IResourceBuilder<ProjectResource> pricingSeeder)
     {
-        // CatalogView owns "catalogview-products" (ADR-0030, supersedes ADR-0027's OpenSearch
-        // design) — provisioned by the seeder's DynamoTableInitializer, same pattern as every
-        // other service's local table (see OrderingExtensions.cs).
+        // CatalogView owns "catalogview-products" (ADR-0030) — provisioned by the seeder's
+        // DynamoTableInitializer, same pattern as every other service's local table (see
+        // OrderingExtensions.cs).
         // The backfill scans Catalog's `products`, Review's `reviews` and Pricing's `prices`
         // tables (ADR-0026/0027), which are created by those contexts' seeders — wait for all
         // of them to finish first.

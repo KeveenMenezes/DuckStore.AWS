@@ -20,7 +20,7 @@ export class CatalogDynamoDB extends Construct {
     });
 
     // Stream feeds catalog-category-stream-publisher via CDC — a category rename needs to
-    // propagate its new name into CatalogView's OpenSearch product documents (ADR-0027 extension).
+    // propagate its new name into CatalogView's product documents.
     this.categoriesTable = new dynamodb.Table(this, 'CategoriesTable', {
       tableName: 'categories',
       partitionKey: { name: 'Id', type: dynamodb.AttributeType.STRING },

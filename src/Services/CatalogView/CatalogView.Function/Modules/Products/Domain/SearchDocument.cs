@@ -2,9 +2,8 @@
 
 namespace CatalogView.Function.Modules.Products.Domain;
 
-// One item per product in DynamoDB's "catalogview-products" table (ADR-0030, supersedes
-// ADR-0027's OpenSearch document). RatingSum and LastRatingEventId are internal bookkeeping —
-// never surfaced to GraphQL/AppSync callers.
+// One item per product in DynamoDB's "catalogview-products" table (ADR-0030). RatingSum and
+// LastRatingEventId are internal bookkeeping — never surfaced to GraphQL/AppSync callers.
 public sealed class SearchDocument
 {
     [JsonPropertyName("id")]

@@ -122,9 +122,9 @@ function mapOrder(item: Record<string, unknown>) {
 const resolvers = {
   AWSJSON: awsJsonScalar,
   Query: {
-    // Direct DynamoDB on CatalogView's "catalogview-products" table (ADR-0030, supersedes
-    // ADR-0027's OpenSearch/Lambda design). Mirrors graphql/resolvers/Query.products.js — Scan +
-    // contains() filter, no relevance ranking; sortBy is best-effort (only sorts this page).
+    // Direct DynamoDB on CatalogView's "catalogview-products" table (ADR-0030). Mirrors
+    // graphql/resolvers/Query.products.js — Scan + contains() filter, no relevance ranking;
+    // sortBy is best-effort (only sorts this page).
     async products(
       _: unknown,
       args: {
