@@ -72,19 +72,22 @@ export function response(ctx) {
   // even this is best-effort — it only orders the current page, not the full result set across
   // pages (ADR-0030). The GSI1 Query branch above sorts natively via scanIndexForward.
   //
-  // No comparator passed to Array.sort — the AppSync JS runtime rejects functions passed as
-  // arguments to anything but a handful of allow-listed methods (map/filter/forEach/etc.),
-  // and sort's comparator isn't one of them ("The code contains one or more errors" at deploy
-  // time). Insertion sort descending by averageRating instead.
+  // The AppSync JS runtime rejects a comparator passed to Array.sort (functions may only be
+  // passed to allow-listed array methods like map/filter/forEach), and also rejects while /
+  // classic for(;;) loops and ++/-- — all "The code contains one or more errors" at deploy
+  // time. So: decorate each item with a fixed-width string key whose lexicographic order is
+  // descending averageRating (rating inverted against the 0–5 scale), sort() with no
+  // arguments, and map the sorted keys back to items via the appended unique index.
   if (ctx.args.query && ctx.args.sortBy === 'AVERAGE_RATING') {
-    for (let i = 1; i < items.length; i++) {
-      const current = items[i]
-      let j = i - 1
-      while (j >= 0 && items[j].averageRating < current.averageRating) {
-        items[j + 1] = items[j]
-        j--
-      }
-      items[j + 1] = current
+    const keys = items.map(
+      (item, index) =>
+        `${('000000' + Math.round((5 - (item.averageRating ?? 0)) * 100000)).slice(-6)}|${index}`,
+    )
+    const sortedKeys = keys.slice()
+    sortedKeys.sort()
+    return {
+      items: sortedKeys.map(key => items[keys.indexOf(key)]),
+      nextToken: ctx.result.nextToken ?? null,
     }
   }
 
