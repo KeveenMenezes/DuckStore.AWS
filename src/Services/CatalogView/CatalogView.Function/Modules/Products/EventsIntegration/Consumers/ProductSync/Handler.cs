@@ -3,9 +3,10 @@ using CatalogView.Function.Modules.Products.Domain;
 
 namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
 
-// Consumes CatalogProductSyncEvent (ADR-0027) and keeps the OpenSearch document in sync with
-// Catalog's products table. Upsert/delete by id is naturally idempotent — no dedicated idempotency
-// mechanism is needed here (unlike ApplyRatingAsync, which increments a counter).
+// Consumes CatalogProductSyncEvent (ADR-0027) and keeps the catalogview-products item in sync
+// with Catalog's products table (ADR-0030). Upsert/delete by id is naturally idempotent — no
+// dedicated idempotency mechanism is needed here (unlike ApplyRatingAsync, which increments a
+// counter).
 public sealed class CatalogProductSyncHandler(IProductSearchIndex index)
 {
     public Task HandleAsync(CatalogProductSyncEvent evt, CancellationToken cancellationToken = default) =>

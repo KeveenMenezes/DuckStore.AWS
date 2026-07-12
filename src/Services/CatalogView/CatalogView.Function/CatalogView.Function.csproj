@@ -15,9 +15,9 @@
     <PackageReference Include="Amazon.Lambda.Core" />
     <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" />
     <PackageReference Include="Amazon.Lambda.Annotations" />
-    <!-- No AWSSDK.DynamoDBv2 here: CatalogView has no DynamoDB table of its own — its only
-         datastore is OpenSearch (ADR-0027). -->
-    <PackageReference Include="OpenSearch.Net" />
+    <!-- CatalogView owns "catalogview-products" (ADR-0030, supersedes the OpenSearch-backed
+         design of ADR-0027). -->
+    <PackageReference Include="AWSSDK.DynamoDBv2" />
   </ItemGroup>
 
   <ItemGroup>
