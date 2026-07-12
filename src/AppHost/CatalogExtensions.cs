@@ -43,6 +43,15 @@ public static class CatalogExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
+        builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
+                "catalog-category-stream-publisher",
+                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_CategoryStreamPublisher_Generated::CategoryStreamPublisher")
+            .WaitForCompletion(catalogSeeder)
+            .WithReference(dynamoDb)
+            .WithDynamoDBStreamsEventSource(CategoriesTableName)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+
         return catalogSeeder;
     }
 }
