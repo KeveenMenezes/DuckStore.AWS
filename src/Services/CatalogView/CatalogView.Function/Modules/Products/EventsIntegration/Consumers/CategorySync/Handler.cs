@@ -1,4 +1,4 @@
-namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CategorySync;
+﻿namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CategorySync;
 
 // Consumes CatalogCategorySyncEvent (a category rename — ADR-0027 extension) and rewrites the
 // denormalized category name on every product document that references it. Naturally idempotent —

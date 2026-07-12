@@ -1,17 +1,22 @@
-using System.Globalization;
+﻿using System.Globalization;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using CatalogView.Function.Modules.Products.Domain;
 
 namespace CatalogView.Function.Modules.Products.Data;
 
-// DynamoDB-backed implementation of the products search index (ADR-0030, supersedes
-// OpenSearchProductIndex/ADR-0027). CatalogView owns its own table, "catalogview-products" — this
-// is its only datastore. Uses the same low-level IAmazonDynamoDB + raw AttributeValue style as
+// DynamoDB-backed implementation of the products search index (ADR-0030). CatalogView owns its
+// own table, "catalogview-products" — this is its only datastore. Uses the same low-level
+// IAmazonDynamoDB + raw AttributeValue style as
 // Catalog.Function's DynamoProductRepository/Pricing.Function's DynamoCampaignRepository.
 public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearchIndex
 {
     public const string TableName = "catalogview-products";
+
+    // GSI1PK is a constant ("PRODUCT"), GSI1SK = AverageRating — lets the unfiltered/rating-only
+    // browse path Query instead of Scan (see infra/constructs/catalogview-dynamodb.ts).
+    public const string Gsi1Name = "GSI1";
+    private const string Gsi1PartitionValue = "PRODUCT";
 
     // "Name" is a DynamoDB reserved word; "Description" is not, but both are aliased for
     // consistency/readability in the expressions below.
@@ -23,15 +28,16 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
         // Partial merge (UpdateItem, not a full PutItem) — a product edit must never clobber the
         // rating fields (AverageRating/RatingCount/RatingSum/LastRatingEventId) maintained by
         // ApplyRatingAsync, nor the price fields maintained by ApplyPricingAsync (Pricing owns
-        // them — ADR-0026). This mirrors the same invariant OpenSearchProductIndex.UpsertAsync
-        // preserved before ADR-0030, and Catalog's own DynamoProductRepository.ToItem before that.
+        // them — ADR-0026). This mirrors the same invariant Catalog's own
+        // DynamoProductRepository.ToItem preserves.
         var request = new UpdateItemRequest
         {
             TableName = TableName,
             Key = new Dictionary<string, AttributeValue> { ["Id"] = new(document.Id) },
             UpdateExpression =
                 $"SET {NameAlias} = :name, {DescriptionAlias} = :description, ImageUrl = :imageUrl, " +
-                "Stock = :stock, CategoryIds = :categoryIds, Categories = :categories",
+                "Stock = :stock, CategoryIds = :categoryIds, Categories = :categories, " +
+                "GSI1PK = :gsi1pk, GSI1SK = if_not_exists(GSI1SK, :zero)",
             ExpressionAttributeNames = new Dictionary<string, string>
             {
                 [NameAlias] = "Name",
@@ -44,7 +50,11 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
                 [":imageUrl"] = new(document.ImageUrl),
                 [":stock"] = new AttributeValue { N = document.Stock.ToString(CultureInfo.InvariantCulture) },
                 [":categoryIds"] = ToStringList(document.CategoryIds),
-                [":categories"] = ToCategoryList(document.Categories)
+                [":categories"] = ToCategoryList(document.Categories),
+                [":gsi1pk"] = new(Gsi1PartitionValue),
+                // if_not_exists keeps this an insert-only default — must never clobber the
+                // AverageRating-derived GSI1SK that RecomputeAverageAsync maintains afterwards.
+                [":zero"] = new AttributeValue { N = "0" }
             }
         };
 
@@ -212,7 +222,7 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             {
                 TableName = TableName,
                 Key = new Dictionary<string, AttributeValue> { ["Id"] = new(productId) },
-                UpdateExpression = "SET AverageRating = :average",
+                UpdateExpression = "SET AverageRating = :average, GSI1SK = :average",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":average"] = new AttributeValue { N = average.ToString(CultureInfo.InvariantCulture) }
@@ -338,7 +348,9 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             {
                 N = document.MaxInstallmentValue.ToString(CultureInfo.InvariantCulture)
             },
-            ["RatingSum"] = new AttributeValue { N = document.RatingSum.ToString(CultureInfo.InvariantCulture) }
+            ["RatingSum"] = new AttributeValue { N = document.RatingSum.ToString(CultureInfo.InvariantCulture) },
+            ["GSI1PK"] = new(Gsi1PartitionValue),
+            ["GSI1SK"] = new AttributeValue { N = document.AverageRating.ToString(CultureInfo.InvariantCulture) }
         };
 
         if (!string.IsNullOrEmpty(document.LastRatingEventId))

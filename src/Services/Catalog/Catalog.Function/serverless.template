@@ -42,66 +42,6 @@
           ]
         }
       }
-    },
-    "CatalogFunctionFunctionsCreateCategoryGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Catalog.Function::Catalog.Function.Functions_CreateCategory_Generated::CreateCategory"
-          ]
-        }
-      }
-    },
-    "CatalogFunctionFunctionsDeleteCategoryGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Catalog.Function::Catalog.Function.Functions_DeleteCategory_Generated::DeleteCategory"
-          ]
-        }
-      }
-    },
-    "CatalogFunctionFunctionsUpdateCategoryGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Catalog.Function::Catalog.Function.Functions_UpdateCategory_Generated::UpdateCategory"
-          ]
-        }
-      }
     }
   },
   "Outputs": {

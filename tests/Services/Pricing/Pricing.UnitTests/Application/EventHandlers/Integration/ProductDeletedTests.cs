@@ -1,30 +1,30 @@
-﻿using BuildingBlocks.Messaging.Events;
-using Pricing.Function.Modules.Prices.EventsIntegration.Consumers.CatalogProductRemoved;
+using BuildingBlocks.Messaging.Events;
+using Pricing.Function.Modules.Prices.EventsIntegration.Consumers.ProductDeleted;
 
 namespace Pricing.UnitTests.Application.EventHandlers.Integration;
 
-public class CatalogProductRemovedMapperTests
+public class ProductDeletedMapperTests
 {
     [Fact]
     public void ToProductId_ShouldParseProductIdFromEvent()
     {
         var productId = Guid.NewGuid();
-        var evt = new CatalogUpdatedEvent { ChangeType = "REMOVE", ProductId = productId.ToString() };
+        var evt = new ProductDeletedEvent { ProductId = productId.ToString() };
 
-        var result = CatalogProductRemovedMapper.ToProductId(evt);
+        var result = ProductDeletedMapper.ToProductId(evt);
 
         Assert.Equal(productId, result);
     }
 }
 
-public class CatalogProductRemovedHandlerTests
+public class ProductDeletedHandlerTests
 {
     [Fact]
     public void BuildCleanupTransactItems_ShouldTargetPricesAndProductDiscountsTables()
     {
         var productId = Guid.NewGuid();
 
-        var items = CatalogProductRemovedHandler.BuildCleanupTransactItems(productId);
+        var items = ProductDeletedHandler.BuildCleanupTransactItems(productId);
 
         Assert.Equal(2, items.Count);
         Assert.Equal("prices", items[0].Delete.TableName);

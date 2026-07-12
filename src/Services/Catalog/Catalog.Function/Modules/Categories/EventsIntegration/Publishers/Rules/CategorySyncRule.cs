@@ -1,10 +1,10 @@
-namespace Catalog.Function.Modules.Categories.EventsIntegration.Publishers.Rules;
+﻿namespace Catalog.Function.Modules.Categories.EventsIntegration.Publishers.Rules;
 
 // Fires only on a rename (MODIFY where Name changed) — a brand-new category has no products
 // referencing it yet, and a move never affects anything already denormalized on a product (ADR-0027
 // extension). Produces CatalogCategorySyncEvent so CatalogView can rewrite the category's name on
 // every product document that references it, without a synchronous call back into Catalog.
-public sealed class CatalogCategorySyncRule : IStreamRule<CategoryStreamImage>
+public sealed class CategorySyncRule : IStreamRule<CategoryStreamImage>
 {
     public bool Match(StreamContext<CategoryStreamImage> context) =>
         context.EventName == "MODIFY"

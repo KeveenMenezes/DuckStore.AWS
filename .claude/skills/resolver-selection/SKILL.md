@@ -41,36 +41,87 @@ Work through the questions in order and stop at the first "yes":
 
 ## Current field classification (DuckStore)
 
-### Catalog / Basket / Discount (AppSync schema active)
+### Catalog / Basket / CatalogView
 
 | AppSync field | Resolver | Criterion |
 |---|---|---|
-| `products(pageSize, nextToken)` | **Direct** | — |
+| `products(query, sortBy, minRating, maxRating, pageSize, nextToken)` | **Direct** | — Query on CatalogView's GSI1 when no free-text `query`; Scan+filter only for substring text search (unavoidable — same tradeoff ADR-0030 already accepts) |
 | `product(id)` | **Direct** | — |
 | `categories(pageSize, nextToken)` | **Direct** | — |
-| `basket(userName)` | **Direct** | — (Redis removed; AppSync field caching for perf) |
-| `createProduct(input)` | **Direct** | — |
-| `updateProduct(input)` | **Direct** | — (`attribute_exists` condition covers not-found) |
-| `deleteProduct(id)` | **Direct** | — |
-| `deleteBasket(userName)` | **Direct** | — |
-| `storeBasket(input)` | **Lambda** | **Criterion 2** — Discount Lambda invoked per cart item |
-| `checkoutBasket(input)` | **Lambda** | **Criterion 1** — UpdateItem with CDC marker payload + DeleteItem; stateful write pipeline for DynamoDB Streams (ADR-0008) |
-| `couponFor(productName)` | **Lambda** | **Criterion 1** — Discount domain rule: GetItem + business fallback (zero-discount coupon) |
+| `basket(ownerId)` | **Direct** | — |
+| `createProduct(input)` / `updateProduct(input)` / `deleteProduct(id)` | **Direct** | — (`attribute_exists` condition covers not-found) |
+| `storeBasket(ownerId, input)` | **Direct** | — plain PutItem, no business logic (the old Discount-Lambda-per-item invoke was removed by ADR-0012 — don't reintroduce it as a reason to keep this Lambda) |
+| `deleteBasket(ownerId)` | **Direct** | — |
+| `checkoutBasket(input)` | **Lambda** | **Criterion 1** — existence guard + UpdateItem (CDC marker) + DeleteItem; kept as Lambda pending further work (see basket checkout notes) |
+| `mergeBasket(guestId)` | **Lambda** | **Criterion 1** — `ShoppingCart.Merge` sums quantities across two carts in code (not expressible as an `UpdateExpression`), then a same-table `TransactWriteItems` |
 
-### Ordering (AppSync schema active)
+### Pricing
+
+| AppSync field | Resolver | Criterion |
+|---|---|---|
+| `nominalPriceFor(productId)` | **Direct** | — |
+| `currentDiscountForProduct(productId)` | **Direct** | — GetItem + read-time expiry check |
+| `setNominalPrice(productId, price, cost)` | **Direct** | — UpdateItem upsert; the `prices` item only ever persists a single `UpdatedAt`, so no prior read is needed |
+| `setGatewayCost(provider, ...)` | **Direct** | — same single-`UpdatedAt` pattern as `setNominalPrice` |
+| `installmentPlanFor(productId)` | **Lambda** | **Criterion 1** — reads Price + GatewayCost + Campaign discount (3 tables) and runs `InstallmentCalculator` (tiered interest/margin math) |
+| `basketInstallmentPlan(items)` | **Lambda** | **Criterion 1** — same calculation, summed across the whole cart |
+| `createCampaign(...)` | **Lambda** | **Criterion 4** — `TransactWriteItems` across `campaigns` + N `product-discounts` rows |
+| `endCampaign(campaignId)` | **Lambda** | **Criterion 4** — reads the campaign, then a fan-out `TransactWriteItems` retracting its `product-discounts` rows |
+
+### User
+
+| AppSync field | Resolver | Criterion |
+|---|---|---|
+| `myProfile` | **Direct** | — UpdateItem with `if_not_exists(Email, …)`/`if_not_exists(Name, …)` replicates lazy get-or-create provisioning (ADR-0017) with no Lambda |
+| `updateProfile(input)` | **Direct** | — |
+
+### Ordering
 
 | AppSync field | Resolver | Criterion |
 |---|---|---|
 | `orders(pageSize, nextToken)` | **Direct** | — Scan + `#Type = :type` filter |
-| `ordersByName(name, pageSize, nextToken)` | **Direct** | — Scan + `contains(OrderName)` + Type filter |
-| `ordersByCustomer(customerId)` | **Lambda** | **Criterion 1** — GSI1 is KEYS_ONLY; 2-step read (Query + BatchGetItem) |
-| `deleteOrder(orderId)` | **Lambda** | **Criterion 1** — 2-step write (Query ORDERITEM rows + TransactWriteItems) |
+| `ordersByName(name, pageSize, nextToken)` | **Direct** | — Scan + `contains(OrderName)` + Type filter (substring search — same accepted tradeoff as `products`) |
+| `ordersByCustomer(customerId)` | **Direct** | — Query on GSI1 (`ProjectionType.ALL` avoids a follow-up GetItem) |
+| `deleteOrder(orderId)` | **Direct** | — DeleteItem |
+
+### Review
+
+| AppSync field | Resolver | Criterion |
+|---|---|---|
+| `reviewsByProduct(productId, pageSize, nextToken)` | **Direct** | — Query on GSI1 |
+| `createReview(input)` | **Direct** | — pipeline resolver (GetItem existence check → PutItem upsert) |
+
+**When re-auditing this table**: don't trust a row until you've re-read the actual handler/resolver
+— this table has gone stale before (e.g. `ordersByCustomer`/`deleteOrder` were marked Lambda here
+long after they'd already become direct resolvers in code). Verify against
+`graphql/resolvers/<domain>/{queries,mutations}/*.js` and `infra/constructs/appsync-api.ts` directly.
 
 ## Implementation patterns
 
+### Resolver file organization
+
+Resolvers are organized by bounded context, then by operation kind:
+
+```
+graphql/resolvers/<domain>/<queries|mutations>/<TypeName>.<fieldName>.js
+```
+
+`<domain>` mirrors the bounded contexts in `src/Services/*` as seen from the API surface:
+`basket`, `products`, `categories`, `pricing`, `orders`, `reviews`, `user`. `<queries|mutations>`
+is derived straight from `TypeName` (`Query` → `queries`, `Mutation` → `mutations`). A pipeline
+resolver's step files (e.g. `Mutation.createReview.checkExisting.js`) live in the same
+`<domain>/mutations/` folder as their parent file.
+
+`infra/constructs/appsync-api.ts` is the map from GraphQL field to file: every
+`this.resolver(dataSource, id, typeName, fieldName, domain)` /
+`this.pipelineResolver(dataSource, id, typeName, fieldName, domain, steps)` call passes the
+`domain` string explicitly — that argument is what points at the folder. When adding a field,
+put its `.js` file in the matching domain folder first, then wire it with that same `domain`
+string in `appsync-api.ts`.
+
 ### Direct DynamoDB resolver (APPSYNC_JS)
 
-File location: `src/WebApps/Shopping.Web.SPA.React/graphql/resolvers/<TypeName>.<fieldName>.js`
+File location: `src/WebApps/Shopping.Web.SPA.React/graphql/resolvers/<domain>/queries/<TypeName>.<fieldName>.js` (or `mutations/` for `Mutation` fields)
 
 **Query — Scan (paginated list)**
 ```js
@@ -168,23 +219,24 @@ export function response(ctx) {
 
 ### Lambda resolver mapping file (APPSYNC_JS)
 
-Every Lambda resolver field MUST have a resolver file at `graphql/resolvers/<Type>.<field>.js`
-documenting the AppSync → Lambda payload contract:
+Every Lambda resolver field MUST have a resolver file at
+`graphql/resolvers/<domain>/queries|mutations/<Type>.<field>.js` documenting the AppSync → Lambda
+payload contract:
 
 ```js
-// resolvers/Query.ordersByCustomer.js
+// resolvers/pricing/queries/Query.installmentPlanFor.js
 import { util } from '@aws-appsync/utils'
 
 export function request(ctx) {
   return {
     operation: 'Invoke',
-    payload: { CustomerId: ctx.args.customerId },
+    payload: { ProductId: ctx.args.productId },
   }
 }
 
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
-  return { items: ctx.result.Orders.map(o => ({ ... })), nextToken: null }
+  return { maxInstallmentsWithoutInterest: ctx.result.MaxInstallmentsWithoutInterest, ... }
 }
 ```
 
@@ -205,7 +257,7 @@ in the AppSync CDK/SAM definition, not in the resolver file.
 
 **Correct** — a simple delete uses a direct resolver (no Lambda cold start):
 ```js
-// resolvers/Mutation.deleteProduct.js
+// resolvers/products/mutations/Mutation.deleteProduct.js
 export function request(ctx) {
   return { operation: 'DeleteItem', key: { id: util.dynamodb.toDynamoDB(ctx.args.id) } }
 }
@@ -238,13 +290,14 @@ public async Task<IResult> DeleteProduct(string id, ISender sender, Cancellation
 2. If an existing Lambda handler exists under `src/Services/*/Features/`, read it to see
    whether it actually uses Redis, cross-service calls, or complex validation — those are
    the escalation criteria, not the mere existence of the handler.
-3. Check `src/WebApps/Shopping.Web.SPA.React/graphql/resolvers/` to see whether a resolver
-   file already exists for the field.
+3. Check `src/WebApps/Shopping.Web.SPA.React/graphql/resolvers/<domain>/` to see whether a
+   resolver file already exists for the field.
 
 ## After classifying and implementing
 
-- Add the resolver file under `graphql/resolvers/<Type>.<field>.js` (direct) or confirm
-  the Lambda handler project exists under `src/Services/*/` (Lambda).
+- Add the resolver file under `graphql/resolvers/<domain>/queries|mutations/<Type>.<field>.js`
+  (direct) or confirm the Lambda handler project exists under `src/Services/*/` (Lambda). If the
+  field's domain folder doesn't exist yet, create it — don't bolt the field onto an unrelated one.
 - Update `schema.graphql` if the field is new.
 - Document which escalation criterion applies (or confirm none do) in the PR description —
   the reviewer checks this as part of ADR-0009 compliance.

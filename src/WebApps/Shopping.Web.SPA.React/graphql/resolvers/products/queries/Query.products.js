@@ -1,48 +1,52 @@
 import { util } from '@aws-appsync/utils'
 
-// AppSync direct DynamoDB resolver — Scan + filter on CatalogView's "catalogview-products" table
-// (ADR-0030, supersedes ADR-0027's OpenSearch/Lambda design), same pattern as
-// Query.orders.js/Query.categories.js. Price moved to Pricing (ADR-0026) but is denormalized onto
-// this table via CDC, along with the payment badge (ADR-0028).
+// AppSync direct DynamoDB resolver on CatalogView's "catalogview-products" table (ADR-0030,
+// supersedes ADR-0027's OpenSearch/Lambda design). Price moved to Pricing (ADR-0026) but is
+// denormalized onto this table via CDC, along with the payment badge (ADR-0028).
 //
 // No full-text/relevance search: `query` only does a substring `contains()` filter on name/
-// description (Scan has no relevance ranking). `minRating`/`maxRating` filter on AverageRating.
+// description, which DynamoDB cannot express as a key condition — that branch stays a Scan (same
+// accepted tradeoff as ADR-0030 "Negative/Costs"; a real search index was already ruled out on
+// cost grounds). But the far more common case — browsing/sorting with no free-text `query` — has
+// no such requirement, so it Queries GSI1 (GSI1PK constant "PRODUCT", GSI1SK = AverageRating)
+// instead: minRating/maxRating become a native sort-key range instead of a post-read
+// FilterExpression, sorting by rating is native (scanIndexForward) instead of a per-page
+// re-sort, and RCU cost no longer scales with total catalog size.
 export function request(ctx) {
-  const { query, minRating, maxRating, pageSize, nextToken } = ctx.args
-
-  const expressionNames = {}
-  const expressionValues = {}
-  const clauses = []
+  const { query, minRating, maxRating, sortBy, pageSize, nextToken } = ctx.args
 
   if (query) {
-    expressionNames['#Name'] = 'Name'
-    expressionNames['#Description'] = 'Description'
-    expressionValues[':q'] = util.dynamodb.toDynamoDB(query)
-    clauses.push('(contains(#Name, :q) OR contains(#Description, :q))')
-  }
-
-  if (minRating != null || maxRating != null) {
-    expressionNames['#AverageRating'] = 'AverageRating'
-    expressionValues[':min'] = util.dynamodb.toDynamoDB(minRating ?? 0)
-    expressionValues[':max'] = util.dynamodb.toDynamoDB(maxRating ?? 5)
-    clauses.push('#AverageRating BETWEEN :min AND :max')
-  }
-
-  const request = {
-    operation: 'Scan',
-    limit: pageSize ?? 20,
-    nextToken,
-  }
-
-  if (clauses.length > 0) {
-    request.filter = {
-      expression: clauses.join(' AND '),
-      expressionNames,
-      expressionValues,
+    return {
+      operation: 'Scan',
+      limit: pageSize ?? 20,
+      nextToken,
+      filter: {
+        expression: '(contains(#Name, :q) OR contains(#Description, :q)) AND #AverageRating BETWEEN :min AND :max',
+        expressionNames: { '#Name': 'Name', '#Description': 'Description', '#AverageRating': 'AverageRating' },
+        expressionValues: {
+          ':q': util.dynamodb.toDynamoDB(query),
+          ':min': util.dynamodb.toDynamoDB(minRating ?? 0),
+          ':max': util.dynamodb.toDynamoDB(maxRating ?? 5),
+        },
+      },
     }
   }
 
-  return request
+  return {
+    operation: 'Query',
+    index: 'GSI1',
+    query: {
+      expression: 'GSI1PK = :pk AND GSI1SK BETWEEN :min AND :max',
+      expressionValues: {
+        ':pk': util.dynamodb.toDynamoDB('PRODUCT'),
+        ':min': util.dynamodb.toDynamoDB(minRating ?? 0),
+        ':max': util.dynamodb.toDynamoDB(maxRating ?? 5),
+      },
+    },
+    scanIndexForward: sortBy !== 'AVERAGE_RATING',
+    limit: pageSize ?? 20,
+    nextToken,
+  }
 }
 
 export function response(ctx) {
@@ -64,9 +68,10 @@ export function response(ctx) {
     maxInstallmentValue: item.MaxInstallmentValue ?? 0,
   }))
 
-  // Best-effort sort: DynamoDB Scan has no ORDER BY, so this only orders the current page of
-  // items just returned — it is not a globally sorted result across pages (ADR-0030).
-  if (ctx.args.sortBy === 'AVERAGE_RATING') {
+  // Only the free-text Scan branch still needs a manual sort: it has no native ORDER BY, and
+  // even this is best-effort — it only orders the current page, not the full result set across
+  // pages (ADR-0030). The GSI1 Query branch above sorts natively via scanIndexForward.
+  if (ctx.args.query && ctx.args.sortBy === 'AVERAGE_RATING') {
     items.sort((a, b) => b.averageRating - a.averageRating)
   }
 

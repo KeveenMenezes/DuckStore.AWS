@@ -43,26 +43,6 @@
         }
       }
     },
-    "PricingFunctionFunctionsCatalogProductRemovedConsumerGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Pricing.Function::Pricing.Function.Functions_CatalogProductRemovedConsumer_Generated::CatalogProductRemovedConsumer"
-          ]
-        }
-      }
-    },
     "PricingFunctionFunctionsGetInstallmentPlanGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
@@ -79,26 +59,6 @@
         "ImageConfig": {
           "Command": [
             "Pricing.Function::Pricing.Function.Functions_GetInstallmentPlan_Generated::GetInstallmentPlan"
-          ]
-        }
-      }
-    },
-    "PricingFunctionFunctionsSetNominalPriceGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Pricing.Function::Pricing.Function.Functions_SetNominalPrice_Generated::SetNominalPrice"
           ]
         }
       }
@@ -123,26 +83,6 @@
         }
       }
     },
-    "PricingFunctionFunctionsSetGatewayCostGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Pricing.Function::Pricing.Function.Functions_SetGatewayCost_Generated::SetGatewayCost"
-          ]
-        }
-      }
-    },
     "PricingFunctionFunctionsGetBasketInstallmentPlanGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
@@ -159,6 +99,26 @@
         "ImageConfig": {
           "Command": [
             "Pricing.Function::Pricing.Function.Functions_GetBasketInstallmentPlan_Generated::GetBasketInstallmentPlan"
+          ]
+        }
+      }
+    },
+    "PricingFunctionFunctionsProductDeletedConsumerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Image",
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Pricing.Function::Pricing.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer"
           ]
         }
       }

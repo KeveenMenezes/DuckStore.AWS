@@ -1,4 +1,4 @@
-using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
+﻿using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
 
 namespace Pricing.Function.Modules.GatewayCosts.Data;
 

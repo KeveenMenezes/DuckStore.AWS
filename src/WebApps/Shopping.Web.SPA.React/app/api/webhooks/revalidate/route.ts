@@ -8,8 +8,9 @@ import { createHmac, timingSafeEqual } from 'crypto'
 // a catalog change, a review, or anything else added later.
 //
 // Server-to-server only — called exclusively by the `revalidator` Lambda
-// (sst.config.ts), reacting to CatalogUpdatedEvent/ReviewCreatedEvent off
-// EventBridge. There is deliberately no browser-triggered path: a
+// (sst.config.ts), reacting to ProductCreatedEvent/ProductUpdatedEvent/
+// ProductDeletedEvent/ReviewCreatedEvent off EventBridge. There is
+// deliberately no browser-triggered path: a
 // client-side call would only cover reviews submitted through this exact
 // SPA's form, leaving a silent blind spot for reviews created any other way
 // (seed data, another channel) — the same category of bug this project

@@ -123,8 +123,8 @@ const resolvers = {
   AWSJSON: awsJsonScalar,
   Query: {
     // Direct DynamoDB on CatalogView's "catalogview-products" table (ADR-0030). Mirrors
-    // graphql/resolvers/Query.products.js — Scan + contains() filter, no relevance ranking;
-    // sortBy is best-effort (only sorts this page).
+    // graphql/resolvers/products/queries/Query.products.js — Scan + contains() filter, no
+    // relevance ranking; sortBy is best-effort (only sorts this page).
     async products(
       _: unknown,
       args: {
@@ -484,22 +484,33 @@ const resolvers = {
     async myProfile(_: unknown, __: unknown, context: LocalContext) {
       // Profile is Cognito-only in prod; locally there is no Cognito, so we derive the id from
       // the BFF-resolved owner and seed with placeholder claims (same limitation as local checkout).
+      // Mirrors the AppSync direct UpdateItem resolver (ADR-0009): if_not_exists lazily
+      // provisions Email/Name once and never overwrites them on later calls.
       const userId = customerIdFromOwner(context.owner.ownerId)
-      const body = await invokeLambda<Record<string, string | undefined>>('user-get-profile', {
-        UserId: userId,
-        Email: `${userId}@local.dev`,
-        Name: userId,
-      })
+      const result = await dynamoDb.send(
+        new UpdateItemCommand({
+          TableName: 'user-profiles',
+          Key: { UserId: { S: userId } },
+          UpdateExpression: 'SET Email = if_not_exists(Email, :email), #name = if_not_exists(#name, :name)',
+          ExpressionAttributeNames: { '#name': 'Name' },
+          ExpressionAttributeValues: {
+            ':email': { S: `${userId}@local.dev` },
+            ':name': { S: userId },
+          },
+          ReturnValues: 'ALL_NEW',
+        }),
+      )
+      const item = unmarshall(result.Attributes ?? {})
       return {
-        userId: body.UserId,
-        email: body.Email,
-        name: body.Name,
-        phone: body.Phone ?? null,
-        addressLine: body.AddressLine ?? null,
-        city: body.City ?? null,
-        state: body.State ?? null,
-        zipCode: body.ZipCode ?? null,
-        country: body.Country ?? null,
+        userId: item.UserId as string,
+        email: item.Email as string,
+        name: item.Name as string,
+        phone: (item.Phone as string) ?? null,
+        addressLine: (item.AddressLine as string) ?? null,
+        city: (item.City as string) ?? null,
+        state: (item.State as string) ?? null,
+        zipCode: (item.ZipCode as string) ?? null,
+        country: (item.Country as string) ?? null,
       }
     },
   },
@@ -509,19 +520,34 @@ const resolvers = {
       _: unknown,
       { ownerId, input }: { ownerId: string; input: { items: Array<Record<string, unknown>> } },
     ) {
-      const body = await invokeLambda<{ OwnerId: string }>('basket-store-basket', {
-        Cart: {
-          OwnerId: ownerId,
-          Items: input.items.map(i => ({
-            Quantity: i.quantity,
-            Color: (i.color as string) ?? '',
-            Price: i.price,
-            ProductId: i.productId,
-            ProductName: i.productName,
-          })),
-        },
-      })
-      return { ownerId: body.OwnerId }
+      // Mirrors the AppSync direct PutItem resolver (ADR-0009) — cart JSON blob shape must match
+      // Basket.Function's (now-removed) ShoppingCartSerializer contract exactly.
+      const items = input.items.map(i => ({
+        Quantity: i.quantity,
+        Color: (i.color as string) ?? '',
+        Price: i.price,
+        ProductId: i.productId,
+        ProductName: i.productName,
+        ImageUrl: (i.imageUrl as string) ?? '',
+      }))
+      const totalPrice = items.reduce(
+        (sum, item) => sum + (item.Price as number) * (item.Quantity as number),
+        0,
+      )
+      await dynamoDb.send(
+        new PutItemCommand({
+          TableName: 'shopping-carts',
+          Item: {
+            OwnerId: { S: ownerId },
+            Data: { S: JSON.stringify({ OwnerId: ownerId, Items: items, TotalPrice: totalPrice }) },
+            // Only guest carts expire; user carts omit ExpiresAt so DynamoDB TTL never touches them.
+            ...(ownerId.startsWith('GUEST#')
+              ? { ExpiresAt: { N: String(Math.floor(Date.now() / 1000) + 15 * 24 * 60 * 60) } }
+              : {}),
+          },
+        }),
+      )
+      return { ownerId }
     },
 
     async checkoutBasket(
@@ -693,15 +719,28 @@ const resolvers = {
       _: unknown,
       { productId, price, cost }: { productId: string; price: number; cost: number },
     ) {
-      const body = await invokeLambda<{ ProductId: string; NominalPrice: number; Cost: number }>(
-        'pricing-set-nominal-price',
-        { ProductId: productId, NominalPrice: price, Cost: cost },
+      // Mirrors the AppSync direct UpdateItem resolver (ADR-0009) — the `prices` item only ever
+      // persists a single UpdatedAt timestamp, so a plain upsert needs no prior read.
+      const now = new Date().toISOString()
+      const result = await dynamoDb.send(
+        new UpdateItemCommand({
+          TableName: 'prices',
+          Key: { ProductId: { S: productId } },
+          UpdateExpression: 'SET NominalPrice = :nominalPrice, Cost = :cost, UpdatedAt = :now',
+          ExpressionAttributeValues: {
+            ':nominalPrice': { N: String(price) },
+            ':cost': { N: String(cost) },
+            ':now': { S: now },
+          },
+          ReturnValues: 'ALL_NEW',
+        }),
       )
+      const item = unmarshall(result.Attributes ?? {})
       return {
-        productId: body.ProductId,
-        nominalPrice: body.NominalPrice,
-        cost: body.Cost,
-        updatedAt: new Date().toISOString(),
+        productId: item.ProductId,
+        nominalPrice: Number(item.NominalPrice),
+        cost: Number(item.Cost),
+        updatedAt: item.UpdatedAt,
       }
     },
 
@@ -714,22 +753,34 @@ const resolvers = {
         installmentRates: Record<string, number>
       },
     ) {
-      const body = await invokeLambda<{
-        Provider: string
-        FlatFeePerTransaction: number
-        AvistaRatePercent: number
-        InstallmentRates: Record<string, number>
-      }>('pricing-set-gateway-cost', {
-        Provider: args.provider,
-        FlatFeePerTransaction: args.flatFeePerTransaction,
-        AvistaRatePercent: args.avistaRatePercent,
-        InstallmentRates: args.installmentRates,
-      })
+      // Mirrors the AppSync direct UpdateItem resolver (ADR-0009) — same single-UpdatedAt-
+      // attribute contract as `prices`, so a plain upsert needs no prior read.
+      const now = new Date().toISOString()
+      const result = await dynamoDb.send(
+        new UpdateItemCommand({
+          TableName: 'gateway-costs',
+          Key: { Provider: { S: args.provider } },
+          UpdateExpression:
+            'SET FlatFeePerTransaction = :flatFee, AvistaRatePercent = :avista, InstallmentRates = :rates, UpdatedAt = :now',
+          ExpressionAttributeValues: {
+            ':flatFee': { N: String(args.flatFeePerTransaction) },
+            ':avista': { N: String(args.avistaRatePercent) },
+            ':rates': {
+              M: Object.fromEntries(
+                Object.entries(args.installmentRates).map(([k, v]) => [k, { N: String(v) }]),
+              ),
+            },
+            ':now': { S: now },
+          },
+          ReturnValues: 'ALL_NEW',
+        }),
+      )
+      const item = unmarshall(result.Attributes ?? {})
       return {
-        provider: body.Provider,
-        flatFeePerTransaction: body.FlatFeePerTransaction,
-        avistaRatePercent: body.AvistaRatePercent,
-        installmentRates: body.InstallmentRates,
+        provider: item.Provider,
+        flatFeePerTransaction: Number(item.FlatFeePerTransaction),
+        avistaRatePercent: Number(item.AvistaRatePercent),
+        installmentRates: item.InstallmentRates,
       }
     },
 

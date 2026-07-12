@@ -37,6 +37,15 @@ public static class CatalogViewExtensions
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
         builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
+                "catalogview-product-deleted-consumer",
+                lambdaHandler:
+                "CatalogView.Function::CatalogView.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer")
+            .WaitForCompletion(catalogViewSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+
+        builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
                 "catalogview-review-aggregate-consumer",
                 lambdaHandler:
                 "CatalogView.Function::CatalogView.Function.Functions_ReviewAggregateConsumer_Generated::ReviewAggregateConsumer")

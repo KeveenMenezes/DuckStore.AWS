@@ -357,10 +357,11 @@ type Query {
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
   ordersByName(name: String!, pageSize: Int, nextToken: String): OrderPage!
 
-  # Lambda resolver — Cognito required; uses ctx.identity.sub (resolver ignores client customerId)
+  # Direct DynamoDB resolver — Cognito required; uses ctx.identity.sub (resolver ignores client customerId)
   ordersByCustomer(customerId: ID!): OrderPage!
 
-  # Lambda resolver — Cognito only (default auth); lazily provisions from token claims (ADR-0017)
+  # Direct DynamoDB resolver — Cognito only (default auth); lazily provisions from token claims via
+  # if_not_exists (ADR-0009, ADR-0017)
   myProfile: UserProfile!
 
   # Direct DynamoDB resolver — public (API_KEY or Cognito)
@@ -368,7 +369,8 @@ type Query {
 }
 
 type Mutation {
-  # Lambda resolver — Cognito OR API_KEY (guest via BFF); resolver derives/validates ownerId (ADR-0016)
+  # Direct DynamoDB resolver — Cognito OR API_KEY (guest via BFF); resolver derives/validates
+  # ownerId (ADR-0009, ADR-0016)
   storeBasket(ownerId: String!, input: ShoppingCartInput!): StoreBasketResult! @aws_api_key @aws_cognito_user_pools
 
   # Lambda resolver — Cognito ONLY (login required, which triggers the merge); resolver injects
@@ -391,8 +393,8 @@ type Mutation {
   # Direct DynamoDB resolver — Cognito required; Admin or Seller group only (enforced in resolver)
   deleteProduct(id: ID!): DeleteProductResult!
 
-  # Lambda resolver — Cognito required; Admin or Seller group only. Sets/updates the nominal price,
-  # decoupled from createProduct/updateProduct (ADR-0026).
+  # Direct DynamoDB resolver — Cognito required; Admin or Seller group only. Sets/updates the
+  # nominal price, decoupled from createProduct/updateProduct (ADR-0009, ADR-0026).
   setNominalPrice(productId: ID!, price: Float!, cost: Float!): Price!
 
   # Lambda resolver — Cognito required; Admin group only. Fans out a TransactWriteItems across
@@ -402,8 +404,8 @@ type Mutation {
   # Lambda resolver — Cognito required; Admin group only.
   endCampaign(campaignId: ID!): Boolean!
 
-  # Lambda resolver — Cognito required; Admin group only. Configures a payment-gateway provider's
-  # flat fee, à vista rate, and per-installment-count rate table (ADR-0028).
+  # Direct DynamoDB resolver — Cognito required; Admin group only. Configures a payment-gateway
+  # provider's flat fee, à vista rate, and per-installment-count rate table (ADR-0009, ADR-0028).
   setGatewayCost(
     provider: String!
     flatFeePerTransaction: Float!
@@ -411,7 +413,7 @@ type Mutation {
     installmentRates: AWSJSON!
   ): GatewayCost!
 
-  # Lambda resolver — Cognito required; Admin group only (enforced in resolver)
+  # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
   deleteOrder(orderId: ID!): DeleteOrderResult!
 
   # Direct DynamoDB pipeline resolver — Cognito required; upserts by (productId, userName) so a

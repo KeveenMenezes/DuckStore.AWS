@@ -1,7 +1,8 @@
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using CatalogView.Function.Modules.Products.Data;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CategorySync;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.PriceChanged;
+using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductDeleted;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewUpdated;
@@ -19,7 +20,8 @@ public static class ServiceRegistration
 
         services.AddScoped<IProductSearchIndex, DynamoProductIndex>();
 
-        services.AddScoped<CatalogProductSyncHandler>();
+        services.AddScoped<ProductSyncedHandler>();
+        services.AddScoped<ProductDeletedHandler>();
         services.AddScoped<CategorySyncHandler>();
         services.AddScoped<PriceSyncHandler>();
         services.AddScoped<ReviewAggregateHandler>();

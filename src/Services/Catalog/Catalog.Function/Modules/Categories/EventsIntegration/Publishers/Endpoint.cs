@@ -1,4 +1,4 @@
-namespace Catalog.Function;
+﻿namespace Catalog.Function;
 
 public partial class Functions
 {

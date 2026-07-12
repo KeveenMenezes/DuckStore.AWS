@@ -1,12 +1,13 @@
-﻿using AppHost.Extensions;
+using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
-using Aspire.Hosting.AWS.Lambda;
 
 namespace AppHost.User;
 
 public static class UserExtensions
 {
-    public static IResourceBuilder<LambdaProjectResource> AddUserLambdas(
+    // No Lambda functions — myProfile/updateProfile are AppSync direct DynamoDB resolvers
+    // (ADR-0009). This only seeds the user-profiles table for local dev.
+    public static IResourceBuilder<ProjectResource> AddUserResources(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb)
     {
@@ -15,14 +16,6 @@ public static class UserExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
-        // Invoked by the AppSync `myProfile` Lambda resolver (lazy provisioning — ADR-0017).
-        var getProfile = builder.AddAWSLambdaFunction<Projects.User_Function>(
-                "user-get-profile",
-                lambdaHandler: "User.Function::User.Function.Functions_GetProfile_Generated::GetProfile")
-            .WaitForCompletion(userSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment();
-
-        return getProfile;
+        return userSeeder;
     }
 }

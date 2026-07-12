@@ -7,7 +7,7 @@ namespace Catalog.UnitTests.EventsIntegration;
 
 public class CatalogCategorySyncRuleTests
 {
-    private readonly CatalogCategorySyncRule _rule = new();
+    private readonly CategorySyncRule _rule = new();
 
     [Fact]
     public void Match_ShouldBeTrue_WhenModifyChangesName()

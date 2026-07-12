@@ -50,7 +50,7 @@ export class PricingDynamoDB extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Idempotency inbox for the CatalogProductRemoved consumer.
+    // Idempotency inbox for the ProductDeleted consumer.
     this.processedEventsTable = new dynamodb.Table(this, 'ProcessedEventsTable', {
       tableName: 'pricing-processed-events',
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },

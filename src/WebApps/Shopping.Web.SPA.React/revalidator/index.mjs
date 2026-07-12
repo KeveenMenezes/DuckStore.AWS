@@ -2,9 +2,11 @@ import { createHmac } from 'crypto'
 import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront'
 
 // Backend-triggered ISR revalidation, wired via `sst.aws.Bus.subscribe` in
-// sst.config.ts. Consumes CatalogUpdatedEvent / ReviewCreatedEvent / ReviewUpdatedEvent
-// (ADR-0029 — a customer editing their review) directly off the existing
-// `duckstore-event-bus` (still published to by Catalog, which stays on CDK).
+// sst.config.ts. Consumes ProductCreatedEvent / ProductUpdatedEvent / ProductDeletedEvent
+// (ADR-0031 — named after the domain occurrence, no ChangeType discriminator) /
+// ReviewCreatedEvent / ReviewUpdatedEvent (ADR-0029 — a customer editing their review)
+// directly off the existing `duckstore-event-bus` (still published to by Catalog, which
+// stays on CDK).
 //
 // Calls the SPA's single generic webhook (app/api/webhooks/revalidate/route.ts),
 // which calls Next.js's real revalidateTag() — instead of writing to the
@@ -30,7 +32,11 @@ const cloudfront = new CloudFrontClient({})
 function tagsForEvent(event) {
   const detailType = event['detail-type']
   const productId = event.detail?.ProductId
-  if (detailType === 'CatalogUpdatedEvent') {
+  if (
+    detailType === 'ProductCreatedEvent' ||
+    detailType === 'ProductUpdatedEvent' ||
+    detailType === 'ProductDeletedEvent'
+  ) {
     return productId ? ['products', `products:${productId}`] : ['products']
   }
   if (detailType === 'ReviewCreatedEvent' || detailType === 'ReviewUpdatedEvent') {
