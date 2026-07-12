@@ -5,6 +5,7 @@ import { BasketStack } from '../stacks/basket-stack';
 import { OrderingStack } from '../stacks/ordering-stack';
 import { PricingStack } from '../stacks/pricing-stack';
 import { ReviewStack } from '../stacks/review-stack';
+import { CatalogViewStack } from '../stacks/catalogview-stack';
 import { UserStack } from '../stacks/user-stack';
 import { AppSyncStack } from '../stacks/appsync-stack';
 
@@ -60,6 +61,12 @@ new ReviewStack(app, 'DuckStoreReviewStack', {
   env,
   description:
     'DuckStore Review service — DynamoDB table (reviews + GSI1) and CDC Lambda (ReviewCreatedEvent → EventBridge)',
+});
+
+new CatalogViewStack(app, 'DuckStoreCatalogViewStack', {
+  env,
+  description:
+    'DuckStore CatalogView service — DynamoDB table (catalogview-products) and CDC consumer Lambdas (ADR-0030, supersedes ADR-0027)',
 });
 
 new UserStack(app, 'DuckStoreUserStack', {

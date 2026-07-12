@@ -7,15 +7,16 @@ using Microsoft.Extensions.Configuration;
 
 namespace CatalogView.DevelopmentDataSeeder;
 
-// One-time historical backfill (ADR-0027): scans Catalog's `products` table for product fields,
-// Review's `reviews` table (grouped by ProductId) for historical rating totals, Pricing's `prices`
-// table for nominal prices and cost (ADR-0026 — Catalog products no longer carry a price),
-// Pricing's `gateway-costs` table for the active provider's payment badge (ADR-0028 — a manual
-// re-run is the only way to refresh badges after a gateway-cost-only change, since that alone
-// never fans out via CDC), and Pricing's `product-discounts` table for any active campaign
-// discount, then bulk-indexes complete SearchDocuments into OpenSearch before any steady-state CDC
-// traffic flows. This is an explicit, scoped exception to "no cross-context table reads" — a
-// migration tool, not a runtime coupling. Never runs again after the initial rollout (§8 of the plan).
+// One-time historical backfill (ADR-0027, storage moved to DynamoDB by ADR-0030): scans Catalog's
+// `products` table for product fields, Review's `reviews` table (grouped by ProductId) for
+// historical rating totals, Pricing's `prices` table for nominal prices and cost (ADR-0026 —
+// Catalog products no longer carry a price), Pricing's `gateway-costs` table for the active
+// provider's payment badge (ADR-0028 — a manual re-run is the only way to refresh badges after a
+// gateway-cost-only change, since that alone never fans out via CDC), and Pricing's
+// `product-discounts` table for any active campaign discount, then bulk-writes complete
+// SearchDocuments into `catalogview-products` before any steady-state CDC traffic flows. This is
+// an explicit, scoped exception to "no cross-context table reads" — a migration tool, not a
+// runtime coupling. Never runs again after the initial rollout (§8 of the plan).
 public sealed class ProductBackfill(IAmazonDynamoDB dynamoDb, IProductSearchIndex index, IConfiguration configuration)
 {
     private const string ProductsTableName = "products";
@@ -26,8 +27,8 @@ public sealed class ProductBackfill(IAmazonDynamoDB dynamoDb, IProductSearchInde
 
     public async Task RunAsync(CancellationToken cancellationToken = default)
     {
-        await index.EnsureIndexAsync(cancellationToken);
-
+        // The table itself is created by DynamoTableInitializer (called from Worker before this
+        // runs), not here — no index/mapping concept exists in DynamoDB (ADR-0030).
         var ratingTotals = await ScanRatingTotalsAsync(cancellationToken);
         var prices = await ScanPricesAsync(cancellationToken);
         var gatewayCost = await GetActiveGatewayCostAsync(cancellationToken);

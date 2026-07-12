@@ -53,9 +53,6 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageVersion>
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
-    <!-- OpenSearch.Net (low-level client, SigV4-signable) — no net10.0-specific asset yet, but its
-         netstandard2.0/net8.0 targets restore and run fine under net10.0 (CatalogView, ADR-0027). -->
-    <PackageVersion Include="OpenSearch.Net" Version="1.8.0" />
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.8" />
     <PackageVersion Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.8" />
     <PackageVersion Include="Microsoft.Extensions.DependencyInjection" Version="10.0.8" />

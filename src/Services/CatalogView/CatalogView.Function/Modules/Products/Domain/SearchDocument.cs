@@ -2,8 +2,9 @@
 
 namespace CatalogView.Function.Modules.Products.Domain;
 
-// One OpenSearch document per product, index "products" (ADR-0027). RatingSum and
-// LastRatingEventId are internal bookkeeping — never surfaced to GraphQL/AppSync callers.
+// One item per product in DynamoDB's "catalogview-products" table (ADR-0030, supersedes
+// ADR-0027's OpenSearch document). RatingSum and LastRatingEventId are internal bookkeeping —
+// never surfaced to GraphQL/AppSync callers.
 public sealed class SearchDocument
 {
     [JsonPropertyName("id")]
@@ -58,13 +59,14 @@ public sealed class SearchDocument
     [JsonPropertyName("maxInstallmentValue")]
     public decimal MaxInstallmentValue { get; set; }
 
-    // Internal — the running sum backing AverageRating (DynamoDB-style accumulator, since a
-    // scripted update can't compute a running average directly, only accumulate sum + count).
+    // Internal — the running sum backing AverageRating. DynamoDB can't divide two attributes in
+    // one UpdateExpression, so RatingSum/RatingCount are accumulated atomically and the average is
+    // recomputed in a second step (ADR-0030 — see DynamoProductIndex).
     [JsonPropertyName("ratingSum")]
     public int RatingSum { get; set; }
 
-    // Internal — idempotency marker for the rating-aggregation script (see
-    // OpenSearchProductIndex.ApplyRatingAsync). A redelivered ReviewCreated event with the same
+    // Internal — idempotency marker for the rating-aggregation update (see
+    // DynamoProductIndex.ApplyRatingAsync). A redelivered ReviewCreated event with the same
     // eventId is a no-op instead of double-counting.
     [JsonPropertyName("lastRatingEventId")]
     public string? LastRatingEventId { get; set; }

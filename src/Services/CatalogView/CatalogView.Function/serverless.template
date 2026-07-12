@@ -43,46 +43,6 @@
         }
       }
     },
-    "CatalogViewFunctionFunctionsGetProductGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "CatalogView.Function::CatalogView.Function.Functions_GetProduct_Generated::GetProduct"
-          ]
-        }
-      }
-    },
-    "CatalogViewFunctionFunctionsSearchProductsGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "CatalogView.Function::CatalogView.Function.Functions_SearchProducts_Generated::SearchProducts"
-          ]
-        }
-      }
-    },
     "CatalogViewFunctionFunctionsPriceSyncConsumerGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {

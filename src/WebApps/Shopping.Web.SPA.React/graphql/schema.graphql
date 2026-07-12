@@ -8,8 +8,9 @@ type Product @aws_api_key @aws_cognito_user_pools {
   imageUrl: String!
   stock: Int!
   categoryIds: [ID!]!
-  # Sourced from CatalogView's OpenSearch index, not Catalog's DynamoDB item (ADR-0027, supersedes
-  # ADR-0011 §4); 0 when no reviews. Kept in sync via CatalogProductSyncEvent/ReviewCreated CDC.
+  # Sourced from CatalogView's own DynamoDB table ("catalogview-products"), not Catalog's item
+  # (ADR-0030, supersedes ADR-0027/ADR-0011 §4); 0 when no reviews. Kept in sync via
+  # CatalogProductSyncEvent/ReviewCreated CDC.
   averageRating: Float!
   ratingCount: Int!
   # Sticker/"De" price, denormalized onto the search document via PriceChangedEvent CDC
@@ -45,7 +46,7 @@ enum ProductSort {
 
 # Nominal price and current discount live in Pricing, not Catalog (ADR-0026) — Product no longer
 # carries a price field. CatalogView joins the two via PriceChangedEvent CDC and denormalizes the
-# nominal price onto its own search document (ADR-0027) for display.
+# nominal price onto its own DynamoDB item (ADR-0030, supersedes ADR-0027) for display.
 type Price @aws_api_key @aws_cognito_user_pools {
   productId: ID!
   nominalPrice: Float!
@@ -314,8 +315,9 @@ input UpdateProfileInput {
 }
 
 type Query {
-  # Lambda resolver (ADR-0027 amends ADR-0009: OpenSearch is an external, non-DynamoDB
-  # integration) — full-text search, rating range filter, sort; public (API_KEY or Cognito)
+  # Direct DynamoDB resolver (ADR-0030, reverses ADR-0027 amends ADR-0009 — CatalogView is
+  # DynamoDB-backed again) — Scan + contains() filter, no relevance ranking; sortBy is
+  # best-effort (only sorts the current page, see Query.products.js); public (API_KEY or Cognito)
   products(
     query: String
     sortBy: ProductSort
@@ -325,7 +327,7 @@ type Query {
     nextToken: String
   ): ProductPage! @aws_api_key @aws_cognito_user_pools
 
-  # Lambda resolver (ADR-0027 amends ADR-0009) — public (API_KEY or Cognito)
+  # Direct DynamoDB resolver (ADR-0030, reverses ADR-0027 amends ADR-0009) — public (API_KEY or Cognito)
   product(id: ID!): Product @aws_api_key @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — public (API_KEY or Cognito)
