@@ -6,6 +6,12 @@
       "commandLineArgs": "exec --depsfile ./CatalogView.Function.deps.json --runtimeconfig ./CatalogView.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll CatalogView.Function::CatalogView.Function.Functions_CatalogProductSyncConsumer_Generated::CatalogProductSyncConsumer",
       "workingDirectory": "bin/Debug/net10.0/"
     },
+    "Aspire_catalogview-product-deleted-consumer": {
+      "commandName": "Executable",
+      "executablePath": "dotnet",
+      "commandLineArgs": "exec --depsfile ./CatalogView.Function.deps.json --runtimeconfig ./CatalogView.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll CatalogView.Function::CatalogView.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer",
+      "workingDirectory": "bin/Debug/net10.0/"
+    },
     "Aspire_catalogview-review-aggregate-consumer": {
       "commandName": "Executable",
       "executablePath": "dotnet",

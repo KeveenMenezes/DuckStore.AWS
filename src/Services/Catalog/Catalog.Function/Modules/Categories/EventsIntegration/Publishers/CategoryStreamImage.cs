@@ -1,4 +1,4 @@
-namespace Catalog.Function.Modules.Categories.EventsIntegration.Publishers;
+﻿namespace Catalog.Function.Modules.Categories.EventsIntegration.Publishers;
 
 // The subset of a persisted category item the publisher rule reasons about, projected from a
 // DynamoDB Streams image. Path is intentionally not included — nothing downstream needs it, only

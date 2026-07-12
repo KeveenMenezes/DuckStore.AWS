@@ -3,27 +3,6 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "An AWS Serverless Application. This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
   "Resources": {
-    "BasketFunctionFunctionsStoreBasketGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "Events": {},
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Basket.Function::Basket.Function.Functions_StoreBasket_Generated::StoreBasket"
-          ]
-        }
-      }
-    },
     "BasketFunctionFunctionsCheckoutBasketGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {

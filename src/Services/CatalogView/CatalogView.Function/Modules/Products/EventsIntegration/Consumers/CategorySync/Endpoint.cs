@@ -1,4 +1,4 @@
-namespace CatalogView.Function;
+﻿namespace CatalogView.Function;
 
 public partial class Functions
 {

@@ -16,12 +16,13 @@ export interface CatalogViewLambdasProps {
   readonly catalogViewProductsTable: dynamodb.Table;
 }
 
-// Five EventBridge-triggered consumer Lambdas — none HTTP/AppSync-invoked (ADR-0030 reverted
+// Six EventBridge-triggered consumer Lambdas — none HTTP/AppSync-invoked (ADR-0030 reverted
 // products/product back to Direct DynamoDB resolvers, so CatalogView no longer exposes any
 // synchronously invoked Lambda). Each keeps `catalogview-products` in sync with a slice of another
 // bounded context's writes via CDC.
 export class CatalogViewLambdas extends Construct {
   public readonly productSyncConsumer: lambda.Function;
+  public readonly productDeletedConsumer: lambda.Function;
   public readonly reviewAggregateConsumer: lambda.Function;
   public readonly reviewUpdateAggregateConsumer: lambda.Function;
   public readonly priceSyncConsumer: lambda.Function;
@@ -35,7 +36,7 @@ export class CatalogViewLambdas extends Construct {
     // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
 
-    // All five CatalogView Lambdas share the same image, built once.
+    // All six CatalogView Lambdas share the same image, built once.
     const catalogViewImage = new ecrAssets.DockerImageAsset(this, 'CatalogViewImage', {
       directory: REPO_ROOT,
       file: CATALOGVIEW_DOCKERFILE,
@@ -75,9 +76,10 @@ export class CatalogViewLambdas extends Construct {
 
     // -------------------------------------------------------------------------
     // 1. catalogview-product-sync-consumer
-    //    Trigger: CatalogProductSyncEvent (Catalog's CDC stream publisher, ADR-0027 §1).
-    //    Upserts/deletes the product fields on catalogview-products — never touches
+    //    Trigger: ProductSyncedEvent (Catalog's CDC stream publisher, ADR-0027 §1, ADR-0031).
+    //    Upserts the product fields on catalogview-products — never touches
     //    Price/AverageRating/RatingCount/RatingSum/LastRatingEventId (ADR-0027 §3, ADR-0030).
+    //    Deletes are handled by catalogview-product-deleted-consumer below (ADR-0031).
     // -------------------------------------------------------------------------
     this.productSyncConsumer = new lambda.DockerImageFunction(this, 'ProductSyncConsumer', {
       functionName: 'catalogview-product-sync-consumer',
@@ -88,7 +90,7 @@ export class CatalogViewLambdas extends Construct {
       ]),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
-      description: 'Consumes CatalogProductSyncEvent and upserts/deletes catalogview-products',
+      description: 'Consumes ProductSyncedEvent and upserts catalogview-products',
       environment: {
         EventBridge__BusName: eventBus.eventBusName,
       },
@@ -98,8 +100,37 @@ export class CatalogViewLambdas extends Construct {
       'ProductSync',
       this.productSyncConsumer,
       'catalogview-product-sync-consumer-rule',
-      'CatalogProductSyncEvent',
-      'Routes CatalogProductSyncEvent (source=duckstore) to catalogview-product-sync-consumer',
+      'ProductSyncedEvent',
+      'Routes ProductSyncedEvent (source=duckstore) to catalogview-product-sync-consumer',
+    );
+
+    // -------------------------------------------------------------------------
+    // 1b. catalogview-product-deleted-consumer
+    //     Trigger: ProductDeletedEvent — the same thin event Pricing consumes (ADR-0031: named
+    //     after the domain occurrence, no ChangeType discriminator). Deletes the product from the
+    //     search index; write-only, never reads.
+    // -------------------------------------------------------------------------
+    this.productDeletedConsumer = new lambda.DockerImageFunction(this, 'ProductDeletedConsumer', {
+      functionName: 'catalogview-product-deleted-consumer',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      code: catalogViewCode([
+        'CatalogView.Function::CatalogView.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer',
+      ]),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      description: 'Consumes ProductDeletedEvent and removes the product from catalogview-products',
+      environment: {
+        EventBridge__BusName: eventBus.eventBusName,
+      },
+    });
+    catalogViewProductsTable.grantWriteData(this.productDeletedConsumer);
+    ruleFor(
+      'ProductDeleted',
+      this.productDeletedConsumer,
+      'catalogview-product-deleted-consumer-rule',
+      'ProductDeletedEvent',
+      'Routes ProductDeletedEvent (source=duckstore) to catalogview-product-deleted-consumer',
     );
 
     // -------------------------------------------------------------------------

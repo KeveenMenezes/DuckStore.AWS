@@ -1,4 +1,4 @@
-using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using CatalogView.Function.Modules.Products.Data;
 
@@ -20,8 +20,29 @@ public static class DynamoTableInitializer
             await dynamoDb.CreateTableAsync(new CreateTableRequest
             {
                 TableName = DynamoProductIndex.TableName,
-                AttributeDefinitions = [new AttributeDefinition("Id", ScalarAttributeType.S)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition("Id", ScalarAttributeType.S),
+                    new AttributeDefinition("GSI1PK", ScalarAttributeType.S),
+                    new AttributeDefinition("GSI1SK", ScalarAttributeType.N)
+                ],
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
+                GlobalSecondaryIndexes =
+                [
+                    new GlobalSecondaryIndex
+                    {
+                        // GSI1 lists all products sorted by AverageRating (GSI1PK is the
+                        // constant "PRODUCT") — lets the unfiltered/rating-only browse path
+                        // Query instead of Scan. ProjectionType ALL avoids a follow-up GetItem.
+                        IndexName = DynamoProductIndex.Gsi1Name,
+                        KeySchema =
+                        [
+                            new KeySchemaElement("GSI1PK", KeyType.HASH),
+                            new KeySchemaElement("GSI1SK", KeyType.RANGE)
+                        ],
+                        Projection = new Projection { ProjectionType = ProjectionType.ALL }
+                    }
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST
             });
 

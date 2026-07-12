@@ -1,4 +1,4 @@
-using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
+﻿using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
 using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
 using Pricing.Function.Shared.Configuration;
 

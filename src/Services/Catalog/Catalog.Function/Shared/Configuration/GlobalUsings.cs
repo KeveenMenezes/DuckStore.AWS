@@ -22,7 +22,6 @@ global using Catalog.Function.Modules.Products.Domain.ValueObjects;
 global using Catalog.Function.Modules.Products.EventsIntegration.Publishers;
 global using Catalog.Function.Modules.Products.EventsIntegration.Publishers.Rules;
 global using Catalog.Function.Shared.Configuration;
-global using Catalog.Function.Shared.Exceptions;
 global using FluentValidation;
 global using MediatR;
 global using Microsoft.Extensions.Configuration;

@@ -18,10 +18,8 @@ export interface BasketLambdasProps {
 
 export class BasketLambdas extends Construct {
   public readonly streamPublisher: lambda.Function;
-  public readonly storeBasket: lambda.Function;
   public readonly checkoutBasket: lambda.Function;
   public readonly mergeBasket: lambda.Function;
-  public readonly storeBasketUrl: lambda.FunctionUrl;
   public readonly checkoutBasketUrl: lambda.FunctionUrl;
 
   constructor(scope: Construct, id: string, props: BasketLambdasProps) {
@@ -90,33 +88,12 @@ export class BasketLambdas extends Construct {
 
     eventBus.grantPutEventsTo(this.streamPublisher);
 
-    // -------------------------------------------------------------------------
-    // 2. basket-store-basket  (HTTP API — StoreBasket command)
-    //    Trigger: Lambda Function URL (direct HTTP, no API Gateway)
-    //    Talks directly to DynamoDB (no cache) — reads coupons to apply discounts,
-    //    upserts the cart.
-    // -------------------------------------------------------------------------
-    this.storeBasket = new lambda.DockerImageFunction(this, 'StoreBasket', {
-      functionName: 'basket-store-basket',
-      // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
-      tracing: lambda.Tracing.ACTIVE,
-      architecture: DOTNET_ARCH,
-      code: basketCode([
-        'Basket.Function::Basket.Function.Functions_StoreBasket_Generated::StoreBasket',
-      ]),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
-      description: 'Stores (upserts) a shopping cart in DynamoDB',
-    });
-
-    shoppingCartsTable.grantReadWriteData(this.storeBasket);
-
-    this.storeBasketUrl = this.storeBasket.addFunctionUrl({
-      authType: lambda.FunctionUrlAuthType.NONE,
-    });
+    // Note: basket-store-basket (StoreBasket command) is gone — storeBasket is now an AppSync
+    // direct DynamoDB PutItem resolver (ADR-0009); see infra/constructs/appsync-api.ts and
+    // graphql/resolvers/basket/mutations/Mutation.storeBasket.js.
 
     // -------------------------------------------------------------------------
-    // 3. basket-checkout-basket  (HTTP API — CheckoutBasket command)
+    // 2. basket-checkout-basket  (HTTP API — CheckoutBasket command)
     //    Talks directly to DynamoDB (no cache).
     //    Writes a Checkout marker to the cart item; the stream publisher picks it
     //    up and publishes BasketCheckoutEvent (CDC pattern, ADR-0005).
@@ -142,7 +119,7 @@ export class BasketLambdas extends Construct {
     });
 
     // -------------------------------------------------------------------------
-    // 4. basket-merge-basket  (AppSync Invoke — MergeBasket command)
+    // 3. basket-merge-basket  (AppSync Invoke — MergeBasket command)
     //    Folds a GUEST# cart into the USER# cart on login (ADR-0016): reads both
     //    carts, writes the merged USER# cart, deletes the GUEST# cart. No Function
     //    URL — invoked directly by the AppSync mergeBasket resolver (Invoke).

@@ -1,4 +1,4 @@
-using AppHost.Extensions;
+﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
 
 namespace AppHost.CatalogView;
@@ -12,9 +12,9 @@ public static class CatalogViewExtensions
         IResourceBuilder<ProjectResource> reviewSeeder,
         IResourceBuilder<ProjectResource> pricingSeeder)
     {
-        // CatalogView owns "catalogview-products" (ADR-0030, supersedes ADR-0027's OpenSearch
-        // design) — provisioned by the seeder's DynamoTableInitializer, same pattern as every
-        // other service's local table (see OrderingExtensions.cs).
+        // CatalogView owns "catalogview-products" (ADR-0030) — provisioned by the seeder's
+        // DynamoTableInitializer, same pattern as every other service's local table (see
+        // OrderingExtensions.cs).
         // The backfill scans Catalog's `products`, Review's `reviews` and Pricing's `prices`
         // tables (ADR-0026/0027), which are created by those contexts' seeders — wait for all
         // of them to finish first.
@@ -31,6 +31,15 @@ public static class CatalogViewExtensions
                 "catalogview-product-sync-consumer",
                 lambdaHandler:
                 "CatalogView.Function::CatalogView.Function.Functions_CatalogProductSyncConsumer_Generated::CatalogProductSyncConsumer")
+            .WaitForCompletion(catalogViewSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+
+        builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
+                "catalogview-product-deleted-consumer",
+                lambdaHandler:
+                "CatalogView.Function::CatalogView.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer")
             .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
