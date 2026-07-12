@@ -71,8 +71,21 @@ export function response(ctx) {
   // Only the free-text Scan branch still needs a manual sort: it has no native ORDER BY, and
   // even this is best-effort — it only orders the current page, not the full result set across
   // pages (ADR-0030). The GSI1 Query branch above sorts natively via scanIndexForward.
+  //
+  // No comparator passed to Array.sort — the AppSync JS runtime rejects functions passed as
+  // arguments to anything but a handful of allow-listed methods (map/filter/forEach/etc.),
+  // and sort's comparator isn't one of them ("The code contains one or more errors" at deploy
+  // time). Insertion sort descending by averageRating instead.
   if (ctx.args.query && ctx.args.sortBy === 'AVERAGE_RATING') {
-    items.sort((a, b) => b.averageRating - a.averageRating)
+    for (let i = 1; i < items.length; i++) {
+      const current = items[i]
+      let j = i - 1
+      while (j >= 0 && items[j].averageRating < current.averageRating) {
+        items[j + 1] = items[j]
+        j--
+      }
+      items[j + 1] = current
+    }
   }
 
   return { items, nextToken: ctx.result.nextToken ?? null }
