@@ -11,7 +11,8 @@ namespace BuildingBlocks.Messaging.Events;
 // trigger. The full per-installment plan is deliberately NOT carried here: CatalogView only ever
 // needs the scalar highlights for catalog/card display — the detailed plan (with real interest
 // figures) is computed synchronously, on demand, by Pricing's GetInstallmentPlan query when the
-// product detail page opens the payment-methods modal, so it never gets indexed into OpenSearch.
+// product detail page opens the payment-methods modal, so it never gets denormalized onto the
+// search document.
 public record PriceChangedEvent : IntegrationEvent
 {
     public string ProductId { get; init; } = string.Empty;

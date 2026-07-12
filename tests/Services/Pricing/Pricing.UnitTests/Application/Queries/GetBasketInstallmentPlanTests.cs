@@ -49,11 +49,14 @@ public class GetBasketInstallmentPlanTests
         var productB = Guid.NewGuid();
 
         _priceRepository
-            .Setup(r => r.GetByProductIdAsync(productA, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Price.Create(ProductId.Of(productA), nominalPrice: 15m, cost: 10m));
-        _priceRepository
-            .Setup(r => r.GetByProductIdAsync(productB, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Price.Create(ProductId.Of(productB), nominalPrice: 95m, cost: 90m));
+            .Setup(r => r.GetByProductIdsAsync(
+                It.Is<IEnumerable<Guid>>(ids => ids.Contains(productA) && ids.Contains(productB)),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                Price.Create(ProductId.Of(productA), nominalPrice: 15m, cost: 10m),
+                Price.Create(ProductId.Of(productB), nominalPrice: 95m, cost: 90m)
+            ]);
         _gatewayCostRepository
             .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
             .ReturnsAsync(SimulatedGatewayCost());
@@ -83,8 +86,8 @@ public class GetBasketInstallmentPlanTests
     {
         var productId = Guid.NewGuid();
         _priceRepository
-            .Setup(r => r.GetByProductIdAsync(productId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Price.Create(ProductId.Of(productId), nominalPrice: 50m, cost: 40m));
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 50m, cost: 40m)]);
         _gatewayCostRepository
             .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
             .ReturnsAsync(SimulatedGatewayCost());
@@ -104,8 +107,8 @@ public class GetBasketInstallmentPlanTests
     {
         var productId = Guid.NewGuid();
         _priceRepository
-            .Setup(r => r.GetByProductIdAsync(productId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Price?)null);
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
 
         var handler = CreateHandler();
 
@@ -119,8 +122,8 @@ public class GetBasketInstallmentPlanTests
     {
         var productId = Guid.NewGuid();
         _priceRepository
-            .Setup(r => r.GetByProductIdAsync(productId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Price.Create(ProductId.Of(productId), nominalPrice: 100m, cost: 10m));
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 100m, cost: 10m)]);
         _gatewayCostRepository
             .Setup(r => r.GetByProviderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((GatewayCost?)null);

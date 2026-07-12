@@ -140,12 +140,13 @@ export class AppSyncApi extends Construct {
     });
     const userProfilesTable = dynamodb.Table.fromTableName(this, 'UserProfilesTable', 'user-profiles');
     // CatalogView (ADR-0030, supersedes ADR-0027) — product read/search is DynamoDB-backed again;
-    // products/product are Direct resolvers, not Lambda.
-    const catalogViewProductsTable = dynamodb.Table.fromTableName(
-      this,
-      'CatalogViewProductsTable',
-      'catalogview-products',
-    );
+    // products/product are Direct resolvers, not Lambda. fromTableAttributes +
+    // grantIndexPermissions is required (not fromTableName) so grantReadData below also covers
+    // the GSI1 ARN used by the rating-sorted browse path in Query.products.js.
+    const catalogViewProductsTable = dynamodb.Table.fromTableAttributes(this, 'CatalogViewProductsTable', {
+      tableName: 'catalogview-products',
+      grantIndexPermissions: true,
+    });
 
     const productsDs = api.addDynamoDbDataSource('ProductsDS', productsTable);
     const categoriesDs = api.addDynamoDbDataSource('CategoriesDS', categoriesTable);
@@ -246,8 +247,8 @@ export class AppSyncApi extends Construct {
     // ------------------------------------------------------------------
 
     // Public queries (also accessible via API_KEY — @aws_api_key in schema)
-    // Product read/search — CatalogView Direct DynamoDB resolvers (ADR-0030, supersedes ADR-0027's
-    // OpenSearch/Lambda design), not Catalog's products table.
+    // Product read/search — CatalogView Direct DynamoDB resolvers (ADR-0030), not Catalog's
+    // products table.
     this.resolver(catalogViewProductsDs, 'ProductsResolver', 'Query', 'products');
     this.resolver(catalogViewProductsDs, 'ProductResolver', 'Query', 'product');
     this.resolver(categoriesDs, 'CategoriesResolver', 'Query', 'categories');

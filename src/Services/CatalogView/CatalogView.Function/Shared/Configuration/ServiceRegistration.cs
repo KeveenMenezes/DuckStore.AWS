@@ -14,7 +14,7 @@ public static class ServiceRegistration
         this IServiceCollection services, IConfiguration configuration)
     {
         // DynamoDB Local injects AWS_ENDPOINT_URL_DYNAMODB; the SDK resolves it on its own
-        // (ADR-0030, supersedes the OpenSearch client registration from ADR-0027).
+        // (ADR-0030).
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
 
         services.AddScoped<IProductSearchIndex, DynamoProductIndex>();

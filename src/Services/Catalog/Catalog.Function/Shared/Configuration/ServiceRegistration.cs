@@ -21,7 +21,7 @@ public static class ServiceRegistration
 
         services.AddEventBridgeMessaging(configuration);
 
-        // Rating aggregation moved to CatalogView (OpenSearch) — Catalog no longer needs an
+        // Rating aggregation moved to CatalogView — Catalog no longer needs an
         // idempotent-consumer inbox (ADR-0027, supersedes ADR-0011 §4).
         services.AddScoped<IStreamRule<CatalogStreamImage>, CatalogProductChangedRule>();
         services.AddScoped<IStreamRule<CatalogStreamImage>, CatalogSearchSyncRule>();
