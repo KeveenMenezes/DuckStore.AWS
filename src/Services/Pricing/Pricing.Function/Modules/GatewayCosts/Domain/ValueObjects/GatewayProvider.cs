@@ -1,4 +1,4 @@
-namespace Pricing.Function.Modules.GatewayCosts.Domain.ValueObjects;
+﻿namespace Pricing.Function.Modules.GatewayCosts.Domain.ValueObjects;
 
 public class GatewayProvider : ValueObject<string>
 {

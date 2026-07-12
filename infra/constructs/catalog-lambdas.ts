@@ -77,7 +77,7 @@ export class CatalogLambdas extends Construct {
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
       description:
-        'CDC: reads DynamoDB Streams on products and publishes CatalogUpdatedEvent to EventBridge',
+        'CDC: reads DynamoDB Streams on products and publishes ProductCreatedEvent/ProductUpdatedEvent/ProductDeletedEvent/ProductSyncedEvent to EventBridge (ADR-0031)',
       environment: {
         EventBridge__BusName: this.eventBus.eventBusName,
       },
@@ -96,9 +96,9 @@ export class CatalogLambdas extends Construct {
 
     this.eventBus.grantPutEventsTo(this.streamPublisher);
 
-    // CatalogUpdatedEvent's ISR revalidation trigger moved to
-    // SpaTagRevalidator (infra/constructs/spa-tag-revalidator.ts), which
-    // subscribes to this same bus directly — no HTTP webhook needed.
+    // ProductCreatedEvent/ProductUpdatedEvent/ProductDeletedEvent's ISR revalidation trigger
+    // moved to SpaTagRevalidator (infra/constructs/spa-tag-revalidator.ts), which subscribes to
+    // this same bus directly — no HTTP webhook needed.
 
     // -------------------------------------------------------------------------
     // 1b. catalog-category-stream-publisher

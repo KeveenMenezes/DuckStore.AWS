@@ -1,4 +1,4 @@
-using Amazon.Lambda.DynamoDBEvents;
+﻿using Amazon.Lambda.DynamoDBEvents;
 using Pricing.Function.Modules.Prices.EventsIntegration.Publishers;
 using Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
 using Pricing.Function.Shared.Configuration;
@@ -16,7 +16,7 @@ public partial class Functions
     // page needs it, so it never lands in the search document. One event per trigger, not one event per
     // concern, so CatalogView applies everything in a single merge. REMOVE is skipped: a price row
     // only disappears when the product itself is removed, and CatalogView deletes the whole
-    // document via CatalogProductSyncEvent in that case.
+    // document via ProductDeletedEvent in that case (ADR-0031).
     //
     // A gateway-cost-only or campaign-only change never reaches here — the payment badge only
     // recomputes on the next price change or a manual ProductBackfill re-run (CDC-only philosophy,

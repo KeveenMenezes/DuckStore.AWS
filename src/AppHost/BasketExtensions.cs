@@ -5,7 +5,6 @@ using Aspire.Hosting.AWS.Lambda;
 namespace AppHost.Basket;
 
 public record BasketResources(
-    IResourceBuilder<LambdaProjectResource> StoreBasket,
     IResourceBuilder<LambdaProjectResource> CheckoutBasket,
     IResourceBuilder<LambdaProjectResource> MergeBasket
 );
@@ -32,13 +31,7 @@ public static class BasketExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
-        var storeBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(
-                "basket-store-basket",
-                lambdaHandler: "Basket.Function::Basket.Function.Functions_StoreBasket_Generated::StoreBasket")
-            .WaitForCompletion(basketSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment();
-
+        // storeBasket is gone — it's now an AppSync direct DynamoDB PutItem resolver (ADR-0009).
         var checkoutBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(
                 "basket-checkout-basket",
                 lambdaHandler: "Basket.Function::Basket.Function.Functions_CheckoutBasket_Generated::CheckoutBasket")
@@ -53,6 +46,6 @@ public static class BasketExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
-        return new BasketResources(storeBasket, checkoutBasket, mergeBasket);
+        return new BasketResources(checkoutBasket, mergeBasket);
     }
 }

@@ -6,6 +6,7 @@ global using CatalogView.Function.Modules.Products.Data;
 global using CatalogView.Function.Modules.Products.Domain;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CategorySync;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.PriceChanged;
+global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductDeleted;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewUpdated;

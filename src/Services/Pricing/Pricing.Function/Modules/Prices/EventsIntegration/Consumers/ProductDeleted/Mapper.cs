@@ -1,6 +1,6 @@
-﻿namespace Pricing.Function.Modules.Prices.EventsIntegration.Consumers.CatalogProductRemoved;
+﻿namespace Pricing.Function.Modules.Prices.EventsIntegration.Consumers.ProductDeleted;
 
-public static class CatalogProductRemovedMapper
+public static class ProductDeletedMapper
 {
-    public static Guid ToProductId(CatalogUpdatedEvent evt) => Guid.Parse(evt.ProductId);
+    public static Guid ToProductId(ProductDeletedEvent evt) => Guid.Parse(evt.ProductId);
 }

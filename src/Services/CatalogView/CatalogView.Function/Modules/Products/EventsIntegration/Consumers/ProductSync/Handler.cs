@@ -3,22 +3,18 @@ using CatalogView.Function.Modules.Products.Domain;
 
 namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
 
-// Consumes CatalogProductSyncEvent (ADR-0027) and keeps the catalogview-products item in sync
-// with Catalog's products table (ADR-0030). Upsert/delete by id is naturally idempotent — no
-// dedicated idempotency mechanism is needed here (unlike ApplyRatingAsync, which increments a
-// counter).
-public sealed class CatalogProductSyncHandler(IProductSearchIndex index)
+// Consumes ProductSyncedEvent (ADR-0027/ADR-0031) and upserts the catalogview-products item to
+// match Catalog's products table (ADR-0030). Deletes are handled separately by
+// ProductDeletedHandler, since ProductSyncedEvent only fires on create/update. Upsert by id is
+// naturally idempotent — no dedicated idempotency mechanism is needed here.
+public sealed class ProductSyncedHandler(IProductSearchIndex index)
 {
-    public Task HandleAsync(CatalogProductSyncEvent evt, CancellationToken cancellationToken = default) =>
-        evt.ChangeType switch
-        {
-            "REMOVE" => index.DeleteAsync(evt.ProductId, cancellationToken),
-            _ => index.UpsertAsync(ToDocument(evt), cancellationToken)
-        };
+    public Task HandleAsync(ProductSyncedEvent evt, CancellationToken cancellationToken = default) =>
+        index.UpsertAsync(ToDocument(evt), cancellationToken);
 
     // Price is deliberately not set here: Pricing owns it (ADR-0026) and PriceSyncHandler merges
     // it separately — UpsertAsync's partial merge never touches the price field.
-    private static SearchDocument ToDocument(CatalogProductSyncEvent evt) =>
+    private static SearchDocument ToDocument(ProductSyncedEvent evt) =>
         new()
         {
             Id = evt.ProductId,

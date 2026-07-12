@@ -1,4 +1,4 @@
-using Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
+﻿using Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
 using Pricing.Function.Shared.Configuration;
 using Pricing.Function.Shared.Exceptions;
 
@@ -17,12 +17,17 @@ public class GetBasketInstallmentPlanHandler(
     public async Task<GetBasketInstallmentPlanResult> Handle(
         GetBasketInstallmentPlanQuery query, CancellationToken cancellationToken)
     {
-        var prices = await Task.WhenAll(query.Items.Select(async item =>
+        var productIds = query.Items.Select(item => item.ProductId).ToList();
+        var pricesByProductId = (await priceRepository.GetByProductIdsAsync(productIds, cancellationToken))
+            .ToDictionary(price => price.Id.Value);
+
+        var prices = query.Items.Select(item =>
         {
-            var price = await priceRepository.GetByProductIdAsync(item.ProductId, cancellationToken)
-                ?? throw new PriceNotFoundException(item.ProductId);
+            var price = pricesByProductId.TryGetValue(item.ProductId, out var found)
+                ? found
+                : throw new PriceNotFoundException(item.ProductId);
             return (Price: price, item.Quantity);
-        }));
+        }).ToList();
 
         var totalCost = prices.Sum(p => p.Price.Cost * p.Quantity);
         var totalOriginalPrice = prices.Sum(p => p.Price.NominalPrice * p.Quantity);

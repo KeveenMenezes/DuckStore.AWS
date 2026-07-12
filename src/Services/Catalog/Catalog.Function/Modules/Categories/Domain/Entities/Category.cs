@@ -31,9 +31,9 @@ public class Category : Aggregate<CategoryId>
     }
 
     // Cycle detection (new parent cannot be the category itself or one of its own descendants) is
-    // orchestration done by the caller (UpdateCategoryHandler), which already has the repository
-    // access needed to resolve descendants — the aggregate only applies the already-validated
-    // result. newPath is the new parent's own Path with newParentId appended (empty for a root move).
+    // orchestration done by the caller, which needs repository access to resolve descendants —
+    // the aggregate only applies the already-validated result. newPath is the new parent's own
+    // Path with newParentId appended (empty for a root move).
     public void Move(CategoryId? newParentId, List<CategoryId> newPath)
     {
         ParentId = newParentId;

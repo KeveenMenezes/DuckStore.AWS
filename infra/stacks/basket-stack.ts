@@ -21,10 +21,6 @@ export class BasketStack extends cdk.Stack {
       value: lambdas.streamPublisher.functionArn,
       exportName: `${this.stackName}-StreamPublisherArn`,
     });
-    new cdk.CfnOutput(this, 'StoreBasketUrl', {
-      value: lambdas.storeBasketUrl.url,
-      exportName: `${this.stackName}-StoreBasketUrl`,
-    });
     new cdk.CfnOutput(this, 'CheckoutBasketUrl', {
       value: lambdas.checkoutBasketUrl.url,
       exportName: `${this.stackName}-CheckoutBasketUrl`,

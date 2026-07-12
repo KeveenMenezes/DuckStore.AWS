@@ -23,11 +23,13 @@ public static class ServiceRegistration
 
         // Rating aggregation moved to CatalogView — Catalog no longer needs an
         // idempotent-consumer inbox (ADR-0027, supersedes ADR-0011 §4).
-        services.AddScoped<IStreamRule<CatalogStreamImage>, CatalogProductChangedRule>();
-        services.AddScoped<IStreamRule<CatalogStreamImage>, CatalogSearchSyncRule>();
+        services.AddScoped<IStreamRule<CatalogStreamImage>, ProductCreatedRule>();
+        services.AddScoped<IStreamRule<CatalogStreamImage>, ProductUpdatedRule>();
+        services.AddScoped<IStreamRule<CatalogStreamImage>, ProductDeletedRule>();
+        services.AddScoped<IStreamRule<CatalogStreamImage>, ProductSyncedRule>();
         services.AddScoped<StreamRuleDispatcher<CatalogStreamImage>>();
 
-        services.AddScoped<IStreamRule<CategoryStreamImage>, CatalogCategorySyncRule>();
+        services.AddScoped<IStreamRule<CategoryStreamImage>, CategorySyncRule>();
         services.AddScoped<StreamRuleDispatcher<CategoryStreamImage>>();
 
         return services;

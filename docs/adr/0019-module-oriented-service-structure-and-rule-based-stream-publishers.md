@@ -165,6 +165,7 @@ Because rules detect *transitions*, the source table's stream must be provisione
 - [ADR-0004: AWS-First — EventBridge over MassTransit/RabbitMQ](./0004-aws-first-eventbridge-over-masstransit-rabbitmq.md)
 - [ADR-0005: Remove Domain Events; CDC via DynamoDB Streams](./0005-remove-domain-events-cdc-via-dynamodb-streams.md)
 - [ADR-0012: Merge Discount into Basket; Coupon as In-Process Entity](./0012-merge-discount-into-basket-coupon-as-in-process-entity.md)
+- [ADR-0031: CDC Events Named After the Domain Occurrence, Never a Raw ChangeType Discriminator](./0031-cdc-events-named-after-domain-occurrence-no-changetype-discriminator.md) — narrows §4's "single unconditional trigger" allowance
 - [ADR-0000: Official Architecture Decision Records Standard](./0000-official-architecture-decisios-records-standard.md)
 
 ## References

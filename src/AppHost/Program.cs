@@ -36,7 +36,7 @@ var pricingSeeder = builder.AddPricingServices(dynamoDb);
 
 var basketResources = builder.AddBasketLambdas(dynamoDb);
 
-var userLambda = builder.AddUserLambdas(dynamoDb);
+var userResources = builder.AddUserResources(dynamoDb);
 
 var reviewSeeder = builder.AddReviewServices(dynamoDb);
 
@@ -48,10 +48,9 @@ builder.AddCatalogViewLambdas(dynamoDb, catalogSeeder, reviewSeeder, pricingSeed
 builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")
     .WithExternalHttpEndpoints()
     .WaitFor(dynamoDb)
-    .WaitFor(basketResources.StoreBasket)
     .WaitFor(basketResources.CheckoutBasket)
     .WaitFor(basketResources.MergeBasket)
-    .WaitFor(userLambda)
+    .WaitFor(userResources)
     .WithReference(dynamoDb)
     .WithEnvironment(ctx =>
     {

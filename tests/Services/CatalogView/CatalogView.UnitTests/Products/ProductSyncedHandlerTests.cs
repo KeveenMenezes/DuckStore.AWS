@@ -1,23 +1,20 @@
-﻿using BuildingBlocks.Messaging.Events;
+using BuildingBlocks.Messaging.Events;
 using CatalogView.Function.Modules.Products.Data;
 using CatalogView.Function.Modules.Products.Domain;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
 
 namespace CatalogView.UnitTests.Products;
 
-public class CatalogProductSyncHandlerTests
+public class ProductSyncedHandlerTests
 {
-    [Theory]
-    [InlineData("INSERT")]
-    [InlineData("MODIFY")]
-    public async Task HandleAsync_UpsertsDocument_OnInsertOrModify(string changeType)
+    [Fact]
+    public async Task HandleAsync_UpsertsDocument()
     {
         var index = new Mock<IProductSearchIndex>();
-        var handler = new CatalogProductSyncHandler(index.Object);
+        var handler = new ProductSyncedHandler(index.Object);
 
-        var evt = new CatalogProductSyncEvent
+        var evt = new ProductSyncedEvent
         {
-            ChangeType = changeType,
             ProductId = Guid.NewGuid().ToString(),
             Name = "Debug Duck",
             Description = "A duck",
@@ -45,19 +42,5 @@ public class CatalogProductSyncHandlerTests
             Times.Once);
 
         index.Verify(i => i.DeleteAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public async Task HandleAsync_DeletesDocument_OnRemove()
-    {
-        var index = new Mock<IProductSearchIndex>();
-        var handler = new CatalogProductSyncHandler(index.Object);
-
-        var evt = new CatalogProductSyncEvent { ChangeType = "REMOVE", ProductId = "product-1" };
-
-        await handler.HandleAsync(evt);
-
-        index.Verify(i => i.DeleteAsync("product-1", It.IsAny<CancellationToken>()), Times.Once);
-        index.Verify(i => i.UpsertAsync(It.IsAny<SearchDocument>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

@@ -6,7 +6,8 @@
  * reverse-engineer OpenNext's bundled tag-cache/CloudFront wiring by hand.
  * See docs/adr/0020-migrate-spa-deploy-to-sst.md.
  *
- * On-demand ISR revalidation (CatalogUpdatedEvent/ReviewCreatedEvent ->
+ * On-demand ISR revalidation (ProductCreatedEvent/ProductUpdatedEvent/ProductDeletedEvent/
+ * ReviewCreatedEvent/ReviewUpdatedEvent ->
  * revalidateTag() -> invalidate the affected CloudFront path) is still a
  * custom Lambda (revalidator/index.mjs) subscribed to the existing
  * `duckstore-event-bus` — SST's Nextjs component only invalidates CloudFront
@@ -124,7 +125,13 @@ export default $config({
     }, {
       pattern: {
         source: ["duckstore"],
-        detailType: ["CatalogUpdatedEvent", "ReviewCreatedEvent", "ReviewUpdatedEvent"],
+        detailType: [
+          "ProductCreatedEvent",
+          "ProductUpdatedEvent",
+          "ProductDeletedEvent",
+          "ReviewCreatedEvent",
+          "ReviewUpdatedEvent",
+        ],
       },
     });
 

@@ -7,7 +7,7 @@ public static class PricingExtensions
 {
     // nominalPriceFor/currentDiscountForProduct are AppSync direct DynamoDB resolvers (ADR-0009),
     // not Lambdas — so Pricing only registers its Lambda-backed mutations/queries and its
-    // CatalogUpdatedEvent cleanup consumer here.
+    // ProductDeletedEvent cleanup consumer here.
     public static IResourceBuilder<ProjectResource> AddPricingServices(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb)
@@ -17,12 +17,7 @@ public static class PricingExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
-        builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
-                "pricing-set-nominal-price",
-                lambdaHandler: "Pricing.Function::Pricing.Function.Functions_SetNominalPrice_Generated::SetNominalPrice")
-            .WaitForCompletion(pricingMigration)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment();
+        // setNominalPrice is gone — it's now an AppSync direct DynamoDB UpdateItem resolver (ADR-0009).
 
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
                 "pricing-get-installment-plan",
@@ -51,12 +46,7 @@ public static class PricingExtensions
             .WithEnvironment("Installments__ValueTiers__1__MinAmount", "300")
             .WithEnvironment("Installments__ValueTiers__1__MaxInstallments", "10");
 
-        builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
-                "pricing-set-gateway-cost",
-                lambdaHandler: "Pricing.Function::Pricing.Function.Functions_SetGatewayCost_Generated::SetGatewayCost")
-            .WaitForCompletion(pricingMigration)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment();
+        // setGatewayCost is gone — it's now an AppSync direct DynamoDB UpdateItem resolver (ADR-0009).
 
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
                 "pricing-create-campaign",
@@ -73,9 +63,9 @@ public static class PricingExtensions
             .WithAwsDevEnvironment();
 
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
-                "pricing-catalog-product-removed-consumer",
+                "pricing-product-deleted-consumer",
                 lambdaHandler:
-                "Pricing.Function::Pricing.Function.Functions_CatalogProductRemovedConsumer_Generated::CatalogProductRemovedConsumer")
+                "Pricing.Function::Pricing.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer")
             .WaitForCompletion(pricingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()

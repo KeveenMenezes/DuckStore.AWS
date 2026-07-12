@@ -1,20 +1,20 @@
 ﻿namespace Catalog.Function.Modules.Products.EventsIntegration.Publishers.Rules;
 
-// Fires for any INSERT, MODIFY, or REMOVE on the products table and produces a
-// CatalogProductSyncEvent carrying the full product payload, so CatalogView can upsert/delete its
-// search document without a synchronous call back into Catalog (ADR-0027). Runs alongside
-// CatalogProductChangedRule in the same StreamRuleDispatcher<CatalogStreamImage> — one Streams
-// record can fan out to more than one integration event.
-public sealed class CatalogSearchSyncRule(ICategoryRepository categoryRepository) : IStreamRule<CatalogStreamImage>
+// Fires on product INSERT/MODIFY and produces a ProductSyncedEvent carrying the full product
+// payload, so CatalogView can upsert its search document without a synchronous call back into
+// Catalog (ADR-0027). Deletes are handled separately by ProductDeletedRule, which carries no
+// payload (ADR-0031). Runs alongside ProductCreatedRule/ProductUpdatedRule in the same
+// StreamRuleDispatcher<CatalogStreamImage> — one Streams record can fan out to more than one
+// integration event.
+public sealed class ProductSyncedRule(ICategoryRepository categoryRepository) : IStreamRule<CatalogStreamImage>
 {
     public bool Match(StreamContext<CatalogStreamImage> context) =>
-        !string.IsNullOrEmpty(context.New?.Id ?? context.Old?.Id);
+        context.EventName is "INSERT" or "MODIFY" && !string.IsNullOrEmpty(context.New?.Id);
 
     public async Task<PublishInstruction> BuildAsync(
         StreamContext<CatalogStreamImage> context, CancellationToken cancellationToken = default)
     {
-        // REMOVE has no NewImage — fall back to Old so the delete still carries a ProductId.
-        var image = context.New ?? context.Old!;
+        var image = context.New!;
 
         // Resolve category names here (CDC-only — no synchronous call back into Catalog from
         // CatalogView) so the product's search document can display names without CatalogView
@@ -23,14 +23,17 @@ public sealed class CatalogSearchSyncRule(ICategoryRepository categoryRepository
         var categories = categoryIds.Count == 0
             ? []
             : await categoryRepository.GetByIdsAsync(categoryIds, cancellationToken);
+
         var namesById = categories.ToDictionary(c => c.Id.Value, c => c.Name);
-        var categoryNames = categoryIds.Select(id => namesById.GetValueOrDefault(id, string.Empty)).ToList();
+
+        var categoryNames = categoryIds.Select(id =>
+            namesById.GetValueOrDefault(
+                id, string.Empty)).ToList();
 
         return new PublishInstruction(
-            nameof(CatalogProductSyncEvent),
-            new CatalogProductSyncEvent
+            nameof(ProductSyncedEvent),
+            new ProductSyncedEvent
             {
-                ChangeType = context.EventName,
                 ProductId = image.Id,
                 Name = image.Name,
                 Description = image.Description,

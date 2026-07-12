@@ -1,4 +1,4 @@
-using Mapster;
+﻿using Mapster;
 using Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
 
 namespace Pricing.Function;
