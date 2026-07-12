@@ -71,8 +71,24 @@ export function response(ctx) {
   // Only the free-text Scan branch still needs a manual sort: it has no native ORDER BY, and
   // even this is best-effort — it only orders the current page, not the full result set across
   // pages (ADR-0030). The GSI1 Query branch above sorts natively via scanIndexForward.
+  //
+  // The AppSync JS runtime rejects a comparator passed to Array.sort (functions may only be
+  // passed to allow-listed array methods like map/filter/forEach), and also rejects while /
+  // classic for(;;) loops and ++/-- — all "The code contains one or more errors" at deploy
+  // time. So: decorate each item with a fixed-width string key whose lexicographic order is
+  // descending averageRating (rating inverted against the 0–5 scale), sort() with no
+  // arguments, and map the sorted keys back to items via the appended unique index.
   if (ctx.args.query && ctx.args.sortBy === 'AVERAGE_RATING') {
-    items.sort((a, b) => b.averageRating - a.averageRating)
+    const keys = items.map(
+      (item, index) =>
+        `${('000000' + Math.round((5 - (item.averageRating ?? 0)) * 100000)).slice(-6)}|${index}`,
+    )
+    const sortedKeys = keys.slice()
+    sortedKeys.sort()
+    return {
+      items: sortedKeys.map(key => items[keys.indexOf(key)]),
+      nextToken: ctx.result.nextToken ?? null,
+    }
   }
 
   return { items, nextToken: ctx.result.nextToken ?? null }
