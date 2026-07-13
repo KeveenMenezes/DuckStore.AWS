@@ -76,7 +76,7 @@
     <PackageVersion Include="OpenTelemetry.Instrumentation.AWSLambda" Version="1.15.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.SqlClient" Version="1.15.2" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.16.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.15.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.16.0" />
     <PackageVersion Include="OpenTelemetry.Instrumentation.GrpcNetClient" Version="1.15.0-beta.1" />
     <PackageVersion Include="Refit.HttpClientFactory" Version="10.0.1" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
