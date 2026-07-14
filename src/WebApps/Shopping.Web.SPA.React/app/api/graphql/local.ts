@@ -740,7 +740,7 @@ const resolvers = {
             Conditions: [['content-length-range', 1, 8 * 1024 * 1024]],
             Expires: 15 * 60,
           })
-          return { imageId, url, fields }
+          return { imageId, url, fields: JSON.stringify(fields) }
         }),
       )
     },
