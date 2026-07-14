@@ -81,17 +81,24 @@ new UserStack(app, 'DuckStoreUserStack', {
     'DuckStore User service — DynamoDB table (user-profiles) and the lazy-provisioning GetProfile Lambda',
 });
 
-new ProductImagesStack(app, 'DuckStoreProductImagesStack', {
-  env,
-  // Same deterministic-domain trick as the SPA/admin: the CDN base URL is known
-  // before anything deploys, so clients can carry it in checked-in config.
-  imageDomainName: `${environmentName}-img-duckstore.${hostedZoneDomainName}`,
-  hostedZoneDomainName,
-  // Browser presigned-POST uploads come from the Blazor admin (dev server + deployed).
-  uploadOrigins: ['https://localhost:7300', adminDomainUrl],
-  description:
-    'DuckStore product image pipeline (ADR-0034) — originals/processed buckets, SQS + sharp processor, presign Lambda, image CDN',
-});
+// The processor/presign Lambdas are Docker-bundled NodejsFunctions (sharp has no esbuild-safe
+// path) — that bundling executes on every `cdk synth`/`cdk deploy` regardless of which stack
+// is targeted, and requires QEMU on x86 CI runners to build the arm64 bundling image. Gated
+// behind a context flag, same pattern as AdminStack, so every other stack's deploy workflow
+// (which doesn't set up QEMU) doesn't eagerly trigger this Docker build and fail.
+if (app.node.tryGetContext('deployProductImages') === 'true') {
+  new ProductImagesStack(app, 'DuckStoreProductImagesStack', {
+    env,
+    // Same deterministic-domain trick as the SPA/admin: the CDN base URL is known
+    // before anything deploys, so clients can carry it in checked-in config.
+    imageDomainName: `${environmentName}-img-duckstore.${hostedZoneDomainName}`,
+    hostedZoneDomainName,
+    // Browser presigned-POST uploads come from the Blazor admin (dev server + deployed).
+    uploadOrigins: ['https://localhost:7300', adminDomainUrl],
+    description:
+      'DuckStore product image pipeline (ADR-0034) — originals/processed buckets, SQS + sharp processor, presign Lambda, image CDN',
+  });
+}
 
 new AppSyncStack(app, 'DuckStoreAppSyncStack', {
   env,

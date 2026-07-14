@@ -47,6 +47,7 @@ jobs:
         working-directory: infra
         run: |
           npx cdk deploy DuckStoreProductImagesStack \
+            --context deployProductImages=true \
             --require-approval never
 
       - name: Deployment summary
