@@ -211,61 +211,78 @@ exports.handler = async (event) => {
     // (app/globals.css, oklch → sRGB) in Cognito's RGBA 8-digit hex format.
     // `settings` is applied as a PATCH: keys outside Cognito's schema are ignored
     // (no deploy failure), unspecified keys keep Cognito defaults.
+    //
+    // Managed Login v2 (enabled on the domain above) requires EVERY app client to have
+    // its own branding resource, or its /login page 404s with "Login pages unavailable —
+    // please contact an administrator" — there is no pool-wide default. Both clients
+    // share this same style.
+    const managedLoginSettings = {
+      components: {
+        primaryButton: {
+          lightMode: {
+            defaults: { backgroundColor: 'bc8500ff', textColor: '181000ff' },
+            hover: { backgroundColor: 'a67400ff', textColor: '181000ff' },
+            active: { backgroundColor: '8f6400ff', textColor: '181000ff' },
+          },
+          darkMode: {
+            defaults: { backgroundColor: 'ffd12eff', textColor: '181000ff' },
+            hover: { backgroundColor: 'e6b800ff', textColor: '181000ff' },
+            active: { backgroundColor: 'cca300ff', textColor: '181000ff' },
+          },
+        },
+        // Solid site background (--background) instead of Cognito's default
+        // purple/pink gradient image.
+        pageBackground: {
+          image: { enabled: false },
+          lightMode: { color: 'f8f8faff' },
+          darkMode: { color: '0f1b2aff' },
+        },
+        // Show the DuckStore duck on the form card (asset uploaded below) —
+        // it's disabled by Cognito default, which is why it wasn't rendering.
+        form: { logo: { enabled: true } },
+        // Branded header bar with the logo so the page isn't an empty expanse.
+        pageHeader: { logo: { enabled: true } },
+      },
+      componentClasses: {
+        // Links (Create an account / Forgot your password) — amber, not blue.
+        link: {
+          lightMode: { defaults: { textColor: 'bc8500ff' }, hover: { textColor: '8f6400ff' } },
+          darkMode: { defaults: { textColor: 'ffd12eff' }, hover: { textColor: 'e6b800ff' } },
+        },
+        // Input focus ring — amber (matches --ring), not blue.
+        focusState: {
+          lightMode: { borderColor: 'bc8500ff' },
+          darkMode: { borderColor: 'ffd12eff' },
+        },
+      },
+    };
+
+    // The DuckStore duck logo (src/.../public/icon.svg), base64-inlined so this
+    // construct stays self-contained when the SPA moves to its own submodule.
+    // Placed on both the form card and the page header, for light + dark.
+    const managedLoginAssets = (['FORM_LOGO', 'PAGE_HEADER_LOGO'] as const).flatMap((category) =>
+      (['LIGHT', 'DARK'] as const).map((colorMode) => ({
+        category,
+        colorMode,
+        extension: 'SVG',
+        bytes: DUCK_LOGO_SVG_BASE64,
+      })),
+    );
+
     new cognito.CfnManagedLoginBranding(this, 'SpaBranding', {
       userPoolId: this.userPool.userPoolId,
       clientId: this.userPoolClient.userPoolClientId,
       useCognitoProvidedValues: false,
-      settings: {
-        components: {
-          primaryButton: {
-            lightMode: {
-              defaults: { backgroundColor: 'bc8500ff', textColor: '181000ff' },
-              hover: { backgroundColor: 'a67400ff', textColor: '181000ff' },
-              active: { backgroundColor: '8f6400ff', textColor: '181000ff' },
-            },
-            darkMode: {
-              defaults: { backgroundColor: 'ffd12eff', textColor: '181000ff' },
-              hover: { backgroundColor: 'e6b800ff', textColor: '181000ff' },
-              active: { backgroundColor: 'cca300ff', textColor: '181000ff' },
-            },
-          },
-          // Solid site background (--background) instead of Cognito's default
-          // purple/pink gradient image.
-          pageBackground: {
-            image: { enabled: false },
-            lightMode: { color: 'f8f8faff' },
-            darkMode: { color: '0f1b2aff' },
-          },
-          // Show the DuckStore duck on the form card (asset uploaded below) —
-          // it's disabled by Cognito default, which is why it wasn't rendering.
-          form: { logo: { enabled: true } },
-          // Branded header bar with the logo so the page isn't an empty expanse.
-          pageHeader: { logo: { enabled: true } },
-        },
-        componentClasses: {
-          // Links (Create an account / Forgot your password) — amber, not blue.
-          link: {
-            lightMode: { defaults: { textColor: 'bc8500ff' }, hover: { textColor: '8f6400ff' } },
-            darkMode: { defaults: { textColor: 'ffd12eff' }, hover: { textColor: 'e6b800ff' } },
-          },
-          // Input focus ring — amber (matches --ring), not blue.
-          focusState: {
-            lightMode: { borderColor: 'bc8500ff' },
-            darkMode: { borderColor: 'ffd12eff' },
-          },
-        },
-      },
-      // The DuckStore duck logo (src/.../public/icon.svg), base64-inlined so this
-      // construct stays self-contained when the SPA moves to its own submodule.
-      // Placed on both the form card and the page header, for light + dark.
-      assets: (['FORM_LOGO', 'PAGE_HEADER_LOGO'] as const).flatMap((category) =>
-        (['LIGHT', 'DARK'] as const).map((colorMode) => ({
-          category,
-          colorMode,
-          extension: 'SVG',
-          bytes: DUCK_LOGO_SVG_BASE64,
-        })),
-      ),
+      settings: managedLoginSettings,
+      assets: managedLoginAssets,
+    }).node.addDependency(domain);
+
+    new cognito.CfnManagedLoginBranding(this, 'AdminBranding', {
+      userPoolId: this.userPool.userPoolId,
+      clientId: this.adminUserPoolClient.userPoolClientId,
+      useCognitoProvidedValues: false,
+      settings: managedLoginSettings,
+      assets: managedLoginAssets,
     }).node.addDependency(domain);
   }
 }
