@@ -2,9 +2,11 @@ import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { AppSyncAuth } from '../constructs/appsync-auth';
 import { AppSyncApi } from '../constructs/appsync-api';
+import { ProductCreateSaga } from '../constructs/product-create-saga';
 
 export interface AppSyncStackProps extends cdk.StackProps {
   readonly spaBaseUrls: string[];
+  readonly adminBaseUrls: string[];
   readonly googleClientId?: string;
   readonly googleClientSecret?: cdk.SecretValue;
   readonly amazonClientId?: string;
@@ -17,14 +19,18 @@ export class AppSyncStack extends cdk.Stack {
 
     const auth = new AppSyncAuth(this, 'AppSyncAuth', {
       spaBaseUrls: props.spaBaseUrls,
+      adminBaseUrls: props.adminBaseUrls,
       googleClientId: props.googleClientId,
       googleClientSecret: props.googleClientSecret,
       amazonClientId: props.amazonClientId,
       amazonClientSecret: props.amazonClientSecret,
     });
 
+    const productCreateSaga = new ProductCreateSaga(this, 'ProductCreateSaga');
+
     const appsync = new AppSyncApi(this, 'AppSyncApi', {
       userPool: auth.userPool,
+      productCreateSaga: productCreateSaga.stateMachine,
     });
 
     new cdk.CfnOutput(this, 'ApiUrl', {
@@ -48,6 +54,13 @@ export class AppSyncStack extends cdk.Stack {
       value: auth.userPoolClient.userPoolClientId,
       exportName: `${this.stackName}-UserPoolClientId`,
       description: 'Set as COGNITO_CLIENT_ID env var in the SPA',
+    });
+
+    new cdk.CfnOutput(this, 'AdminUserPoolClientId', {
+      value: auth.adminUserPoolClient.userPoolClientId,
+      exportName: `${this.stackName}-AdminUserPoolClientId`,
+      description:
+        'Cognito app client for the Blazor management app — written into its appsettings.json (Auth:ClientId) at deploy',
     });
 
     new cdk.CfnOutput(this, 'HostedUiUrl', {

@@ -15,7 +15,7 @@
           "Id":          { "S": "3f9a1b2c-4d5e-6f7a-8b9c-0d1e2f3a4b5c" },
           "Name":        { "S": "Duck Debug Pro" },
           "Description": { "S": "A rubber duck for serious debugging sessions." },
-          "ImageUrl":    { "S": "https://example.com/duck-debug-pro.png" },
+          "Images":      { "L": [ { "M": { "ImageId": { "S": "01HZXW5N8T2J3K4M5P6Q7R8S9A" }, "IsMain": { "BOOL": true }, "Order": { "N": "0" } } } ] },
           "Price":       { "N": "29.99" },
           "Stock":       { "N": "100" },
           "CategoryIds": { "SS": ["cat-001", "cat-002"] }
@@ -24,7 +24,7 @@
           "Id":          { "S": "3f9a1b2c-4d5e-6f7a-8b9c-0d1e2f3a4b5c" },
           "Name":        { "S": "Duck Debug Pro" },
           "Description": { "S": "A rubber duck for serious debugging sessions." },
-          "ImageUrl":    { "S": "https://example.com/duck-debug-pro.png" },
+          "Images":      { "L": [ { "M": { "ImageId": { "S": "01HZXW5N8T2J3K4M5P6Q7R8S9A" }, "IsMain": { "BOOL": true }, "Order": { "N": "0" } } } ] },
           "Price":       { "N": "19.99" },
           "Stock":       { "N": "100" },
           "CategoryIds": { "SS": ["cat-001", "cat-002"] }

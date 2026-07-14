@@ -30,7 +30,21 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
             ["Id"] = new(product.Id.Value.ToString()),
             ["Name"] = new(product.Name),
             ["Description"] = new(product.Description),
-            ["ImageUrl"] = new(product.ImageUrl),
+            // List of maps — the same shape the AppSync resolvers and the create saga write
+            // (ADR-0034), so every producer of a product item is stream-compatible.
+            ["Images"] = new AttributeValue
+            {
+                L = [.. product.Images.Select(i => new AttributeValue
+                {
+                    M = new Dictionary<string, AttributeValue>
+                    {
+                        ["ImageId"] = new(i.ImageId),
+                        ["IsMain"] = new AttributeValue { BOOL = i.IsMain },
+                        ["Order"] = new AttributeValue { N = i.Order.ToString(CultureInfo.InvariantCulture) }
+                    }
+                })],
+                IsLSet = true
+            },
             ["Stock"] = new AttributeValue { N = product.Stock.ToString(CultureInfo.InvariantCulture) },
             ["CategoryIds"] = new AttributeValue
             {

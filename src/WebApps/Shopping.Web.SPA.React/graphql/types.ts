@@ -7,11 +7,18 @@ export interface GqlInstallmentOption {
   hasInterest: boolean
 }
 
+// Image metadata only (ADR-0034) — clients build URLs from NEXT_PUBLIC_IMAGE_CDN_URL + imageId.
+export interface GqlProductImage {
+  imageId: string
+  isMain: boolean
+  order: number
+}
+
 export interface GqlProduct {
   id: string
   name: string
   description: string
-  imageUrl: string
+  images: GqlProductImage[]
   stock: number
   categoryIds: string[]
   averageRating: number
@@ -66,24 +73,6 @@ export interface BasketInstallmentItemInput {
   quantity: number
 }
 
-// One payment-gateway provider's operating costs (ADR-0028).
-export interface GqlGatewayCost {
-  provider: string
-  flatFeePerTransaction: number
-  avistaRatePercent: number
-  installmentRates: Record<string, number>
-}
-
-export interface GqlCampaign {
-  id: string
-  name: string
-  discountType: string
-  value: number
-  startsAt: string
-  endsAt: string
-  productIds: string[]
-}
-
 export interface GqlReview {
   id: string
   productId: string
@@ -126,7 +115,9 @@ export interface GqlCartItem {
   price: number
   productId: string
   productName: string
-  imageUrl: string | null
+  // Snapshot of the product's main imageId at add-to-cart time (ADR-0034); null for
+  // items persisted before the image pipeline.
+  imageId: string | null
 }
 
 export interface GqlShoppingCart {
@@ -161,18 +152,6 @@ export interface GqlUserProfile {
   state: string | null
   zipCode: string | null
   country: string | null
-}
-
-export interface GqlCreateProductResult {
-  id: string
-}
-
-export interface GqlUpdateProductResult {
-  id: string
-}
-
-export interface GqlDeleteProductResult {
-  isSuccess: boolean
 }
 
 export interface GqlShippingAddress {
@@ -217,10 +196,6 @@ export interface GqlOrderPage {
   nextToken: string | null
 }
 
-export interface GqlDeleteOrderResult {
-  isSuccess: boolean
-}
-
 // Input types
 
 export interface CartItemInput {
@@ -229,7 +204,7 @@ export interface CartItemInput {
   price: number
   productId: string
   productName: string
-  imageUrl?: string | null
+  imageId?: string | null
 }
 
 export interface ShoppingCartInput {
@@ -252,23 +227,6 @@ export interface CheckoutInput {
   cvv?: string | null
   paymentMethod: number
   installments: number
-}
-
-export interface CreateProductInput {
-  name: string
-  description: string
-  imageUrl: string
-  stock: number
-  categoryIds: string[]
-}
-
-export interface UpdateProductInput {
-  id: string
-  name: string
-  description: string
-  imageUrl: string
-  stock: number
-  categoryIds: string[]
 }
 
 export interface CreateReviewInput {

@@ -18,7 +18,7 @@ internal static class ShoppingCartSerializer
             cart.OwnerId,
             cart.Items
                 .Select(item => new ItemSnapshot(
-                    item.Quantity, item.Color, item.Price, item.ProductId.Value, item.ProductName, item.ImageUrl))
+                    item.Quantity, item.Color, item.Price, item.ProductId.Value, item.ProductName, item.ImageId))
                 .ToList(),
             cart.TotalPrice);
 
@@ -26,13 +26,15 @@ internal static class ShoppingCartSerializer
         ShoppingCart.Load(
             snapshot.OwnerId,
             snapshot.Items.Select(item =>
-                ShoppingCartItem.Load(item.ProductId, item.ProductName, item.ImageUrl, item.Color, item.Quantity, item.Price)));
+                ShoppingCartItem.Load(item.ProductId, item.ProductName, item.ImageId, item.Color, item.Quantity, item.Price)));
 
     // Field names/casing are the cart's stored contract — also read by the SPA `basket`
     // GraphQL resolver (PascalCase from the .NET serializer). TotalPrice is written for that
     // consumer and recomputed from the items on read.
     private sealed record CartSnapshot(string OwnerId, List<ItemSnapshot> Items, decimal TotalPrice);
 
-    // ImageUrl is nullable to handle items persisted before this field was added.
-    private sealed record ItemSnapshot(int Quantity, string Color, decimal Price, Guid ProductId, string ProductName, string? ImageUrl);
+    // ImageId is nullable to handle items persisted before the field existed — including
+    // pre-ADR-0034 carts whose snapshot carried ImageUrl instead (that value is dropped;
+    // clients render a placeholder for those items).
+    private sealed record ItemSnapshot(int Quantity, string Color, decimal Price, Guid ProductId, string ProductName, string? ImageId);
 }
