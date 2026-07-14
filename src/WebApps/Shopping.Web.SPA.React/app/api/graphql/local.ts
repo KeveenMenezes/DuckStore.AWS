@@ -25,12 +25,44 @@ function customerIdFromOwner(ownerId: string): string {
   return ownerId.replace(/^(USER#|GUEST#)/, '')
 }
 
+interface ProductImageInput {
+  imageId: string
+  isMain: boolean
+  order: number
+}
+
+// Image metadata (ADR-0034) — unmarshalled Images list from a product item → GraphQL shape.
+function mapImages(images: unknown): Array<{ imageId: string; isMain: boolean; order: number }> {
+  if (!Array.isArray(images)) return []
+  return images.map(img => ({
+    imageId: img.ImageId as string,
+    isMain: Boolean(img.IsMain),
+    order: Number(img.Order ?? 0),
+  }))
+}
+
+// GraphQL ProductImageInput → the Images list-of-maps attribute, in DynamoDB wire format —
+// the same shape the AppSync resolvers and the create saga write (ADR-0034).
+function marshalImages(images: ProductImageInput[]) {
+  return {
+    L: images.map(i => ({
+      M: {
+        ImageId: { S: i.imageId },
+        IsMain: { BOOL: i.isMain },
+        Order: { N: String(i.order) },
+      },
+    })),
+  }
+}
+
 // Strip AppSync-only auth directives — graphql-yoga's schema builder doesn't know them.
 // AppSync provides the AWSJSON scalar built in; graphql-yoga doesn't, so it's declared and
 // resolved below as a passthrough (arbitrary JSON value in, same value out).
 const typeDefs =
   'scalar AWSJSON\n' +
-  readFileSync(join(process.cwd(), 'graphql/schema.graphql'), 'utf-8')
+  // The schema lives at the monorepo root (ADR-0033) — shared contract, not SPA code.
+  // cwd is the SPA directory when Next.js runs, so reach up to the repo root.
+  readFileSync(join(process.cwd(), '../../../graphql/schema.graphql'), 'utf-8')
     .replace(/\s*@aws_api_key\b/g, '')
     .replace(/\s*@aws_cognito_user_pools\b/g, '')
 
@@ -177,7 +209,7 @@ const resolvers = {
           id: item.Id as string,
           name: item.Name as string,
           description: item.Description as string,
-          imageUrl: item.ImageUrl as string,
+          images: mapImages(item.Images),
           stock: Number(item.Stock ?? 0),
           categoryIds: Array.isArray(item.CategoryIds) ? (item.CategoryIds as string[]) : [],
           averageRating: item.AverageRating ? Number(item.AverageRating) : 0,
@@ -215,7 +247,7 @@ const resolvers = {
         id: item.Id as string,
         name: item.Name as string,
         description: item.Description as string,
-        imageUrl: item.ImageUrl as string,
+        images: mapImages(item.Images),
         stock: Number(item.Stock ?? 0),
         categoryIds: Array.isArray(item.CategoryIds) ? (item.CategoryIds as string[]) : [],
         averageRating: item.AverageRating ? Number(item.AverageRating) : 0,
@@ -270,7 +302,14 @@ const resolvers = {
       // Basket is stored as a JSON blob (PascalCase from .NET serializer) in the Data attribute.
       const cart = JSON.parse(item.Data as string) as {
         OwnerId: string
-        Items: Array<{ Quantity: number; Color: string; Price: number; ProductId: string; ProductName: string }>
+        Items: Array<{
+          Quantity: number
+          Color: string
+          Price: number
+          ProductId: string
+          ProductName: string
+          ImageId?: string | null
+        }>
         TotalPrice: number
       }
       return {
@@ -281,6 +320,7 @@ const resolvers = {
           price: Number(i.Price),
           productId: String(i.ProductId),
           productName: i.ProductName,
+          imageId: i.ImageId ?? null,
         })),
         totalPrice: Number(cart.TotalPrice),
       }
@@ -528,7 +568,8 @@ const resolvers = {
         Price: i.price,
         ProductId: i.productId,
         ProductName: i.productName,
-        ImageUrl: (i.imageUrl as string) ?? '',
+        // Main image key snapshot (ADR-0034) — a key, never a URL; null before the pipeline.
+        ImageId: (i.imageId as string) ?? null,
       }))
       const totalPrice = items.reduce(
         (sum, item) => sum + (item.Price as number) * (item.Quantity as number),
@@ -660,6 +701,50 @@ const resolvers = {
       }
     },
 
+    async createProductImageUpload(
+      _: unknown,
+      { input }: { input: { contentTypes: string[] } },
+    ) {
+      // There is no local S3 (ADR-0034: dev/test run against real AWS) — presign against the
+      // real dev originals bucket using ambient credentials. Dynamic imports keep the S3 SDK
+      // out of the module graph for everyone not using the admin upload flow locally.
+      const bucket = process.env.IMAGE_ORIGINALS_BUCKET
+      if (!bucket) {
+        throw createGraphQLError(
+          'Image upload in local dev needs IMAGE_ORIGINALS_BUCKET in .env.local plus real AWS credentials (ADR-0034).',
+        )
+      }
+      const [{ S3Client }, { createPresignedPost }, { ulid }] = await Promise.all([
+        import('@aws-sdk/client-s3'),
+        import('@aws-sdk/s3-presigned-post'),
+        import('ulid'),
+      ])
+      // Deliberately NOT the DynamoDB Local credentials above — this client talks to real AWS.
+      const s3 = new S3Client({ region: process.env.IMAGE_AWS_REGION ?? 'us-east-1' })
+
+      const extensions: Record<string, string> = {
+        'image/jpeg': 'jpg',
+        'image/png': 'png',
+        'image/webp': 'webp',
+        'image/avif': 'avif',
+      }
+      return Promise.all(
+        input.contentTypes.map(async contentType => {
+          const ext = extensions[contentType]
+          if (!ext) throw createGraphQLError(`Unsupported content type "${contentType}".`)
+          const imageId = ulid()
+          const { url, fields } = await createPresignedPost(s3, {
+            Bucket: bucket,
+            Key: `images/${imageId}/original.${ext}`,
+            Fields: { 'Content-Type': contentType },
+            Conditions: [['content-length-range', 1, 8 * 1024 * 1024]],
+            Expires: 15 * 60,
+          })
+          return { imageId, url, fields }
+        }),
+      )
+    },
+
     async createProduct(
       _: unknown,
       { input }: { input: Record<string, unknown> },
@@ -673,12 +758,56 @@ const resolvers = {
             Id: { S: id },
             Name: { S: input.name as string },
             Description: { S: input.description as string },
-            ImageUrl: { S: input.imageUrl as string },
+            Images: marshalImages(input.images as ProductImageInput[]),
             Stock: { N: String(input.stock) },
             CategoryIds: { SS: input.categoryIds as string[] },
           },
         }),
       )
+      return { id }
+    },
+
+    async createProductWithPrice(
+      _: unknown,
+      { input }: { input: Record<string, unknown> },
+    ) {
+      // Simulates the production Step Functions Express saga (ADR-0032): product write,
+      // price write, and a compensating delete when the price write fails.
+      const id = randomUUID()
+      await dynamoDb.send(
+        new PutItemCommand({
+          TableName: 'products',
+          Item: {
+            Id: { S: id },
+            Name: { S: input.name as string },
+            Description: { S: input.description as string },
+            Images: marshalImages(input.images as ProductImageInput[]),
+            Stock: { N: String(input.stock) },
+            CategoryIds: { SS: input.categoryIds as string[] },
+          },
+        }),
+      )
+      try {
+        await dynamoDb.send(
+          new UpdateItemCommand({
+            TableName: 'prices',
+            Key: { ProductId: { S: id } },
+            UpdateExpression: 'SET NominalPrice = :nominalPrice, Cost = :cost, UpdatedAt = :now',
+            ExpressionAttributeValues: {
+              ':nominalPrice': { N: String(input.price) },
+              ':cost': { N: String(input.cost) },
+              ':now': { S: new Date().toISOString() },
+            },
+          }),
+        )
+      } catch {
+        await dynamoDb.send(
+          new DeleteItemCommand({ TableName: 'products', Key: { Id: { S: id } } }),
+        )
+        throw createGraphQLError('Price write failed; product creation rolled back', {
+          extensions: { code: 'SAGA_FAILED' },
+        })
+      }
       return { id }
     },
 
@@ -692,12 +821,12 @@ const resolvers = {
             TableName: 'products',
             Key: { Id: { S: input.id as string } },
             UpdateExpression:
-              'SET #Name = :name, Description = :desc, ImageUrl = :img, Stock = :stock, CategoryIds = :cats',
+              'SET #Name = :name, Description = :desc, Images = :imgs, Stock = :stock, CategoryIds = :cats',
             ExpressionAttributeNames: { '#Name': 'Name' },
             ExpressionAttributeValues: {
               ':name': { S: input.name as string },
               ':desc': { S: input.description as string },
-              ':img': { S: input.imageUrl as string },
+              ':imgs': marshalImages(input.images as ProductImageInput[]),
               ':stock': { N: String(input.stock) },
               ':cats': { SS: input.categoryIds as string[] },
             },

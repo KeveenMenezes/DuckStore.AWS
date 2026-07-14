@@ -5,27 +5,30 @@ import * as appsync from 'aws-cdk-lib/aws-appsync';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
 
+// The GraphQL contract lives at the repo root (ADR-0033) — shared infrastructure, not
+// SPA code: the CDK deploys it to AppSync, the SPA's local yoga backend executes it in
+// dev, and every client (React SPA, Blazor admin) programs against it.
 const REPO_ROOT = path.join(__dirname, '..', '..');
-const RESOLVERS_DIR = path.join(
-  REPO_ROOT,
-  'src/WebApps/Shopping.Web.SPA.React/graphql/resolvers',
-);
-const SCHEMA_PATH = path.join(
-  REPO_ROOT,
-  'src/WebApps/Shopping.Web.SPA.React/graphql/schema.graphql',
-);
+const RESOLVERS_DIR = path.join(REPO_ROOT, 'graphql/resolvers');
+const SCHEMA_PATH = path.join(REPO_ROOT, 'graphql/schema.graphql');
 
 export interface AppSyncApiProps {
   readonly userPool: cognito.IUserPool;
+  // Express saga behind createProductWithPrice (ADR-0032), invoked synchronously via
+  // an HTTP datasource calling states:StartSyncExecution.
+  readonly productCreateSaga: sfn.IStateMachine;
 }
 
 export class AppSyncApi extends Construct {
   public readonly api: appsync.GraphqlApi;
+  private readonly productCreateSaga: sfn.IStateMachine;
 
   constructor(scope: Construct, id: string, props: AppSyncApiProps) {
     super(scope, id);
+    this.productCreateSaga = props.productCreateSaga;
 
     // -------------------------------------------------------------------------
     // GraphQL API — dual auth:
@@ -68,19 +71,27 @@ export class AppSyncApi extends Construct {
     return path.join(RESOLVERS_DIR, domain, subfolder, fileName);
   }
 
+  // `replacements` substitutes synth-time-only values (e.g. a state machine ARN) into the
+  // resolver source before inlining — APPSYNC_JS has no env vars, so placeholders like
+  // __STATE_MACHINE_ARN__ in the .js file are the only way to inject deploy-time identifiers.
   private resolver(
     dataSource: appsync.BaseDataSource,
     id: string,
     typeName: string,
     fieldName: string,
     domain: string,
+    replacements?: Record<string, string>,
   ) {
     const filePath = this.resolverPath(domain, typeName, `${typeName}.${fieldName}.js`);
+    let code = readFileSync(filePath, 'utf-8');
+    for (const [placeholder, value] of Object.entries(replacements ?? {})) {
+      code = code.split(placeholder).join(value);
+    }
     dataSource.createResolver(id, {
       typeName,
       fieldName,
       runtime: appsync.FunctionRuntime.JS_1_0_0,
-      code: appsync.Code.fromInline(readFileSync(filePath, 'utf-8')),
+      code: appsync.Code.fromInline(code),
     });
   }
 
@@ -228,6 +239,11 @@ export class AppSyncApi extends Construct {
       'GetBasketInstallmentPlanFn',
       'pricing-get-basket-installment-plan',
     );
+    const presignImageUploadFn = lambda.Function.fromFunctionName(
+      this,
+      'PresignImageUploadFn',
+      'product-images-presign',
+    );
     // addLambdaDataSource automatically grants lambda:InvokeFunction to the DS role
     const checkoutDs = api.addLambdaDataSource('CheckoutDS', checkoutFn);
     const mergeBasketDs = api.addLambdaDataSource('MergeBasketDS', mergeBasketFn);
@@ -238,6 +254,24 @@ export class AppSyncApi extends Construct {
       'GetBasketInstallmentPlanDS',
       getBasketInstallmentPlanFn,
     );
+    const presignImageUploadDs = api.addLambdaDataSource(
+      'PresignImageUploadDS',
+      presignImageUploadFn,
+    );
+
+    // ------------------------------------------------------------------
+    // HTTP data source — Step Functions StartSyncExecution (ADR-0032)
+    // ------------------------------------------------------------------
+    // The sync-states.<region> endpoint is the dedicated StartSyncExecution endpoint —
+    // the regular states.<region> endpoint rejects that action.
+    const region = cdk.Stack.of(this).region;
+    const sfnDs = api.addHttpDataSource('SfnDS', `https://sync-states.${region}.amazonaws.com`, {
+      authorizationConfig: {
+        signingRegion: region,
+        signingServiceName: 'states',
+      },
+    });
+    this.productCreateSaga.grantStartSyncExecution(sfnDs);
 
     // ------------------------------------------------------------------
     // Resolvers — one JS file per (typeName, fieldName) pair
@@ -287,7 +321,17 @@ export class AppSyncApi extends Construct {
     ]);
 
     // Admin/Seller mutations (group check in resolver)
+    // Lambda resolver — batch presigned POSTs for direct browser->S3 uploads (ADR-0034).
+    this.resolver(
+      presignImageUploadDs, 'CreateProductImageUploadResolver', 'Mutation', 'createProductImageUpload', 'products',
+    );
     this.resolver(productsDs, 'CreateProductResolver', 'Mutation', 'createProduct', 'products');
+    // HTTP resolver → Step Functions Express saga (ADR-0032): product + nominal price in one
+    // synchronous execution, with a compensating product delete if the price write fails.
+    this.resolver(
+      sfnDs, 'CreateProductWithPriceResolver', 'Mutation', 'createProductWithPrice', 'products',
+      { __STATE_MACHINE_ARN__: this.productCreateSaga.stateMachineArn },
+    );
     this.resolver(productsDs, 'UpdateProductResolver', 'Mutation', 'updateProduct', 'products');
     this.resolver(productsDs, 'DeleteProductResolver', 'Mutation', 'deleteProduct', 'products');
 

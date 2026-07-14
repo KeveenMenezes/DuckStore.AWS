@@ -51,7 +51,7 @@ public class ShoppingCart : Aggregate<OwnerId>
 
             _items.Remove(existing);
             _items.Add(ShoppingCartItem.Load(
-                existing.ProductId.Value, existing.ProductName, existing.ImageUrl, existing.Color,
+                existing.ProductId.Value, existing.ProductName, existing.ImageId, existing.Color,
                 existing.Quantity + incoming.Quantity, existing.Price));
         }
     }

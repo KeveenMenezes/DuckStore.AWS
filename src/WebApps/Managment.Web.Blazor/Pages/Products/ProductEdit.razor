@@ -1,0 +1,88 @@
+@page "/products/{Id}/edit"
+@attribute [Authorize]
+@inject ProductAdminService Products
+@inject NavigationManager Navigation
+
+<PageTitle>Edit product — DuckStore Management</PageTitle>
+
+<h1>Edit product</h1>
+
+@if (error is not null)
+{
+    <div class="banner banner-error">@error</div>
+}
+
+@if (notFound)
+{
+    <p class="muted">
+        Product not found. If it was just created, the catalog view may still be syncing —
+        try again in a few seconds.
+    </p>
+}
+else if (model is null)
+{
+    <p class="muted">Loading product...</p>
+}
+else
+{
+    <ProductForm Model="model" OnValidSubmit="UpdateAsync" SubmitLabel="Save changes" Busy="busy" />
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    private ProductFormModel? model;
+    private bool busy;
+    private bool notFound;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var product = await Products.GetProductAsync(Id);
+            if (product is null)
+            {
+                notFound = true;
+                return;
+            }
+
+            // Cost only exists on Pricing's record (the product's price field is a
+            // denormalized copy in CatalogView), so fetch the source of truth for both.
+            var price = await Products.GetNominalPriceAsync(Id);
+
+            model = new ProductFormModel
+            {
+                Name = product.Name,
+                Description = product.Description,
+                Images = [.. product.Images
+                    .OrderBy(i => i.Order)
+                    .Select(i => new ProductImageFormModel { ImageId = i.ImageId, IsMain = i.IsMain })],
+                Stock = product.Stock,
+                CategoryIds = [.. product.CategoryIds],
+                Price = price?.NominalPrice ?? product.Price,
+                Cost = price?.Cost ?? 0,
+            };
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load product: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateAsync()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await Products.UpdateProductAsync(Id, model!);
+            Navigation.NavigateTo("products?saved=updated");
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to update product: {ex.Message}";
+            busy = false;
+        }
+    }
+}

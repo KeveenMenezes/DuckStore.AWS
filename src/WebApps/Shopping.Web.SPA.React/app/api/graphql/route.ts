@@ -9,3 +9,11 @@ const handle = process.env.GRAPHQL_BACKEND === 'local' ? handleLocal : handleApp
 
 export const GET = handle
 export const POST = handle
+// CORS preflight for cross-origin local callers (the Blazor management app on
+// localhost:7300 shares this dev backend) — graphql-yoga answers it with
+// permissive CORS headers. In prod the Blazor app calls AppSync directly and
+// the BFF proxy stays same-origin, so preflights there are just rejected.
+export const OPTIONS =
+  process.env.GRAPHQL_BACKEND === 'local'
+    ? handleLocal
+    : () => new Response(null, { status: 405 })

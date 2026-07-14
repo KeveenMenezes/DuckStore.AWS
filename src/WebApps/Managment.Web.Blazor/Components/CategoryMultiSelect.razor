@@ -1,0 +1,46 @@
+@inject ProductAdminService Products
+
+@if (categories is null)
+{
+    <p class="muted">Loading categories...</p>
+}
+else if (categories.Count == 0)
+{
+    <p class="muted">No categories available.</p>
+}
+else
+{
+    <div class="category-list">
+        @foreach (var category in categories)
+        {
+            <label class="category-item">
+                <input type="checkbox"
+                       checked="@Selected.Contains(category.Id)"
+                       @onchange="e => Toggle(category.Id, (bool)e.Value!)" />
+                @category.Name
+            </label>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<string> Selected { get; set; } = [];
+    [Parameter] public EventCallback<List<string>> SelectedChanged { get; set; }
+
+    private List<Category>? categories;
+
+    protected override async Task OnInitializedAsync()
+    {
+        categories = await Products.GetAllCategoriesAsync();
+    }
+
+    private async Task Toggle(string categoryId, bool isChecked)
+    {
+        if (isChecked && !Selected.Contains(categoryId))
+            Selected.Add(categoryId);
+        else if (!isChecked)
+            Selected.Remove(categoryId);
+
+        await SelectedChanged.InvokeAsync(Selected);
+    }
+}

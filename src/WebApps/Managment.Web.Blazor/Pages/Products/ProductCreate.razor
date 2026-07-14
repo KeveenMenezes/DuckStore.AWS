@@ -1,0 +1,37 @@
+@page "/products/new"
+@attribute [Authorize]
+@inject ProductAdminService Products
+@inject NavigationManager Navigation
+
+<PageTitle>New product — DuckStore Management</PageTitle>
+
+<h1>New product</h1>
+
+@if (error is not null)
+{
+    <div class="banner banner-error">@error</div>
+}
+
+<ProductForm Model="model" OnValidSubmit="CreateAsync" SubmitLabel="Create" Busy="busy" />
+
+@code {
+    private readonly ProductFormModel model = new();
+    private bool busy;
+    private string? error;
+
+    private async Task CreateAsync()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await Products.CreateProductAsync(model);
+            Navigation.NavigateTo("products?saved=created");
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to create product: {ex.Message}";
+            busy = false;
+        }
+    }
+}

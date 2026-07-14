@@ -1,0 +1,160 @@
+@page "/"
+@page "/products"
+@attribute [Authorize]
+@inject ProductAdminService Products
+@inject NavigationManager Navigation
+@inject ImageCdn Cdn
+
+<PageTitle>Products — DuckStore Management</PageTitle>
+
+<div class="page-header">
+    <h1>Products</h1>
+    <a class="btn btn-primary" href="products/new">New product</a>
+</div>
+
+@if (banner is not null)
+{
+    <div class="banner banner-success">
+        @banner — the catalog list is synced asynchronously and may take a few seconds to update.
+    </div>
+}
+@if (error is not null)
+{
+    <div class="banner banner-error">@error</div>
+}
+
+<form class="search-bar" @onsubmit="SearchAsync">
+    <input type="search" placeholder="Search products..." @bind="search" @bind:event="oninput" />
+    <button class="btn btn-secondary" type="submit">Search</button>
+</form>
+
+@if (items is null)
+{
+    <p class="muted">Loading products...</p>
+}
+else if (items.Count == 0)
+{
+    <p class="muted">No products found.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Name</th>
+                <th>Stock</th>
+                <th>Price</th>
+                <th>Rating</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var product in items)
+            {
+                <tr>
+                    <td>
+                        <img class="thumb" src="@Cdn.ThumbOrPlaceholder(product.Images)" alt="@product.Name"
+                             onerror="this.onerror=null;this.src='@ImageCdn.Placeholder'" />
+                    </td>
+                    <td>@product.Name</td>
+                    <td>@product.Stock</td>
+                    <td>@product.Price.ToString("C")</td>
+                    <td>@product.AverageRating.ToString("0.0") (@product.RatingCount)</td>
+                    <td class="row-actions">
+                        <a class="btn btn-secondary" href="products/@product.Id/edit">Edit</a>
+                        <button class="btn btn-danger" @onclick="() => DeleteAsync(product)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (nextToken is not null)
+    {
+        <button class="btn btn-secondary" disabled="@loadingMore" @onclick="LoadMoreAsync">
+            @(loadingMore ? "Loading..." : "Load more")
+        </button>
+    }
+}
+
+<ConfirmDialog @ref="confirmDialog" />
+
+@code {
+    private List<Product>? items;
+    private string? nextToken;
+    private string search = string.Empty;
+    private string? banner;
+    private string? error;
+    private bool loadingMore;
+    private ConfirmDialog confirmDialog = default!;
+
+    [SupplyParameterFromQuery] public string? Saved { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        banner = Saved switch
+        {
+            "created" => "Product created",
+            "updated" => "Product updated",
+            _ => null,
+        };
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        error = null;
+        items = null;
+        try
+        {
+            var page = await Products.GetProductsAsync(search);
+            items = page.Items;
+            nextToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            items = [];
+            error = $"Failed to load products: {ex.Message}";
+        }
+    }
+
+    private Task SearchAsync() => LoadAsync();
+
+    private async Task LoadMoreAsync()
+    {
+        loadingMore = true;
+        try
+        {
+            var page = await Products.GetProductsAsync(search, nextToken: nextToken);
+            items!.AddRange(page.Items);
+            nextToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load more products: {ex.Message}";
+        }
+        finally
+        {
+            loadingMore = false;
+        }
+    }
+
+    private async Task DeleteAsync(Product product)
+    {
+        if (!await confirmDialog.ShowAsync($"Delete \"{product.Name}\"? This cannot be undone."))
+            return;
+
+        try
+        {
+            await Products.DeleteProductAsync(product.Id);
+            items!.Remove(product);
+            banner = "Product deleted";
+            error = null;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to delete product: {ex.Message}";
+        }
+    }
+}

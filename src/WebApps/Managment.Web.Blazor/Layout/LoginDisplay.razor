@@ -1,0 +1,25 @@
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+        <span class="user-name">@context.User.Identity?.Name</span>
+        @if (context.User.Identity?.AuthenticationType != "DevAuth")
+        {
+            <button class="btn btn-link" @onclick="Logout">Log out</button>
+        }
+        else
+        {
+            <span class="dev-badge">local dev</span>
+        }
+    </Authorized>
+    <NotAuthorized>
+        <a href="authentication/login">Log in</a>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code {
+    private void Logout()
+    {
+        Navigation.NavigateToLogout("authentication/logout");
+    }
+}

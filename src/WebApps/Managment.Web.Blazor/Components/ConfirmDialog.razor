@@ -1,0 +1,33 @@
+@if (visible)
+{
+    <div class="dialog-backdrop">
+        <div class="dialog">
+            <p>@message</p>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" @onclick="() => Close(false)">Cancel</button>
+                <button class="btn btn-danger" @onclick="() => Close(true)">Delete</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private bool visible;
+    private string message = string.Empty;
+    private TaskCompletionSource<bool>? pending;
+
+    public Task<bool> ShowAsync(string text)
+    {
+        message = text;
+        visible = true;
+        pending = new TaskCompletionSource<bool>();
+        StateHasChanged();
+        return pending.Task;
+    }
+
+    private void Close(bool confirmed)
+    {
+        visible = false;
+        pending?.TrySetResult(confirmed);
+    }
+}

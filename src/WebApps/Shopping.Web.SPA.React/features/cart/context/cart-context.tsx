@@ -16,6 +16,7 @@ import type { Product } from "@/features/products/types/product.types"
 import type { CartItem, CartProduct } from "@/features/cart/types/cart.types"
 import type { GqlShoppingCart } from "@/graphql/types"
 import { syncCartToBasket } from "@/features/cart/services/basket.service"
+import { mainImageId } from "@/shared/lib/image-url"
 
 interface CartContextType {
   items: CartItem[]
@@ -57,7 +58,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
             id: item.productId,
             name: item.productName,
             price: item.price,
-            imageUrl: item.imageUrl ?? '',
+            imageId: item.imageId ?? null,
           },
           quantity: item.quantity,
         }))
@@ -123,7 +124,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
     setItems((prev) => [
       ...prev,
       {
-        product: { id: product.id, name: product.name, price: product.price, imageUrl: product.imageUrl, stock: product.stock },
+        product: { id: product.id, name: product.name, price: product.price, imageId: mainImageId(product.images), stock: product.stock },
         quantity: 1,
       },
     ])
