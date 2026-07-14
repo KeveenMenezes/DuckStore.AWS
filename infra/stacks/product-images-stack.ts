@@ -38,6 +38,12 @@ export class ProductImagesStack extends cdk.Stack {
     const originalsBucket = new s3.Bucket(this, 'OriginalsBucket', {
       bucketName: `duckstore-product-images-original-${this.account}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      // Fixed bucketName means a failed stack create/update can't just retry with a fresh
+      // name — CDK's L2 default (RETAIN) would orphan this bucket on rollback and collide
+      // with the next attempt. DESTROY + autoDeleteObjects makes a failed deploy self-heal
+      // (matches AdminStack's site bucket); acceptable for a study project's demo data.
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
       // The browser POSTs the presigned form cross-origin; without this rule the
       // preflight fails and every upload dies as a generic "Failed to fetch".
       cors: [
@@ -68,6 +74,8 @@ export class ProductImagesStack extends cdk.Stack {
     const processedBucket = new s3.Bucket(this, 'ProcessedBucket', {
       bucketName: `duckstore-product-images-${this.account}`,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteObjects: true,
     });
 
     // --- Processing pipeline: S3 → SQS (+DLQ) → sharp Lambda -------------------------
