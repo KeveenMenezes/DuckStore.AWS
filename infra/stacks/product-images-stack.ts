@@ -113,8 +113,10 @@ export class ProductImagesStack extends cdk.Stack {
       // Lambda Power Tuning state machine once real originals flow (ADR-0034).
       memorySize: 1024,
       timeout: cdk.Duration.seconds(60),
-      // A bulk catalog import must become a draining queue, not a concurrency spike.
-      reservedConcurrentExecutions: 10,
+      // No reservedConcurrentExecutions: this dev account's unreserved pool has no headroom
+      // to carve a slice out of (AWS enforces a 10-execution floor account-wide, and
+      // reserving here pushed it below that). SQS's own backpressure is enough throttling
+      // for a bulk import at this project's scale; revisit if the account's limit grows.
       environment: { PROCESSED_BUCKET: processedBucket.bucketName },
       bundling: {
         // sharp ships its native binary as a per-platform optional dependency
