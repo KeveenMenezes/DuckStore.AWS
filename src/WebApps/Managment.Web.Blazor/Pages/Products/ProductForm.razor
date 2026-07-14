@@ -1,0 +1,174 @@
+@inject ProductAdminService Products
+@inject ImageCdn Cdn
+
+<EditForm Model="Model" OnValidSubmit="OnValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="form-field">
+        <label for="name">Name</label>
+        <InputText id="name" @bind-Value="Model.Name" />
+        <ValidationMessage For="() => Model.Name" />
+    </div>
+
+    <div class="form-field">
+        <label for="description">Description</label>
+        <InputTextArea id="description" rows="4" @bind-Value="Model.Description" />
+        <ValidationMessage For="() => Model.Description" />
+    </div>
+
+    <div class="form-field">
+        <label>Images</label>
+        <InputFile OnChange="OnFilesSelectedAsync" multiple
+                   accept="image/jpeg,image/png,image/webp,image/avif" disabled="@uploading" />
+        @if (uploading)
+        {
+            <p class="muted">Uploading @uploadingCount image(s)...</p>
+        }
+        @if (uploadError is not null)
+        {
+            <div class="validation-message">@uploadError</div>
+        }
+        @if (Model.Images.Count > 0)
+        {
+            <ul class="image-upload-list">
+                @foreach (var (image, index) in Model.Images.Select((img, i) => (img, i)))
+                {
+                    <li class="image-upload-row">
+                        @* Thumbnail 404s for a few seconds until the processor lands the
+                           variants — the placeholder covers that window. *@
+                        <img class="thumb" src="@Cdn.Variant(image.ImageId)" alt="@image.FileName"
+                             onerror="this.onerror=null;this.src='@ImageCdn.Placeholder'" />
+                        <span class="image-upload-name">@image.FileName</span>
+                        <label class="image-upload-main">
+                            <input type="radio" name="mainImage" checked="@image.IsMain"
+                                   @onchange="() => SetMain(image)" />
+                            Main
+                        </label>
+                        <button type="button" class="btn btn-secondary" title="Move up"
+                                @onclick="() => Move(index, -1)" disabled="@(index == 0)">↑</button>
+                        <button type="button" class="btn btn-secondary" title="Move down"
+                                @onclick="() => Move(index, 1)"
+                                disabled="@(index == Model.Images.Count - 1)">↓</button>
+                        <button type="button" class="btn btn-danger" title="Remove"
+                                @onclick="() => Remove(image)">✕</button>
+                    </li>
+                }
+            </ul>
+        }
+    </div>
+
+    <div class="form-field">
+        <label for="stock">Stock</label>
+        <InputNumber id="stock" @bind-Value="Model.Stock" />
+        <ValidationMessage For="() => Model.Stock" />
+    </div>
+
+    <div class="form-field">
+        <label for="price">Price</label>
+        <InputNumber id="price" step="0.01" @bind-Value="Model.Price" />
+        <ValidationMessage For="() => Model.Price" />
+    </div>
+
+    <div class="form-field">
+        <label for="cost">Cost</label>
+        <InputNumber id="cost" step="0.01" @bind-Value="Model.Cost" />
+        <ValidationMessage For="() => Model.Cost" />
+    </div>
+
+    <div class="form-field">
+        <label>Categories</label>
+        <CategoryMultiSelect @bind-Selected="Model.CategoryIds" />
+        <ValidationMessage For="() => Model.CategoryIds" />
+    </div>
+
+    <div class="form-actions">
+        <a class="btn btn-secondary" href="products">Cancel</a>
+        <button class="btn btn-primary" type="submit" disabled="@Busy">
+            @(Busy ? "Saving..." : SubmitLabel)
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    private const int MaxImages = 12;
+    private const long MaxImageBytes = 8 * 1024 * 1024;
+
+    [Parameter, EditorRequired] public ProductFormModel Model { get; set; } = default!;
+    [Parameter, EditorRequired] public EventCallback OnValidSubmit { get; set; }
+    [Parameter] public string SubmitLabel { get; set; } = "Save";
+    [Parameter] public bool Busy { get; set; }
+
+    private bool uploading;
+    private int uploadingCount;
+    private string? uploadError;
+
+    // Upload happens while the admin fills the rest of the form (ADR-0034) — submit never
+    // waits for processing; the saga persists only the {imageId, isMain, order} metadata.
+    private async Task OnFilesSelectedAsync(InputFileChangeEventArgs e)
+    {
+        uploadError = null;
+        var files = e.GetMultipleFiles(MaxImages);
+
+        if (Model.Images.Count + files.Count > MaxImages)
+        {
+            uploadError = $"A product can have at most {MaxImages} images.";
+            return;
+        }
+        if (files.Any(f => f.Size > MaxImageBytes))
+        {
+            uploadError = "Each image must be 8 MB or smaller.";
+            return;
+        }
+
+        uploading = true;
+        uploadingCount = files.Count;
+        try
+        {
+            var presigned = await Products.CreatePresignedUploadsAsync(
+                files.Select(f => f.ContentType).ToList());
+
+            foreach (var (file, upload) in files.Zip(presigned))
+            {
+                await using var stream = file.OpenReadStream(MaxImageBytes);
+                await ProductAdminService.UploadToS3Async(upload, stream, file.ContentType);
+                Model.Images.Add(new ProductImageFormModel
+                {
+                    ImageId = upload.ImageId,
+                    FileName = file.Name,
+                    IsMain = Model.Images.Count == 0,
+                });
+                uploadingCount--;
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            uploadError = $"Upload failed: {ex.Message}";
+        }
+        finally
+        {
+            uploading = false;
+        }
+    }
+
+    private void SetMain(ProductImageFormModel image)
+    {
+        foreach (var other in Model.Images)
+            other.IsMain = ReferenceEquals(other, image);
+    }
+
+    private void Move(int index, int delta)
+    {
+        var target = index + delta;
+        if (target < 0 || target >= Model.Images.Count) return;
+        (Model.Images[index], Model.Images[target]) = (Model.Images[target], Model.Images[index]);
+    }
+
+    private void Remove(ProductImageFormModel image)
+    {
+        Model.Images.Remove(image);
+        // Keep the "exactly one main" invariant client-side too.
+        if (image.IsMain && Model.Images.Count > 0)
+            Model.Images[0].IsMain = true;
+    }
+}

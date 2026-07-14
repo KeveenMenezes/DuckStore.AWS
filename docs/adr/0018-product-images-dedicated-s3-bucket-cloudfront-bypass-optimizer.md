@@ -1,7 +1,10 @@
 # ADR-0018: Serve Product Catalog Images from a Dedicated S3 Bucket via CloudFront, Bypassing the Next.js Image Optimizer
 
 ## Status
-**Proposed** — July 2026
+**Superseded** — July 2026 by [ADR-0034: Product Image Pipeline — Presigned POST Upload, S3→SQS Processing, and Immutable CloudFront Serving](./0034-product-image-pipeline-presigned-post-sqs-sharp-cloudfront.md).
+The dedicated-bucket/CloudFront/bypass-the-optimizer decision carries forward; the
+"upload already web-ready, no pipeline" part is replaced by ADR-0034's processing pipeline
+(the revision this ADR's Future Constraints anticipated).
 
 ---
 

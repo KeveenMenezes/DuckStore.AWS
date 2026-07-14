@@ -8,6 +8,10 @@ export interface AppSyncAuthProps {
   /** Base URLs (e.g. http://localhost:3000, https://dev-duckstore.example.com)
    *  the SPA is served from — each gets a Cognito callback + logout URL. */
   readonly spaBaseUrls: string[];
+  /** Base URLs the Blazor management app is served from (e.g. https://localhost:7300,
+   *  https://dev-admin-duckstore.example.com). The OIDC library's callback paths are
+   *  fixed at /authentication/{login,logout}-callback. */
+  readonly adminBaseUrls: string[];
   /** Google/Amazon federation credentials, passed via CDK context at deploy time
    *  (never committed). When a provider's clientId is set, that "Sign in with X"
    *  button is added to Managed Login. Add the Cognito redirect URI
@@ -21,6 +25,7 @@ export interface AppSyncAuthProps {
 export class AppSyncAuth extends Construct {
   public readonly userPool: cognito.UserPool;
   public readonly userPoolClient: cognito.UserPoolClient;
+  public readonly adminUserPoolClient: cognito.UserPoolClient;
   public readonly hostedUiUrl: string;
 
   constructor(scope: Construct, id: string, props: AppSyncAuthProps) {
@@ -173,6 +178,31 @@ exports.handler = async (event) => {
     });
     // CloudFormation must create the IdPs before the client references them.
     idpResources.forEach((idp) => this.userPoolClient.node.addDependency(idp));
+
+    // App client for the Blazor WASM management app (Managment.Web.Blazor). Public
+    // PKCE client like the SPA's, but Cognito-only (no social sign-in for staff) and
+    // with the Blazor OIDC library's fixed callback paths. Group membership
+    // (Admin/Seller) is what actually authorizes operations — enforced in the
+    // AppSync resolvers, not here.
+    this.adminUserPoolClient = this.userPool.addClient('AdminClient', {
+      userPoolClientName: 'duckstore-admin',
+      generateSecret: false,
+      supportedIdentityProviders: [cognito.UserPoolClientIdentityProvider.COGNITO],
+      oAuth: {
+        flows: { authorizationCodeGrant: true },
+        scopes: [
+          cognito.OAuthScope.OPENID,
+          cognito.OAuthScope.EMAIL,
+          cognito.OAuthScope.PROFILE,
+        ],
+        callbackUrls: props.adminBaseUrls.map((url) => `${url}/authentication/login-callback`),
+        logoutUrls: props.adminBaseUrls.map((url) => `${url}/authentication/logout-callback`),
+      },
+      idTokenValidity: cdk.Duration.hours(1),
+      accessTokenValidity: cdk.Duration.hours(1),
+      refreshTokenValidity: cdk.Duration.days(30),
+      preventUserExistenceErrors: true,
+    });
 
     this.hostedUiUrl = `https://${domain.domainName}.auth.${cdk.Stack.of(this).region}.amazoncognito.com`;
 

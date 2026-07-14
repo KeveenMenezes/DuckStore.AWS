@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
-type AuthUser = { sub: string; email: string; username: string; name?: string; groups: string[] }
+type AuthUser = { sub: string; email: string; username: string; name?: string }
 
 /**
  * Returns the current user's identity decoded from the ID Token cookie, or an
@@ -38,7 +38,6 @@ export async function GET(): Promise<Response> {
       // The `name` claim is now captured at sign-up (fullname is a required
       // attribute). It's the human-friendly display name; `cognito:username` is a UUID.
       name: payload.name as string | undefined,
-      groups: (payload['cognito:groups'] as string[] | undefined) ?? [],
     }
     return NextResponse.json({ authenticated: true, user })
   } catch {

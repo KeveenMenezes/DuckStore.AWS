@@ -15,8 +15,10 @@ public sealed class SearchDocument
     [JsonPropertyName("description")]
     public string Description { get; set; } = string.Empty;
 
-    [JsonPropertyName("imageUrl")]
-    public string ImageUrl { get; set; } = string.Empty;
+    // Image metadata only (ADR-0034) — keys, never URLs; clients build display URLs from
+    // configuration + ImageId. Empty for products created before the image pipeline.
+    [JsonPropertyName("images")]
+    public List<ImageRef> Images { get; set; } = [];
 
     // The sticker/"De" price (was "price") — never discounted, also the ceiling the store
     // subsidizes card-installment fees up to (ADR-0028 supersession).
@@ -76,3 +78,10 @@ public sealed class SearchDocument
 public sealed record CategoryRef(
     [property: JsonPropertyName("id")] string Id,
     [property: JsonPropertyName("name")] string Name);
+
+// One entry per product image, mirrored from Catalog's Images attribute via
+// ProductSyncedEvent (ADR-0034).
+public sealed record ImageRef(
+    [property: JsonPropertyName("imageId")] string ImageId,
+    [property: JsonPropertyName("isMain")] bool IsMain,
+    [property: JsonPropertyName("order")] int Order);

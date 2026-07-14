@@ -52,6 +52,9 @@
     <Project Path="src/Services/User/User.Function/User.Function.csproj" />
     <Project Path="src/Services/User/User.DevelopmentDataSeeder/User.DevelopmentDataSeeder.csproj" />
   </Folder>
+  <Folder Name="/src/WebApps/">
+    <Project Path="src/WebApps/Managment.Web.Blazor/Managment.Web.Blazor.csproj" />
+  </Folder>
   <Folder Name="/tests/" />
   <Folder Name="/tests/BuildingBlocks/">
     <Project Path="tests/BuildingBlocks/BuildingBlocks.UnitTests/BuildingBlocks.UnitTests.csproj" />

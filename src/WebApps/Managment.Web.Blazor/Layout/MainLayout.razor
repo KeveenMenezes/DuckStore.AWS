@@ -1,0 +1,18 @@
+@inherits LayoutComponentBase
+
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="sidebar-brand">🦆 DuckStore Management</div>
+        <nav class="sidebar-nav">
+            <NavLink class="nav-item" href="products">Products</NavLink>
+        </nav>
+    </aside>
+    <div class="main-area">
+        <header class="topbar">
+            <LoginDisplay />
+        </header>
+        <main class="content">
+            @Body
+        </main>
+    </div>
+</div>

@@ -45,7 +45,8 @@ api/             GraphQL client used by client components and Server Components 
   queries/, mutations/, fragments/   one file per operation/entity
 components/ui/   shadcn/ui primitives — do not modify these manually
 app/             Next.js routes (page.tsx per route) + Route Handlers under app/api/
-graphql/         schema.graphql, AppSync JS resolvers (prod), and graphql/types.ts
+graphql/         types.ts only — the TS mirror of the shared schema (schema.graphql and
+                 the AppSync resolvers live at the monorepo root `graphql/`, ADR-0033)
 ```
 
 Path alias `@/*` maps to the project root.
@@ -60,7 +61,7 @@ The browser and Server Components never talk to AppSync or DynamoDB directly —
 
 `app/api/graphql/route.ts` is the Next.js Route Handler backing that endpoint. It branches on `GRAPHQL_BACKEND` between two implementations in the same folder:
 
-- `local.ts` (`GRAPHQL_BACKEND=local`, dev) — runs `graphql-yoga` against DynamoDB Local via AWS SDK v3 (`AWS_ENDPOINT_URL_DYNAMODB`, injected by Aspire's `WithReference(dynamoDb)`) and invokes the Basket Lambda through the Aspire Lambda emulator (`AWS_ENDPOINT_URL_LAMBDA`). It strips the `@aws_api_key`/`@aws_cognito_user_pools` directives from `graphql/schema.graphql` before building the schema, since Yoga doesn't understand AppSync-only directives.
+- `local.ts` (`GRAPHQL_BACKEND=local`, dev) — runs `graphql-yoga` against DynamoDB Local via AWS SDK v3 (`AWS_ENDPOINT_URL_DYNAMODB`, injected by Aspire's `WithReference(dynamoDb)`) and invokes the Basket Lambda through the Aspire Lambda emulator (`AWS_ENDPOINT_URL_LAMBDA`). It strips the `@aws_api_key`/`@aws_cognito_user_pools` directives from the repo-root `graphql/schema.graphql` (ADR-0033) before building the schema, since Yoga doesn't understand AppSync-only directives.
 - `appsync.ts` (`GRAPHQL_BACKEND=appsync`, staging/prod) — a **BFF proxy**: reads the Cognito Access Token from the httpOnly `access_token` cookie (set by `/api/auth/callback`) and forwards the request to real AppSync as `Authorization: Bearer`, falling back to `x-api-key` for guest/public queries. The browser never sees the AppSync URL or API key.
 
 Both handlers run every basket request through `prepareBasketRequest` (`lib/basket-bff.ts`), which calls `resolveOwner()` (`lib/identity.ts`) — the single source of truth for the caller's identity — and injects a server-resolved **`ownerId`** into the GraphQL variables of `basket`/`storeBasket`/`deleteBasket` (they declare `$ownerId` but the browser never sends it). `ownerId` is `USER#<cognito-sub>` when the `access_token` cookie is present, else `GUEST#<guestId>` from an httpOnly `guest_id` cookie (minted on first visit, 15-day sliding window renewed on guest writes). `checkoutBasket`/`mergeBasket` are Cognito-only and derive the owner from `ctx.identity` in the resolver. On login, `/api/auth/callback` calls the `mergeBasket` mutation with the `guest_id` cookie to fold the visitor cart into the user cart, then clears the cookie. See ADR-0016 and `[[project-appsync-security]]`.
@@ -69,7 +70,7 @@ Auth token resolution for **server-side** `gql` calls (Server Components, Route 
 
 `/api/auth/{login,callback,logout,me}` implement the Cognito Hosted UI PKCE flow. See `[[project-appsync-security]]` for the full Cognito/AppSync security architecture (auth-per-operation table, Groups, env vars).
 
-The files under `graphql/resolvers/<domain>/<queries|mutations>/<Type>.<field>.js` are **AppSync JS resolver** units (request/response functions using `@aws-appsync/utils`) — not run locally, deployed to AppSync separately. Resolvers are organized by bounded context first (`basket/`, `products/`, `categories/`, `pricing/`, `orders/`, `reviews/`, `user/` — mirroring `src/Services/*`), then by operation kind (`queries/`/`mutations/`); `infra/constructs/appsync-api.ts` wires each field to its file via a `domain` string passed to `this.resolver(...)`. `graphql/types.ts` holds TypeScript interfaces that mirror `graphql/schema.graphql` — keep them in sync when the schema changes.
+The files under the monorepo root `graphql/resolvers/<domain>/<queries|mutations>/<Type>.<field>.js` (ADR-0033 — outside this SPA) are **AppSync JS resolver** units (request/response functions using `@aws-appsync/utils`) — not run locally, deployed to AppSync separately. Resolvers are organized by bounded context first (`basket/`, `products/`, `categories/`, `pricing/`, `orders/`, `reviews/`, `user/` — mirroring `src/Services/*`), then by operation kind (`queries/`/`mutations/`); `infra/constructs/appsync-api.ts` wires each field to its file via a `domain` string passed to `this.resolver(...)`. This SPA's `graphql/types.ts` holds TypeScript interfaces that mirror the root `graphql/schema.graphql` — keep them in sync when the schema changes.
 
 ### Lambda response casing
 

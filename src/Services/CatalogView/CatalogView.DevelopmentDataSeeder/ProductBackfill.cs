@@ -263,7 +263,14 @@ public sealed class ProductBackfill(IAmazonDynamoDB dynamoDb, IProductSearchInde
             Id = id,
             Name = item["Name"].S,
             Description = item["Description"].S,
-            ImageUrl = item["ImageUrl"].S,
+            Images = item.TryGetValue("Images", out var images) && images.L is not null
+                ? [.. images.L.Select(i => new ImageRef(
+                    i.M["ImageId"].S,
+                    i.M.TryGetValue("IsMain", out var isMain) && isMain.BOOL == true,
+                    i.M.TryGetValue("Order", out var order) && !string.IsNullOrEmpty(order.N)
+                        ? int.Parse(order.N, CultureInfo.InvariantCulture)
+                        : 0))]
+                : [],
             OriginalPrice = originalPrice,
             Stock = int.Parse(item["Stock"].N, CultureInfo.InvariantCulture),
             CategoryIds = item.TryGetValue("CategoryIds", out var categoryIds) && categoryIds.SS is not null

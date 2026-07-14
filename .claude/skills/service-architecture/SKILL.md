@@ -155,7 +155,7 @@ needs real logic (see `resolver-selection` skill / ADR-0009). Simple key/GSI rea
 PutItem/UpdateItem → direct resolver.
 
 To make an operation a **direct resolver** (like Ordering's `ordersByCustomer`/`deleteOrder`):
-1. Write a JS resolver file `src/WebApps/Shopping.Web.SPA.React/graphql/resolvers/<domain>/queries|mutations/<Type>.<field>.js`
+1. Write a JS resolver file `graphql/resolvers/<domain>/queries|mutations/<Type>.<field>.js`
    (resolvers are grouped by bounded context first, then by operation kind — e.g. Ordering's
    resolvers live under `graphql/resolvers/orders/`).
    References: `orders/queries/Query.ordersByCustomer.js` (GSI query), `orders/mutations/Mutation.deleteOrder.js` (admin DeleteItem).

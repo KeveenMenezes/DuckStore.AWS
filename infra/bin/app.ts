@@ -8,6 +8,8 @@ import { ReviewStack } from '../stacks/review-stack';
 import { CatalogViewStack } from '../stacks/catalogview-stack';
 import { UserStack } from '../stacks/user-stack';
 import { AppSyncStack } from '../stacks/appsync-stack';
+import { AdminStack } from '../stacks/admin-stack';
+import { ProductImagesStack } from '../stacks/product-images-stack';
 
 const app = new cdk.App();
 
@@ -24,6 +26,10 @@ const environmentName = app.node.tryGetContext('environmentName') ?? 'dev';
 const hostedZoneDomainName =
   app.node.tryGetContext('hostedZoneDomainName') ?? 'keveenmenezes.com';
 const spaDomainUrl = `https://${environmentName}-duckstore.${hostedZoneDomainName}`;
+// Blazor management app (Managment.Web.Blazor) — same deterministic-domain trick, so
+// the Cognito admin client's callback URL is known before anything deploys.
+const adminDomainName = `${environmentName}-admin-duckstore.${hostedZoneDomainName}`;
+const adminDomainUrl = `https://${adminDomainName}`;
 
 // Project-wide tags — cascade to every resource in every stack (buckets, tables,
 // Lambdas, ...). This is how DuckStore resources are identified across the AWS
@@ -75,11 +81,26 @@ new UserStack(app, 'DuckStoreUserStack', {
     'DuckStore User service — DynamoDB table (user-profiles) and the lazy-provisioning GetProfile Lambda',
 });
 
+new ProductImagesStack(app, 'DuckStoreProductImagesStack', {
+  env,
+  // Same deterministic-domain trick as the SPA/admin: the CDN base URL is known
+  // before anything deploys, so clients can carry it in checked-in config.
+  imageDomainName: `${environmentName}-img-duckstore.${hostedZoneDomainName}`,
+  hostedZoneDomainName,
+  // Browser presigned-POST uploads come from the Blazor admin (dev server + deployed).
+  uploadOrigins: ['https://localhost:7300', adminDomainUrl],
+  description:
+    'DuckStore product image pipeline (ADR-0034) — originals/processed buckets, SQS + sharp processor, presign Lambda, image CDN',
+});
+
 new AppSyncStack(app, 'DuckStoreAppSyncStack', {
   env,
   // Allow both the local dev server and the deployed CloudFront domain so the
   // same app client works in dev (pnpm dev) and prod without a redirect_mismatch.
   spaBaseUrls: ['http://localhost:3000', spaDomainUrl],
+  // Blazor dev server (fixed port in launchSettings.json) + the deployed static site.
+  // Cognito allows https localhost callback URLs.
+  adminBaseUrls: ['https://localhost:7300', adminDomainUrl],
   // Social federation. Client IDs are public → committed in cdk.json context.
   // Client secrets live in Secrets Manager (bootstrapped out-of-band) and are
   // resolved by CloudFormation at deploy via a dynamic reference — never in the
@@ -92,6 +113,20 @@ new AppSyncStack(app, 'DuckStoreAppSyncStack', {
   description:
     'DuckStore AppSync API — Cognito UserPool (RBAC groups), DynamoDB direct resolvers, Lambda resolvers',
 });
+
+// The management app's stack embeds the Blazor `dotnet publish` output as an S3
+// asset, which must exist at synth time — so it's only instantiated behind the
+// `-c deployAdmin=true` flag (passed by deploy-admin-cdk.yml after publishing).
+// Without the flag every other stack still synths on a machine with no .NET build.
+if (app.node.tryGetContext('deployAdmin') === 'true') {
+  new AdminStack(app, 'DuckStoreAdminStack', {
+    env,
+    adminDomainName,
+    hostedZoneDomainName,
+    description:
+      'DuckStore management app (Managment.Web.Blazor) — S3 static site behind CloudFront with OAC',
+  });
+}
 
 // The SPA (OpenNext/Next.js on Lambda + CloudFront) deploys via SST, not CDK
 // — see src/WebApps/Shopping.Web.SPA.React/sst.config.ts (`sst deploy`). It

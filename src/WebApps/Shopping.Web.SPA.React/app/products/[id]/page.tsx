@@ -1,6 +1,5 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
-import Image from "next/image"
 import Link from "next/link"
 import { ArrowLeft, Package } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
@@ -9,6 +8,7 @@ import { StarRatingDisplay } from "@/features/reviews/components/star-rating"
 import { ReviewsSection } from "@/features/reviews/components/reviews-section"
 import { AddToCartButton } from "@/app/products/[id]/add-to-cart-button"
 import { ProductPrice } from "@/features/products/components/product-price"
+import { ProductGallery } from "@/features/products/components/product-gallery"
 import {
   getProduct,
   getProducts,
@@ -76,24 +76,19 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </Link>
 
       <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
-        {/* Product image */}
-        <div className="relative aspect-square overflow-hidden rounded-2xl border border-border bg-card">
-          {/* Served straight from CloudFront/S3, outside the Next optimizer — ADR-0018. */}
-          <Image
-            src={product.imageUrl}
-            alt={product.name}
-            fill
-            sizes="(max-width: 1024px) 100vw, 600px"
-            className="object-cover"
-            priority
-            unoptimized
-          />
-          {!inStock && (
-            <div className="absolute inset-0 flex items-center justify-center bg-background/70">
-              <Badge variant="secondary" className="text-sm px-4 py-1.5">Out of stock</Badge>
-            </div>
-          )}
-        </div>
+        {/* Product images — main <picture> + thumbnail strip, served straight from the
+            image CDN outside the Next optimizer (ADR-0034). */}
+        <ProductGallery
+          images={product.images}
+          name={product.name}
+          overlay={
+            !inStock ? (
+              <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                <Badge variant="secondary" className="text-sm px-4 py-1.5">Out of stock</Badge>
+              </div>
+            ) : undefined
+          }
+        />
 
         {/* Product info */}
         <div className="flex flex-col gap-5">

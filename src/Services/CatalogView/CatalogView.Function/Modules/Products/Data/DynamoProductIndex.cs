@@ -35,7 +35,7 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             TableName = TableName,
             Key = new Dictionary<string, AttributeValue> { ["Id"] = new(document.Id) },
             UpdateExpression =
-                $"SET {NameAlias} = :name, {DescriptionAlias} = :description, ImageUrl = :imageUrl, " +
+                $"SET {NameAlias} = :name, {DescriptionAlias} = :description, Images = :images, " +
                 "Stock = :stock, CategoryIds = :categoryIds, Categories = :categories, " +
                 "GSI1PK = :gsi1pk, GSI1SK = if_not_exists(GSI1SK, :zero)",
             ExpressionAttributeNames = new Dictionary<string, string>
@@ -47,7 +47,7 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             {
                 [":name"] = new(document.Name),
                 [":description"] = new(document.Description),
-                [":imageUrl"] = new(document.ImageUrl),
+                [":images"] = ToImageList(document.Images),
                 [":stock"] = new AttributeValue { N = document.Stock.ToString(CultureInfo.InvariantCulture) },
                 [":categoryIds"] = ToStringList(document.CategoryIds),
                 [":categories"] = ToCategoryList(document.Categories),
@@ -307,6 +307,24 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
     private static AttributeValue ToStringList(IEnumerable<string> values) =>
         new() { L = [.. values.Select(v => new AttributeValue(v))] };
 
+    private static AttributeValue ToImageList(IEnumerable<ImageRef> images) =>
+        new()
+        {
+            L =
+            [
+                .. images.Select(image => new AttributeValue
+                {
+                    M = new Dictionary<string, AttributeValue>
+                    {
+                        ["ImageId"] = new(image.ImageId),
+                        ["IsMain"] = new AttributeValue { BOOL = image.IsMain },
+                        ["Order"] = new AttributeValue { N = image.Order.ToString(CultureInfo.InvariantCulture) }
+                    }
+                })
+            ],
+            IsLSet = true
+        };
+
     private static AttributeValue ToCategoryList(IEnumerable<CategoryRef> categories) =>
         new()
         {
@@ -331,7 +349,7 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             ["Id"] = new(document.Id),
             ["Name"] = new(document.Name),
             ["Description"] = new(document.Description),
-            ["ImageUrl"] = new(document.ImageUrl),
+            ["Images"] = ToImageList(document.Images),
             ["OriginalPrice"] = new AttributeValue { N = document.OriginalPrice.ToString(CultureInfo.InvariantCulture) },
             ["Stock"] = new AttributeValue { N = document.Stock.ToString(CultureInfo.InvariantCulture) },
             ["CategoryIds"] = ToStringList(document.CategoryIds),
@@ -365,7 +383,9 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             Id = item.TryGetValue("Id", out var id) ? id.S : string.Empty,
             Name = item.TryGetValue("Name", out var name) ? name.S : string.Empty,
             Description = item.TryGetValue("Description", out var description) ? description.S : string.Empty,
-            ImageUrl = item.TryGetValue("ImageUrl", out var imageUrl) ? imageUrl.S : string.Empty,
+            Images = item.TryGetValue("Images", out var images) && images.L is not null
+                ? [.. images.L.Select(ToImageRef)]
+                : [],
             OriginalPrice = ParseDecimal(item, "OriginalPrice"),
             Stock = ParseInt(item, "Stock"),
             CategoryIds = item.TryGetValue("CategoryIds", out var categoryIds) && categoryIds.L is not null
@@ -387,6 +407,14 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
                 ? lastRatingEventId.S
                 : null
         };
+
+    private static ImageRef ToImageRef(AttributeValue value) =>
+        new(
+            value.M.TryGetValue("ImageId", out var imageId) ? imageId.S : string.Empty,
+            value.M.TryGetValue("IsMain", out var isMain) && isMain.BOOL == true,
+            value.M.TryGetValue("Order", out var order) && !string.IsNullOrEmpty(order.N)
+                ? int.Parse(order.N, CultureInfo.InvariantCulture)
+                : 0);
 
     private static int ParseInt(Dictionary<string, AttributeValue> item, string attributeName) =>
         item.TryGetValue(attributeName, out var attr) && !string.IsNullOrEmpty(attr.N)
