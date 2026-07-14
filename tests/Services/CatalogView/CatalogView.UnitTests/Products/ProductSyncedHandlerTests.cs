@@ -18,7 +18,7 @@ public class ProductSyncedHandlerTests
             ProductId = Guid.NewGuid().ToString(),
             Name = "Debug Duck",
             Description = "A duck",
-            ImageUrl = "/duck.jpg",
+            Images = [new ProductImageData("01HZXW5N8T2J3K4M5P6Q7R8S9A", true, 0)],
             Stock = 10,
             CategoryIds = ["cat-1"],
             CategoryNames = ["Languages"]
@@ -32,7 +32,9 @@ public class ProductSyncedHandlerTests
                     d.Id == evt.ProductId &&
                     d.Name == evt.Name &&
                     d.Description == evt.Description &&
-                    d.ImageUrl == evt.ImageUrl &&
+                    d.Images.Count == 1 &&
+                    d.Images[0].ImageId == evt.Images[0].ImageId &&
+                    d.Images[0].IsMain &&
                     d.Stock == evt.Stock &&
                     d.CategoryIds.SequenceEqual(evt.CategoryIds) &&
                     d.Categories.Count == 1 &&

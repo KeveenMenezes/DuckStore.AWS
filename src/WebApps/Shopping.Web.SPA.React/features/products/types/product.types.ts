@@ -19,12 +19,19 @@ export interface InstallmentPlan {
   installments: InstallmentOption[]
 }
 
+/** Image metadata only (ADR-0034) — URLs are built from NEXT_PUBLIC_IMAGE_CDN_URL + imageId. */
+export interface ProductImage {
+  imageId: string
+  isMain: boolean
+  order: number
+}
+
 /** Product as returned by the GraphQL API (sourced from CatalogView's DynamoDB index). */
 export interface Product {
   id: string
   name: string
   description: string
-  imageUrl: string
+  images: ProductImage[]
   // Sticker/"De" price — never discounted, denormalized onto Product.
   originalPrice: number
   // Payment highlights — cost-derived, already reflects an active campaign discount if any.

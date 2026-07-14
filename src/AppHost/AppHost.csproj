@@ -33,6 +33,7 @@
     <ProjectReference Include="..\Services\Review\Review.DevelopmentDataSeeder\Review.DevelopmentDataSeeder.csproj" />
     <ProjectReference Include="..\Services\User\User.Function\User.Function.csproj" />
     <ProjectReference Include="..\Services\User\User.DevelopmentDataSeeder\User.DevelopmentDataSeeder.csproj" />
+    <ProjectReference Include="..\WebApps\Managment.Web.Blazor\Managment.Web.Blazor.csproj" />
   </ItemGroup>
 
   <Target Name="RestoreNpm" BeforeTargets="Build" Condition=" '$(DesignTimeBuild)' != 'true' ">

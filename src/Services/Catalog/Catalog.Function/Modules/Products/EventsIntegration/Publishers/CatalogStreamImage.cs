@@ -8,7 +8,7 @@ public sealed record CatalogStreamImage(
     string Id,
     string Name,
     string Description,
-    string ImageUrl,
+    List<ProductImageData> Images,
     int Stock,
     List<string> CategoryIds)
 {
@@ -21,7 +21,9 @@ public sealed record CatalogStreamImage(
             image.TryGetValue("Id", out var id) ? id.S : string.Empty,
             image.TryGetValue("Name", out var name) ? name.S : string.Empty,
             image.TryGetValue("Description", out var description) ? description.S : string.Empty,
-            image.TryGetValue("ImageUrl", out var imageUrl) ? imageUrl.S : string.Empty,
+            image.TryGetValue("Images", out var images) && images.L is not null
+                ? [.. images.L.Select(ToImage)]
+                : [],
             image.TryGetValue("Stock", out var stock) && !string.IsNullOrEmpty(stock.N)
                 ? int.Parse(stock.N, CultureInfo.InvariantCulture)
                 : 0,
@@ -29,4 +31,12 @@ public sealed record CatalogStreamImage(
                 ? [.. categoryIds.SS]
                 : []);
     }
+
+    private static ProductImageData ToImage(DynamoDBEvent.AttributeValue value) =>
+        new(
+            value.M.TryGetValue("ImageId", out var imageId) ? imageId.S : string.Empty,
+            value.M.TryGetValue("IsMain", out var isMain) && isMain.BOOL == true,
+            value.M.TryGetValue("Order", out var order) && !string.IsNullOrEmpty(order.N)
+                ? int.Parse(order.N, CultureInfo.InvariantCulture)
+                : 0);
 }

@@ -36,6 +36,9 @@ export default $config({
     const environmentName = $app.stage;
     const hostedZoneDomainName = "keveenmenezes.com";
     const domainName = `${environmentName}-duckstore.${hostedZoneDomainName}`;
+    // Image CDN (ADR-0034) — same deterministic-domain trick as the SPA/admin, so the
+    // URL is known without reading the DuckStoreProductImagesStack outputs.
+    const imageCdnUrl = `https://${environmentName}-img-duckstore.${hostedZoneDomainName}`;
 
     // The AppSync/Cognito stack stays on CDK — these are its CloudFormation
     // exports (infra/stacks/appsync-stack.ts), read directly instead of via
@@ -87,6 +90,7 @@ export default $config({
         COGNITO_HOSTED_UI_URL: cognitoHostedUiUrl,
         WEBHOOK_SECRET: webhookSecret.value,
         NEXT_PUBLIC_SITE_URL: `https://${domainName}`,
+        NEXT_PUBLIC_IMAGE_CDN_URL: imageCdnUrl,
       },
       // No OPEN_NEXT_BUILD_ID env var needed here, even though the bundled
       // tag-cache handler prefixes every DynamoDB key with it: OpenNext v4's

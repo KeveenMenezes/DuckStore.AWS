@@ -88,6 +88,27 @@ Use the **C# Dev Kit** extension to start the project:
    - Press `F5` and select the `C#` folder.
    - Choose the `C#: AppHost` project to start.
 
+## 💡 Tips & Tools
+
+- **Product image pipeline (ADR-0034)**: product images upload straight from the admin
+  browser to S3 (presigned POST), are processed into AVIF/WebP/JPEG variants by a
+  Node.js/sharp Lambda, and are served from a dedicated CloudFront distribution. The API
+  only carries image metadata (`imageId`) — clients build URLs from configuration:
+  - React SPA: `NEXT_PUBLIC_IMAGE_CDN_URL` (in `.env.local` for dev; set by `sst.config.ts`
+    when deployed). Local dev also needs `IMAGE_ORIGINALS_BUCKET` plus real AWS credentials
+    for the upload mutation, since there is no local S3 — dev/test run against the real
+    AWS dev environment.
+  - Blazor management app: `ImageCdn:BaseUrl` in `wwwroot/appsettings*.json`.
+- **Orphan image cleanup**: uploads whose product form was abandoned leave unreferenced
+  objects in the image buckets. Clean them with the manual sweep script (dry-run by
+  default; add `--delete` to actually remove):
+  ```bash
+  cd src/Services/ProductImages
+  npx tsx scripts/sweep-orphan-images.ts --originals <originals-bucket> --processed <processed-bucket>
+  ```
+
+---
+
 ## 📧 Contact
 
 For questions or suggestions, reach out on [Linkedin](https://www.linkedin.com/in/keveen-menezes-52592162/)

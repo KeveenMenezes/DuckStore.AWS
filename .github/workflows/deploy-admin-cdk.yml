@@ -1,0 +1,103 @@
+name: Deploy Admin CDK Stack
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - 'infra/**'
+      - 'src/WebApps/Managment.Web.Blazor/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '24'
+  DOTNET_VERSION: '10.0.x'
+  ADMIN_URL: https://dev-admin-duckstore.keveenmenezes.com
+
+jobs:
+  deploy:
+    name: Publish Blazor + Deploy CDK
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Install CDK dependencies
+        working-directory: infra
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # The Blazor WASM app is a static site — its runtime config is the JSON it
+      # fetches at boot. Bake the deployed AppSync/Cognito values into
+      # wwwroot/appsettings.json before publishing. All values are public by nature
+      # (endpoint URLs + a public PKCE client id), no secrets involved.
+      - name: Fetch AppSync connection info
+        run: |
+          OUTPUTS=$(aws cloudformation describe-stacks \
+            --stack-name DuckStoreAppSyncStack \
+            --query "Stacks[0].Outputs" --output json)
+          echo "API_URL=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiUrl") | .OutputValue')" >> "$GITHUB_ENV"
+          echo "USER_POOL_ID=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="UserPoolId") | .OutputValue')" >> "$GITHUB_ENV"
+          ADMIN_CLIENT_ID=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="AdminUserPoolClientId") | .OutputValue')
+          if [ -z "$ADMIN_CLIENT_ID" ]; then
+            echo "::error::AdminUserPoolClientId output not found — deploy the AppSync stack first (deploy-appsync-cdk.yml), then re-run this workflow."
+            exit 1
+          fi
+          echo "ADMIN_CLIENT_ID=$ADMIN_CLIENT_ID" >> "$GITHUB_ENV"
+
+      - name: Generate production appsettings.json
+        run: |
+          cat > src/WebApps/Managment.Web.Blazor/wwwroot/appsettings.json <<EOF
+          {
+            "GraphQL": { "Endpoint": "${API_URL}" },
+            "Auth": {
+              "Enabled": true,
+              "Authority": "https://cognito-idp.${AWS_REGION}.amazonaws.com/${USER_POOL_ID}",
+              "ClientId": "${ADMIN_CLIENT_ID}"
+            }
+          }
+          EOF
+
+      - name: Publish Blazor app
+        run: dotnet publish src/WebApps/Managment.Web.Blazor/Managment.Web.Blazor.csproj -c Release
+
+      - name: Deploy Admin CDK stack
+        working-directory: infra
+        run: |
+          npx cdk deploy DuckStoreAdminStack \
+            -c deployAdmin=true \
+            --require-approval never
+
+      - name: Deployment summary
+        run: |
+          echo "## Admin CDK Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Stack** | DuckStoreAdminStack |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Admin URL** | ${{ env.ADMIN_URL }} |" >> $GITHUB_STEP_SUMMARY

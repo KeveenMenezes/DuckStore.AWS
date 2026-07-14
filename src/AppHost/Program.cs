@@ -62,4 +62,11 @@ builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React",
     .PublishAsDockerFile()
     .WithExplicitStart();
 
+// Blazor WASM can't read env vars at runtime — its GraphQL endpoint comes from the
+// checked-in wwwroot/appsettings.Development.json, pointing at the React SPA's local
+// GraphQL BFF (start the SPA first). Deployed as a static site to S3/CloudFront.
+builder.AddProject<Projects.Managment_Web_Blazor>("managment-web-blazor")
+    .WithExternalHttpEndpoints()
+    .WithExplicitStart();
+
 await builder.Build().RunAsync();

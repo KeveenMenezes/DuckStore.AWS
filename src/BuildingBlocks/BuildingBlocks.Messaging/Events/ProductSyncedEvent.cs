@@ -11,7 +11,7 @@ public record ProductSyncedEvent : IntegrationEvent
     public string ProductId { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
-    public string ImageUrl { get; init; } = string.Empty;
+    public List<ProductImageData> Images { get; init; } = [];
     public int Stock { get; init; }
     public List<string> CategoryIds { get; init; } = [];
 

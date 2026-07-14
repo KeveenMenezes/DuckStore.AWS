@@ -5,7 +5,7 @@ on:
     branches: [development]
     paths:
       - 'infra/**'
-      - 'src/WebApps/Shopping.Web.SPA.React/graphql/**'
+      - 'graphql/**'
   workflow_dispatch:
 
 permissions:

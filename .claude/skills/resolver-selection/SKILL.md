@@ -121,7 +121,7 @@ string in `appsync-api.ts`.
 
 ### Direct DynamoDB resolver (APPSYNC_JS)
 
-File location: `src/WebApps/Shopping.Web.SPA.React/graphql/resolvers/<domain>/queries/<TypeName>.<fieldName>.js` (or `mutations/` for `Mutation` fields)
+File location: `graphql/resolvers/<domain>/queries/<TypeName>.<fieldName>.js` (or `mutations/` for `Mutation` fields)
 
 **Query — Scan (paginated list)**
 ```js
@@ -285,12 +285,12 @@ public async Task<IResult> DeleteProduct(string id, ISender sender, Cancellation
 
 ## What to read before classifying a field
 
-1. Check `src/WebApps/Shopping.Web.SPA.React/graphql/schema.graphql` — the field's argument
+1. Check `graphql/schema.graphql` — the field's argument
    and return types tell you what data it touches.
 2. If an existing Lambda handler exists under `src/Services/*/Features/`, read it to see
    whether it actually uses Redis, cross-service calls, or complex validation — those are
    the escalation criteria, not the mere existence of the handler.
-3. Check `src/WebApps/Shopping.Web.SPA.React/graphql/resolvers/<domain>/` to see whether a
+3. Check `graphql/resolvers/<domain>/` to see whether a
    resolver file already exists for the field.
 
 ## After classifying and implementing

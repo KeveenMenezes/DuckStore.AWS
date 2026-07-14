@@ -20,7 +20,7 @@ public sealed class ProductSyncedHandler(IProductSearchIndex index)
             Id = evt.ProductId,
             Name = evt.Name,
             Description = evt.Description,
-            ImageUrl = evt.ImageUrl,
+            Images = [.. evt.Images.Select(i => new ImageRef(i.ImageId, i.IsMain, i.Order))],
             Stock = evt.Stock,
             CategoryIds = evt.CategoryIds,
             Categories = [.. evt.CategoryIds.Zip(evt.CategoryNames, (id, name) => new CategoryRef(id, name))]

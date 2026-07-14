@@ -1,6 +1,5 @@
 "use client"
 
-import Image from "next/image"
 import Link from "next/link"
 import { ShoppingCart } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -8,6 +7,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { useCart } from "@/features/cart/hooks/use-cart"
 import { StarRatingDisplay } from "@/features/reviews/components/star-rating"
 import type { Product } from "@/features/products/types/product.types"
+import { ProductPicture } from "@/features/products/components/product-picture"
+import { mainImageId } from "@/shared/lib/image-url"
 import { formatUSD, percentOff } from "@/shared/lib/format"
 import { ROUTES } from "@/shared/constants/routes"
 import { useState } from "react"
@@ -39,15 +40,13 @@ export function ProductCard({ product }: ProductCardProps) {
     <Card className="group overflow-hidden border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5">
       <Link href={ROUTES.product(product.id)} className="block">
         <div className="relative aspect-square overflow-hidden">
-          {/* Product images are pre-optimized and served straight from CloudFront
-              (product-images/* → S3), bypassing the Next image optimizer — ADR-0018. */}
-          <Image
-            src={product.imageUrl}
+          {/* Pre-computed variants served straight from the image CDN via <picture> —
+              AVIF/WebP negotiation in HTML, outside the Next optimizer (ADR-0034). */}
+          <ProductPicture
+            imageId={mainImageId(product.images)}
             alt={product.name}
-            fill
             sizes="(max-width: 768px) 50vw, 300px"
-            unoptimized
-            className="object-cover transition-transform duration-300 group-hover:scale-105"
+            className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </div>
       </Link>
