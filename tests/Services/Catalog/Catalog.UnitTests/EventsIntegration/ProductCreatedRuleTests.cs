@@ -10,7 +10,7 @@ public class ProductCreatedRuleTests
     private readonly ProductCreatedRule _rule = new();
 
     private static CatalogStreamImage NewProduct(string id) =>
-        new(id, "Debug Duck", "A duck", "/duck.jpg", 10, ["cat-1"]);
+        new(id, "Debug Duck", "A duck", [], 10, ["cat-1"]);
 
     [Fact]
     public void Match_ShouldBeTrue_OnInsert()
