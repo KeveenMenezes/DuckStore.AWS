@@ -31,10 +31,19 @@ jobs:
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
-          cache-dependency-path: infra/package-lock.json
+          cache-dependency-path: |
+            infra/package-lock.json
+            src/Services/ProductImages/package-lock.json
 
       - name: Install CDK dependencies
         working-directory: infra
+        run: npm ci
+
+      # CDK's NodejsFunction bundles the processor Lambda locally (esbuild, no Docker —
+      # ADR-0034): it needs esbuild and the Lambda's own deps (sharp) already installed
+      # here, not just in infra/, or bundling fails trying to fetch them mid-build.
+      - name: Install ProductImages Lambda dependencies
+        working-directory: src/Services/ProductImages
         run: npm ci
 
       - name: Configure AWS credentials
