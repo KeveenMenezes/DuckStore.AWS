@@ -117,10 +117,25 @@ export class ProductImagesStack extends cdk.Stack {
       reservedConcurrentExecutions: 10,
       environment: { PROCESSED_BUCKET: processedBucket.bucketName },
       bundling: {
-        // sharp ships a native binary — esbuild cannot bundle it. Docker bundling
-        // installs the linux-arm64 prebuilt inside the build image instead.
+        // sharp ships its native binary as a per-platform optional dependency
+        // (@img/sharp-linux-arm64) — esbuild externalizes it (nodeModules) and CDK's
+        // default install step fetches it, but with no arch flags that install grabs
+        // the *build host's* architecture, not the Lambda's. Fetching the arm64 build
+        // is a plain download, not an execution of arm64 code, so it works from a
+        // local (non-Docker) x86 CI runner: afterBundling re-installs with the target
+        // arch explicitly, overwriting the host-arch copy the default step placed.
+        // This avoids Docker/QEMU entirely (see ADR-0034 — no cross-arch container
+        // build needed for this Lambda).
         nodeModules: ['sharp'],
-        forceDockerBundling: true,
+        forceDockerBundling: false,
+        commandHooks: {
+          beforeBundling: () => [],
+          beforeInstall: () => [],
+          afterBundling: (_inputDir: string, outputDir: string) => [
+            `cd ${outputDir}`,
+            'npm install --no-save --os=linux --cpu=arm64 sharp',
+          ],
+        },
       },
     });
 

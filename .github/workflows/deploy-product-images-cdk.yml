@@ -43,14 +43,6 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
-      # The processor/presign Lambdas are Docker-bundled (NodejsFunction + sharp) for arm64 —
-      # this runner is x86_64, so building that arm64 bundling image needs QEMU emulation
-      # registered, or the build fails with "exec format error" on the first RUN step.
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
-
       - name: Deploy Product Images CDK stack
         working-directory: infra
         run: |
