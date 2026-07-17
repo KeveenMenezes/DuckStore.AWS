@@ -5,7 +5,9 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
 import { Construct } from 'constructs';
+import { ContextDlq } from './context-dlq';
 
 const DOTNET_ARCH = lambda.Architecture.ARM_64;
 
@@ -35,6 +37,10 @@ export class CatalogViewLambdas extends Construct {
 
     // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
+
+    // Shared dead-letter queue for all six CatalogView consumers; a non-empty
+    // queue trips the catalogview-dlq-not-empty alarm → duckstore-alerts.
+    const dlq = new ContextDlq(this, 'Dlq', { contextName: 'catalogview' });
 
     // All six CatalogView Lambdas share the same image, built once.
     const catalogViewImage = new ecrAssets.DockerImageAsset(this, 'CatalogViewImage', {
@@ -71,7 +77,20 @@ export class CatalogViewLambdas extends Construct {
           detailType: [detailType],
         },
       });
-      rule.addTarget(new targets.LambdaFunction(fn));
+      // Two failure paths, one queue: the async-invoke destination captures the
+      // event when the Lambda keeps throwing; the rule-target DLQ captures events
+      // EventBridge could not deliver to the Lambda at all.
+      fn.configureAsyncInvoke({
+        onFailure: new destinations.SqsDestination(dlq.queue),
+        retryAttempts: 2,
+      });
+      rule.addTarget(
+        new targets.LambdaFunction(fn, {
+          deadLetterQueue: dlq.queue,
+          retryAttempts: 3,
+          maxEventAge: cdk.Duration.hours(2),
+        }),
+      );
     };
 
     // -------------------------------------------------------------------------

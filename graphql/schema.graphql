@@ -70,15 +70,6 @@ type Price @aws_api_key @aws_cognito_user_pools {
   updatedAt: String!
 }
 
-type Discount @aws_api_key @aws_cognito_user_pools {
-  productId: ID!
-  campaignId: ID!
-  discountType: String!
-  value: Float!
-  startsAt: String!
-  endsAt: String!
-}
-
 type InstallmentPlan @aws_api_key @aws_cognito_user_pools {
   productId: ID!
   originalPrice: Float!
@@ -379,10 +370,6 @@ type Query {
 
   # Direct DynamoDB resolver — public (API_KEY or Cognito); GetItem on Pricing's "prices" table
   nominalPriceFor(productId: ID!): Price @aws_api_key @aws_cognito_user_pools
-
-  # Direct DynamoDB resolver — public (API_KEY or Cognito); GetItem on Pricing's "product-discounts"
-  # projection, expiry checked at read time against StartsAt/EndsAt (ADR-0026). Replaces couponFor.
-  currentDiscountForProduct(productId: ID!): Discount @aws_api_key @aws_cognito_user_pools
 
   # Lambda resolver — public (API_KEY or Cognito); non-trivial calculation, not a key lookup (ADR-0009)
   installmentPlanFor(productId: ID!): InstallmentPlan @aws_api_key @aws_cognito_user_pools

@@ -6,7 +6,9 @@ import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
+import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
 import { Construct } from 'constructs';
+import { ContextDlq } from './context-dlq';
 
 const DOTNET_ARCH = lambda.Architecture.ARM_64;
 
@@ -36,6 +38,10 @@ export class PricingLambdas extends Construct {
 
     // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
+
+    // Shared dead-letter queue for every async Pricing process; a non-empty
+    // queue trips the pricing-dlq-not-empty alarm → duckstore-alerts.
+    const dlq = new ContextDlq(this, 'Dlq', { contextName: 'pricing' });
 
     // All five Pricing Lambdas share the same image, built once.
     const pricingImage = new ecrAssets.DockerImageAsset(this, 'PricingImage', {
@@ -81,6 +87,7 @@ export class PricingLambdas extends Construct {
     });
     pricesTable.grantReadData(this.getInstallmentPlan);
     gatewayCostsTable.grantReadData(this.getInstallmentPlan);
+    productDiscountsTable.grantReadData(this.getInstallmentPlan);
 
     // -------------------------------------------------------------------------
     // 1b. pricing-get-basket-installment-plan  (AppSync Invoke — Query.basketInstallmentPlan)
@@ -179,8 +186,19 @@ export class PricingLambdas extends Construct {
         detailType: ['ProductDeletedEvent'],
       },
     });
+    // Two failure paths, one queue: the async-invoke destination captures the
+    // event when the Lambda keeps throwing; the rule-target DLQ captures events
+    // EventBridge could not deliver to the Lambda at all.
+    this.productDeletedConsumer.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(dlq.queue),
+      retryAttempts: 2,
+    });
     productDeletedRule.addTarget(
-      new targets.LambdaFunction(this.productDeletedConsumer),
+      new targets.LambdaFunction(this.productDeletedConsumer, {
+        deadLetterQueue: dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
     );
 
     // -------------------------------------------------------------------------
@@ -213,13 +231,17 @@ export class PricingLambdas extends Construct {
         batchSize: 10,
         bisectBatchOnError: true,
         retryAttempts: 3,
+        // Records exhausted after bisect+retries land here (shard/sequence
+        // metadata, not the payload — redrive by re-reading the stream).
+        onFailure: new lambdaEventSources.SqsDlq(dlq.queue),
       }),
     );
 
     eventBus.grantPutEventsTo(this.priceStreamPublisher);
     gatewayCostsTable.grantReadData(this.priceStreamPublisher);
+    productDiscountsTable.grantReadData(this.priceStreamPublisher);
 
-    // Note: nominalPriceFor/currentDiscountForProduct/setGatewayCost are AppSync direct DynamoDB
+    // Note: nominalPriceFor/setNominalPrice/setGatewayCost are AppSync direct DynamoDB
     // resolvers (ADR-0009), not Lambdas — see infra/constructs/appsync-api.ts.
   }
 }

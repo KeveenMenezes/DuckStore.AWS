@@ -10,6 +10,7 @@ import { UserStack } from '../stacks/user-stack';
 import { AppSyncStack } from '../stacks/appsync-stack';
 import { AdminStack } from '../stacks/admin-stack';
 import { ProductImagesStack } from '../stacks/product-images-stack';
+import { MonitoringStack } from '../stacks/monitoring-stack';
 
 const app = new cdk.App();
 
@@ -38,6 +39,15 @@ const adminDomainUrl = `https://${adminDomainName}`;
 cdk.Tags.of(app).add('Project', 'DuckStore');
 cdk.Tags.of(app).add('ManagedBy', 'CDK');
 cdk.Tags.of(app).add('Environment', environmentName);
+
+// Deploy first: every DLQ alarm imports the duckstore-alerts topic by name
+// (see importAlertsTopic in infra/constructs/context-dlq.ts).
+new MonitoringStack(app, 'DuckStoreMonitoringStack', {
+  env,
+  alertsEmail: app.node.tryGetContext('alertsEmail') ?? process.env.ALERTS_EMAIL,
+  description:
+    'DuckStore shared alerting — duckstore-alerts SNS topic targeted by every CloudWatch alarm',
+});
 
 new CatalogStack(app, 'DuckStoreCatalogStack', {
   env,

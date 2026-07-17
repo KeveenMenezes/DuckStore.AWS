@@ -52,6 +52,15 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # The processor Lambda is Docker-bundled for arm64 (sharp's native binary must be
+      # installed inside an arm64 image — see product-images-stack.ts). This runner is
+      # x86_64, so the arm64 bundling image needs QEMU emulation registered or the build
+      # fails with "exec format error".
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       - name: Deploy Product Images CDK stack
         working-directory: infra
         run: |
