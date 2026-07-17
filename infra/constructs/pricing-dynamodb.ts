@@ -31,8 +31,8 @@ export class PricingDynamoDB extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Denormalized read projection, PK=ProductId — lets currentDiscountForProduct stay a direct
-    // DynamoDB GetItem (ADR-0009); expiry is checked at read time against StartsAt/EndsAt.
+    // Denormalized read projection, PK=ProductId — per-product discount lookup is a plain
+    // GetItem (ADR-0026); expiry is checked at read time against StartsAt/EndsAt.
     this.productDiscountsTable = new dynamodb.Table(this, 'ProductDiscountsTable', {
       tableName: 'product-discounts',
       partitionKey: { name: 'ProductId', type: dynamodb.AttributeType.STRING },

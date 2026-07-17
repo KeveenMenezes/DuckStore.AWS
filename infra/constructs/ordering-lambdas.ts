@@ -6,7 +6,9 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
 import { Construct } from 'constructs';
+import { ContextDlq } from './context-dlq';
 
 const DOTNET_ARCH = lambda.Architecture.ARM_64;
 
@@ -29,6 +31,10 @@ export class OrderingLambdas extends Construct {
 
     // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
+
+    // Shared dead-letter queue for every async Ordering process; a non-empty
+    // queue trips the ordering-dlq-not-empty alarm → duckstore-alerts.
+    const dlq = new ContextDlq(this, 'Dlq', { contextName: 'ordering' });
 
     // All four Ordering Lambdas share the same image, built once.
     const orderingImage = new ecrAssets.DockerImageAsset(this, 'OrderingImage', {
@@ -91,8 +97,19 @@ export class OrderingLambdas extends Construct {
         detailType: ['BasketCheckoutEvent'],
       },
     });
+    // Two failure paths, one queue: the async-invoke destination captures the
+    // event when the Lambda keeps throwing; the rule-target DLQ captures events
+    // EventBridge could not deliver to the Lambda at all.
+    this.basketCheckoutConsumer.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(dlq.queue),
+      retryAttempts: 2,
+    });
     basketCheckoutRule.addTarget(
-      new targets.LambdaFunction(this.basketCheckoutConsumer),
+      new targets.LambdaFunction(this.basketCheckoutConsumer, {
+        deadLetterQueue: dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
     );
 
     // -------------------------------------------------------------------------
@@ -130,6 +147,9 @@ export class OrderingLambdas extends Construct {
         batchSize: 10,
         bisectBatchOnError: true,
         retryAttempts: 3,
+        // Records exhausted after bisect+retries land here (shard/sequence
+        // metadata, not the payload — redrive by re-reading the stream).
+        onFailure: new lambdaEventSources.SqsDlq(dlq.queue),
       }),
     );
 

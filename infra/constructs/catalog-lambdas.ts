@@ -5,8 +5,8 @@ import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
-import * as targets from 'aws-cdk-lib/aws-events-targets';
 import { Construct } from 'constructs';
+import { ContextDlq } from './context-dlq';
 
 const DOTNET_ARCH = lambda.Architecture.ARM_64;
 
@@ -20,19 +20,21 @@ const CATALOG_DOCKERFILE = 'src/Services/Catalog/Catalog.Function/Dockerfile';
 export interface CatalogLambdasProps {
   readonly productsTable: dynamodb.Table;
   readonly categoriesTable: dynamodb.Table;
-  readonly processedEventsTable: dynamodb.Table;
 }
 
 export class CatalogLambdas extends Construct {
   public readonly eventBus: events.EventBus;
   public readonly streamPublisher: lambda.Function;
   public readonly categoryStreamPublisher: lambda.Function;
-  public readonly reviewCreatedConsumer: lambda.Function;
 
   constructor(scope: Construct, id: string, props: CatalogLambdasProps) {
     super(scope, id);
 
-    const { productsTable, categoriesTable, processedEventsTable } = props;
+    const { productsTable, categoriesTable } = props;
+
+    // Shared dead-letter queue for every async Catalog process; a non-empty
+    // queue trips the catalog-dlq-not-empty alarm → duckstore-alerts.
+    const dlq = new ContextDlq(this, 'Dlq', { contextName: 'catalog' });
 
     // All Catalog integration events flow through this bus (ADR-0004).
     this.eventBus = new events.EventBus(this, 'EventBus', {
@@ -91,10 +93,15 @@ export class CatalogLambdas extends Construct {
         batchSize: 10,
         bisectBatchOnError: true,
         retryAttempts: 3,
+        // Records exhausted after bisect+retries land here (shard/sequence
+        // metadata, not the payload — redrive by re-reading the stream).
+        onFailure: new lambdaEventSources.SqsDlq(dlq.queue),
       }),
     );
 
     this.eventBus.grantPutEventsTo(this.streamPublisher);
+
+    categoriesTable.grantReadData(this.streamPublisher);
 
     // ProductCreatedEvent/ProductUpdatedEvent/ProductDeletedEvent's ISR revalidation trigger
     // moved to SpaTagRevalidator (infra/constructs/spa-tag-revalidator.ts), which subscribes to
@@ -129,51 +136,14 @@ export class CatalogLambdas extends Construct {
         batchSize: 10,
         bisectBatchOnError: true,
         retryAttempts: 3,
+        onFailure: new lambdaEventSources.SqsDlq(dlq.queue),
       }),
     );
 
     this.eventBus.grantPutEventsTo(this.categoryStreamPublisher);
 
-    // -------------------------------------------------------------------------
-    // 2. catalog-review-created-consumer
-    //    Trigger: EventBridge rule (ReviewCreatedEvent from Review service)
-    //    IAM: read+write on products and catalog-processed-events (ADR-0011)
-    // -------------------------------------------------------------------------
-    this.reviewCreatedConsumer = new lambda.DockerImageFunction(this, 'ReviewCreatedConsumer', {
-      functionName: 'catalog-review-created-consumer',
-      // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
-      tracing: lambda.Tracing.ACTIVE,
-      architecture: DOTNET_ARCH,
-      code: catalogCode([
-        'Catalog.Function::Catalog.Function.Functions_ReviewCreatedConsumer_Generated::ReviewCreatedConsumer',
-      ]),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
-      description:
-        'Consumes ReviewCreatedEvent and updates product RatingCount/RatingSum/AverageRating idempotently (ADR-0011)',
-      environment: {
-        EventBridge__BusName: this.eventBus.eventBusName,
-      },
-    });
-
-    // Covers GetItem (average recompute) + UpdateItem / ConditionCheckItem
-    // used inside TransactWriteItems for rating aggregation.
-    productsTable.grantReadWriteData(this.reviewCreatedConsumer);
-    // Covers PutItem + ConditionCheckItem for the idempotency inbox leg of TransactWriteItems.
-    processedEventsTable.grantReadWriteData(this.reviewCreatedConsumer);
-
-    const reviewCreatedRule = new events.Rule(this, 'ReviewCreatedRule', {
-      eventBus: this.eventBus,
-      ruleName: 'review-created-consumer-rule',
-      description:
-        'Routes ReviewCreatedEvent (source=duckstore) to catalog-review-created-consumer',
-      eventPattern: {
-        source: ['duckstore'],
-        detailType: ['ReviewCreatedEvent'],
-      },
-    });
-    reviewCreatedRule.addTarget(
-      new targets.LambdaFunction(this.reviewCreatedConsumer),
-    );
+    // The old catalog-review-created-consumer (ADR-0011 §4) is gone: rating aggregation is
+    // owned by CatalogView's catalogview-review-aggregate-consumer (ADR-0027/ADR-0030), so
+    // ReviewCreatedEvent no longer touches the products table.
   }
 }
