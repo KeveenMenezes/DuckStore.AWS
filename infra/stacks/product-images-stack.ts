@@ -4,6 +4,7 @@ import * as acm from 'aws-cdk-lib/aws-certificatemanager';
 import * as cloudfront from 'aws-cdk-lib/aws-cloudfront';
 import * as origins from 'aws-cdk-lib/aws-cloudfront-origins';
 import * as cloudwatch from 'aws-cdk-lib/aws-cloudwatch';
+import * as cloudwatchActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import { SqsEventSource } from 'aws-cdk-lib/aws-lambda-event-sources';
 import { NodejsFunction } from 'aws-cdk-lib/aws-lambda-nodejs';
@@ -13,6 +14,7 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3n from 'aws-cdk-lib/aws-s3-notifications';
 import * as sqs from 'aws-cdk-lib/aws-sqs';
 import { Construct } from 'constructs';
+import { importAlertsTopic } from '../constructs/context-dlq';
 
 export interface ProductImagesStackProps extends cdk.StackProps {
   /** e.g. dev-img-duckstore.keveenmenezes.com — the image CDN domain clients build URLs on. */
@@ -94,7 +96,7 @@ export class ProductImagesStack extends cdk.Stack {
 
     // A message in the DLQ is an image that silently failed processing — its product
     // renders a placeholder forever unless someone acts on this alarm.
-    new cloudwatch.Alarm(this, 'ProcessingDlqAlarm', {
+    const processingDlqAlarm = new cloudwatch.Alarm(this, 'ProcessingDlqAlarm', {
       alarmName: 'product-images-dlq-not-empty',
       metric: deadLetterQueue.metricApproximateNumberOfMessagesVisible(),
       threshold: 0,
@@ -102,6 +104,7 @@ export class ProductImagesStack extends cdk.Stack {
       evaluationPeriods: 1,
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
+    processingDlqAlarm.addAlarmAction(new cloudwatchActions.SnsAction(importAlertsTopic(this)));
 
     // The images/ prefix is load-bearing: the processor writes quarantined files to
     // quarantine/ in this same bucket — without the filter that write would loop.
@@ -127,15 +130,6 @@ export class ProductImagesStack extends cdk.Stack {
       // for a bulk import at this project's scale; revisit if the account's limit grows.
       environment: { PROCESSED_BUCKET: processedBucket.bucketName },
       bundling: {
-        // sharp ships its native binary as a per-platform optional dependency
-        // (@img/sharp-linux-arm64) — esbuild externalizes it (nodeModules) and CDK's
-        // default install step fetches it, but with no arch flags that install grabs
-        // the *build host's* architecture, not the Lambda's. Fetching the arm64 build
-        // is a plain download, not an execution of arm64 code, so it works from a
-        // local (non-Docker) x86 CI runner: afterBundling re-installs with the target
-        // arch explicitly, overwriting the host-arch copy the default step placed.
-        // This avoids Docker/QEMU entirely (see ADR-0034 — no cross-arch container
-        // build needed for this Lambda).
         nodeModules: ['sharp'],
         forceDockerBundling: false,
         commandHooks: {

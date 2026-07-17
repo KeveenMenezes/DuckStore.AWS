@@ -6,6 +6,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import { Construct } from 'constructs';
+import { ContextDlq } from './context-dlq';
 
 const DOTNET_ARCH = lambda.Architecture.ARM_64;
 
@@ -26,6 +27,10 @@ export class ReviewLambdas extends Construct {
 
     // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
+
+    // Shared dead-letter queue for async Review processing; a non-empty queue
+    // trips the review-dlq-not-empty alarm → duckstore-alerts.
+    const dlq = new ContextDlq(this, 'Dlq', { contextName: 'review' });
 
     const reviewImage = new ecrAssets.DockerImageAsset(this, 'ReviewImage', {
       directory: REPO_ROOT,
@@ -76,6 +81,9 @@ export class ReviewLambdas extends Construct {
         batchSize: 10,
         bisectBatchOnError: true,
         retryAttempts: 3,
+        // Records exhausted after bisect+retries land here (shard/sequence
+        // metadata, not the payload — redrive by re-reading the stream).
+        onFailure: new lambdaEventSources.SqsDlq(dlq.queue),
       }),
     );
 

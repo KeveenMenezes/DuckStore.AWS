@@ -146,14 +146,9 @@ export class AppSyncApi extends Construct {
     const productsTable = dynamodb.Table.fromTableName(this, 'ProductsTable', 'products');
     const categoriesTable = dynamodb.Table.fromTableName(this, 'CategoriesTable', 'categories');
     const cartsTable = dynamodb.Table.fromTableName(this, 'CartsTable', 'shopping-carts');
-    // Pricing tables (ADR-0026) — nominal price and the product-discounts projection are both
-    // simple key lookups, read via direct DynamoDB data sources like everything else here.
+    // Pricing's prices table (ADR-0026) — nominal price is a simple key lookup, read via a
+    // direct DynamoDB data source like everything else here.
     const pricesTable = dynamodb.Table.fromTableName(this, 'PricesTable', 'prices');
-    const productDiscountsTable = dynamodb.Table.fromTableName(
-      this,
-      'ProductDiscountsTable',
-      'product-discounts',
-    );
     // fromTableAttributes + grantIndexPermissions is required (not fromTableName) so that
     // grantReadWriteData below also covers the GSI1 ARN used by ordersByCustomer/reviewsByProduct.
     const orderingTable = dynamodb.Table.fromTableAttributes(this, 'OrderingTable', {
@@ -181,7 +176,6 @@ export class AppSyncApi extends Construct {
     const categoriesDs = api.addDynamoDbDataSource('CategoriesDS', categoriesTable);
     const cartsDs = api.addDynamoDbDataSource('CartsDS', cartsTable);
     const pricesDs = api.addDynamoDbDataSource('PricesDS', pricesTable);
-    const productDiscountsDs = api.addDynamoDbDataSource('ProductDiscountsDS', productDiscountsTable);
     const orderingDs = api.addDynamoDbDataSource('OrderingDS', orderingTable);
     const reviewsDs = api.addDynamoDbDataSource('ReviewsDS', reviewsTable);
     const userProfilesDs = api.addDynamoDbDataSource('UserProfilesDS', userProfilesTable);
@@ -197,7 +191,6 @@ export class AppSyncApi extends Construct {
     cartsTable.grantReadWriteData(cartsDs);
     // Write needed too: setNominalPrice is now a direct UpdateItem resolver (ADR-0009).
     pricesTable.grantReadWriteData(pricesDs);
-    productDiscountsTable.grantReadData(productDiscountsDs);
     // Read for ordersByCustomer/orders/ordersByName queries; write for the deleteOrder DeleteItem
     // resolver (ADR-0009 — both are direct DynamoDB, no Lambda).
     orderingTable.grantReadWriteData(orderingDs);
@@ -285,10 +278,6 @@ export class AppSyncApi extends Construct {
     this.resolver(categoriesDs, 'CategoriesResolver', 'Query', 'categories', 'categories');
     this.resolver(reviewsDs, 'ReviewsByProductResolver', 'Query', 'reviewsByProduct', 'reviews');
     this.resolver(pricesDs, 'NominalPriceForResolver', 'Query', 'nominalPriceFor', 'pricing');
-    // Direct DynamoDB GetItem + read-time expiry check (ADR-0026) — replaces couponFor.
-    this.resolver(
-      productDiscountsDs, 'CurrentDiscountForProductResolver', 'Query', 'currentDiscountForProduct', 'pricing',
-    );
     this.resolver(getInstallmentPlanDs, 'InstallmentPlanForResolver', 'Query', 'installmentPlanFor', 'pricing');
     this.resolver(
       getBasketInstallmentPlanDs, 'BasketInstallmentPlanResolver', 'Query', 'basketInstallmentPlan', 'pricing',
