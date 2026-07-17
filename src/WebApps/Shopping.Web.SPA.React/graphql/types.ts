@@ -32,21 +32,12 @@ export interface GqlProduct {
   maxInstallmentValue: number
 }
 
-// Nominal price and current discount live in Pricing, not Catalog (ADR-0026).
+// Nominal price lives in Pricing, not Catalog (ADR-0026).
 export interface GqlPrice {
   productId: string
   nominalPrice: number
   cost: number
   updatedAt: string
-}
-
-export interface GqlDiscount {
-  productId: string
-  campaignId: string
-  discountType: string
-  value: number
-  startsAt: string
-  endsAt: string
 }
 
 export interface GqlInstallmentPlan {

@@ -409,26 +409,6 @@ const resolvers = {
       }
     },
 
-    // Direct DynamoDB GetItem on Pricing's "product-discounts" projection, expiry checked at read
-    // time (ADR-0026). Replaces couponFor.
-    async currentDiscountForProduct(_: unknown, { productId }: { productId: string }) {
-      const result = await dynamoDb.send(
-        new GetItemCommand({ TableName: 'product-discounts', Key: { ProductId: { S: productId } } }),
-      )
-      if (!result.Item) return null
-      const item = unmarshall(result.Item)
-      const now = new Date().toISOString()
-      if ((item.EndsAt as string) < now || (item.StartsAt as string) > now) return null
-      return {
-        productId: item.ProductId,
-        campaignId: item.CampaignId,
-        discountType: item.DiscountType,
-        value: Number(item.Value),
-        startsAt: item.StartsAt,
-        endsAt: item.EndsAt,
-      }
-    },
-
     // Non-trivial calculation — Lambda resolver (ADR-0009).
     async installmentPlanFor(_: unknown, { productId }: { productId: string }) {
       const body = await invokeLambda<{
