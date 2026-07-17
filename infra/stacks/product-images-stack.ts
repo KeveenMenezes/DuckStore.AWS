@@ -131,7 +131,15 @@ export class ProductImagesStack extends cdk.Stack {
       environment: { PROCESSED_BUCKET: processedBucket.bucketName },
       bundling: {
         nodeModules: ['sharp'],
-        forceDockerBundling: true,
+        forceDockerBundling: false,
+        commandHooks: {
+          beforeBundling: () => [],
+          beforeInstall: () => [],
+          afterBundling: (_inputDir: string, outputDir: string) => [
+            `cd ${outputDir}`,
+            'npm install --no-save --os=linux --cpu=arm64 sharp',
+          ],
+        },
       },
     });
 
