@@ -43,7 +43,7 @@ export class ProductImagesStack extends cdk.Stack {
       // Fixed bucketName means a failed stack create/update can't just retry with a fresh
       // name — CDK's L2 default (RETAIN) would orphan this bucket on rollback and collide
       // with the next attempt. DESTROY + autoDeleteObjects makes a failed deploy self-heal
-      // (matches AdminStack's site bucket); acceptable for a study project's demo data.
+      // (matches ManagementStack's site bucket); acceptable for a study project's demo data.
       removalPolicy: cdk.RemovalPolicy.DESTROY,
       autoDeleteObjects: true,
       // The browser POSTs the presigned form cross-origin; without this rule the

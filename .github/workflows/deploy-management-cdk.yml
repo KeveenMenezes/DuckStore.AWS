@@ -1,4 +1,4 @@
-name: Deploy Admin CDK Stack
+name: Deploy Management CDK Stack
 
 on:
   push:
@@ -16,11 +16,11 @@ env:
   AWS_REGION: us-east-1
   NODE_VERSION: '24'
   DOTNET_VERSION: '10.0.x'
-  ADMIN_URL: https://dev-admin-duckstore.keveenmenezes.com
+  MANAGEMENT_URL: https://dev-management-duckstore.keveenmenezes.com
 
 jobs:
   deploy:
-    name: Publish Blazor + Deploy CDK
+    name: Publish Blazor Management App + Deploy CDK
     runs-on: ubuntu-latest
     environment: development
 
@@ -60,13 +60,18 @@ jobs:
             --stack-name DuckStoreAppSyncStack \
             --query "Stacks[0].Outputs" --output json)
           echo "API_URL=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ApiUrl") | .OutputValue')" >> "$GITHUB_ENV"
-          echo "USER_POOL_ID=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="UserPoolId") | .OutputValue')" >> "$GITHUB_ENV"
-          ADMIN_CLIENT_ID=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="AdminUserPoolClientId") | .OutputValue')
-          if [ -z "$ADMIN_CLIENT_ID" ]; then
-            echo "::error::AdminUserPoolClientId output not found — deploy the AppSync stack first (deploy-appsync-cdk.yml), then re-run this workflow."
+          MANAGEMENT_USER_POOL_ID=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ManagementUserPoolId") | .OutputValue')
+          if [ -z "$MANAGEMENT_USER_POOL_ID" ]; then
+            echo "::error::ManagementUserPoolId output not found — deploy the AppSync stack first (deploy-appsync-cdk.yml), then re-run this workflow."
             exit 1
           fi
-          echo "ADMIN_CLIENT_ID=$ADMIN_CLIENT_ID" >> "$GITHUB_ENV"
+          echo "MANAGEMENT_USER_POOL_ID=$MANAGEMENT_USER_POOL_ID" >> "$GITHUB_ENV"
+          MANAGEMENT_CLIENT_ID=$(echo "$OUTPUTS" | jq -r '.[] | select(.OutputKey=="ManagementUserPoolClientId") | .OutputValue')
+          if [ -z "$MANAGEMENT_CLIENT_ID" ]; then
+            echo "::error::ManagementUserPoolClientId output not found — deploy the AppSync stack first (deploy-appsync-cdk.yml), then re-run this workflow."
+            exit 1
+          fi
+          echo "MANAGEMENT_CLIENT_ID=$MANAGEMENT_CLIENT_ID" >> "$GITHUB_ENV"
 
       - name: Generate production appsettings.json
         run: |
@@ -75,8 +80,8 @@ jobs:
             "GraphQL": { "Endpoint": "${API_URL}" },
             "Auth": {
               "Enabled": true,
-              "Authority": "https://cognito-idp.${AWS_REGION}.amazonaws.com/${USER_POOL_ID}",
-              "ClientId": "${ADMIN_CLIENT_ID}"
+              "Authority": "https://cognito-idp.${AWS_REGION}.amazonaws.com/${MANAGEMENT_USER_POOL_ID}",
+              "ClientId": "${MANAGEMENT_CLIENT_ID}"
             }
           }
           EOF
@@ -84,20 +89,20 @@ jobs:
       - name: Publish Blazor app
         run: dotnet publish src/WebApps/Managment.Web.Blazor/Managment.Web.Blazor.csproj -c Release
 
-      - name: Deploy Admin CDK stack
+      - name: Deploy Management CDK stack
         working-directory: infra
         run: |
-          npx cdk deploy DuckStoreAdminStack \
-            -c deployAdmin=true \
+          npx cdk deploy DuckStoreManagementStack \
+            -c deployManagement=true \
             --require-approval never
 
       - name: Deployment summary
         run: |
-          echo "## Admin CDK Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "## Management CDK Deployed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
           echo "|---|---|" >> $GITHUB_STEP_SUMMARY
-          echo "| **Stack** | DuckStoreAdminStack |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Stack** | DuckStoreManagementStack |" >> $GITHUB_STEP_SUMMARY
           echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
           echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY
-          echo "| **Admin URL** | ${{ env.ADMIN_URL }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Management URL** | ${{ env.MANAGEMENT_URL }} |" >> $GITHUB_STEP_SUMMARY

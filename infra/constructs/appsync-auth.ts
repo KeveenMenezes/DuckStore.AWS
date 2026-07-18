@@ -9,9 +9,9 @@ export interface AppSyncAuthProps {
    *  the SPA is served from — each gets a Cognito callback + logout URL. */
   readonly spaBaseUrls: string[];
   /** Base URLs the Blazor management app is served from (e.g. https://localhost:7300,
-   *  https://dev-admin-duckstore.example.com). The OIDC library's callback paths are
-   *  fixed at /authentication/{login,logout}-callback. */
-  readonly adminBaseUrls: string[];
+   *  https://dev-management-duckstore.example.com). The OIDC library's callback paths
+   *  are fixed at /authentication/{login,logout}-callback. */
+  readonly managementBaseUrls: string[];
   /** Google/Amazon federation credentials, passed via CDK context at deploy time
    *  (never committed). When a provider's clientId is set, that "Sign in with X"
    *  button is added to Managed Login. Add the Cognito redirect URI
@@ -23,15 +23,30 @@ export interface AppSyncAuthProps {
 }
 
 export class AppSyncAuth extends Construct {
-  public readonly userPool: cognito.UserPool;
-  public readonly userPoolClient: cognito.UserPoolClient;
-  public readonly adminUserPoolClient: cognito.UserPoolClient;
-  public readonly hostedUiUrl: string;
+  // Shopping pool — customers, React SPA. Self-signup, social federation, Customer group.
+  public readonly shoppingUserPool: cognito.UserPool;
+  public readonly shoppingUserPoolClient: cognito.UserPoolClient;
+  public readonly shoppingHostedUiUrl: string;
+
+  // Management pool — staff, Blazor WASM app. Login-only: no self-signup, no social
+  // federation. Accounts are provisioned manually via the AWS Console/CLI
+  // (AdminCreateUser) and hold the Admin/Seller groups.
+  public readonly managementUserPool: cognito.UserPool;
+  public readonly managementUserPoolClient: cognito.UserPoolClient;
+  public readonly managementHostedUiUrl: string;
 
   constructor(scope: Construct, id: string, props: AppSyncAuthProps) {
     super(scope, id);
 
-    this.userPool = new cognito.UserPool(this, 'UserPool', {
+    const passwordPolicy = {
+      minLength: 8,
+      requireUppercase: true,
+      requireLowercase: true,
+      requireDigits: true,
+      requireSymbols: false,
+    };
+
+    this.shoppingUserPool = new cognito.UserPool(this, 'UserPool', {
       userPoolName: 'duckstore-users',
       selfSignUpEnabled: true,
       signInAliases: { email: true },
@@ -45,32 +60,18 @@ export class AppSyncAuth extends Construct {
         // in the User service profile (ADR-0017); this only seeds the claim.
         fullname: { required: true, mutable: true },
       },
-      passwordPolicy: {
-        minLength: 8,
-        requireUppercase: true,
-        requireLowercase: true,
-        requireDigits: true,
-        requireSymbols: false,
-      },
+      passwordPolicy,
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // RBAC groups — checked via ctx.identity.groups in AppSync JS resolvers
+    // RBAC group — checked via ctx.identity.groups in AppSync JS resolvers. Admin/Seller
+    // live in the Management pool below: only staff sign in through the Blazor app, and
+    // that pool is login-only (no self-signup), so those groups belong there instead.
     new cognito.CfnUserPoolGroup(this, 'CustomerGroup', {
-      userPoolId: this.userPool.userPoolId,
+      userPoolId: this.shoppingUserPool.userPoolId,
       groupName: 'Customer',
       description: 'Regular store customers',
-    });
-    new cognito.CfnUserPoolGroup(this, 'SellerGroup', {
-      userPoolId: this.userPool.userPoolId,
-      groupName: 'Seller',
-      description: 'Sellers who manage the catalog',
-    });
-    new cognito.CfnUserPoolGroup(this, 'AdminGroup', {
-      userPoolId: this.userPool.userPoolId,
-      groupName: 'Admin',
-      description: 'Admins with full access to orders and management',
     });
 
     // Post-Confirmation trigger: auto-assigns every new verified user to the Customer group.
@@ -105,21 +106,22 @@ exports.handler = async (event) => {
       }),
     );
 
-    this.userPool.addTrigger(
+    this.shoppingUserPool.addTrigger(
       cognito.UserPoolOperation.POST_CONFIRMATION,
       assignCustomerGroupFn,
     );
 
-    const domain = this.userPool.addDomain('Domain', {
+    const shoppingDomain = this.shoppingUserPool.addDomain('Domain', {
       cognitoDomain: { domainPrefix: 'duckstore' },
       // Managed Login v2 — required for the CfnManagedLoginBranding style below.
       managedLoginVersion: cognito.ManagedLoginVersion.NEWER_MANAGED_LOGIN,
     });
 
-    // Social federation (optional). Each IdP maps the provider's verified email +
-    // name onto the pool's required `email`/`name` attributes so federated users
-    // satisfy the schema. The app client must depend on the IdP resources, and
-    // list them in supportedIdentityProviders for the buttons to render.
+    // Social federation (optional, Shopping pool only — staff sign in Cognito-only).
+    // Each IdP maps the provider's verified email + name onto the pool's required
+    // `email`/`name` attributes so federated users satisfy the schema. The app client
+    // must depend on the IdP resources, and list them in supportedIdentityProviders
+    // for the buttons to render.
     const identityProviders: cognito.UserPoolClientIdentityProvider[] = [
       cognito.UserPoolClientIdentityProvider.COGNITO,
     ];
@@ -127,7 +129,7 @@ exports.handler = async (event) => {
 
     if (props.googleClientId) {
       const google = new cognito.UserPoolIdentityProviderGoogle(this, 'GoogleIdP', {
-        userPool: this.userPool,
+        userPool: this.shoppingUserPool,
         clientId: props.googleClientId,
         clientSecretValue: props.googleClientSecret,
         scopes: ['openid', 'email', 'profile'],
@@ -142,7 +144,7 @@ exports.handler = async (event) => {
 
     if (props.amazonClientId) {
       const amazon = new cognito.UserPoolIdentityProviderAmazon(this, 'AmazonIdP', {
-        userPool: this.userPool,
+        userPool: this.shoppingUserPool,
         clientId: props.amazonClientId,
         // Amazon L2 only accepts a plain string; unsafeUnwrap yields the
         // {{resolve:secretsmanager:...}} dynamic reference, resolved at deploy.
@@ -157,7 +159,7 @@ exports.handler = async (event) => {
       idpResources.push(amazon);
     }
 
-    this.userPoolClient = this.userPool.addClient('SpaClient', {
+    this.shoppingUserPoolClient = this.shoppingUserPool.addClient('SpaClient', {
       userPoolClientName: 'duckstore-spa',
       generateSecret: false,
       supportedIdentityProviders: identityProviders,
@@ -177,15 +179,48 @@ exports.handler = async (event) => {
       preventUserExistenceErrors: true,
     });
     // CloudFormation must create the IdPs before the client references them.
-    idpResources.forEach((idp) => this.userPoolClient.node.addDependency(idp));
+    idpResources.forEach((idp) => this.shoppingUserPoolClient.node.addDependency(idp));
 
-    // App client for the Blazor WASM management app (Managment.Web.Blazor). Public
-    // PKCE client like the SPA's, but Cognito-only (no social sign-in for staff) and
-    // with the Blazor OIDC library's fixed callback paths. Group membership
-    // (Admin/Seller) is what actually authorizes operations — enforced in the
-    // AppSync resolvers, not here.
-    this.adminUserPoolClient = this.userPool.addClient('AdminClient', {
-      userPoolClientName: 'duckstore-admin',
+    this.shoppingHostedUiUrl = `https://${shoppingDomain.domainName}.auth.${cdk.Stack.of(this).region}.amazoncognito.com`;
+
+    // -------------------------------------------------------------------------------
+    // Management pool — staff (Admin/Seller), Blazor WASM app. Login-only: no
+    // self-signup, no social federation. Accounts are provisioned manually via the
+    // AWS Console/CLI (AdminCreateUser) — group membership (Admin/Seller) is what
+    // actually authorizes operations, enforced in the AppSync resolvers, not here.
+    // -------------------------------------------------------------------------------
+    this.managementUserPool = new cognito.UserPool(this, 'ManagementUserPool', {
+      userPoolName: 'duckstore-management-users',
+      selfSignUpEnabled: false,
+      signInAliases: { email: true },
+      standardAttributes: {
+        email: { required: true, mutable: true },
+      },
+      passwordPolicy,
+      accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    new cognito.CfnUserPoolGroup(this, 'SellerGroup', {
+      userPoolId: this.managementUserPool.userPoolId,
+      groupName: 'Seller',
+      description: 'Sellers who manage the catalog',
+    });
+    new cognito.CfnUserPoolGroup(this, 'AdminGroup', {
+      userPoolId: this.managementUserPool.userPoolId,
+      groupName: 'Admin',
+      description: 'Admins with full access to orders and management',
+    });
+
+    const managementDomain = this.managementUserPool.addDomain('ManagementDomain', {
+      cognitoDomain: { domainPrefix: 'duckstore-management' },
+      managedLoginVersion: cognito.ManagedLoginVersion.NEWER_MANAGED_LOGIN,
+    });
+
+    // Public PKCE client like the Shopping SPA's, but Cognito-only (no social sign-in
+    // for staff) and with the Blazor OIDC library's fixed callback paths.
+    this.managementUserPoolClient = this.managementUserPool.addClient('ManagementClient', {
+      userPoolClientName: 'duckstore-management',
       generateSecret: false,
       supportedIdentityProviders: [cognito.UserPoolClientIdentityProvider.COGNITO],
       oAuth: {
@@ -195,8 +230,12 @@ exports.handler = async (event) => {
           cognito.OAuthScope.EMAIL,
           cognito.OAuthScope.PROFILE,
         ],
-        callbackUrls: props.adminBaseUrls.map((url) => `${url}/authentication/login-callback`),
-        logoutUrls: props.adminBaseUrls.map((url) => `${url}/authentication/logout-callback`),
+        callbackUrls: props.managementBaseUrls.map(
+          (url) => `${url}/authentication/login-callback`,
+        ),
+        logoutUrls: props.managementBaseUrls.map(
+          (url) => `${url}/authentication/logout-callback`,
+        ),
       },
       idTokenValidity: cdk.Duration.hours(1),
       accessTokenValidity: cdk.Duration.hours(1),
@@ -204,7 +243,7 @@ exports.handler = async (event) => {
       preventUserExistenceErrors: true,
     });
 
-    this.hostedUiUrl = `https://${domain.domainName}.auth.${cdk.Stack.of(this).region}.amazoncognito.com`;
+    this.managementHostedUiUrl = `https://${managementDomain.domainName}.auth.${cdk.Stack.of(this).region}.amazoncognito.com`;
 
     // DuckStore branding for the Managed Login pages, so the hosted sign-in/sign-up
     // stops looking white-label. Colors are the app's amber `--primary` theme
@@ -212,10 +251,10 @@ exports.handler = async (event) => {
     // `settings` is applied as a PATCH: keys outside Cognito's schema are ignored
     // (no deploy failure), unspecified keys keep Cognito defaults.
     //
-    // Managed Login v2 (enabled on the domain above) requires EVERY app client to have
-    // its own branding resource, or its /login page 404s with "Login pages unavailable —
-    // please contact an administrator" — there is no pool-wide default. Both clients
-    // share this same style.
+    // Managed Login v2 (enabled on both domains above) requires EVERY app client to
+    // have its own branding resource, or its /login page 404s with "Login pages
+    // unavailable — please contact an administrator" — there is no pool-wide default.
+    // Both clients share this same style.
     const managedLoginSettings = {
       components: {
         primaryButton: {
@@ -254,6 +293,11 @@ exports.handler = async (event) => {
           lightMode: { borderColor: 'bc8500ff' },
           darkMode: { borderColor: 'ffd12eff' },
         },
+        // Show the DuckStore duck on the form card (asset uploaded below) —
+        // it's disabled by Cognito default, which is why it wasn't rendering.
+        form: { logo: { enabled: true } },
+        // Branded header bar with the logo so the page isn't an empty expanse.
+        pageHeader: { logo: { enabled: true } },
       },
     };
 
@@ -270,20 +314,20 @@ exports.handler = async (event) => {
     );
 
     new cognito.CfnManagedLoginBranding(this, 'SpaBranding', {
-      userPoolId: this.userPool.userPoolId,
-      clientId: this.userPoolClient.userPoolClientId,
+      userPoolId: this.shoppingUserPool.userPoolId,
+      clientId: this.shoppingUserPoolClient.userPoolClientId,
       useCognitoProvidedValues: false,
       settings: managedLoginSettings,
       assets: managedLoginAssets,
-    }).node.addDependency(domain);
+    }).node.addDependency(shoppingDomain);
 
-    new cognito.CfnManagedLoginBranding(this, 'AdminBranding', {
-      userPoolId: this.userPool.userPoolId,
-      clientId: this.adminUserPoolClient.userPoolClientId,
+    new cognito.CfnManagedLoginBranding(this, 'ManagementBranding', {
+      userPoolId: this.managementUserPool.userPoolId,
+      clientId: this.managementUserPoolClient.userPoolClientId,
       useCognitoProvidedValues: false,
       settings: managedLoginSettings,
       assets: managedLoginAssets,
-    }).node.addDependency(domain);
+    }).node.addDependency(managementDomain);
   }
 }
 

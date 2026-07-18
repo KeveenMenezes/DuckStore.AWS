@@ -6,15 +6,25 @@
  * reverse-engineer OpenNext's bundled tag-cache/CloudFront wiring by hand.
  * See docs/adr/0020-migrate-spa-deploy-to-sst.md.
  *
- * On-demand ISR revalidation (ProductCreatedEvent/ProductUpdatedEvent/ProductDeletedEvent/
- * ReviewCreatedEvent/ReviewUpdatedEvent ->
- * revalidateTag() -> invalidate the affected CloudFront path) is still a
- * custom Lambda (revalidator/index.mjs) subscribed to the existing
+ * On-demand ISR revalidation (CatalogViewProductSyncedEvent/CatalogViewProductDeletedEvent/
+ * ReviewCreatedEvent/ReviewUpdatedEvent -> revalidateTag() -> invalidate the affected CloudFront
+ * path) is still a custom Lambda (revalidator/index.mjs) subscribed to the existing
  * `duckstore-event-bus` — SST's Nextjs component only invalidates CloudFront
  * at deploy time, not on business events. The Lambda calls the SPA's single
  * generic, HMAC-signed webhook (app/api/webhooks/revalidate/route.ts) to
  * trigger revalidateTag() — the real Next.js API — rather than writing to
  * the OpenNext DynamoDB tag-cache table directly.
+ *
+ * The product/price/rating path (products, products:{id} tags) subscribes to CatalogView's own
+ * CDC events (ADR-0035), not the upstream Catalog/Pricing events that feed CatalogView —
+ * CatalogView is the actual data source for that part of every ISR page, and subscribing to its
+ * events (emitted only after its own DynamoDB write commits) rules out the race where CloudFront
+ * gets invalidated before catalogview-products reflects the change that triggered it. It also
+ * means a price/rating/category change is covered automatically, without listing every upstream
+ * event that happens to touch CatalogView. The reviews:{id} tag (the raw review list, which lives
+ * in Review's own store, not catalogview-products) still subscribes directly to
+ * ReviewCreatedEvent/ReviewUpdatedEvent — there is no CatalogView event for that data, and no race
+ * to fix on that path.
  */
 export default $config({
   app(input) {
@@ -129,10 +139,18 @@ export default $config({
     }, {
       pattern: {
         source: ["duckstore"],
+        // CatalogViewProduct{Synced,Deleted}Event (ADR-0035) — CatalogView's own CDC events,
+        // used for the products/products:{id} tags — replace the previous direct subscription to
+        // Catalog/Pricing's upstream events. See the file header comment for why.
+        //
+        // ReviewCreatedEvent/ReviewUpdatedEvent stay subscribed directly: the reviews:{id} tag
+        // covers the raw review list, which lives in Review's own store, not catalogview-products
+        // (CatalogView only folds in the aggregate rating) — so there is no CatalogView event to
+        // subscribe to instead, and no race to fix on this path (Review's own CDC event already
+        // fires only after Review's write commits).
         detailType: [
-          "ProductCreatedEvent",
-          "ProductUpdatedEvent",
-          "ProductDeletedEvent",
+          "CatalogViewProductSyncedEvent",
+          "CatalogViewProductDeletedEvent",
           "ReviewCreatedEvent",
           "ReviewUpdatedEvent",
         ],

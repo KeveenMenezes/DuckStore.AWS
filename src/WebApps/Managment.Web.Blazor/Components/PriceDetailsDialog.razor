@@ -1,0 +1,47 @@
+@if (product is not null)
+{
+    <div class="dialog-backdrop">
+        <div class="dialog">
+            <h3>@product.Name — CatalogView pricing</h3>
+            <table class="data-table">
+                <tbody>
+                    <tr>
+                        <td>Calculated price</td>
+                        <td>@product.Price.ToString("C")</td>
+                    </tr>
+                    <tr>
+                        <td>Original price</td>
+                        <td>@product.OriginalPrice.ToString("C")</td>
+                    </tr>
+                    <tr>
+                        <td>Cash price</td>
+                        <td>@product.CashPrice.ToString("C")</td>
+                    </tr>
+                    <tr>
+                        <td>Max installments without interest</td>
+                        <td>@product.MaxInstallmentsWithoutInterest</td>
+                    </tr>
+                    <tr>
+                        <td>Max installment value</td>
+                        <td>@product.MaxInstallmentValue.ToString("C")</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="dialog-actions">
+                <button class="btn btn-secondary" @onclick="Close">Close</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private Product? product;
+
+    public void Show(Product value)
+    {
+        product = value;
+        StateHasChanged();
+    }
+
+    private void Close() => product = null;
+}
