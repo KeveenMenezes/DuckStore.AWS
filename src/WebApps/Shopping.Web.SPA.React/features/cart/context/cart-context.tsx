@@ -88,9 +88,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
     const timer = setTimeout(() => {
       // ownerId is injected by the BFF; guests and users both persist through the same path.
-      // Fails silently (e.g. local-simulated users) — same tolerance as the hydrate effect above.
+      // Tolerates failure (e.g. local-simulated users) same as the hydrate effect above, but
+      // logs it — a swallowed failure here means the cart silently never saves.
       pendingSyncRef.current = null
-      syncCartToBasket(items).catch(() => {})
+      syncCartToBasket(items).catch((error) => console.error('Failed to sync cart to basket', error))
     }, 300)
     pendingSyncRef.current = timer
     return () => clearTimeout(timer)
@@ -103,7 +104,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clearTimeout(pendingSyncRef.current)
       pendingSyncRef.current = null
     }
-    await syncCartToBasket(itemsRef.current).catch(() => {})
+    await syncCartToBasket(itemsRef.current).catch((error) => console.error('Failed to flush cart to basket', error))
   }, [])
 
   const addItem = useCallback((product: Product): boolean => {

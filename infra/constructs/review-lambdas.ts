@@ -47,9 +47,10 @@ export class ReviewLambdas extends Construct {
 
     // -------------------------------------------------------------------------
     // review-reviews-event-publisher
-    //   Trigger: DynamoDB Streams on reviews (NEW_IMAGE, CDC — ADR-0005/ADR-0008)
-    //   On each INSERT, publishes ReviewCreatedEvent to EventBridge so the Catalog
-    //   service can update the product's AverageRating/RatingCount.
+    //   Trigger: DynamoDB Streams on reviews (NEW_AND_OLD_IMAGES, CDC — ADR-0005/ADR-0008)
+    //   Rule-based dispatcher (ADR-0019): INSERT → ReviewCreatedEvent, MODIFY →
+    //   ReviewUpdatedEvent (old + new rating), consumed by CatalogView to keep the
+    //   product's AverageRating/RatingCount aggregate (ADR-0029/ADR-0030).
     // -------------------------------------------------------------------------
     this.reviewCreatedPublisher = new lambda.DockerImageFunction(
       this,
@@ -62,13 +63,13 @@ export class ReviewLambdas extends Construct {
         code: lambda.DockerImageCode.fromEcr(reviewImage.repository, {
           tagOrDigest: reviewImage.imageTag,
           cmd: [
-            'Review.Function::Review.Function.Functions_ReviewCreatedPublisher_Generated::ReviewCreatedPublisher',
+            'Review.Function::Review.Function.Functions_ReviewStreamPublisher_Generated::ReviewStreamPublisher',
           ],
         }),
         timeout: cdk.Duration.seconds(30),
         memorySize: 512,
         description:
-          'CDC: reads DynamoDB Streams on reviews and publishes ReviewCreatedEvent to EventBridge',
+          'CDC: reads DynamoDB Streams on reviews and publishes ReviewCreated/ReviewUpdated to EventBridge',
         environment: {
           EventBridge__BusName: eventBus.eventBusName,
         },

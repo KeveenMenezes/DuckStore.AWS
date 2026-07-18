@@ -43,10 +43,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setOrdersLoading(true)
         getOrdersForCustomer(me.user.sub)
           .then((o) => { if (!cancelled) setOrders(o) })
-          .catch(() => {})
+          .catch((error) => console.error('Failed to fetch orders for customer', error))
           .finally(() => { if (!cancelled) setOrdersLoading(false) })
       })
-      .catch(() => {})
+      .catch((error) => console.error('Failed to restore Cognito session from /api/auth/me', error))
       .finally(() => { if (!cancelled) setIsLoading(false) })
 
     return () => { cancelled = true }

@@ -54,11 +54,9 @@ export function ProductCard({ product }: ProductCardProps) {
         <Link href={ROUTES.product(product.id)} className="block">
           <h3 className="font-semibold text-foreground">{product.name}</h3>
           <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{product.description}</p>
-          {product.ratingCount > 0 && (
-            <div className="mt-1.5">
-              <StarRatingDisplay rating={product.averageRating} count={product.ratingCount} size="sm" />
-            </div>
-          )}
+          <div className="mt-1.5">
+            <StarRatingDisplay rating={product.averageRating} count={product.ratingCount} size="sm" />
+          </div>
         </Link>
         <div className="flex items-end justify-between gap-2">
           <div className="flex flex-col gap-0.5">
