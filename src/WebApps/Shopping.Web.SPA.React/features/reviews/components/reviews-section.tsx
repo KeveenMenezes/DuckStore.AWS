@@ -1,9 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { ReviewList } from "@/features/reviews/components/review-list"
 import { ReviewForm } from "@/features/reviews/components/review-form"
 import { StarRatingDisplay } from "@/features/reviews/components/star-rating"
+import { getReviewsByProduct } from "@/features/reviews/services/reviews.service"
 import type { Review } from "@/features/reviews/types/review.types"
 
 interface ReviewsSectionProps {
@@ -22,9 +23,34 @@ export function ReviewsSection({
   ratingCount,
 }: ReviewsSectionProps) {
   const [reviews, setReviews] = useState<Review[]>(initialReviews)
-  const [nextToken] = useState<string | null>(initialNextToken)
+  const [nextToken, setNextToken] = useState<string | null>(initialNextToken)
   const [localCount, setLocalCount] = useState(ratingCount)
   const [localAvg, setLocalAvg] = useState(averageRating)
+  const [isPending, startTransition] = useTransition()
+
+  // The ISR-cached page can carry stale (or build-time-failed, hence empty)
+  // reviews — refetch the first page in the browser so the list is always
+  // current, keeping the server-rendered data as the instant first paint.
+  useEffect(() => {
+    let cancelled = false
+    getReviewsByProduct(productId, 10)
+      .then((page) => {
+        if (cancelled) return
+        setReviews(page.items)
+        setNextToken(page.nextToken)
+      })
+      .catch(() => {}) // keep the server-rendered fallback
+    return () => { cancelled = true }
+  }, [productId])
+
+  const loadMore = () => {
+    if (!nextToken) return
+    startTransition(async () => {
+      const page = await getReviewsByProduct(productId, 10, nextToken)
+      setReviews((prev) => [...prev, ...page.items])
+      setNextToken(page.nextToken)
+    })
+  }
 
   const handleReviewCreated = (review: Review) => {
     setReviews((prev) => [review, ...prev])
@@ -49,9 +75,10 @@ export function ReviewsSection({
       <ReviewForm productId={productId} onReviewCreated={handleReviewCreated} />
 
       <ReviewList
-        productId={productId}
-        initialReviews={reviews}
-        initialNextToken={nextToken}
+        reviews={reviews}
+        nextToken={nextToken}
+        isPending={isPending}
+        onLoadMore={loadMore}
       />
     </div>
   )

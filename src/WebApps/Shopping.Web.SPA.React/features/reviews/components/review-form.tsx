@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { StarRatingInput } from "@/features/reviews/components/star-rating"
 import { createReview } from "@/features/reviews/services/reviews.service"
 import { useAuth } from "@/features/auth/hooks/use-auth"
+import { GraphQLRequestError } from "@/api"
 import type { Review } from "@/features/reviews/types/review.types"
 
 interface ReviewFormProps {
@@ -15,10 +16,11 @@ interface ReviewFormProps {
 }
 
 export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
-  const { user } = useAuth()
+  const { user, loginWithCognito } = useAuth()
   const [rating, setRating] = useState(0)
   const [comment, setComment] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [sessionExpired, setSessionExpired] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [isPending, startTransition] = useTransition()
 
@@ -48,6 +50,7 @@ export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
       return
     }
     setError(null)
+    setSessionExpired(false)
     startTransition(async () => {
       try {
         const id = await createReview({
@@ -74,8 +77,18 @@ export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
         // reaching the CDN). The reviewer already sees their own review
         // instantly via the local state update above.
         setSubmitted(true)
-      } catch {
-        setError("Failed to submit review. Please try again.")
+      } catch (err) {
+        // Surface the real GraphQL error instead of a fixed string — an
+        // AppSync "Not Authorized" means the Cognito session lapsed, which
+        // needs a re-login, not a retry.
+        if (err instanceof GraphQLRequestError && /not authorized|unauthorized/i.test(err.message)) {
+          setSessionExpired(true)
+          setError("Your session has expired. Please sign in again to leave a review.")
+        } else if (err instanceof GraphQLRequestError) {
+          setError(err.message)
+        } else {
+          setError("Failed to submit review. Please try again.")
+        }
       }
     })
   }
@@ -104,7 +117,23 @@ export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
         />
       </div>
 
-      {error && <p className="text-xs text-destructive">{error}</p>}
+      {error && (
+        <p className="text-xs text-destructive">
+          {error}
+          {sessionExpired && (
+            <>
+              {" "}
+              <button
+                type="button"
+                onClick={() => loginWithCognito(window.location.pathname)}
+                className="font-medium underline underline-offset-2"
+              >
+                Sign in
+              </button>
+            </>
+          )}
+        </p>
+      )}
 
       <Button type="submit" size="sm" disabled={isPending} className="self-end">
         {isPending ? "Submitting..." : "Submit Review"}
