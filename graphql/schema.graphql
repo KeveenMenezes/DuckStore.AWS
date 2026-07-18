@@ -90,7 +90,7 @@ type BasketInstallmentPlan @aws_api_key @aws_cognito_user_pools {
   installments: [InstallmentOption!]!
 }
 
-type Campaign {
+type Campaign @aws_cognito_user_pools {
   id: ID!
   name: String!
   discountType: String!
@@ -103,7 +103,7 @@ type Campaign {
 # One payment-gateway provider's operating costs (ADR-0028): a flat fee per transaction, a
 # discount rate for upfront (à vista) payment, and an explicit rate per installment count.
 # installmentRates is a sparse map keyed by installment count (e.g. {"1": 3.0, "2": 4.2}).
-type GatewayCost {
+type GatewayCost @aws_cognito_user_pools {
   provider: String!
   flatFeePerTransaction: Float!
   avistaRatePercent: Float!
@@ -163,7 +163,7 @@ type ShoppingCart @aws_api_key @aws_cognito_user_pools {
   totalPrice: Float!
 }
 
-type ShippingAddress {
+type ShippingAddress @aws_cognito_user_pools {
   firstName: String!
   lastName: String!
   emailAddress: String!
@@ -173,7 +173,7 @@ type ShippingAddress {
   zipCode: String!
 }
 
-type OrderPayment {
+type OrderPayment @aws_cognito_user_pools {
   # Null for Cash — no card is collected for that method.
   cardName: String
   cardNumber: String
@@ -183,13 +183,13 @@ type OrderPayment {
   installments: Int!
 }
 
-type OrderItem {
+type OrderItem @aws_cognito_user_pools {
   productId: ID!
   quantity: Int!
   price: Float!
 }
 
-type Order {
+type Order @aws_cognito_user_pools {
   id: ID!
   customerId: ID!
   orderName: String!
@@ -200,12 +200,12 @@ type Order {
   orderItems: [OrderItem!]!
 }
 
-type OrderPage {
+type OrderPage @aws_cognito_user_pools {
   items: [Order!]!
   nextToken: String
 }
 
-type DeleteOrderResult {
+type DeleteOrderResult @aws_cognito_user_pools {
   isSuccess: Boolean!
 }
 
@@ -237,13 +237,13 @@ type UserProfile {
   country: String
 }
 
-type CreateProductResult {
+type CreateProductResult @aws_cognito_user_pools {
   id: ID!
 }
 
 # One presigned POST per requested upload (ADR-0034). `fields` is the form-field map the
 # browser must send back verbatim (policy, signature, key, Content-Type) before the file.
-type PresignedImageUpload {
+type PresignedImageUpload @aws_cognito_user_pools {
   imageId: ID!
   url: String!
   fields: AWSJSON!
@@ -257,11 +257,11 @@ type CreateReviewResult {
   id: ID!
 }
 
-type UpdateProductResult {
+type UpdateProductResult @aws_cognito_user_pools {
   id: ID!
 }
 
-type DeleteProductResult {
+type DeleteProductResult @aws_cognito_user_pools {
   isSuccess: Boolean!
 }
 
@@ -379,10 +379,10 @@ type Query {
   basketInstallmentPlan(items: [BasketInstallmentItemInput!]!): BasketInstallmentPlan @aws_api_key @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
-  orders(pageSize: Int, nextToken: String): OrderPage!
+  orders(pageSize: Int, nextToken: String): OrderPage! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
-  ordersByName(name: String!, pageSize: Int, nextToken: String): OrderPage!
+  ordersByName(name: String!, pageSize: Int, nextToken: String): OrderPage! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; uses ctx.identity.sub (resolver ignores client customerId)
   ordersByCustomer(customerId: ID!): OrderPage!
@@ -414,32 +414,32 @@ type Mutation {
   # Lambda resolver — Cognito required; Admin or Seller group only (enforced in resolver).
   # Issues batch presigned POSTs for direct browser->S3 uploads (ADR-0034); Lambda is a
   # justified ADR-0009 escalation — SigV4 signing is impossible in APPSYNC_JS.
-  createProductImageUpload(input: CreateProductImageUploadInput!): [PresignedImageUpload!]!
+  createProductImageUpload(input: CreateProductImageUploadInput!): [PresignedImageUpload!]! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin or Seller group only (enforced in resolver)
-  createProduct(input: CreateProductInput!): CreateProductResult!
+  createProduct(input: CreateProductInput!): CreateProductResult! @aws_cognito_user_pools
 
   # HTTP resolver — Step Functions Express saga via StartSyncExecution (ADR-0032): creates the
   # Catalog product and its Pricing nominal price in one call, compensating (deleting the product)
   # if the price write fails. Cognito required; Admin or Seller group only (enforced in resolver).
-  createProductWithPrice(input: CreateProductWithPriceInput!): CreateProductResult!
+  createProductWithPrice(input: CreateProductWithPriceInput!): CreateProductResult! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin or Seller group only (enforced in resolver)
-  updateProduct(input: UpdateProductInput!): UpdateProductResult!
+  updateProduct(input: UpdateProductInput!): UpdateProductResult! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin or Seller group only (enforced in resolver)
-  deleteProduct(id: ID!): DeleteProductResult!
+  deleteProduct(id: ID!): DeleteProductResult! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin or Seller group only. Sets/updates the
   # nominal price, decoupled from createProduct/updateProduct (ADR-0009, ADR-0026).
-  setNominalPrice(productId: ID!, price: Float!, cost: Float!): Price!
+  setNominalPrice(productId: ID!, price: Float!, cost: Float!): Price! @aws_cognito_user_pools
 
   # Lambda resolver — Cognito required; Admin group only. Fans out a TransactWriteItems across
   # campaigns + product-discounts (ADR-0026).
-  createCampaign(name: String!, discountType: String!, value: Float!, startsAt: String!, endsAt: String!, productIds: [ID!]!): Campaign!
+  createCampaign(name: String!, discountType: String!, value: Float!, startsAt: String!, endsAt: String!, productIds: [ID!]!): Campaign! @aws_cognito_user_pools
 
   # Lambda resolver — Cognito required; Admin group only.
-  endCampaign(campaignId: ID!): Boolean!
+  endCampaign(campaignId: ID!): Boolean! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin group only. Configures a payment-gateway
   # provider's flat fee, à vista rate, and per-installment-count rate table (ADR-0009, ADR-0028).
@@ -448,10 +448,10 @@ type Mutation {
     flatFeePerTransaction: Float!
     avistaRatePercent: Float!
     installmentRates: AWSJSON!
-  ): GatewayCost!
+  ): GatewayCost! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
-  deleteOrder(orderId: ID!): DeleteOrderResult!
+  deleteOrder(orderId: ID!): DeleteOrderResult! @aws_cognito_user_pools
 
   # Direct DynamoDB pipeline resolver — Cognito required; upserts by (productId, userName) so a
   # customer has exactly one active review per product (ADR-0029); CDC updates product rating
