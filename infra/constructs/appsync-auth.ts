@@ -147,7 +147,7 @@ exports.handler = async (event) => {
         userPool: this.shoppingUserPool,
         clientId: props.amazonClientId,
         // Amazon L2 only accepts a plain string; unsafeUnwrap yields the
-        // {{resolve:secretsmanager:...}} dynamic reference, resolved at deploy.
+        // {{resolve:ssm-secure:...}} dynamic reference, resolved at deploy.
         clientSecret: props.amazonClientSecret?.unsafeUnwrap() ?? '',
         scopes: ['profile'],
         attributeMapping: {

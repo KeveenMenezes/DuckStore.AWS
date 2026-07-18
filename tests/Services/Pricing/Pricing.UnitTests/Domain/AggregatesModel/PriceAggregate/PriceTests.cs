@@ -1,4 +1,4 @@
-namespace Pricing.UnitTests.Domain.AggregatesModel.PriceAggregate;
+﻿namespace Pricing.UnitTests.Domain.AggregatesModel.PriceAggregate;
 
 public class PriceTests
 {
