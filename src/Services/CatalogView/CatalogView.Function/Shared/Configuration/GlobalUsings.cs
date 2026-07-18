@@ -1,7 +1,9 @@
 ﻿global using System.Globalization;
 global using Amazon.Lambda.Annotations;
+global using Amazon.Lambda.DynamoDBEvents;
 global using BuildingBlocks.Messaging.EventBridge;
 global using BuildingBlocks.Messaging.Events;
+global using BuildingBlocks.Messaging.Streams;
 global using CatalogView.Function.Modules.Products.Data;
 global using CatalogView.Function.Modules.Products.Domain;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CategorySync;
@@ -10,6 +12,8 @@ global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.P
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewUpdated;
+global using CatalogView.Function.Modules.Products.EventsIntegration.Publishers;
+global using CatalogView.Function.Modules.Products.EventsIntegration.Publishers.Rules;
 global using CatalogView.Function.Shared.Configuration;
 global using Microsoft.Extensions.Configuration;
 global using Microsoft.Extensions.DependencyInjection;

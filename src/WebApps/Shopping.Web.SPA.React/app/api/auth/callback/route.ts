@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { GUEST_COOKIE } from '@/lib/identity'
 import { MERGE_BASKET } from '@/api/mutations/order'
+import { REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_MAX_AGE_SECONDS } from '@/lib/cognito-refresh'
 
 // Only same-origin relative paths are accepted (rejects "//host", "http://host", etc.)
 // to avoid turning the stored redirect into an open redirect.
@@ -81,9 +82,10 @@ export async function GET(req: NextRequest): Promise<Response> {
     return NextResponse.redirect(new URL('/?auth_error=token_exchange_failed', siteUrl))
   }
 
-  const { access_token, id_token, expires_in } = (await tokenRes.json()) as {
+  const { access_token, id_token, refresh_token, expires_in } = (await tokenRes.json()) as {
     access_token: string
     id_token: string
+    refresh_token: string
     expires_in: number
   }
 
@@ -104,6 +106,12 @@ export async function GET(req: NextRequest): Promise<Response> {
   const response = NextResponse.redirect(new URL(returnTo ?? '/', siteUrl))
   response.cookies.set('access_token', access_token, cookieOpts)
   response.cookies.set('id_token', id_token, cookieOpts)
+  // Long-lived: lets middleware.ts silently mint a new access/id token pair once
+  // those expire, instead of the user's session falling back to a fresh GUEST# id.
+  response.cookies.set(REFRESH_TOKEN_COOKIE, refresh_token, {
+    ...cookieOpts,
+    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
+  })
   response.cookies.delete('pkce_verifier')
   response.cookies.delete('pkce_state')
   response.cookies.delete('post_login_redirect')

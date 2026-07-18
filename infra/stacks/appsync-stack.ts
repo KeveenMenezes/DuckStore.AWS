@@ -6,7 +6,7 @@ import { ProductCreateSaga } from '../constructs/product-create-saga';
 
 export interface AppSyncStackProps extends cdk.StackProps {
   readonly spaBaseUrls: string[];
-  readonly adminBaseUrls: string[];
+  readonly managementBaseUrls: string[];
   readonly googleClientId?: string;
   readonly googleClientSecret?: cdk.SecretValue;
   readonly amazonClientId?: string;
@@ -19,7 +19,7 @@ export class AppSyncStack extends cdk.Stack {
 
     const auth = new AppSyncAuth(this, 'AppSyncAuth', {
       spaBaseUrls: props.spaBaseUrls,
-      adminBaseUrls: props.adminBaseUrls,
+      managementBaseUrls: props.managementBaseUrls,
       googleClientId: props.googleClientId,
       googleClientSecret: props.googleClientSecret,
       amazonClientId: props.amazonClientId,
@@ -29,7 +29,8 @@ export class AppSyncStack extends cdk.Stack {
     const productCreateSaga = new ProductCreateSaga(this, 'ProductCreateSaga');
 
     const appsync = new AppSyncApi(this, 'AppSyncApi', {
-      userPool: auth.userPool,
+      shoppingUserPool: auth.shoppingUserPool,
+      managementUserPool: auth.managementUserPool,
       productCreateSaga: productCreateSaga.stateMachine,
     });
 
@@ -46,27 +47,39 @@ export class AppSyncStack extends cdk.Stack {
     });
 
     new cdk.CfnOutput(this, 'UserPoolId', {
-      value: auth.userPool.userPoolId,
+      value: auth.shoppingUserPool.userPoolId,
       exportName: `${this.stackName}-UserPoolId`,
     });
 
     new cdk.CfnOutput(this, 'UserPoolClientId', {
-      value: auth.userPoolClient.userPoolClientId,
+      value: auth.shoppingUserPoolClient.userPoolClientId,
       exportName: `${this.stackName}-UserPoolClientId`,
       description: 'Set as COGNITO_CLIENT_ID env var in the SPA',
     });
 
-    new cdk.CfnOutput(this, 'AdminUserPoolClientId', {
-      value: auth.adminUserPoolClient.userPoolClientId,
-      exportName: `${this.stackName}-AdminUserPoolClientId`,
+    new cdk.CfnOutput(this, 'HostedUiUrl', {
+      value: auth.shoppingHostedUiUrl,
+      exportName: `${this.stackName}-HostedUiUrl`,
+      description: 'Set as COGNITO_HOSTED_UI_URL env var in the SPA',
+    });
+
+    new cdk.CfnOutput(this, 'ManagementUserPoolId', {
+      value: auth.managementUserPool.userPoolId,
+      exportName: `${this.stackName}-ManagementUserPoolId`,
+      description:
+        'Cognito user pool for staff (Admin/Seller) — login-only, users created via AWS Console. Written into the Blazor appsettings.json (Auth:Authority) at deploy',
+    });
+
+    new cdk.CfnOutput(this, 'ManagementUserPoolClientId', {
+      value: auth.managementUserPoolClient.userPoolClientId,
+      exportName: `${this.stackName}-ManagementUserPoolClientId`,
       description:
         'Cognito app client for the Blazor management app — written into its appsettings.json (Auth:ClientId) at deploy',
     });
 
-    new cdk.CfnOutput(this, 'HostedUiUrl', {
-      value: auth.hostedUiUrl,
-      exportName: `${this.stackName}-HostedUiUrl`,
-      description: 'Set as COGNITO_HOSTED_UI_URL env var in the SPA',
+    new cdk.CfnOutput(this, 'ManagementHostedUiUrl', {
+      value: auth.managementHostedUiUrl,
+      exportName: `${this.stackName}-ManagementHostedUiUrl`,
     });
   }
 }

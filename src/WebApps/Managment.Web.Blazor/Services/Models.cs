@@ -4,6 +4,8 @@ namespace Managment.Web.Blazor.Services;
 
 // Read model — mirrors the Product type in graphql/schema.graphql. Rating and price
 // fields are read-only denormalizations from CatalogView/Pricing (never written here).
+// Price/OriginalPrice/CashPrice/installment fields are CatalogView's calculated (post-campaign)
+// values — Pricing's nominal price is fetched separately via GetNominalPriceAsync.
 public sealed record Product(
     string Id,
     string Name,
@@ -13,7 +15,11 @@ public sealed record Product(
     List<string> CategoryIds,
     double AverageRating,
     int RatingCount,
-    double Price);
+    double Price,
+    double OriginalPrice,
+    double CashPrice,
+    int MaxInstallmentsWithoutInterest,
+    double MaxInstallmentValue);
 
 // Image metadata only (ADR-0034) — display URLs are built from ImageCdn:BaseUrl + ImageId.
 public sealed record ProductImageInfo(string ImageId, bool IsMain, int Order);

@@ -2,8 +2,10 @@ import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import { Construct } from 'constructs';
 
-// CatalogView's only datastore (ADR-0030). No stream — nothing downstream of CatalogView reads
-// this table via CDC; it's the read-side leaf.
+// CatalogView's only datastore (ADR-0030). Streamed (ADR-0035): CatalogView's own CDC publisher
+// emits CatalogViewProductSyncedEvent/CatalogViewProductDeletedEvent off this table's writes, so
+// the SPA revalidator invalidates CloudFront only after CatalogView's write has committed, instead
+// of racing it via a direct subscription to upstream (Catalog/Pricing/Review) events.
 export class CatalogViewDynamoDB extends Construct {
   public readonly catalogViewProductsTable: dynamodb.Table;
 
@@ -15,6 +17,9 @@ export class CatalogViewDynamoDB extends Construct {
       partitionKey: { name: 'Id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      // NEW_AND_OLD_IMAGES (not just NEW_IMAGE): a REMOVE record only carries OldImage, and the
+      // delete rule needs Old.Id to know which product was removed.
+      stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
     // GSI1PK is a constant ("PRODUCT") so every item lives in one partition, sorted by

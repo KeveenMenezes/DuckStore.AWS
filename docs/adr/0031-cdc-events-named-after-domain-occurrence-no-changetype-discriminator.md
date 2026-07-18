@@ -138,7 +138,13 @@ machinery, feature-slice naming) remains valid and unchanged.
 - `src/BuildingBlocks/BuildingBlocks.Messaging/Events` — `ProductCreatedEvent`, `ProductUpdatedEvent`,
   `ProductDeletedEvent`, `ProductSyncedEvent`, replacing `CatalogUpdatedEvent`/`CatalogProductSyncEvent`.
 - `src/WebApps/Shopping.Web.SPA.React` — the `revalidator` Lambda subscribes to the three named
-  product events instead of one generic one.
+  product events instead of one generic one. **Updated by
+  [ADR-0035](./0035-catalogview-owned-cdc-events-drive-spa-revalidation.md)**: the product/price/
+  rating path now subscribes to CatalogView's own `CatalogViewProductSyncedEvent`/
+  `CatalogViewProductDeletedEvent` instead of Catalog's `ProductCreatedEvent`/
+  `ProductUpdatedEvent`/`ProductDeletedEvent` directly (still one named event per occurrence, per
+  this ADR's rules — just emitted one layer downstream, by CatalogView instead of Catalog); the
+  `ReviewCreatedEvent`/`ReviewUpdatedEvent` subscription for the `reviews:{id}` tag is unchanged.
 
 ---
 

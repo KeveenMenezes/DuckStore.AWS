@@ -37,5 +37,9 @@ export class CatalogViewStack extends cdk.Stack {
       value: lambdas.categorySyncConsumer.functionArn,
       exportName: `${this.stackName}-CategorySyncConsumerArn`,
     });
+    new cdk.CfnOutput(this, 'ProductStreamPublisherArn', {
+      value: lambdas.productStreamPublisher.functionArn,
+      exportName: `${this.stackName}-ProductStreamPublisherArn`,
+    });
   }
 }
