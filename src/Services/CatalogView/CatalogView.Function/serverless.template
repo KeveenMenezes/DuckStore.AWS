@@ -122,6 +122,26 @@
           ]
         }
       }
+    },
+    "CatalogViewFunctionFunctionsCatalogViewProductStreamPublisherGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Image",
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "CatalogView.Function::CatalogView.Function.Functions_CatalogViewProductStreamPublisher_Generated::CatalogViewProductStreamPublisher"
+          ]
+        }
+      }
     }
   }
 }

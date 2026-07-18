@@ -133,9 +133,16 @@ sst.aws.Bus.subscribe("Revalidator", eventBusArn, {
     { actions: ["cloudfront:CreateInvalidation"], resources: [distribution.arn] },
   ],
 }, {
-  pattern: { source: ["duckstore"], detailType: ["CatalogUpdatedEvent", "ReviewCreatedEvent"] },
+  pattern: { source: ["duckstore"], detailType: ["CatalogViewProductSyncedEvent", "CatalogViewProductDeletedEvent", "ReviewCreatedEvent", "ReviewUpdatedEvent"] },
 });
 ```
+
+(`CatalogUpdatedEvent` above was this repo's original, single-event-with-a-`ChangeType`-field
+design, active when this ADR was first written; renamed away from per
+[ADR-0031](./0031-cdc-events-named-after-domain-occurrence-no-changetype-discriminator.md), and the
+product/price/rating detail-types repointed onto CatalogView's own CDC events per
+[ADR-0035](./0035-catalogview-owned-cdc-events-drive-spa-revalidation.md) — this sample reflects the
+current subscription, not the one active at the time of the incident described above.)
 
 `duckstore-event-bus` stays on CDK (created by Catalog) — the subscription targets it by ARN, the
 same fixed-name-lookup relationship `spa-tag-revalidator.ts` (CDK) used via

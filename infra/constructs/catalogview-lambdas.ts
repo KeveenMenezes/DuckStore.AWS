@@ -6,6 +6,7 @@ import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
+import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
 
@@ -29,6 +30,7 @@ export class CatalogViewLambdas extends Construct {
   public readonly reviewUpdateAggregateConsumer: lambda.Function;
   public readonly priceSyncConsumer: lambda.Function;
   public readonly categorySyncConsumer: lambda.Function;
+  public readonly productStreamPublisher: lambda.Function;
 
   constructor(scope: Construct, id: string, props: CatalogViewLambdasProps) {
     super(scope, id);
@@ -269,6 +271,43 @@ export class CatalogViewLambdas extends Construct {
       'CatalogCategorySyncEvent',
       'Routes CatalogCategorySyncEvent (source=duckstore) to catalogview-category-sync-consumer',
     );
+
+    // -------------------------------------------------------------------------
+    // 7. catalogview-product-stream-publisher (ADR-0035)
+    //    Trigger: DynamoDB Streams on catalogview-products, not EventBridge — this is CatalogView's
+    //    own CDC publisher, mirroring Pricing's priceStreamPublisher. Emits
+    //    CatalogViewProductSyncedEvent (INSERT/MODIFY) / CatalogViewProductDeletedEvent (REMOVE)
+    //    only after a CatalogView write commits, so the SPA revalidator (subscribed to these events
+    //    instead of the upstream Catalog/Pricing/Review ones) can never invalidate CloudFront before
+    //    CatalogView's own data is in place.
+    // -------------------------------------------------------------------------
+    this.productStreamPublisher = new lambda.DockerImageFunction(this, 'ProductStreamPublisher', {
+      functionName: 'catalogview-product-stream-publisher',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      code: catalogViewCode([
+        'CatalogView.Function::CatalogView.Function.Functions_CatalogViewProductStreamPublisher_Generated::CatalogViewProductStreamPublisher',
+      ]),
+      timeout: cdk.Duration.seconds(30),
+      memorySize: 512,
+      description:
+        'Publishes CatalogViewProductSyncedEvent/CatalogViewProductDeletedEvent off catalogview-products writes',
+      environment: {
+        EventBridge__BusName: eventBus.eventBusName,
+      },
+    });
+
+    this.productStreamPublisher.addEventSource(
+      new lambdaEventSources.DynamoEventSource(catalogViewProductsTable, {
+        startingPosition: lambda.StartingPosition.TRIM_HORIZON,
+        batchSize: 10,
+        bisectBatchOnError: true,
+        retryAttempts: 3,
+        onFailure: new lambdaEventSources.SqsDlq(dlq.queue),
+      }),
+    );
+
+    eventBus.grantPutEventsTo(this.productStreamPublisher);
 
     // Note: products/product are AppSync direct DynamoDB resolvers against catalogview-products
     // (ADR-0030, reverses ADR-0027 §5) — not Lambdas — see infra/constructs/appsync-api.ts.

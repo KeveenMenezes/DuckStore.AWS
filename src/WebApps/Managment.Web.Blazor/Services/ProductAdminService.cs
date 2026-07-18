@@ -25,6 +25,10 @@ public sealed class ProductAdminService(GraphQLClient gql)
               averageRating
               ratingCount
               price
+              originalPrice
+              cashPrice
+              maxInstallmentsWithoutInterest
+              maxInstallmentValue
             }
             nextToken
           }
@@ -44,6 +48,10 @@ public sealed class ProductAdminService(GraphQLClient gql)
             averageRating
             ratingCount
             price
+            originalPrice
+            cashPrice
+            maxInstallmentsWithoutInterest
+            maxInstallmentValue
           }
         }
         """;
@@ -157,6 +165,16 @@ public sealed class ProductAdminService(GraphQLClient gql)
     {
         var data = await gql.SendAsync<NominalPriceData>(NominalPriceForQuery, new { productId });
         return data.NominalPriceFor;
+    }
+
+    // No batch nominalPriceFor query exists, so a page of products means N parallel calls
+    // (bounded by pageSize) — same cost class as the single-product fetch ProductEdit does.
+    public async Task<Dictionary<string, double?>> GetNominalPricesAsync(IEnumerable<string> productIds)
+    {
+        var ids = productIds.ToList();
+        var results = await Task.WhenAll(ids.Select(GetNominalPriceAsync));
+        return ids.Zip(results, (id, price) => (id, price))
+            .ToDictionary(x => x.id, x => x.price?.NominalPrice);
     }
 
     public async Task<List<PresignedImageUpload>> CreatePresignedUploadsAsync(List<string> contentTypes)

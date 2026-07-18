@@ -16,7 +16,10 @@ const RESOLVERS_DIR = path.join(REPO_ROOT, 'graphql/resolvers');
 const SCHEMA_PATH = path.join(REPO_ROOT, 'graphql/schema.graphql');
 
 export interface AppSyncApiProps {
-  readonly userPool: cognito.IUserPool;
+  // Primary auth — customers, React SPA.
+  readonly shoppingUserPool: cognito.IUserPool;
+  // Additional auth — staff (Admin/Seller), Blazor management app.
+  readonly managementUserPool: cognito.IUserPool;
   // Express saga behind createProductWithPrice (ADR-0032), invoked synchronously via
   // an HTTP datasource calling states:StartSyncExecution.
   readonly productCreateSaga: sfn.IStateMachine;
@@ -31,9 +34,15 @@ export class AppSyncApi extends Construct {
     this.productCreateSaga = props.productCreateSaga;
 
     // -------------------------------------------------------------------------
-    // GraphQL API — dual auth:
-    //   Primary:   Cognito User Pools (required for mutations + private queries)
-    //   Secondary: API_KEY (catalog reads, reviews — public without login)
+    // GraphQL API — three auth modes:
+    //   Default:    Shopping Cognito user pool (customers, required for mutations +
+    //               private queries)
+    //   Additional: Management Cognito user pool (staff — Admin/Seller — tokens are
+    //               accepted the same way; @aws_cognito_user_pools in the schema means
+    //               "any configured Cognito auth mode", and resolvers authorize purely
+    //               via ctx.identity.groups/sub, so no pool-specific resolver logic
+    //               is needed)
+    //   Additional: API_KEY (catalog reads, reviews — public without login)
     // -------------------------------------------------------------------------
     this.api = new appsync.GraphqlApi(this, 'Api', {
       name: 'duckstore-api',
@@ -41,9 +50,13 @@ export class AppSyncApi extends Construct {
       authorizationConfig: {
         defaultAuthorization: {
           authorizationType: appsync.AuthorizationType.USER_POOL,
-          userPoolConfig: { userPool: props.userPool },
+          userPoolConfig: { userPool: props.shoppingUserPool },
         },
         additionalAuthorizationModes: [
+          {
+            authorizationType: appsync.AuthorizationType.USER_POOL,
+            userPoolConfig: { userPool: props.managementUserPool },
+          },
           {
             authorizationType: appsync.AuthorizationType.API_KEY,
             apiKeyConfig: {
