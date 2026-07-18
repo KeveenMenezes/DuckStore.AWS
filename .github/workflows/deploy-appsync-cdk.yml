@@ -43,6 +43,13 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # Empty federation secrets would deploy Cognito IdPs with blank client secrets
+      # (broken social sign-in) — fail fast instead. See docs/one-time-account-setup.md.
+      - name: Validate federation secrets
+        run: |
+          [ -n "${{ secrets.GOOGLE_FEDERATION_CLIENT_SECRET }}" ] || { echo "::error::GOOGLE_FEDERATION_CLIENT_SECRET is empty in this environment"; exit 1; }
+          [ -n "${{ secrets.AMAZON_FEDERATION_CLIENT_SECRET }}" ] || { echo "::error::AMAZON_FEDERATION_CLIENT_SECRET is empty in this environment"; exit 1; }
+
       - name: Deploy AppSync CDK stack
         working-directory: infra
         run: |
