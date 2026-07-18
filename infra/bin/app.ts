@@ -119,16 +119,12 @@ new AppSyncStack(app, 'DuckStoreAppSyncStack', {
   // Cognito allows https localhost callback URLs.
   managementBaseUrls: ['https://localhost:7300', managementDomainUrl],
   // Social federation. Client IDs are public → committed in cdk.json context.
-  // Client secrets live in SSM Parameter Store as SecureStrings (standard tier
-  // is free, vs $0.40/secret/month in Secrets Manager — no rotation needed for
-  // these) bootstrapped out-of-band, and are resolved by CloudFormation at
-  // deploy via a {{resolve:ssm-secure:...}} dynamic reference — never in the
-  // repo, and deploys stay self-sufficient (no -c needed). Absent context id =
-  // provider's button is simply not rendered.
+  // Client secrets enter as NoEcho CloudFormation parameters declared in
+  // AppSyncStack, passed by the deploy workflow from GitHub Environment secrets
+  // (see docs/one-time-account-setup.md). Absent context id = provider's button
+  // is simply not rendered.
   googleClientId: app.node.tryGetContext('googleClientId'),
-  googleClientSecret: cdk.SecretValue.ssmSecure('/duckstore/federation/google'),
   amazonClientId: app.node.tryGetContext('amazonClientId'),
-  amazonClientSecret: cdk.SecretValue.ssmSecure('/duckstore/federation/amazon'),
   description:
     'DuckStore AppSync API — Cognito UserPool (RBAC groups), DynamoDB direct resolvers, Lambda resolvers',
 });

@@ -146,8 +146,8 @@ exports.handler = async (event) => {
       const amazon = new cognito.UserPoolIdentityProviderAmazon(this, 'AmazonIdP', {
         userPool: this.shoppingUserPool,
         clientId: props.amazonClientId,
-        // Amazon L2 only accepts a plain string; unsafeUnwrap yields the
-        // {{resolve:ssm-secure:...}} dynamic reference, resolved at deploy.
+        // Amazon L2 only accepts a plain string; unsafeUnwrap yields the CloudFormation
+        // Ref to the stack's NoEcho parameter, resolved at deploy.
         clientSecret: props.amazonClientSecret?.unsafeUnwrap() ?? '',
         scopes: ['profile'],
         attributeMapping: {

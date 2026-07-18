@@ -48,6 +48,8 @@ jobs:
         run: |
           npx cdk deploy DuckStoreAppSyncStack \
             --context spaBaseUrl=${{ vars.SPA_BASE_URL || 'http://localhost:3000' }} \
+            --parameters GoogleClientSecret=${{ secrets.GOOGLE_FEDERATION_CLIENT_SECRET }} \
+            --parameters AmazonClientSecret=${{ secrets.AMAZON_FEDERATION_CLIENT_SECRET }} \
             --require-approval never
 
       - name: Deployment summary

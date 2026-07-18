@@ -8,22 +8,41 @@ export interface AppSyncStackProps extends cdk.StackProps {
   readonly spaBaseUrls: string[];
   readonly managementBaseUrls: string[];
   readonly googleClientId?: string;
-  readonly googleClientSecret?: cdk.SecretValue;
   readonly amazonClientId?: string;
-  readonly amazonClientSecret?: cdk.SecretValue;
 }
 
 export class AppSyncStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: AppSyncStackProps) {
     super(scope, id, props);
 
+    // Federation client secrets arrive as NoEcho CloudFormation parameters, supplied
+    // by the deploy workflow from GitHub Environment secrets via `cdk deploy
+    // --parameters` — CloudFormation rejects {{resolve:ssm-secure:...}} on Cognito's
+    // ProviderDetails/client_secret, and Secrets Manager costs $0.40/secret/month.
+    // NoEcho keeps the value out of the template, console, and logs. The empty
+    // default keeps synth/deploy working when federation isn't configured, but a
+    // deploy that has the clientId context WITHOUT the matching parameter silently
+    // produces an IdP with an empty secret (sign-in with that provider breaks).
+    const googleClientSecret = new cdk.CfnParameter(this, 'GoogleClientSecret', {
+      type: 'String',
+      noEcho: true,
+      default: '',
+      description: 'Google OAuth client secret for Cognito federation',
+    });
+    const amazonClientSecret = new cdk.CfnParameter(this, 'AmazonClientSecret', {
+      type: 'String',
+      noEcho: true,
+      default: '',
+      description: 'Login with Amazon client secret for Cognito federation',
+    });
+
     const auth = new AppSyncAuth(this, 'AppSyncAuth', {
       spaBaseUrls: props.spaBaseUrls,
       managementBaseUrls: props.managementBaseUrls,
       googleClientId: props.googleClientId,
-      googleClientSecret: props.googleClientSecret,
+      googleClientSecret: cdk.SecretValue.cfnParameter(googleClientSecret),
       amazonClientId: props.amazonClientId,
-      amazonClientSecret: props.amazonClientSecret,
+      amazonClientSecret: cdk.SecretValue.cfnParameter(amazonClientSecret),
     });
 
     const productCreateSaga = new ProductCreateSaga(this, 'ProductCreateSaga');
