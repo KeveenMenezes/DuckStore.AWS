@@ -39,7 +39,8 @@ export function ReviewsSection({
         setReviews(page.items)
         setNextToken(page.nextToken)
       })
-      .catch(() => {}) // keep the server-rendered fallback
+      // keep the server-rendered fallback, but log so a broken refresh isn't invisible
+      .catch((error) => console.error('Failed to refresh reviews', error))
     return () => { cancelled = true }
   }, [productId])
 

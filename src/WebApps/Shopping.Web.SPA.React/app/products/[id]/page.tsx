@@ -29,7 +29,10 @@ export const revalidate = false
 // dynamicParams stays true (default), so a product not in this list still
 // renders on-demand and is then cached.
 export async function generateStaticParams() {
-  const products = await getProducts(100).catch(() => [])
+  const products = await getProducts(100).catch((error) => {
+    console.error('Failed to fetch products for generateStaticParams', error)
+    return []
+  })
   return products.map((product) => ({ id: product.id }))
 }
 
@@ -39,7 +42,10 @@ interface ProductPageProps {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params
-  const product = await getProduct(id, { cache: 'force-cache', next: { tags: [`products:${id}`] } }).catch(() => null)
+  const product = await getProduct(id, { cache: 'force-cache', next: { tags: [`products:${id}`] } }).catch((error) => {
+    console.error(`Failed to fetch product ${id} for generateMetadata`, error)
+    return null
+  })
   if (!product) return { title: "Product not found - CodeDuck Store" }
   return {
     title: `${product.name} - CodeDuck Store`,
@@ -54,11 +60,20 @@ export default async function ProductPage({ params }: ProductPageProps) {
   const reviewsInit: RequestInit = { cache: 'force-cache', next: { tags: [`reviews:${id}`] } }
 
   const [product, reviewPage, installmentPlan] = await Promise.all([
-    getProduct(id, productInit).catch(() => null),
-    getReviewsByProduct(id, 10, undefined, reviewsInit).catch(() => ({ items: [], nextToken: null })),
+    getProduct(id, productInit).catch((error) => {
+      console.error(`Failed to fetch product ${id}`, error)
+      return null
+    }),
+    getReviewsByProduct(id, 10, undefined, reviewsInit).catch((error) => {
+      console.error(`Failed to fetch reviews for product ${id}`, error)
+      return { items: [], nextToken: null }
+    }),
     // Synchronous, on-demand calculation (never denormalized onto Product/OpenSearch) — fetched
     // here, alongside the product itself, so the payment-methods modal has real figures at render.
-    getInstallmentPlan(id, productInit).catch(() => null),
+    getInstallmentPlan(id, productInit).catch((error) => {
+      console.error(`Failed to fetch installment plan for product ${id}`, error)
+      return null
+    }),
   ])
 
   if (!product) notFound()

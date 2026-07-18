@@ -56,7 +56,7 @@ export function ProfileDetails() {
           country: p.country ?? "",
         })
       })
-      .catch(() => {})
+      .catch((error) => console.error('Failed to fetch profile', error))
       .finally(() => { if (!cancelled) setLoading(false) })
     return () => { cancelled = true }
   }, [])

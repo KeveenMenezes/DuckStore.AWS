@@ -51,7 +51,10 @@ export function useCheckout() {
     let cancelled = false
     const fetchPlan = items.length === 0
       ? Promise.resolve(null)
-      : getBasketInstallmentPlan(items).catch(() => null)
+      : getBasketInstallmentPlan(items).catch((error) => {
+          console.error('Failed to fetch basket installment plan', error)
+          return null
+        })
 
     fetchPlan.then((plan) => {
       if (cancelled) return
@@ -82,7 +85,7 @@ export function useCheckout() {
           city: prev.city || p.city || "",
         }))
       })
-      .catch(() => {})
+      .catch((error) => console.error('Failed to fetch profile for checkout prefill', error))
     return () => { cancelled = true }
   }, [user])
 

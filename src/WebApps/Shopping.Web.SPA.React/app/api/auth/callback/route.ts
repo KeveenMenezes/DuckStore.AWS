@@ -16,26 +16,40 @@ function sanitizeReturnTo(next: string | null | undefined): string | null {
  * a merge failure must not block login. Goes through this app's own /api/graphql (same
  * endpoint every other GraphQL call uses, whichever GRAPHQL_BACKEND is active) instead of
  * calling AppSync directly, so it also works locally against the Yoga backend — not just
- * when APPSYNC_URL is set. The access_token/guest_id cookies aren't on this request (the
- * browser doesn't have them yet), so we forward them explicitly via a synthesized Cookie
+ * when APPSYNC_URL is set. The access_token/id_token/guest_id cookies aren't on this request
+ * (the browser doesn't have them yet), so we forward them explicitly via a synthesized Cookie
  * header — resolveOwner()/prepareBasketRequest resolve identity from it exactly as they
- * would for any browser-originated request.
+ * would for any browser-originated request. id_token must be included too: in the deployed
+ * (appsync) backend, getAuthHeaders() reads id_token — not access_token — to build the
+ * Authorization: Bearer header AppSync needs to populate ctx.identity for this Cognito-only
+ * resolver; without it the call falls back to the API key and mergeBasket always 401s.
  */
-async function mergeGuestCart(siteUrl: string, accessToken: string, guestId: string): Promise<void> {
+async function mergeGuestCart(
+  siteUrl: string,
+  accessToken: string,
+  idToken: string,
+  guestId: string,
+): Promise<void> {
   try {
-    await fetch(new URL('/api/graphql', siteUrl), {
+    const res = await fetch(new URL('/api/graphql', siteUrl), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Cookie: `access_token=${accessToken}; ${GUEST_COOKIE}=${guestId}`,
+        Cookie: `access_token=${accessToken}; id_token=${idToken}; ${GUEST_COOKIE}=${guestId}`,
       },
       body: JSON.stringify({
         query: MERGE_BASKET,
         variables: { guestId: `GUEST#${guestId}` },
       }),
     })
-  } catch {
-    // Swallow — the user is logged in; the guest cart simply isn't merged.
+    const json = (await res.json()) as { errors?: Array<{ message: string }> }
+    if (json.errors?.length) {
+      console.error('mergeBasket returned errors', json.errors)
+    }
+  } catch (error) {
+    // Swallow — the user is logged in; the guest cart simply isn't merged. Logged so a
+    // regression here (like the missing id_token that caused this to always fail) is visible.
+    console.error('Failed to merge guest cart on login', error)
   }
 }
 
@@ -100,7 +114,7 @@ export async function GET(req: NextRequest): Promise<Response> {
 
   // Merge the guest cart into the new session before clearing the guest cookie (login → merge).
   if (guestId) {
-    await mergeGuestCart(siteUrl, access_token, guestId)
+    await mergeGuestCart(siteUrl, access_token, id_token, guestId)
   }
 
   const response = NextResponse.redirect(new URL(returnTo ?? '/', siteUrl))
