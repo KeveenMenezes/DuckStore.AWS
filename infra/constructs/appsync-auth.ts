@@ -248,8 +248,9 @@ exports.handler = async (event) => {
     // DuckStore branding for the Managed Login pages, so the hosted sign-in/sign-up
     // stops looking white-label. Colors are the app's amber `--primary` theme
     // (app/globals.css, oklch → sRGB) in Cognito's RGBA 8-digit hex format.
-    // `settings` is applied as a PATCH: keys outside Cognito's schema are ignored
-    // (no deploy failure), unspecified keys keep Cognito defaults.
+    // Cognito validates `settings` strictly — an unknown key under `components` or
+    // `componentClasses` fails the deploy with UnknownProperty; unspecified keys
+    // keep Cognito defaults.
     //
     // Managed Login v2 (enabled on both domains above) requires EVERY app client to
     // have its own branding resource, or its /login page 404s with "Login pages
@@ -293,11 +294,6 @@ exports.handler = async (event) => {
           lightMode: { borderColor: 'bc8500ff' },
           darkMode: { borderColor: 'ffd12eff' },
         },
-        // Show the DuckStore duck on the form card (asset uploaded below) —
-        // it's disabled by Cognito default, which is why it wasn't rendering.
-        form: { logo: { enabled: true } },
-        // Branded header bar with the logo so the page isn't an empty expanse.
-        pageHeader: { logo: { enabled: true } },
       },
     };
 
