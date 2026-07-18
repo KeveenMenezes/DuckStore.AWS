@@ -293,6 +293,11 @@ exports.handler = async (event) => {
           lightMode: { borderColor: 'bc8500ff' },
           darkMode: { borderColor: 'ffd12eff' },
         },
+        // Show the DuckStore duck on the form card (asset uploaded below) —
+        // it's disabled by Cognito default, which is why it wasn't rendering.
+        form: { logo: { enabled: true } },
+        // Branded header bar with the logo so the page isn't an empty expanse.
+        pageHeader: { logo: { enabled: true } },
       },
     };
 
