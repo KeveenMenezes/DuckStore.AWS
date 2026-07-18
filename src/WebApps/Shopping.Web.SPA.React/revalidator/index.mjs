@@ -2,11 +2,21 @@ import { createHmac } from 'crypto'
 import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-cloudfront'
 
 // Backend-triggered ISR revalidation, wired via `sst.aws.Bus.subscribe` in
-// sst.config.ts. Consumes ProductCreatedEvent / ProductUpdatedEvent / ProductDeletedEvent
-// (ADR-0031 — named after the domain occurrence, no ChangeType discriminator) /
-// ReviewCreatedEvent / ReviewUpdatedEvent (ADR-0029 — a customer editing their review)
-// directly off the existing `duckstore-event-bus` (still published to by Catalog, which
-// stays on CDK).
+// sst.config.ts. Consumes CatalogViewProductSyncedEvent / CatalogViewProductDeletedEvent
+// (ADR-0035) off the existing `duckstore-event-bus` for the products/products:{id} tags —
+// CatalogView's own CDC events, emitted only after its catalogview-products write commits, rather
+// than subscribing directly to the upstream Catalog/Pricing events that feed CatalogView. That
+// direct-subscription design raced CatalogView's own consumers with no ordering guarantee, so
+// CloudFront could be invalidated (and the ISR page regenerated) before CatalogView had actually
+// applied the change, caching stale data behind a "just revalidated" cache-control header for up
+// to a year. Since any catalogview-products write (product edit, price change, rating change,
+// category rename) produces one of these two events, this also closes the previous gap where
+// price changes never triggered revalidation at all.
+//
+// Also consumes ReviewCreatedEvent / ReviewUpdatedEvent (ADR-0029) directly for the reviews:{id}
+// tag — the raw review list lives in Review's own store, not catalogview-products (CatalogView
+// only folds in the aggregate rating), so there is no CatalogView event for that data and no race
+// to fix on this path: Review's own CDC event already fires only after Review's write commits.
 //
 // Calls the SPA's single generic webhook (app/api/webhooks/revalidate/route.ts),
 // which calls Next.js's real revalidateTag() — instead of writing to the
@@ -33,9 +43,8 @@ function tagsForEvent(event) {
   const detailType = event['detail-type']
   const productId = event.detail?.ProductId
   if (
-    detailType === 'ProductCreatedEvent' ||
-    detailType === 'ProductUpdatedEvent' ||
-    detailType === 'ProductDeletedEvent'
+    detailType === 'CatalogViewProductSyncedEvent' ||
+    detailType === 'CatalogViewProductDeletedEvent'
   ) {
     return productId ? ['products', `products:${productId}`] : ['products']
   }

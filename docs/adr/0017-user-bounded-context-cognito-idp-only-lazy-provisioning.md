@@ -26,7 +26,7 @@ Introduce a **`User` bounded context** that owns customer profile data, with **C
 
 | Data | Owner |
 |---|---|
-| Credentials: email, password | **Cognito** (user pool `duckstore-users`) |
+| Credentials: email, password | **Cognito** (user pool `duckstore-users` — the customer/Shopping pool; staff sign in through a separate `duckstore-management-users` pool, out of scope for this ADR) |
 | Profile: name, phone, addressLine, city, state, zipCode, country | **User service** (`user-profiles` table) |
 
 Cognito holds only the sign-in credentials (email + password). Its schema is **left untouched** — Cognito does not allow modifying a live pool's standard attributes (an in-place add of a required `name` attribute is rejected with `Invalid AttributeDataType`), and standard attributes are fixed at pool creation. All profile data, **including the display name**, lives in the User service. `name` is seeded from the token's `email` claim on first access and is editable via `updateProfile`. Cognito MUST NOT be extended with custom profile attributes.

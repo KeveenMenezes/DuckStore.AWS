@@ -59,10 +59,11 @@ else
                     </td>
                     <td>@product.Name</td>
                     <td>@product.Stock</td>
-                    <td>@product.Price.ToString("C")</td>
+                    <td>@((nominalPrices.GetValueOrDefault(product.Id) ?? product.Price).ToString("C"))</td>
                     <td>@product.AverageRating.ToString("0.0") (@product.RatingCount)</td>
                     <td class="row-actions">
                         <a class="btn btn-secondary" href="products/@product.Id/edit">Edit</a>
+                        <button class="btn btn-secondary" @onclick="() => priceDialog.Show(product)">Pricing details</button>
                         <button class="btn btn-danger" @onclick="() => DeleteAsync(product)">Delete</button>
                     </td>
                 </tr>
@@ -79,15 +80,18 @@ else
 }
 
 <ConfirmDialog @ref="confirmDialog" />
+<PriceDetailsDialog @ref="priceDialog" />
 
 @code {
     private List<Product>? items;
+    private Dictionary<string, double?> nominalPrices = [];
     private string? nextToken;
     private string search = string.Empty;
     private string? banner;
     private string? error;
     private bool loadingMore;
     private ConfirmDialog confirmDialog = default!;
+    private PriceDetailsDialog priceDialog = default!;
 
     [SupplyParameterFromQuery] public string? Saved { get; set; }
 
@@ -106,11 +110,13 @@ else
     {
         error = null;
         items = null;
+        nominalPrices = [];
         try
         {
             var page = await Products.GetProductsAsync(search);
             items = page.Items;
             nextToken = page.NextToken;
+            nominalPrices = await Products.GetNominalPricesAsync(items.Select(p => p.Id));
         }
         catch (Exception ex)
         {
@@ -129,6 +135,9 @@ else
             var page = await Products.GetProductsAsync(search, nextToken: nextToken);
             items!.AddRange(page.Items);
             nextToken = page.NextToken;
+            var newPrices = await Products.GetNominalPricesAsync(page.Items.Select(p => p.Id));
+            foreach (var (id, price) in newPrices)
+                nominalPrices[id] = price;
         }
         catch (Exception ex)
         {

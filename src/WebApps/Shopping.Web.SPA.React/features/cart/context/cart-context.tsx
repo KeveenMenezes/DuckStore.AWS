@@ -66,8 +66,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
           skipNextSyncRef.current = true
           setItems(enriched)
         }
-      } catch {
-        // carrinho começa vazio em caso de erro
+      } catch (error) {
+        // Cart stays at its initial [] on failure — but log it, since a swallowed
+        // error here is indistinguishable in the UI from a genuinely empty cart.
+        if (!cancelled) console.error('Failed to hydrate cart from basket', error)
       } finally {
         if (!cancelled) setIsLoading(false)
       }

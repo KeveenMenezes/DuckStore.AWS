@@ -8,7 +8,7 @@ import { ReviewStack } from '../stacks/review-stack';
 import { CatalogViewStack } from '../stacks/catalogview-stack';
 import { UserStack } from '../stacks/user-stack';
 import { AppSyncStack } from '../stacks/appsync-stack';
-import { AdminStack } from '../stacks/admin-stack';
+import { ManagementStack } from '../stacks/management-stack';
 import { ProductImagesStack } from '../stacks/product-images-stack';
 import { MonitoringStack } from '../stacks/monitoring-stack';
 
@@ -28,9 +28,9 @@ const hostedZoneDomainName =
   app.node.tryGetContext('hostedZoneDomainName') ?? 'keveenmenezes.com';
 const spaDomainUrl = `https://${environmentName}-duckstore.${hostedZoneDomainName}`;
 // Blazor management app (Managment.Web.Blazor) — same deterministic-domain trick, so
-// the Cognito admin client's callback URL is known before anything deploys.
-const adminDomainName = `${environmentName}-admin-duckstore.${hostedZoneDomainName}`;
-const adminDomainUrl = `https://${adminDomainName}`;
+// the Cognito management client's callback URL is known before anything deploys.
+const managementDomainName = `${environmentName}-management-duckstore.${hostedZoneDomainName}`;
+const managementDomainUrl = `https://${managementDomainName}`;
 
 // Project-wide tags — cascade to every resource in every stack (buckets, tables,
 // Lambdas, ...). This is how DuckStore resources are identified across the AWS
@@ -94,7 +94,7 @@ new UserStack(app, 'DuckStoreUserStack', {
 // The processor/presign Lambdas are Docker-bundled NodejsFunctions (sharp has no esbuild-safe
 // path) — that bundling executes on every `cdk synth`/`cdk deploy` regardless of which stack
 // is targeted, and requires QEMU on x86 CI runners to build the arm64 bundling image. Gated
-// behind a context flag, same pattern as AdminStack, so every other stack's deploy workflow
+// behind a context flag, same pattern as ManagementStack, so every other stack's deploy workflow
 // (which doesn't set up QEMU) doesn't eagerly trigger this Docker build and fail.
 if (app.node.tryGetContext('deployProductImages') === 'true') {
   new ProductImagesStack(app, 'DuckStoreProductImagesStack', {
@@ -103,8 +103,8 @@ if (app.node.tryGetContext('deployProductImages') === 'true') {
     // before anything deploys, so clients can carry it in checked-in config.
     imageDomainName: `${environmentName}-img-duckstore.${hostedZoneDomainName}`,
     hostedZoneDomainName,
-    // Browser presigned-POST uploads come from the Blazor admin (dev server + deployed).
-    uploadOrigins: ['https://localhost:7300', adminDomainUrl],
+    // Browser presigned-POST uploads come from the Blazor management app (dev server + deployed).
+    uploadOrigins: ['https://localhost:7300', managementDomainUrl],
     description:
       'DuckStore product image pipeline (ADR-0034) — originals/processed buckets, SQS + sharp processor, presign Lambda, image CDN',
   });
@@ -117,7 +117,7 @@ new AppSyncStack(app, 'DuckStoreAppSyncStack', {
   spaBaseUrls: ['http://localhost:3000', spaDomainUrl],
   // Blazor dev server (fixed port in launchSettings.json) + the deployed static site.
   // Cognito allows https localhost callback URLs.
-  adminBaseUrls: ['https://localhost:7300', adminDomainUrl],
+  managementBaseUrls: ['https://localhost:7300', managementDomainUrl],
   // Social federation. Client IDs are public → committed in cdk.json context.
   // Client secrets live in Secrets Manager (bootstrapped out-of-band) and are
   // resolved by CloudFormation at deploy via a dynamic reference — never in the
@@ -133,12 +133,13 @@ new AppSyncStack(app, 'DuckStoreAppSyncStack', {
 
 // The management app's stack embeds the Blazor `dotnet publish` output as an S3
 // asset, which must exist at synth time — so it's only instantiated behind the
-// `-c deployAdmin=true` flag (passed by deploy-admin-cdk.yml after publishing).
-// Without the flag every other stack still synths on a machine with no .NET build.
-if (app.node.tryGetContext('deployAdmin') === 'true') {
-  new AdminStack(app, 'DuckStoreAdminStack', {
+// `-c deployManagement=true` flag (passed by deploy-management-cdk.yml after
+// publishing). Without the flag every other stack still synths on a machine with no
+// .NET build.
+if (app.node.tryGetContext('deployManagement') === 'true') {
+  new ManagementStack(app, 'DuckStoreManagementStack', {
     env,
-    adminDomainName,
+    managementDomainName,
     hostedZoneDomainName,
     description:
       'DuckStore management app (Managment.Web.Blazor) — S3 static site behind CloudFront with OAC',
