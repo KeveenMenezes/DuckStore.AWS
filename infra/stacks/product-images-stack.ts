@@ -131,7 +131,7 @@ export class ProductImagesStack extends cdk.Stack {
       environment: { PROCESSED_BUCKET: processedBucket.bucketName },
       bundling: {
         nodeModules: ['sharp'],
-        forceDockerBundling: false,
+        forceDockerBundling: true,
         commandHooks: {
           beforeBundling: () => [],
           beforeInstall: () => [],
