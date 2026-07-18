@@ -1,32 +1,22 @@
 "use client"
 
-import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { ReviewCard } from "@/features/reviews/components/review-card"
-import { getReviewsByProduct } from "@/features/reviews/services/reviews.service"
 import type { Review } from "@/features/reviews/types/review.types"
 
 interface ReviewListProps {
-  productId: string
-  initialReviews: Review[]
-  initialNextToken: string | null
+  reviews: Review[]
+  nextToken: string | null
+  isPending: boolean
+  onLoadMore: () => void
 }
 
-export function ReviewList({ productId, initialReviews, initialNextToken }: ReviewListProps) {
-  const [reviews, setReviews] = useState<Review[]>(initialReviews)
-  const [nextToken, setNextToken] = useState<string | null>(initialNextToken)
-  const [isPending, startTransition] = useTransition()
+export function ReviewList({ reviews, nextToken, isPending, onLoadMore }: ReviewListProps) {
+  // Only reviews with a written comment are shown — rating-only rows still
+  // count toward the aggregate but add nothing to the list.
+  const withComment = reviews.filter((review) => review.comment?.trim())
 
-  const loadMore = () => {
-    if (!nextToken) return
-    startTransition(async () => {
-      const page = await getReviewsByProduct(productId, 10, nextToken)
-      setReviews((prev) => [...prev, ...page.items])
-      setNextToken(page.nextToken)
-    })
-  }
-
-  if (reviews.length === 0) {
+  if (withComment.length === 0 && !nextToken) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-12 text-center">
         <p className="text-sm text-muted-foreground">No reviews yet. Be the first to share your experience!</p>
@@ -36,12 +26,12 @@ export function ReviewList({ productId, initialReviews, initialNextToken }: Revi
 
   return (
     <div className="flex flex-col gap-3">
-      {reviews.map((review) => (
+      {withComment.map((review) => (
         <ReviewCard key={review.id} review={review} />
       ))}
       {nextToken && (
         <div className="mt-2 flex justify-center">
-          <Button variant="outline" size="sm" onClick={loadMore} disabled={isPending}>
+          <Button variant="outline" size="sm" onClick={onLoadMore} disabled={isPending}>
             {isPending ? "Loading..." : "Load more reviews"}
           </Button>
         </div>
