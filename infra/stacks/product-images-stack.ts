@@ -23,6 +23,8 @@ export interface ProductImagesStackProps extends cdk.StackProps {
   readonly hostedZoneDomainName: string;
   /** Browser origins allowed to POST uploads (Blazor admin dev server + deployed admin site). */
   readonly uploadOrigins: string[];
+  /** Browser origins allowed to GET images (Next.js SPA dev server + deployed SPA). */
+  readonly imageViewerOrigins: string[];
 }
 
 const PRODUCT_IMAGES_DIR = path.join(__dirname, '../../src/Services/ProductImages');
@@ -183,6 +185,25 @@ export class ProductImagesStack extends cdk.Stack {
       validation: acm.CertificateValidation.fromDns(zone),
     });
 
+    // Without this, the browser's <img> cross-origin GET still succeeds (no preflight
+    // needed for a plain GET), but canvas/fetch-based consumers (e.g. QR-code scanning
+    // extensions, image processing in the SPA) get a CORS error because CloudFront never
+    // adds Access-Control-Allow-Origin to the response.
+    const corsResponseHeadersPolicy = new cloudfront.ResponseHeadersPolicy(
+      this,
+      'ImageCorsResponseHeadersPolicy',
+      {
+        comment: 'Allow the SPA origins to read product images cross-origin',
+        corsBehavior: {
+          accessControlAllowOrigins: props.imageViewerOrigins,
+          accessControlAllowMethods: ['GET', 'HEAD', 'OPTIONS'],
+          accessControlAllowHeaders: ['*'],
+          accessControlAllowCredentials: false,
+          originOverride: true,
+        },
+      },
+    );
+
     const distribution = new cloudfront.Distribution(this, 'ImageCdnDistribution', {
       comment: 'DuckStore product images (processed variants, immutable objects)',
       domainNames: [props.imageDomainName],
@@ -191,6 +212,7 @@ export class ProductImagesStack extends cdk.Stack {
         origin: origins.S3BucketOrigin.withOriginAccessControl(processedBucket),
         viewerProtocolPolicy: cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS,
         cachePolicy: cloudfront.CachePolicy.CACHING_OPTIMIZED,
+        responseHeadersPolicy: corsResponseHeadersPolicy,
       },
       // A product page visited between saga commit and the variants landing hits
       // 403/404 — CloudFront's default error caching (5 min) would pin that miss long
