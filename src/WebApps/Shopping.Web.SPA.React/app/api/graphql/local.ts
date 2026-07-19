@@ -541,7 +541,7 @@ const resolvers = {
       { ownerId, input }: { ownerId: string; input: { items: Array<Record<string, unknown>> } },
     ) {
       // Mirrors the AppSync direct PutItem resolver (ADR-0009) — cart JSON blob shape must match
-      // Basket.Function's (now-removed) ShoppingCartSerializer contract exactly.
+      // Basket.Function's ShoppingCartSerializer contract exactly.
       const items = input.items.map(i => ({
         Quantity: i.quantity,
         Color: (i.color as string) ?? '',

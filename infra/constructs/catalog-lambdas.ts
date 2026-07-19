@@ -63,11 +63,9 @@ export class CatalogLambdas extends Construct {
         cmd,
       });
 
-    // -------------------------------------------------------------------------
     // 1. catalog-stream-event-publisher
     //    Trigger: DynamoDB Streams on products
     //    IAM: DynamoEventSource grants stream read; grantPutEventsTo for EventBridge
-    // -------------------------------------------------------------------------
     this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
       functionName: 'catalog-stream-event-publisher',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
@@ -103,17 +101,15 @@ export class CatalogLambdas extends Construct {
 
     categoriesTable.grantReadData(this.streamPublisher);
 
-    // ProductCreatedEvent/ProductUpdatedEvent/ProductDeletedEvent's ISR revalidation trigger
-    // moved to SpaTagRevalidator (infra/constructs/spa-tag-revalidator.ts), which subscribes to
+    // ProductCreatedEvent/ProductUpdatedEvent/ProductDeletedEvent's ISR revalidation trigger is
+    // an SST-managed Lambda (revalidator/index.mjs, see the SPA's sst.config.ts) subscribed to
     // this same bus directly — no HTTP webhook needed.
 
-    // -------------------------------------------------------------------------
     // 1b. catalog-category-stream-publisher
     //    Trigger: DynamoDB Streams on categories
     //    Fires only on a rename (CatalogCategorySyncRule) — publishes
     //    CatalogCategorySyncEvent so CatalogView can rewrite the denormalized
     //    category name on every product document that references it.
-    // -------------------------------------------------------------------------
     this.categoryStreamPublisher = new lambda.DockerImageFunction(this, 'CategoryStreamPublisher', {
       functionName: 'catalog-category-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,

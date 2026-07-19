@@ -6,7 +6,6 @@ public record BasketCheckoutEvent : IntegrationEvent
     public Guid CustomerId { get; set; }
     public decimal TotalPrice { get; set; }
 
-    // Shipping and ShippingAddress
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string EmailAddress { get; set; } = default!;
@@ -15,7 +14,6 @@ public record BasketCheckoutEvent : IntegrationEvent
     public string State { get; set; } = default!;
     public string ZipCode { get; set; } = default!;
 
-    // Payment
     public string CardName { get; set; } = default!;
     public string CardNumber { get; set; } = default!;
     public string Expiration { get; set; } = default!;

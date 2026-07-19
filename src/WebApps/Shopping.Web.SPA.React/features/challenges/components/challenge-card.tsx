@@ -69,7 +69,6 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
         </div>
       </CardHeader>
       <CardContent className="flex flex-col gap-6">
-        {/* Code block */}
         <div className="overflow-x-auto rounded-lg border border-border bg-background p-4">
           <pre className="text-sm leading-relaxed">
             <code className="text-muted-foreground">
@@ -78,7 +77,6 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           </pre>
         </div>
 
-        {/* Duck Mentor */}
         {!isCompleted && !submitted && (
           <DuckMentor
             hints={challenge.hints}
@@ -88,7 +86,6 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           />
         )}
 
-        {/* Options */}
         <ChallengeOptions
           options={challenge.options}
           selectedAnswer={selectedAnswer}
@@ -99,7 +96,6 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           onSelect={setSelectedAnswer}
         />
 
-        {/* Submit */}
         {!submitted && !isCompleted && (
           <Button
             className="gap-2"
@@ -110,7 +106,6 @@ export function ChallengeCard({ challenge }: { challenge: Challenge }) {
           </Button>
         )}
 
-        {/* Result feedback */}
         {submitted && (
           <ChallengeResult
             isCorrect={isCorrect}

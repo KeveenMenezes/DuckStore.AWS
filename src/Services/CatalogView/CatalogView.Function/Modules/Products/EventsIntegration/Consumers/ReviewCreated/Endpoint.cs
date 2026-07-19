@@ -1,5 +1,7 @@
 ﻿namespace CatalogView.Function;
 
+// Triggered by EventBridge. Consumes ReviewCreatedEvent and folds the new rating into the
+// catalogview-products projection.
 public partial class Functions
 {
     [LambdaFunction(PackageType = LambdaPackageType.Image)]

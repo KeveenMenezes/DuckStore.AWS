@@ -1,5 +1,7 @@
 ﻿namespace CatalogView.Function;
 
+// Triggered by EventBridge. Consumes ProductSyncedEvent and upserts the catalogview-products
+// projection.
 public partial class Functions
 {
     [LambdaFunction(PackageType = LambdaPackageType.Image)]

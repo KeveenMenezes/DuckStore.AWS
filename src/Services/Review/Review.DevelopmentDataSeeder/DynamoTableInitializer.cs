@@ -31,8 +31,8 @@ public static class DynamoTableInitializer
                 [
                     new GlobalSecondaryIndex
                     {
-                        // GSI1 lista reviews por produto (GSI1PK=ProductId, GSI1SK=CreatedAt).
-                        // Projection ALL evita um GetItem extra por resultado na leitura.
+                        // GSI1 lists reviews by product (GSI1PK=ProductId, GSI1SK=CreatedAt).
+                        // Projection ALL avoids an extra GetItem per result on read.
                         IndexName = ReviewSchema.Gsi1Name,
                         KeySchema =
                         [

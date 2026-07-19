@@ -7,7 +7,6 @@ public record OrderCreatedEvent : IntegrationEvent
     public string OrderName { get; init; } = default!;
     public int Status { get; init; }
 
-    // Shipping address
     public string FirstName { get; init; } = default!;
     public string LastName { get; init; } = default!;
     public string? EmailAddress { get; init; }
@@ -16,7 +15,6 @@ public record OrderCreatedEvent : IntegrationEvent
     public string State { get; init; } = default!;
     public string ZipCode { get; init; } = default!;
 
-    // Payment
     public string? CardName { get; init; }
     public string CardNumber { get; init; } = default!;
     public string Expiration { get; init; } = default!;

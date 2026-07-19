@@ -28,18 +28,14 @@ export class BasketLambdas extends Construct {
 
     const { shoppingCartsTable } = props;
 
-    // -------------------------------------------------------------------------
     // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
-    // -------------------------------------------------------------------------
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
 
     // Shared dead-letter queue for async Basket processing; a non-empty queue
     // trips the basket-dlq-not-empty alarm → duckstore-alerts.
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'basket' });
 
-    // -------------------------------------------------------------------------
     // Docker image — shared by all three Basket Lambda functions.
-    // -------------------------------------------------------------------------
     const basketImage = new ecrAssets.DockerImageAsset(this, 'BasketImage', {
       directory: REPO_ROOT,
       file: BASKET_DOCKERFILE,
@@ -58,13 +54,11 @@ export class BasketLambdas extends Construct {
         cmd,
       });
 
-    // -------------------------------------------------------------------------
     // 1. basket-shopping-carts-event-publisher
     //    Trigger: DynamoDB Streams on shopping-carts (NEW_IMAGE, CDC — ADR-0005)
     //    Rule-based publisher (ADR-0019): on each MODIFY record of Type=Checkout,
     //    CheckoutedRule publishes BasketCheckoutEvent. The basket item's deletion
     //    happens synchronously in CheckoutBasketCommandHandler, not here.
-    // -------------------------------------------------------------------------
     this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
       functionName: 'basket-shopping-carts-event-publisher',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
@@ -100,12 +94,10 @@ export class BasketLambdas extends Construct {
     // direct DynamoDB PutItem resolver (ADR-0009); see infra/constructs/appsync-api.ts and
     // graphql/resolvers/basket/mutations/Mutation.storeBasket.js.
 
-    // -------------------------------------------------------------------------
     // 2. basket-checkout-basket  (HTTP API — CheckoutBasket command)
     //    Talks directly to DynamoDB (no cache).
     //    Writes a Checkout marker to the cart item; the stream publisher picks it
     //    up and publishes BasketCheckoutEvent (CDC pattern, ADR-0005).
-    // -------------------------------------------------------------------------
     this.checkoutBasket = new lambda.DockerImageFunction(this, 'CheckoutBasket', {
       functionName: 'basket-checkout-basket',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
@@ -126,12 +118,10 @@ export class BasketLambdas extends Construct {
       authType: lambda.FunctionUrlAuthType.NONE,
     });
 
-    // -------------------------------------------------------------------------
     // 3. basket-merge-basket  (AppSync Invoke — MergeBasket command)
     //    Folds a GUEST# cart into the USER# cart on login (ADR-0016): reads both
     //    carts, writes the merged USER# cart, deletes the GUEST# cart. No Function
     //    URL — invoked directly by the AppSync mergeBasket resolver (Invoke).
-    // -------------------------------------------------------------------------
     this.mergeBasket = new lambda.DockerImageFunction(this, 'MergeBasket', {
       functionName: 'basket-merge-basket',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
