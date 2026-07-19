@@ -105,6 +105,8 @@ if (app.node.tryGetContext('deployProductImages') === 'true') {
     hostedZoneDomainName,
     // Browser presigned-POST uploads come from the Blazor management app (dev server + deployed).
     uploadOrigins: ['https://localhost:7300', managementDomainUrl],
+    // Browser GETs of product images come from the Next.js SPA (dev server + deployed).
+    imageViewerOrigins: ['http://localhost:3000', spaDomainUrl],
     description:
       'DuckStore product image pipeline (ADR-0034) — originals/processed buckets, SQS + sharp processor, presign Lambda, image CDN',
   });
