@@ -1,22 +1,4 @@
 {
   "version": "0.2.0",
-  "configurations": [
-    //{
-    //    "name": "Docker Compose",
-    //    "type": "coreclr",
-    //    "request": "launch",
-    //    "preLaunchTask": "build and docker-compose up",
-    //    "postDebugTask": "docker-compose down",
-    //    "program": "${workspaceFolder}/src/Services/Catalog/Catalog.Function/bin/Debug/net9.0/Catalog.Function.dll",
-    //    "args": [],
-    //    "cwd": "${workspaceFolder}/src/Services/Catalog/Catalog.Function",
-    //    "stopAtEntry": false,
-    //    "env": {
-    //        "ASPNETCORE_ENVIRONMENT": "Development"
-    //    },
-    //    "sourceFileMap": {
-    //        "/Views": "${workspaceFolder}/Views"
-    //    }
-    //}
-  ]
+  "configurations": []
 }
