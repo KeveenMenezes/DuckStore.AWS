@@ -31,8 +31,11 @@ export async function GET(req: NextRequest): Promise<Response> {
   const logoutUrl = `${process.env.COGNITO_HOSTED_UI_URL}/logout?client_id=${process.env.COGNITO_CLIENT_ID}&logout_uri=${encodeURIComponent(process.env.NEXT_PUBLIC_SITE_URL ?? new URL('/', req.url).toString())}`
 
   const response = NextResponse.redirect(logoutUrl)
-  response.cookies.delete('access_token')
-  response.cookies.delete('id_token')
-  response.cookies.delete(REFRESH_TOKEN_COOKIE)
+  // Must match the `path` the cookies were set with in callback/route.ts — without it,
+  // delete() defaults to the request's own path (/api/auth) and leaves the real
+  // Path=/ cookies untouched, so the user stays logged in everywhere else.
+  response.cookies.delete({ name: 'access_token', path: '/' })
+  response.cookies.delete({ name: 'id_token', path: '/' })
+  response.cookies.delete({ name: REFRESH_TOKEN_COOKIE, path: '/' })
   return response
 }
