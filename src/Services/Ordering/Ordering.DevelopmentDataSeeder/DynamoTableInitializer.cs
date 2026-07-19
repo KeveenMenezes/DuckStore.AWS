@@ -32,8 +32,8 @@ public static class DynamoTableInitializer
                 [
                     new GlobalSecondaryIndex
                     {
-                        // GSI1 lista pedidos por cliente (GSI1PK=CUSTOMER#{id}, GSI1SK=CreatedAt).
-                        // Projection ALL evita um GetItem extra por resultado na leitura.
+                        // GSI1 lists orders by customer (GSI1PK=CUSTOMER#{id}, GSI1SK=CreatedAt).
+                        // Projection ALL avoids an extra GetItem per result on read.
                         IndexName = DynamoOrderRepository.Gsi1Name,
                         KeySchema =
                         [

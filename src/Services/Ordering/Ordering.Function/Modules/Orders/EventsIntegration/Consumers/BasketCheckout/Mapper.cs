@@ -28,7 +28,8 @@ public static class BasketCheckoutMapper
             ShippingAddress: addressDto,
             Payment: paymentDto,
             OrderItems:
-            // TODO: incluir dados da OrderItem
+            // TODO: BasketCheckoutEvent doesn't carry cart line items yet, so these are hardcoded
+            // placeholders — replace with a real mapping once the event includes basket items.
             [
                 new CreateOrderItemDto(
                     new Guid("5334c996-8457-4cf0-815c-ed2b77c4ff61"),

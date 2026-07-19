@@ -55,12 +55,10 @@ export class OrderingLambdas extends Construct {
         cmd,
       });
 
-    // -------------------------------------------------------------------------
     // 1. ordering-basket-checkout-consumer
     //    Trigger: EventBridge rule (BasketCheckoutEvent, source=duckstore)
     //    Writes the new Order + idempotency record atomically via TransactWriteItems.
     //    EventBridge sets evt.Id as the idempotency key (ADR-0011).
-    // -------------------------------------------------------------------------
     this.basketCheckoutConsumer = new lambda.DockerImageFunction(
       this,
       'BasketCheckoutConsumer',
@@ -112,12 +110,10 @@ export class OrderingLambdas extends Construct {
       }),
     );
 
-    // -------------------------------------------------------------------------
     // 2. ordering-order-created-publisher
     //    Trigger: DynamoDB Streams on ordering table (NEW_AND_OLD_IMAGES, CDC — ADR-0005/0019)
     //    Rule-based publisher (ADR-0019): OrderCreatedRule emits OrderCreatedEvent on INSERT of Type=Order.
     //    Gated by FeatureManagement__OrderFullfilment=true.
-    // -------------------------------------------------------------------------
     this.orderCreatedPublisher = new lambda.DockerImageFunction(
       this,
       'OrderCreatedPublisher',

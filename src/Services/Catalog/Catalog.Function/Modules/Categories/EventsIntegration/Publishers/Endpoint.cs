@@ -1,5 +1,8 @@
 ﻿namespace Catalog.Function;
 
+// Triggered by DynamoDB Streams on the categories table. Fires only on a rename — publishes
+// CatalogCategorySyncEvent so CatalogView can rewrite the denormalized category name on every
+// product document that references it.
 public partial class Functions
 {
     [LambdaFunction(PackageType = LambdaPackageType.Image)]

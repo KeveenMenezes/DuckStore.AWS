@@ -148,7 +148,6 @@ func poll(ctx context.Context, client *sqs.Client, store *Store, consumer *Idemp
 			continue
 		}
 
-		// Delete message after successful processing
 		_, err := client.DeleteMessage(ctx, &sqs.DeleteMessageInput{
 			QueueUrl:      aws.String(queueURL),
 			ReceiptHandle: msg.ReceiptHandle,
@@ -168,7 +167,6 @@ func processMessage(ctx context.Context, store *Store, consumer *IdempotentConsu
 		return fmt.Errorf("failed to unmarshal message: %w", err)
 	}
 
-	// Populate metadata if not set
 	if notification.ProcessedAt == "" {
 		notification.ProcessedAt = time.Now().UTC().Format(time.RFC3339)
 	}

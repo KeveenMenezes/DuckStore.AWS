@@ -105,7 +105,6 @@ export default async function ProductPage({ params }: ProductPageProps) {
           }
         />
 
-        {/* Product info */}
         <div className="flex flex-col gap-5">
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground lg:text-4xl">{product.name}</h1>

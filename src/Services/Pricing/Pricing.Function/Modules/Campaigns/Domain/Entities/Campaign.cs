@@ -6,7 +6,7 @@ using Pricing.Function.Shared.Exceptions;
 namespace Pricing.Function.Modules.Campaigns.Domain.Entities;
 
 // Groups a discount by event (business rule #3 — e.g. "Black Friday") for batch activation across
-// N products. Vigência (StartsAt/EndsAt) is checked at read time by consumers of the
+// N products. Validity (StartsAt/EndsAt) is checked at read time by consumers of the
 // product-discounts projection, not by a scheduler (ADR-0026).
 public class Campaign : Aggregate<CampaignId>
 {

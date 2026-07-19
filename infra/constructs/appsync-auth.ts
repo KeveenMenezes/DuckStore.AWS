@@ -77,7 +77,7 @@ export class AppSyncAuth extends Construct {
     // Post-Confirmation trigger: auto-assigns every new verified user to the Customer group.
     const assignCustomerGroupFn = new lambda.Function(this, 'AssignCustomerGroupFn', {
       functionName: 'cognito-assign-customer-group',
-      runtime: lambda.Runtime.NODEJS_18_X,
+      runtime: lambda.Runtime.NODEJS_24_X,
       handler: 'index.handler',
       code: lambda.Code.fromInline(`
 const { CognitoIdentityProviderClient, AdminAddUserToGroupCommand } = require('@aws-sdk/client-cognito-identity-provider');
@@ -183,12 +183,10 @@ exports.handler = async (event) => {
 
     this.shoppingHostedUiUrl = `https://${shoppingDomain.domainName}.auth.${cdk.Stack.of(this).region}.amazoncognito.com`;
 
-    // -------------------------------------------------------------------------------
     // Management pool — staff (Admin/Seller), Blazor WASM app. Login-only: no
     // self-signup, no social federation. Accounts are provisioned manually via the
     // AWS Console/CLI (AdminCreateUser) — group membership (Admin/Seller) is what
     // actually authorizes operations, enforced in the AppSync resolvers, not here.
-    // -------------------------------------------------------------------------------
     this.managementUserPool = new cognito.UserPool(this, 'ManagementUserPool', {
       userPoolName: 'duckstore-management-users',
       selfSignUpEnabled: false,

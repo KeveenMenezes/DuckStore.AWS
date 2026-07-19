@@ -33,7 +33,6 @@ export class AppSyncApi extends Construct {
     super(scope, id);
     this.productCreateSaga = props.productCreateSaga;
 
-    // -------------------------------------------------------------------------
     // GraphQL API — three auth modes:
     //   Default:    Shopping Cognito user pool (customers, required for mutations +
     //               private queries)
@@ -43,7 +42,6 @@ export class AppSyncApi extends Construct {
     //               via ctx.identity.groups/sub, so no pool-specific resolver logic
     //               is needed)
     //   Additional: API_KEY (catalog reads, reviews — public without login)
-    // -------------------------------------------------------------------------
     this.api = new appsync.GraphqlApi(this, 'Api', {
       name: 'duckstore-api',
       definition: appsync.Definition.fromFile(SCHEMA_PATH),
@@ -153,9 +151,7 @@ export class AppSyncApi extends Construct {
   private addDataSources() {
     const { api } = this;
 
-    // ------------------------------------------------------------------
     // DynamoDB data sources — imported by table name (no CF coupling)
-    // ------------------------------------------------------------------
     const productsTable = dynamodb.Table.fromTableName(this, 'ProductsTable', 'products');
     const categoriesTable = dynamodb.Table.fromTableName(this, 'CategoriesTable', 'categories');
     const cartsTable = dynamodb.Table.fromTableName(this, 'CartsTable', 'shopping-carts');
@@ -212,9 +208,7 @@ export class AppSyncApi extends Construct {
     gatewayCostsTable.grantReadWriteData(gatewayCostsDs);
     catalogViewProductsTable.grantReadData(catalogViewProductsDs);
 
-    // ------------------------------------------------------------------
     // Lambda data sources — imported by function name (no CF coupling)
-    // ------------------------------------------------------------------
     const checkoutFn = lambda.Function.fromFunctionName(
       this,
       'CheckoutFn',
@@ -265,9 +259,7 @@ export class AppSyncApi extends Construct {
       presignImageUploadFn,
     );
 
-    // ------------------------------------------------------------------
     // HTTP data source — Step Functions StartSyncExecution (ADR-0032)
-    // ------------------------------------------------------------------
     // The sync-states.<region> endpoint is the dedicated StartSyncExecution endpoint —
     // the regular states.<region> endpoint rejects that action.
     const region = cdk.Stack.of(this).region;
@@ -279,9 +271,7 @@ export class AppSyncApi extends Construct {
     });
     this.productCreateSaga.grantStartSyncExecution(sfnDs);
 
-    // ------------------------------------------------------------------
     // Resolvers — one JS file per (typeName, fieldName) pair
-    // ------------------------------------------------------------------
 
     // Public queries (also accessible via API_KEY — @aws_api_key in schema)
     // Product read/search — CatalogView Direct DynamoDB resolvers (ADR-0030), not Catalog's

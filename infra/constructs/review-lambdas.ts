@@ -45,13 +45,11 @@ export class ReviewLambdas extends Construct {
       ],
     });
 
-    // -------------------------------------------------------------------------
     // review-reviews-event-publisher
     //   Trigger: DynamoDB Streams on reviews (NEW_AND_OLD_IMAGES, CDC — ADR-0005/ADR-0008)
     //   Rule-based dispatcher (ADR-0019): INSERT → ReviewCreatedEvent, MODIFY →
     //   ReviewUpdatedEvent (old + new rating), consumed by CatalogView to keep the
     //   product's AverageRating/RatingCount aggregate (ADR-0029/ADR-0030).
-    // -------------------------------------------------------------------------
     this.reviewCreatedPublisher = new lambda.DockerImageFunction(
       this,
       'ReviewCreatedPublisher',

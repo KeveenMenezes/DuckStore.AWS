@@ -66,10 +66,8 @@ export class PricingLambdas extends Construct {
     // an AppSync direct DynamoDB UpdateItem resolver (ADR-0009); see appsync-api.ts and
     // graphql/resolvers/pricing/mutations/Mutation.setNominalPrice.js.
 
-    // -------------------------------------------------------------------------
     // 1. pricing-get-installment-plan  (AppSync Invoke — Query.installmentPlanFor)
     //    Non-trivial calculation over simulated gateway fee/margin config — Lambda per ADR-0009.
-    // -------------------------------------------------------------------------
     this.getInstallmentPlan = new lambda.DockerImageFunction(this, 'GetInstallmentPlan', {
       functionName: 'pricing-get-installment-plan',
       tracing: lambda.Tracing.ACTIVE,
@@ -89,11 +87,9 @@ export class PricingLambdas extends Construct {
     gatewayCostsTable.grantReadData(this.getInstallmentPlan);
     productDiscountsTable.grantReadData(this.getInstallmentPlan);
 
-    // -------------------------------------------------------------------------
     // 1b. pricing-get-basket-installment-plan  (AppSync Invoke — Query.basketInstallmentPlan)
     //     Same cost-floor calculation, but summed across every cart item first — the whole cart
     //     is treated as one checkout transaction (ADR-0009).
-    // -------------------------------------------------------------------------
     this.getBasketInstallmentPlan = new lambda.DockerImageFunction(this, 'GetBasketInstallmentPlan', {
       functionName: 'pricing-get-basket-installment-plan',
       tracing: lambda.Tracing.ACTIVE,
@@ -112,10 +108,8 @@ export class PricingLambdas extends Construct {
     pricesTable.grantReadData(this.getBasketInstallmentPlan);
     gatewayCostsTable.grantReadData(this.getBasketInstallmentPlan);
 
-    // -------------------------------------------------------------------------
     // 2. pricing-create-campaign  (AppSync Invoke — Mutation.createCampaign)
     //    Fans out a TransactWriteItems across campaigns + product-discounts (ADR-0026 §6).
-    // -------------------------------------------------------------------------
     this.createCampaign = new lambda.DockerImageFunction(this, 'CreateCampaign', {
       functionName: 'pricing-create-campaign',
       tracing: lambda.Tracing.ACTIVE,
@@ -130,10 +124,8 @@ export class PricingLambdas extends Construct {
     campaignsTable.grantReadWriteData(this.createCampaign);
     productDiscountsTable.grantReadWriteData(this.createCampaign);
 
-    // -------------------------------------------------------------------------
     // 3. pricing-end-campaign  (AppSync Invoke — Mutation.endCampaign)
     //    Reads the campaign, then retracts its product-discounts rows transactionally.
-    // -------------------------------------------------------------------------
     this.endCampaign = new lambda.DockerImageFunction(this, 'EndCampaign', {
       functionName: 'pricing-end-campaign',
       tracing: lambda.Tracing.ACTIVE,
@@ -148,12 +140,10 @@ export class PricingLambdas extends Construct {
     campaignsTable.grantReadWriteData(this.endCampaign);
     productDiscountsTable.grantReadWriteData(this.endCampaign);
 
-    // -------------------------------------------------------------------------
     // 4. pricing-product-deleted-consumer
     //    Trigger: EventBridge rule (ProductDeletedEvent, source=duckstore — ADR-0031: named after
     //    the domain occurrence, no ChangeType discriminator). Cleans up prices/product-discounts
     //    rows for the deleted product, idempotent via pricing-processed-events (ADR-0026 §5).
-    // -------------------------------------------------------------------------
     this.productDeletedConsumer = new lambda.DockerImageFunction(
       this,
       'ProductDeletedConsumer',
@@ -201,12 +191,10 @@ export class PricingLambdas extends Construct {
       }),
     );
 
-    // -------------------------------------------------------------------------
     // 5. pricing-prices-event-publisher
     //    Trigger: DynamoDB Streams on prices. CDC: publishes a single PriceChangedEvent (nominal
     //    price + payment badge computed from the active GatewayCost) to EventBridge on
     //    INSERT/MODIFY so CatalogView syncs both in one merge (ADR-0026/0027/0028).
-    // -------------------------------------------------------------------------
     this.priceStreamPublisher = new lambda.DockerImageFunction(this, 'PriceStreamPublisher', {
       functionName: 'pricing-prices-event-publisher',
       tracing: lambda.Tracing.ACTIVE,

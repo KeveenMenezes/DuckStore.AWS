@@ -1,5 +1,7 @@
 ﻿namespace CatalogView.Function;
 
+// Triggered by EventBridge. Consumes PriceChangedEvent and merges the price/payment fields into
+// the catalogview-products projection.
 public partial class Functions
 {
     [LambdaFunction(PackageType = LambdaPackageType.Image)]
