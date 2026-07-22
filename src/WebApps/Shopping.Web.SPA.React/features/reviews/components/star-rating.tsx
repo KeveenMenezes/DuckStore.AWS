@@ -8,9 +8,18 @@ interface StarRatingDisplayProps {
   count?: number
   size?: "sm" | "md" | "lg"
   className?: string
+  // Hides the inline "4.5" text next to the stars — for layouts (e.g. a large standalone
+  // average number) that already render the numeric rating elsewhere.
+  showRatingText?: boolean
 }
 
-export function StarRatingDisplay({ rating, count, size = "md", className }: StarRatingDisplayProps) {
+export function StarRatingDisplay({
+  rating,
+  count,
+  size = "md",
+  className,
+  showRatingText = true,
+}: StarRatingDisplayProps) {
   const starSize = size === "sm" ? "h-3.5 w-3.5" : size === "lg" ? "h-6 w-6" : "h-4 w-4"
   const textSize = size === "sm" ? "text-xs" : size === "lg" ? "text-base" : "text-sm"
 
@@ -27,7 +36,7 @@ export function StarRatingDisplay({ rating, count, size = "md", className }: Sta
           />
         ))}
       </div>
-      {rating > 0 && (
+      {showRatingText && rating > 0 && (
         <span className={cn("font-medium text-foreground", textSize)}>{rating.toFixed(1)}</span>
       )}
       {count !== undefined && (
