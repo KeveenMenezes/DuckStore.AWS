@@ -6,6 +6,13 @@
 # dotenv files
 .env
 
+# Crash dumps (e.g. from Node/QEMU processes run against this repo)
+*.core
+core
+
+# pnpm store, if ever created inside the repo tree instead of the global store
+.pnpm-store/
+
 # User-specific files
 *.rsuser
 *.suo
