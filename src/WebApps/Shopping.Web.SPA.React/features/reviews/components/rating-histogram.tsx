@@ -20,7 +20,7 @@ export function RatingHistogram({ ratingDistribution, ratingCount, className }: 
         return (
           <div key={star} className="flex items-center gap-2">
             <span className="flex w-8 shrink-0 items-center gap-1 text-sm text-muted-foreground">
-              {star}
+              <span className="tabular-nums">{star}</span>
               <Star className="h-3 w-3 fill-muted-foreground/40 text-muted-foreground/40" />
             </span>
             <Progress value={percentage} className="h-2 flex-1" />

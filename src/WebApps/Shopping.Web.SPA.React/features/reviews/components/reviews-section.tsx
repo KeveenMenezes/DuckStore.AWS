@@ -59,43 +59,51 @@ export function ReviewsSection({
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div>
-        <h2 className="text-xl font-bold text-foreground">Customer Reviews</h2>
-        <div className="mt-1">
-          <StarRatingDisplay rating={localAvg} count={localCount} size="md" />
+        <h2 className="mb-4 text-xl font-bold text-foreground">Customer Reviews</h2>
+        <div className="flex flex-col items-center gap-6 sm:flex-row sm:items-center sm:gap-10">
+          <div className="flex shrink-0 flex-col items-center gap-1">
+            <span className="text-5xl font-bold text-foreground">{localAvg.toFixed(1)}</span>
+            <StarRatingDisplay rating={localAvg} size="md" showRatingText={false} />
+            <span className="text-sm text-muted-foreground">
+              {localCount} {localCount === 1 ? "review" : "reviews"}
+            </span>
+          </div>
+          <RatingHistogram
+            ratingDistribution={ratingDistribution}
+            ratingCount={localCount}
+            className="w-full max-w-md"
+          />
         </div>
-        <RatingHistogram
-          ratingDistribution={ratingDistribution}
-          ratingCount={localCount}
-          className="mt-3 max-w-xs"
-        />
       </div>
 
-      <Dialog>
-        <DialogTrigger asChild>
-          <Button variant="outline" className="w-fit">
-            See reviews{localCount > 0 ? ` (${localCount})` : ""}
-          </Button>
-        </DialogTrigger>
-        <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Customer Reviews</DialogTitle>
-          </DialogHeader>
+      <ReviewForm productId={productId} onReviewCreated={handleReviewCreated} />
 
-          <ReviewForm productId={productId} onReviewCreated={handleReviewCreated} />
+      <div className="flex justify-center">
+        <Dialog>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              See reviews{localCount > 0 ? ` (${localCount})` : ""}
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="flex max-h-[85vh] flex-col sm:max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Customer Reviews</DialogTitle>
+            </DialogHeader>
 
-          <div ref={scrollContainerRef} className="-mx-6 flex-1 overflow-y-auto px-6">
-            <ReviewList
-              reviews={reviews}
-              nextToken={nextToken}
-              isPending={isPending}
-              onLoadMore={loadMore}
-              scrollContainerRef={scrollContainerRef}
-            />
-          </div>
-        </DialogContent>
-      </Dialog>
+            <div ref={scrollContainerRef} className="-mx-6 flex-1 overflow-y-auto px-6">
+              <ReviewList
+                reviews={reviews}
+                nextToken={nextToken}
+                isPending={isPending}
+                onLoadMore={loadMore}
+                scrollContainerRef={scrollContainerRef}
+              />
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
     </div>
   )
 }
