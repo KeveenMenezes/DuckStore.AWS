@@ -1,3 +1,4 @@
+﻿using System.Text.RegularExpressions;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using CatalogView.Function.Modules.Products.Data;
@@ -46,8 +47,13 @@ public class DynamoProductIndexTests
         Assert.Contains("Categories", captured.UpdateExpression);
 
         // Never touches price/rating fields — those are owned by ApplyPricingAsync/ApplyRatingAsync.
+        // (RatingDistribution/GSI1SK legitimately appear via if_not_exists — an insert-only default,
+        // not a source-of-truth field these two methods own.)
         Assert.DoesNotContain("Price", captured.UpdateExpression);
-        Assert.DoesNotContain("Rating", captured.UpdateExpression);
+        Assert.DoesNotContain("RatingSum", captured.UpdateExpression);
+        Assert.DoesNotContain("RatingCount", captured.UpdateExpression);
+        Assert.DoesNotContain("AverageRating", captured.UpdateExpression);
+        Assert.DoesNotContain("LastRatingEventId", captured.UpdateExpression);
     }
 
     [Fact]
@@ -106,6 +112,97 @@ public class DynamoProductIndexTests
 
         Assert.NotNull(recomputeRequest);
         Assert.Equal("4.5", recomputeRequest!.ExpressionAttributeValues[":average"].N);
+    }
+
+    [Fact]
+    public async Task ApplyRatingAsync_NewEventId_IncrementsDistributionBucketAtomically()
+    {
+        UpdateItemRequest? conditionalRequest = null;
+        _dynamoDb
+            .Setup(d => d.UpdateItemAsync(
+                It.Is<UpdateItemRequest>(r => r.ConditionExpression != null),
+                It.IsAny<CancellationToken>()))
+            .Callback<UpdateItemRequest, CancellationToken>((r, _) => conditionalRequest = r)
+            .ReturnsAsync(new UpdateItemResponse());
+
+        _dynamoDb
+            .Setup(d => d.GetItemAsync(It.IsAny<GetItemRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetItemResponse());
+
+        await _index.ApplyRatingAsync("product-1", "event-3", rating: 4);
+
+        Assert.NotNull(conditionalRequest);
+
+        Assert.Contains("ADD", conditionalRequest.UpdateExpression);
+        Assert.Contains("RatingDistribution.", conditionalRequest.UpdateExpression);
+
+        var ratingPlaceholder = conditionalRequest.ExpressionAttributeNames
+            .Single(kvp => kvp.Value == "4").Key;
+
+        var match = Regex.Match(
+            conditionalRequest.UpdateExpression,
+            $@"RatingDistribution\.{Regex.Escape(ratingPlaceholder)}\s+(:\w+)");
+        Assert.True(
+            match.Success,
+            "Expected a value placeholder after the distribution path.");
+        Assert.Equal(
+            "1",
+            conditionalRequest.ExpressionAttributeValues[match.Groups[1].Value].N);
+    }
+
+    [Fact]
+    public async Task ApplyRatingDistribution_WhenUpdateRatingIsReceived_AccumulatesAndRecomputesDistribution()
+    {
+        UpdateItemRequest? conditionalRequest = null;
+        _dynamoDb
+            .Setup(d => d.UpdateItemAsync(
+                It.Is<UpdateItemRequest>(r => r.ConditionExpression != null),
+                It.IsAny<CancellationToken>()))
+            .Callback<UpdateItemRequest, CancellationToken>((r, _) => conditionalRequest = r)
+            .ReturnsAsync(new UpdateItemResponse());
+
+        _dynamoDb
+            .Setup(d => d.GetItemAsync(
+                It.IsAny<GetItemRequest>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetItemResponse());
+
+        await _index.ApplyRatingUpdateAsync(
+            "product-1", "event-3", 4, 5);
+
+        Assert.NotNull(conditionalRequest);
+
+        Assert.Contains("ADD", conditionalRequest.UpdateExpression);
+        Assert.Contains("RatingDistribution.", conditionalRequest.UpdateExpression);
+
+        var oldRatingPlaceholder = conditionalRequest.ExpressionAttributeNames
+            .Single(kvp => kvp.Value == "4").Key;
+
+        var oldMatch = Regex.Match(
+            conditionalRequest.UpdateExpression,
+            $@"RatingDistribution\.{Regex.Escape(oldRatingPlaceholder)}\s+(:\w+)");
+
+        Assert.True(
+            oldMatch.Success,
+            "Expected a value placeholder after the distribution path.");
+        Assert.Equal(
+            "-1",
+            conditionalRequest.ExpressionAttributeValues[oldMatch.Groups[1].Value].N);
+
+        var newRatingPlaceholder = conditionalRequest.ExpressionAttributeNames
+            .Single(kvp => kvp.Value == "5").Key;
+
+        var newMatch = Regex.Match(
+            conditionalRequest.UpdateExpression,
+            $@"RatingDistribution\.{Regex.Escape(newRatingPlaceholder)}\s+(:\w+)");
+
+        Assert.True(
+            newMatch.Success,
+            "Expected a value placeholder after the distribution path.");
+
+        Assert.Equal(
+            "1",
+            conditionalRequest.ExpressionAttributeValues[newMatch.Groups[1].Value].N);
     }
 
     [Fact]

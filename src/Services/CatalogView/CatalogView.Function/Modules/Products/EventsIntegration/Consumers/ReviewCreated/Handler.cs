@@ -1,6 +1,4 @@
-﻿using CatalogView.Function.Modules.Products.Data;
-
-namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;
+﻿namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;
 
 // Consumes ReviewCreated (ADR-0011, still owned/published by Review) and folds the new rating
 // into the product's catalogview-products item via a two-step, idempotent DynamoDB update

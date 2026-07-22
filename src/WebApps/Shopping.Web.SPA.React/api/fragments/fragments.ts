@@ -5,9 +5,20 @@
 // a table nobody reads off the catalog/card views.
 export const PRODUCT_FIELDS = `
   fragment ProductFields on Product {
-    id name description stock categoryIds averageRating ratingCount
+    id
+    name
+    description
+    stock
+    categoryIds
+    averageRating
+    ratingCount
+    ratingDistribution
     images { imageId isMain order }
-    originalPrice price cashPrice maxInstallmentsWithoutInterest maxInstallmentValue
+    originalPrice
+    price
+    cashPrice
+    maxInstallmentsWithoutInterest
+    maxInstallmentValue
   }
 `
 

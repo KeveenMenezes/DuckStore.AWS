@@ -29,6 +29,7 @@ export function response(ctx) {
     categoryIds: item.CategoryIds ?? [],
     averageRating: item.AverageRating ?? 0,
     ratingCount: item.RatingCount ?? 0,
+    ratingDistribution: item.RatingDistribution ?? {},
     originalPrice: item.OriginalPrice ?? 0,
     price: item.Price ?? 0,
     cashPrice: item.CashPrice ?? 0,

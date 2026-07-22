@@ -1,7 +1,5 @@
-﻿﻿using System.Globalization;
-using Amazon.DynamoDBv2;
+﻿﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
-using CatalogView.Function.Modules.Products.Domain;
 
 namespace CatalogView.Function.Modules.Products.Data;
 
@@ -37,7 +35,8 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             UpdateExpression =
                 $"SET {NameAlias} = :name, {DescriptionAlias} = :description, Images = :images, " +
                 "Stock = :stock, CategoryIds = :categoryIds, Categories = :categories, " +
-                "GSI1PK = :gsi1pk, GSI1SK = if_not_exists(GSI1SK, :zero)",
+                "GSI1PK = :gsi1pk, GSI1SK = if_not_exists(GSI1SK, :zero)," +
+                "RatingDistribution = if_not_exists(RatingDistribution, :ratingDistribution)",
             ExpressionAttributeNames = new Dictionary<string, string>
             {
                 [NameAlias] = "Name",
@@ -54,7 +53,18 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
                 [":gsi1pk"] = new(Gsi1PartitionValue),
                 // if_not_exists keeps this an insert-only default — must never clobber the
                 // AverageRating-derived GSI1SK that RecomputeAverageAsync maintains afterwards.
-                [":zero"] = new AttributeValue { N = "0" }
+                [":zero"] = new AttributeValue { N = "0" },
+                [":ratingDistribution"] = new AttributeValue
+                {
+                    M = new Dictionary<string, AttributeValue>
+                    {
+                        ["1"] = new AttributeValue { N = "0" },
+                        ["2"] = new AttributeValue { N = "0" },
+                        ["3"] = new AttributeValue { N = "0" },
+                        ["4"] = new AttributeValue { N = "0" },
+                        ["5"] = new AttributeValue { N = "0" }
+                    }
+                }
             }
         };
 
@@ -136,7 +146,7 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
         string productId, string eventId, int rating, CancellationToken cancellationToken = default)
     {
         var applied = await TryApplyRatingDeltaAsync(
-            productId, eventId, ratingSumDelta: rating, ratingCountDelta: 1, cancellationToken);
+            productId, eventId, newRating: rating, oldRating: 0, ratingCountDelta: 1, cancellationToken);
 
         if (applied)
             await RecomputeAverageAsync(productId, cancellationToken);
@@ -149,7 +159,7 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
         CancellationToken cancellationToken = default)
     {
         var applied = await TryApplyRatingDeltaAsync(
-            productId, eventId, ratingSumDelta: newRating - oldRating, ratingCountDelta: 0, cancellationToken);
+            productId, eventId, newRating: newRating, oldRating, ratingCountDelta: 0, cancellationToken);
 
         if (applied)
             await RecomputeAverageAsync(productId, cancellationToken);
@@ -158,9 +168,35 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
     // Returns false (no-op) when a ConditionalCheckFailedException indicates this eventId was
     // already applied — an idempotent replay, not an error.
     private async Task<bool> TryApplyRatingDeltaAsync(
-        string productId, string eventId, int ratingSumDelta, int ratingCountDelta,
+        string productId, string eventId, int newRating, int oldRating, int ratingCountDelta,
         CancellationToken cancellationToken)
     {
+        var ratingSumDelta = newRating - oldRating;
+
+        var expressionAttributeNames =
+            new Dictionary<string, string> { ["#new"] = $"{newRating}" };
+
+        var expressionAttributeValues =
+            new Dictionary<string, AttributeValue>
+            {
+                [":ratingSumDelta"] = new AttributeValue
+                {
+                    N = ratingSumDelta.ToString(CultureInfo.InvariantCulture)
+                },
+                [":ratingCountDelta"] = new AttributeValue
+                {
+                    N = ratingCountDelta.ToString(CultureInfo.InvariantCulture)
+                },
+                [":one"] = new AttributeValue { N = "1" },
+                [":eventId"] = new(eventId)
+            };
+
+        if (oldRating > 0)
+        {
+            expressionAttributeNames["#old"] = $"{oldRating}";
+            expressionAttributeValues[":minusOne"] = new AttributeValue { N = "-1" };
+        }
+
         try
         {
             await dynamoDb.UpdateItemAsync(
@@ -168,22 +204,16 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
                 {
                     TableName = TableName,
                     Key = new Dictionary<string, AttributeValue> { ["Id"] = new(productId) },
-                    UpdateExpression = "ADD RatingSum :ratingSumDelta, RatingCount :ratingCountDelta " +
-                                        "SET LastRatingEventId = :eventId",
+                    UpdateExpression = @$"
+                        ADD RatingSum :ratingSumDelta,
+                            RatingCount :ratingCountDelta,
+                            RatingDistribution.#new :one
+                            {(oldRating > 0 ? ", RatingDistribution.#old :minusOne" : "")}
+                        SET LastRatingEventId = :eventId",
                     ConditionExpression =
                         "attribute_not_exists(LastRatingEventId) OR LastRatingEventId <> :eventId",
-                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                    {
-                        [":ratingSumDelta"] = new AttributeValue
-                        {
-                            N = ratingSumDelta.ToString(CultureInfo.InvariantCulture)
-                        },
-                        [":ratingCountDelta"] = new AttributeValue
-                        {
-                            N = ratingCountDelta.ToString(CultureInfo.InvariantCulture)
-                        },
-                        [":eventId"] = new(eventId)
-                    }
+                    ExpressionAttributeNames = expressionAttributeNames,
+                    ExpressionAttributeValues = expressionAttributeValues
                 },
                 cancellationToken);
 

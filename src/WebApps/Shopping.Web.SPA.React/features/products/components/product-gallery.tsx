@@ -1,12 +1,12 @@
 "use client"
 
 import { useState, type ReactNode } from "react"
-import type { GqlProductImage } from "@/graphql/types"
+import type { ProductImage } from "@/features/products/types/product.types"
 import { mainImageId, orderedImages, imageVariantUrl } from "@/shared/lib/image-url"
 import { ProductPicture } from "./product-picture"
 
 interface ProductGalleryProps {
-  images: GqlProductImage[]
+  images: ProductImage[]
   name: string
   /** Rendered inside the main image container (e.g. the out-of-stock badge). */
   overlay?: ReactNode

@@ -1,4 +1,4 @@
-using BuildingBlocks.Messaging.Events;
+﻿using BuildingBlocks.Messaging.Events;
 using CatalogView.Function.Modules.Products.Data;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewCreated;
 
@@ -19,7 +19,10 @@ public class ReviewAggregateHandlerTests
         await handler.HandleAsync(eventId, evt);
 
         index.Verify(
-            i => i.ApplyRatingAsync(productId.ToString(), eventId, 4, It.IsAny<CancellationToken>()),
+            i => i.ApplyRatingAsync(
+                productId.ToString(),
+                eventId, 4,
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 }
