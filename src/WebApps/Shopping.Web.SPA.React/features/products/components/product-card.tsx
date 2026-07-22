@@ -51,7 +51,9 @@ export function ProductCard({ product }: ProductCardProps) {
         </div>
       </Link>
       <CardContent className="flex flex-col gap-3 p-4">
-        <Link href={ROUTES.product(product.id)} className="block">
+        {/* Same destination as the image Link above, already prefetched by it —
+            prefetch={false} avoids firing a second, redundant prefetch per card. */}
+        <Link href={ROUTES.product(product.id)} className="block" prefetch={false}>
           <h3 className="font-semibold text-foreground">{product.name}</h3>
           <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{product.description}</p>
           <div className="mt-1.5">

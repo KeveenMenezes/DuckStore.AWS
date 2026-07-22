@@ -30,7 +30,10 @@ export function HeroSection() {
                 View Catalog
               </Button>
             </Link>
-            <Link href={ROUTES.challenges}>
+            {/* Same destination as the header nav's Challenges link, already
+                prefetched by it whenever both are on screen — prefetch={false}
+                avoids firing a second, redundant prefetch on every home load. */}
+            <Link href={ROUTES.challenges} prefetch={false}>
               <Button size="lg" variant="outline" className="gap-2">
                 <Code2 className="h-4 w-4" />
                 Challenges
