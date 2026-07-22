@@ -143,6 +143,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
         initialNextToken={reviewPage.nextToken}
         averageRating={product.averageRating}
         ratingCount={product.ratingCount}
+        ratingDistribution={product.ratingDistribution}
       />
     </div>
   )

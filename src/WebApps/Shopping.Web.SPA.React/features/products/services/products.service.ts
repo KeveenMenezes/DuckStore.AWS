@@ -3,23 +3,65 @@ import { GET_PRODUCTS, GET_PRODUCT } from "@/api/queries/product"
 import { GET_CATEGORIES } from "@/api/queries/category"
 import { GET_INSTALLMENT_PLAN } from "@/api/queries/pricing"
 import type { GqlProductPage, GqlCategoryPage, GqlProduct, GqlInstallmentPlan } from "@/graphql/types"
-import type { Product, ProductCategory, InstallmentPlan } from "@/features/products/types/product.types"
+import type {
+  Product,
+  ProductCategory,
+  InstallmentPlan,
+} from "@/features/products/types/product.types"
 
 export const ALL_CATEGORY_ID = "all"
 
 // Public catalog reads use the cookie-free `gqlPublic` client so the Server
 // Components that call them (home, product detail) stay statically renderable.
 
+/**
+ * Anti-corruption boundary: translates the wire-shaped `GqlProduct` (mirrors graphql/schema.graphql)
+ * into the domain `Product` type the rest of the app consumes. Field-by-field on purpose — even
+ * though the two shapes are identical today, this is what actually makes graphql/types.ts safe to
+ * change independently of product.types.ts: adding/removing/renaming a field on either side now
+ * surfaces as a compiler error here instead of silently drifting (see product.types.ts).
+ */
+function toProduct(gql: GqlProduct): Product {
+  return {
+    id: gql.id,
+    name: gql.name,
+    description: gql.description,
+    images: gql.images,
+    stock: gql.stock,
+    categoryIds: gql.categoryIds,
+    averageRating: gql.averageRating,
+    ratingCount: gql.ratingCount,
+    ratingDistribution: gql.ratingDistribution,
+    originalPrice: gql.originalPrice,
+    price: gql.price,
+    cashPrice: gql.cashPrice,
+    maxInstallmentsWithoutInterest: gql.maxInstallmentsWithoutInterest,
+    maxInstallmentValue: gql.maxInstallmentValue,
+  }
+}
+
 /** Fetch the full product catalog from GraphQL (used by Server Components). */
 export async function getProducts(pageSize = 100, init?: RequestInit): Promise<Product[]> {
   const data = await gqlPublic<{ products: GqlProductPage }>(GET_PRODUCTS, { pageSize }, init)
-  return data.products.items
+  return data.products.items.map(toProduct)
 }
 
 /** Fetch a single product by id (used by Server Components). */
 export async function getProduct(id: string, init?: RequestInit): Promise<Product> {
   const data = await gqlPublic<{ product: GqlProduct }>(GET_PRODUCT, { id }, init)
-  return data.product
+  return toProduct(data.product)
+}
+
+/** Anti-corruption boundary for `GqlInstallmentPlan` — see `toProduct` above. */
+function toInstallmentPlan(gql: GqlInstallmentPlan): InstallmentPlan {
+  return {
+    productId: gql.productId,
+    originalPrice: gql.originalPrice,
+    price: gql.price,
+    cashPrice: gql.cashPrice,
+    maxInstallmentsWithoutInterest: gql.maxInstallmentsWithoutInterest,
+    installments: gql.installments,
+  }
 }
 
 /**
@@ -36,7 +78,7 @@ export async function getInstallmentPlan(
     { productId },
     init,
   )
-  return data.installmentPlanFor
+  return data.installmentPlanFor ? toInstallmentPlan(data.installmentPlanFor) : null
 }
 
 /** Fetch all categories from GraphQL. */

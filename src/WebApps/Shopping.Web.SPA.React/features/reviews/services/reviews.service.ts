@@ -1,8 +1,27 @@
 import { gql, gqlPublic } from "@/api"
 import { GET_REVIEWS_BY_PRODUCT } from "@/api/queries/reviews"
 import { CREATE_REVIEW } from "@/api/mutations/review"
-import type { GqlReviewPage, GqlCreateReviewResult, CreateReviewInput } from "@/graphql/types"
-import type { ReviewPage } from "@/features/reviews/types/review.types"
+import type { GqlReview, GqlReviewPage, GqlCreateReviewResult, CreateReviewInput } from "@/graphql/types"
+import type { Review, ReviewPage } from "@/features/reviews/types/review.types"
+
+/** Anti-corruption boundary: translates the wire-shaped `GqlReview` into the domain `Review`. */
+function toReview(gql: GqlReview): Review {
+  return {
+    id: gql.id,
+    productId: gql.productId,
+    userName: gql.userName,
+    rating: gql.rating,
+    comment: gql.comment,
+    createdAt: gql.createdAt,
+  }
+}
+
+function toReviewPage(gql: GqlReviewPage): ReviewPage {
+  return {
+    items: gql.items.map(toReview),
+    nextToken: gql.nextToken,
+  }
+}
 
 // Reading reviews is public — use the cookie-free client so the product detail
 // Server Component that fetches them stays statically renderable.
@@ -17,7 +36,7 @@ export async function getReviewsByProduct(
     { productId, pageSize, nextToken },
     init,
   )
-  return data.reviewsByProduct
+  return toReviewPage(data.reviewsByProduct)
 }
 
 // Creating a review is an authenticated mutation (client-side) — keep the

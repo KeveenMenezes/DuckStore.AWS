@@ -9,7 +9,8 @@ namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.Prod
 // naturally idempotent — no dedicated idempotency mechanism is needed here.
 public sealed class ProductSyncedHandler(IProductSearchIndex index)
 {
-    public Task HandleAsync(ProductSyncedEvent evt, CancellationToken cancellationToken = default) =>
+    public Task HandleAsync(
+        ProductSyncedEvent evt, CancellationToken cancellationToken = default) =>
         index.UpsertAsync(ToDocument(evt), cancellationToken);
 
     // Price is deliberately not set here: Pricing owns it (ADR-0026) and PriceSyncHandler merges

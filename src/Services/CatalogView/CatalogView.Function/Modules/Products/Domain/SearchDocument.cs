@@ -71,6 +71,9 @@ public sealed class SearchDocument
     // eventId is a no-op instead of double-counting.
     [JsonPropertyName("lastRatingEventId")]
     public string? LastRatingEventId { get; set; }
+
+    [JsonPropertyName("ratingDistribution")]
+    public Dictionary<int, int> RatingDistribution { get; set; } = new();
 }
 
 // One entry per category a product directly belongs to — id for filtering, name for display

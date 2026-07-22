@@ -10,12 +10,9 @@ import {
   useRef,
   type ReactNode,
 } from "react"
-import { gql } from "@/api"
-import { GET_BASKET } from "@/api/queries/order"
 import type { Product } from "@/features/products/types/product.types"
 import type { CartItem, CartProduct } from "@/features/cart/types/cart.types"
-import type { GqlShoppingCart } from "@/graphql/types"
-import { syncCartToBasket } from "@/features/cart/services/basket.service"
+import { getBasket, syncCartToBasket } from "@/features/cart/services/basket.service"
 import { mainImageId } from "@/shared/lib/image-url"
 
 interface CartContextType {
@@ -50,18 +47,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     async function hydrate() {
       try {
-        // No ownerId passed — the /api/graphql BFF injects it from the httpOnly identity cookies.
-        const data = await gql<{ basket: GqlShoppingCart | null }>(GET_BASKET)
+        const enriched = await getBasket()
         if (cancelled) return
-        const enriched: CartItem[] = (data.basket?.items ?? []).map((item) => ({
-          product: {
-            id: item.productId,
-            name: item.productName,
-            price: item.price,
-            imageId: item.imageId ?? null,
-          },
-          quantity: item.quantity,
-        }))
         if (enriched.length > 0) {
           skipNextSyncRef.current = true
           setItems(enriched)

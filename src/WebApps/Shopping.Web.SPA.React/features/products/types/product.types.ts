@@ -45,6 +45,7 @@ export interface Product {
   categoryIds: string[]
   averageRating: number
   ratingCount: number
+  ratingDistribution: { [rating: number]: number }
 }
 
 /** A selectable catalog category with a client-derived product count. */

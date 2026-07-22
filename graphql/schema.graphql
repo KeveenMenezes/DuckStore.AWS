@@ -15,6 +15,10 @@ type Product @aws_api_key @aws_cognito_user_pools {
   # CatalogProductSyncEvent/ReviewCreated CDC.
   averageRating: Float!
   ratingCount: Int!
+  # Sparse map keyed by rating value (1–5) to count of reviews with that rating, e.g.
+  # {"1": 3, "2": 0, "3": 5, "4": 12, "5": 8}. Used to render the rating histogram on
+  # product pages without a separate query to reviewsByProduct (ADR-0030).
+  ratingDistribution: AWSJSON!
   # Sticker/"De" price, denormalized onto the search document via PriceChangedEvent CDC
   # (ADR-0026/0027) — never discounted, also the ceiling the store subsidizes card-installment
   # fees up to.

@@ -1,4 +1,4 @@
-import type { GqlProductImage } from '@/graphql/types'
+import type { ProductImage } from '@/features/products/types/product.types'
 
 // Product image URLs (ADR-0034): the API returns metadata only ({imageId, isMain, order});
 // display URLs are built here from the CDN base — swapping bucket/CDN is a config change.
@@ -28,10 +28,10 @@ export function imageSrcSet(imageId: string, format: ImageVariantFormat): string
 }
 
 /** The image to show wherever only one is rendered (cards, cart, order rows). */
-export function mainImageId(images: GqlProductImage[]): string | null {
+export function mainImageId(images: ProductImage[]): string | null {
   return (images.find((i) => i.isMain) ?? images[0])?.imageId ?? null
 }
 
-export function orderedImages(images: GqlProductImage[]): GqlProductImage[] {
+export function orderedImages(images: ProductImage[]): ProductImage[] {
   return [...images].sort((a, b) => a.order - b.order)
 }

@@ -23,6 +23,7 @@ export interface GqlProduct {
   categoryIds: string[]
   averageRating: number
   ratingCount: number
+  ratingDistribution: Record<string, number>
   // Denormalized onto CatalogView's search document via CDC (ADR-0026/0027/0028/0030) — scalars
   // only; the detailed per-installment plan is fetched separately via installmentPlanFor.
   originalPrice: number
