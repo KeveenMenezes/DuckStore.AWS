@@ -31,13 +31,27 @@ function toProduct(gql: GqlProduct): Product {
     categoryIds: gql.categoryIds,
     averageRating: gql.averageRating,
     ratingCount: gql.ratingCount,
-    ratingDistribution: gql.ratingDistribution,
+    ratingDistribution: parseRatingDistribution(gql.ratingDistribution),
     originalPrice: gql.originalPrice,
     price: gql.price,
     cashPrice: gql.cashPrice,
     maxInstallmentsWithoutInterest: gql.maxInstallmentsWithoutInterest,
     maxInstallmentValue: gql.maxInstallmentValue,
   }
+}
+
+// AWSJSON is opaque per the GraphQL spec: real AppSync serializes it as a JSON-encoded STRING
+// (must be JSON.parse'd), while the local dev backend's scalar (app/api/graphql/local.ts) passes
+// the native object through unparsed — same field, different shape depending on environment.
+function parseRatingDistribution(value: unknown): Record<string, number> {
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as Record<string, number>
+    } catch {
+      return {}
+    }
+  }
+  return (value as Record<string, number>) ?? {}
 }
 
 /** Fetch the full product catalog from GraphQL (used by Server Components). */
