@@ -122,7 +122,7 @@ type Review @aws_api_key @aws_cognito_user_pools {
   comment: String!
   createdAt: String!
   # Set on every write, including the first (ADR-0029) — distinct from createdAt once a customer
-  # edits their existing review (same productId+userName upserts in place, createdAt unchanged).
+  # edits their existing review (same productId+userId upserts in place, createdAt unchanged).
   updatedAt: String!
 }
 
@@ -259,6 +259,7 @@ input CreateProductImageUploadInput {
 
 type CreateReviewResult {
   id: ID!
+  userName: String!
 }
 
 type UpdateProductResult @aws_cognito_user_pools {
@@ -334,7 +335,6 @@ input UpdateProductInput {
 
 input CreateReviewInput {
   productId: ID!
-  userName: String!
   rating: Int!
   comment: String!
 }
@@ -457,9 +457,9 @@ type Mutation {
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
   deleteOrder(orderId: ID!): DeleteOrderResult! @aws_cognito_user_pools
 
-  # Direct DynamoDB pipeline resolver — Cognito required; upserts by (productId, userName) so a
-  # customer has exactly one active review per product (ADR-0029); CDC updates product rating
-  # (ADR-0011 for new reviews, ADR-0029 for edits)
+  # Direct DynamoDB pipeline resolver — Cognito required; upserts by (productId, ctx.identity.sub)
+  # so a customer has exactly one active review per product, and the key can't be spoofed via
+  # client input; CDC updates product rating (ADR-0011 for new reviews, ADR-0029 for edits)
   createReview(input: CreateReviewInput!): CreateReviewResult!
 
   # Direct DynamoDB resolver — Cognito only (default auth); UpdateItem keyed by ctx.identity.sub (ADR-0017)

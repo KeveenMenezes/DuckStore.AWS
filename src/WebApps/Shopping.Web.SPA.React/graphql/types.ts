@@ -82,6 +82,7 @@ export interface GqlReviewPage {
 
 export interface GqlCreateReviewResult {
   id: string
+  userName: string
 }
 
 export interface GqlProductPage {
@@ -223,7 +224,6 @@ export interface CheckoutInput {
 
 export interface CreateReviewInput {
   productId: string
-  userName: string
   rating: number
   comment: string
 }

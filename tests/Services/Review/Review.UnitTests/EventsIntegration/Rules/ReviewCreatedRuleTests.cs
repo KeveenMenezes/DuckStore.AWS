@@ -8,7 +8,7 @@ namespace Review.UnitTests.EventsIntegration.Rules;
 public class ReviewCreatedRuleTests
 {
     private static ReviewStreamImage NewReview(Guid productId, int rating) =>
-        new($"{productId}#dXNlcg==", productId, "user", "comment", rating, "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z");
+        new($"{productId}#user-id", productId, "user-id", "user", "comment", rating, "2026-01-01T00:00:00.000Z", "2026-01-01T00:00:00.000Z");
 
     [Fact]
     public void Match_ReturnsTrue_ForInsert()

@@ -1,5 +1,5 @@
 export const CREATE_REVIEW = `
   mutation CreateReview($input: CreateReviewInput!) {
-    createReview(input: $input) { id }
+    createReview(input: $input) { id userName }
   }
 `

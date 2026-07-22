@@ -40,10 +40,14 @@ export async function getReviewsByProduct(
 }
 
 // Creating a review is an authenticated mutation (client-side) — keep the
-// cookie-aware `gql` so the signed-in user's token is attached.
-export async function createReview(input: CreateReviewInput): Promise<string> {
+// cookie-aware `gql` so the signed-in user's token is attached. userName is no longer part of
+// the input (the server derives identity from the Cognito token) — the response returns the
+// server-derived display name so callers don't have to assume it matches the local `user.name`.
+export async function createReview(
+  input: CreateReviewInput,
+): Promise<{ id: string; userName: string }> {
   const data = await gql<{ createReview: GqlCreateReviewResult }>(CREATE_REVIEW, { input })
-  return data.createReview.id
+  return data.createReview
 }
 
 export function formatReviewDate(isoString: string): string {
