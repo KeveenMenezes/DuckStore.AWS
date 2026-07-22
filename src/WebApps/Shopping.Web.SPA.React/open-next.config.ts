@@ -10,6 +10,18 @@ const config: OpenNextConfig = {
   // `@img/sharp-*` optional packages that npm filters by `--os/--arch/--libc`,
   // so this pin actually produces a linux-arm64 binary. Platform must match
   // spa-lambdas.ts (NODEJS_22_X + ARM_64).
+  //
+  // `arch: 'arm64'` above is what OpenNext's installer *documents*, but its
+  // installDeps.js (@opennextjs/aws@4.0.3) turns it into an `--arch=arm64`
+  // npm flag that doesn't exist (npm only understands `--cpu` for this) — npm
+  // prints "Unknown cli config \"--arch\"" and silently installs for the
+  // *host*'s own CPU instead. On an Apple Silicon dev machine that accidentally
+  // "works" (host already is arm64), which is why this went unnoticed locally;
+  // on the GitHub Actions runner (ubuntu-latest, x64) it silently installed
+  // sharp-linux-x64 into an arm64 Lambda, which fails to load, and — same
+  // failure mode as the paragraph above — Next just serves the un-optimized
+  // source with no error surfaced anywhere. additionalArgs passes the npm flag
+  // that actually works, alongside the (harmless but ignored) arch option.
   imageOptimization: {
     install: {
       packages: ['sharp@0.33.5'],
@@ -17,6 +29,7 @@ const config: OpenNextConfig = {
       os: 'linux',
       libc: 'glibc',
       nodeVersion: '22',
+      additionalArgs: '--cpu=arm64',
     },
   },
 }
