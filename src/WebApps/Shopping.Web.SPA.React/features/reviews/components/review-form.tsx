@@ -53,16 +53,15 @@ export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
     setSessionExpired(false)
     startTransition(async () => {
       try {
-        const id = await createReview({
+        const { id, userName } = await createReview({
           productId,
-          userName: user.name,
           rating,
           comment,
         })
         onReviewCreated({
           id,
           productId,
-          userName: user.name,
+          userName,
           rating,
           comment,
           createdAt: new Date().toISOString(),

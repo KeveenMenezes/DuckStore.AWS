@@ -4,7 +4,8 @@ import Link from "next/link"
 import { ArrowLeft, Package } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { StarRatingDisplay } from "@/features/reviews/components/star-rating"
+import { ProductRatingBadge } from "@/features/reviews/components/product-rating-badge"
+import { ProductRatingProvider } from "@/features/reviews/context/product-rating-context"
 import { ReviewsSection } from "@/features/reviews/components/reviews-section"
 import { AddToCartButton } from "@/app/products/[id]/add-to-cart-button"
 import { ProductPrice } from "@/features/products/components/product-price"
@@ -90,61 +91,60 @@ export default async function ProductPage({ params }: ProductPageProps) {
         Back to catalog
       </Link>
 
-      <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
-        {/* Product images — main <picture> + thumbnail strip, served straight from the
-            image CDN outside the Next optimizer (ADR-0034). */}
-        <ProductGallery
-          images={product.images}
-          name={product.name}
-          overlay={
-            !inStock ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/70">
-                <Badge variant="secondary" className="text-sm px-4 py-1.5">Out of stock</Badge>
+      <ProductRatingProvider
+        initialAverageRating={product.averageRating}
+        initialRatingCount={product.ratingCount}
+        initialRatingDistribution={product.ratingDistribution}
+      >
+        <div className="grid gap-8 lg:grid-cols-2 lg:gap-16">
+          {/* Product images — main <picture> + thumbnail strip, served straight from the
+              image CDN outside the Next optimizer (ADR-0034). */}
+          <ProductGallery
+            images={product.images}
+            name={product.name}
+            overlay={
+              !inStock ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-background/70">
+                  <Badge variant="secondary" className="text-sm px-4 py-1.5">Out of stock</Badge>
+                </div>
+              ) : undefined
+            }
+          />
+
+          <div className="flex flex-col gap-5">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight text-foreground lg:text-4xl">{product.name}</h1>
+              <div className="mt-2">
+                <ProductRatingBadge size="md" />
               </div>
-            ) : undefined
-          }
-        />
-
-        <div className="flex flex-col gap-5">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight text-foreground lg:text-4xl">{product.name}</h1>
-            <div className="mt-2">
-              <StarRatingDisplay
-                rating={product.averageRating}
-                count={product.ratingCount}
-                size="md"
-              />
             </div>
-          </div>
 
-          <p className="text-lg text-muted-foreground leading-relaxed">{product.description}</p>
+            <p className="text-lg text-muted-foreground leading-relaxed">{product.description}</p>
 
-          <Separator />
+            <Separator />
 
-          <div className="flex items-start justify-between gap-4">
-            <ProductPrice product={product} installmentPlan={installmentPlan} />
-            <div className="flex shrink-0 items-center gap-1.5 text-sm">
-              <Package className="h-4 w-4 text-muted-foreground" />
-              <span className={inStock ? "text-foreground" : "text-muted-foreground"}>
-                {inStock ? `${product.stock} in stock` : "Out of stock"}
-              </span>
+            <div className="flex items-start justify-between gap-4">
+              <ProductPrice product={product} installmentPlan={installmentPlan} />
+              <div className="flex shrink-0 items-center gap-1.5 text-sm">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <span className={inStock ? "text-foreground" : "text-muted-foreground"}>
+                  {inStock ? `${product.stock} in stock` : "Out of stock"}
+                </span>
+              </div>
             </div>
-          </div>
 
-          <AddToCartButton product={product} />
+            <AddToCartButton product={product} />
+          </div>
         </div>
-      </div>
 
-      <Separator className="my-12" />
+        <Separator className="my-12" />
 
-      <ReviewsSection
-        productId={product.id}
-        initialReviews={reviewPage.items}
-        initialNextToken={reviewPage.nextToken}
-        averageRating={product.averageRating}
-        ratingCount={product.ratingCount}
-        ratingDistribution={product.ratingDistribution}
-      />
+        <ReviewsSection
+          productId={product.id}
+          initialReviews={reviewPage.items}
+          initialNextToken={reviewPage.nextToken}
+        />
+      </ProductRatingProvider>
     </div>
   )
 }

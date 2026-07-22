@@ -1,12 +1,15 @@
 namespace Review.Function.Modules.Reviews.EventsIntegration.Publishers;
 
 // The subset of a persisted review item the publisher rules reason about, projected from a
-// DynamoDB Streams image. Id is now the composite `${productId}#${base64url(userName)}` key
-// (ADR-0029), not a Guid, so it's carried as a plain string. Widened beyond Id/ProductId/Rating
-// so ReviewUpdatedRule can report both the old and new rating for a MODIFY.
+// DynamoDB Streams image. Id is now the composite `${productId}#${userId}` key, not a Guid, so
+// it's carried as a plain string. Widened beyond Id/ProductId/Rating so ReviewUpdatedRule can
+// report both the old and new rating for a MODIFY. UserId (the Cognito sub, key component) and
+// UserName (display-only, sourced from the Cognito name claim) are both carried here to mirror
+// the full item shape, even though no rule currently reads either.
 public sealed record ReviewStreamImage(
     string Id,
     Guid ProductId,
+    string UserId,
     string UserName,
     string Comment,
     int Rating,
@@ -23,6 +26,7 @@ public sealed record ReviewStreamImage(
             image.TryGetValue("ProductId", out var productId) && Guid.TryParse(productId.S, out var parsed)
                 ? parsed
                 : Guid.Empty,
+            image.TryGetValue("UserId", out var userId) ? userId.S : string.Empty,
             image.TryGetValue("UserName", out var userName) ? userName.S : string.Empty,
             image.TryGetValue("Comment", out var comment) ? comment.S : string.Empty,
             image.TryGetValue("Rating", out var rating) && !string.IsNullOrEmpty(rating.N)

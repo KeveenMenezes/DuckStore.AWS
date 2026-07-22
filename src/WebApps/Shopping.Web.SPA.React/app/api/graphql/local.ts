@@ -950,15 +950,21 @@ const resolvers = {
       return { isSuccess: true }
     },
 
-    // Upserts by composite Id `${productId}#${base64(userName)}` (ADR-0029) — the same key the
-    // AppSync JS pipeline resolver computes in production, since AppSync JS resolvers don't run
-    // locally (see CLAUDE.md). CreatedAt is preserved from the existing item on an edit so GSI1SK
-    // never moves; UpdatedAt is always refreshed.
+    // Upserts by composite Id `${productId}#${userId}` — the same key the AppSync JS pipeline
+    // resolver computes in production, since AppSync JS resolvers don't run locally (see
+    // CLAUDE.md). CreatedAt is preserved from the existing item on an edit so GSI1SK never moves;
+    // UpdatedAt is always refreshed. UserId comes from the BFF-resolved owner, not client input,
+    // mirroring the production resolver's ctx.identity.sub; UserName is a placeholder derived from
+    // the userId (there is no Cognito claim to read locally — same limitation as myProfile/local
+    // checkout).
     async createReview(
       _: unknown,
-      { input }: { input: { productId: string; userName: string; rating: number; comment: string } },
+      { input }: { input: { productId: string; rating: number; comment: string } },
+      context: LocalContext,
     ) {
-      const id = `${input.productId}#${Buffer.from(input.userName, 'utf-8').toString('base64')}`
+      const userId = customerIdFromOwner(context.owner.ownerId)
+      const userName = userId
+      const id = `${input.productId}#${userId}`
 
       const existing = await dynamoDb.send(
         new GetItemCommand({ TableName: 'reviews', Key: { Id: { S: id } } }),
@@ -972,7 +978,8 @@ const resolvers = {
           Item: {
             Id: { S: id },
             ProductId: { S: input.productId },
-            UserName: { S: input.userName },
+            UserId: { S: userId },
+            UserName: { S: userName },
             Rating: { N: String(input.rating) },
             Comment: { S: input.comment },
             CreatedAt: { S: createdAt },
@@ -982,7 +989,7 @@ const resolvers = {
           },
         }),
       )
-      return { id }
+      return { id, userName }
     },
   },
 }
