@@ -3,6 +3,13 @@
 ## Status
 **Proposed** — July 2026
 
+**Partially superseded** by [ADR-0037](./0037-review-key-cognito-userid-not-client-username.md)
+(July 2026): §1's key-composition scheme, `${productId}#${base64(userName)}`, is replaced by
+`${productId}#${ctx.identity.sub}` (no encoding) to close an authorization gap — `userName` was
+client-supplied and unverified. Everything else below (upsert mechanics, sort-order stability,
+pipeline-resolver shape, rule-based Streams publisher, CatalogView rating-delta aggregation)
+remains in effect and is unaffected.
+
 Fulfills [ADR-0011](./0011-review-bounded-context-rating-aggregation-via-cdc.md)'s own anticipated
 "Future Constraint": *"Edits/deletions of reviews... would require the consumer to handle
 MODIFY/REMOVE and adjust RatingSum/RatingCount accordingly; the incremental model already supports
