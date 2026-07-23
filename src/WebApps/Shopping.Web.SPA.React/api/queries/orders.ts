@@ -11,7 +11,7 @@ export const GET_ORDERS_BY_CUSTOMER = `
           firstName lastName emailAddress addressLine country state zipCode
         }
         payment {
-          cardName cardNumber expiration cvv paymentMethod
+          paymentMethod installments
         }
         orderItems {
           productId quantity price

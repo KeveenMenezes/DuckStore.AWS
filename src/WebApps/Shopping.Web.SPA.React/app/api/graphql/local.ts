@@ -135,10 +135,6 @@ function mapOrder(item: Record<string, unknown>) {
       zipCode: addr.ZipCode ?? '',
     },
     payment: {
-      cardName: (pay.CardName as string) ?? '',
-      cardNumber: (pay.CardNumber as string) ?? '',
-      expiration: (pay.Expiration as string) ?? '',
-      cvv: (pay.Cvv as string) ?? '',
       paymentMethod: (pay.PaymentMethod as number) ?? 0,
       installments: (pay.Installments as number) ?? 1,
     },

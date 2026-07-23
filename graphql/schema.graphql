@@ -178,11 +178,8 @@ type ShippingAddress @aws_cognito_user_pools {
 }
 
 type OrderPayment @aws_cognito_user_pools {
-  # Null for Cash — no card is collected for that method.
-  cardName: String
-  cardNumber: String
-  expiration: String
-  cvv: String
+  # Card data (cardName/cardNumber/expiration/cvv) is no longer stored on Order — it lives
+  # only in Payment.Function (ADR-0038). Order only keeps what it needs for receipt display.
   paymentMethod: Int!
   installments: Int!
 }
