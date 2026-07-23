@@ -158,11 +158,6 @@ export interface GqlShippingAddress {
 }
 
 export interface GqlOrderPayment {
-  // Null for Cash — no card is collected for that method.
-  cardName: string | null
-  cardNumber: string | null
-  expiration: string | null
-  cvv: string | null
   paymentMethod: number
   installments: number
 }

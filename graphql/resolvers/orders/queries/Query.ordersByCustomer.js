@@ -35,13 +35,14 @@ export function response(ctx) {
         zipCode: item.ShippingAddress?.ZipCode ?? '',
       },
       payment: {
-        cardName: item.Payment?.CardName ?? '',
-        cardNumber: item.Payment?.CardNumber ?? '',
-        expiration: item.Payment?.Expiration ?? '',
-        cvv: item.Payment?.Cvv ?? '',
         paymentMethod: item.Payment?.PaymentMethod ?? 0,
         installments: item.Payment?.Installments ?? 1,
       },
+      orderItems: (item.OrderItems ?? []).map(orderItem => ({
+        productId: orderItem.ProductId,
+        quantity: orderItem.Quantity,
+        price: orderItem.Price,
+      })),
     })),
     nextToken: ctx.result.nextToken ?? null,
   }
