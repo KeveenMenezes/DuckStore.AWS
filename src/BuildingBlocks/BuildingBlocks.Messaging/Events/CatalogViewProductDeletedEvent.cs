@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Messaging.Events;
+﻿namespace BuildingBlocks.Messaging.Events;
 
 // Published by CatalogView's own CDC stream publisher when a catalogview-products item is removed
 // (REMOVE). Sibling to CatalogViewProductSyncedEvent — see that event's comment for why CatalogView

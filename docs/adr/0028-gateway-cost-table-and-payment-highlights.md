@@ -1,7 +1,7 @@
 # ADR-0028: Gateway Cost Table and Payment Highlights — Installment/À Vista Pricing via CDC
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 ---
 

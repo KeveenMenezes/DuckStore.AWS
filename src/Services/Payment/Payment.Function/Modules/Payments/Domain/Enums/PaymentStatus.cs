@@ -1,4 +1,4 @@
-namespace Payment.Function.Modules.Payments.Domain.Enums;
+﻿namespace Payment.Function.Modules.Payments.Domain.Enums;
 
 public enum PaymentStatus
 {

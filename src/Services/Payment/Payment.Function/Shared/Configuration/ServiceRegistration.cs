@@ -1,4 +1,4 @@
-namespace Payment.Function.Shared.Configuration;
+﻿namespace Payment.Function.Shared.Configuration;
 
 // Single DI composition for the whole service, shared by the [LambdaStartup] consumers, the
 // DynamoDB Streams publisher, and the dev data seeder.

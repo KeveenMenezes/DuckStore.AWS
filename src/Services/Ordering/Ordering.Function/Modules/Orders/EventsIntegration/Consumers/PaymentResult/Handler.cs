@@ -1,4 +1,4 @@
-namespace Ordering.Function.Modules.Orders.EventsIntegration.Consumers.PaymentResult;
+﻿namespace Ordering.Function.Modules.Orders.EventsIntegration.Consumers.PaymentResult;
 
 public class ApplyPaymentResultHandler(IOrderRepository orderRepository)
     : ICommandHandler<ApplyPaymentResultCommand>

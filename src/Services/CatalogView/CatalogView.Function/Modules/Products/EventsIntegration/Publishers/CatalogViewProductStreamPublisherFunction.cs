@@ -1,4 +1,4 @@
-namespace CatalogView.Function;
+﻿namespace CatalogView.Function;
 
 // DynamoDB Streams-triggered publisher: projects each catalogview-products record into a
 // StreamContext (old + new image) and lets the registered IStreamRule<CatalogViewProductStreamImage>

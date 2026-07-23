@@ -1,4 +1,4 @@
-namespace Payment.UnitTests.Application.EventHandlers.Publishers;
+﻿namespace Payment.UnitTests.Application.EventHandlers.Publishers;
 
 public class PaymentRequestedRuleTests
 {

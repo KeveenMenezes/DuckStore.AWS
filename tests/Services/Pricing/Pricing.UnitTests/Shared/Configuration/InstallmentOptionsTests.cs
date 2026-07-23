@@ -1,4 +1,4 @@
-using Microsoft.Extensions.Configuration;
+﻿using Microsoft.Extensions.Configuration;
 using Pricing.Function.Shared.Configuration;
 
 namespace Pricing.UnitTests.Shared.Configuration;

@@ -5,6 +5,7 @@ public static class CreateOrderCommandTestsDataTests
     public static CreateOrderCommand CreateOrderDtoWithValidItems(Guid? orderId = null) =>
         new(
             orderId ?? Guid.NewGuid(),
+            Guid.NewGuid(),
             "Test Order",
             new AddressDto(
                 "John",
@@ -14,13 +15,7 @@ public static class CreateOrderCommandTestsDataTests
                 "Country",
                 "State",
                 "12345"),
-            new PaymentDto(
-                "CardName",
-                "4111111111111111",
-                "12/25",
-                "123",
-                PaymentMethod.Debit,
-                1),
+            new PaymentDto(PaymentMethod.Debit, 1),
             [
                 new CreateOrderItemDto(
                     Guid.NewGuid(),
@@ -32,6 +27,7 @@ public static class CreateOrderCommandTestsDataTests
     public static CreateOrderCommand CreateOrderDtoWithInvalidItems() =>
         new(
             Guid.Empty,
+            Guid.Empty,
             string.Empty,
             new AddressDto(
                 string.Empty,
@@ -41,12 +37,6 @@ public static class CreateOrderCommandTestsDataTests
                 string.Empty,
                 string.Empty,
                 string.Empty),
-            new PaymentDto(
-                string.Empty,
-                "invalid-card-number",
-                "invalid-expiration",
-                "invalid-cvv",
-                0,
-                1),
+            new PaymentDto(0, 1),
             []);
 }

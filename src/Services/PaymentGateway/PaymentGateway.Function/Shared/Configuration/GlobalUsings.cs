@@ -1,4 +1,4 @@
-global using Amazon.Lambda.Annotations;
+﻿global using Amazon.Lambda.Annotations;
 global using Amazon.Lambda.Serialization.SystemTextJson;
 global using BuildingBlocks.Messaging.EventBridge;
 global using BuildingBlocks.Messaging.Events;

@@ -1,4 +1,4 @@
-namespace Payment.UnitTests.Domain.AggregatesModel.PaymentAggregate.ValueObjects;
+﻿namespace Payment.UnitTests.Domain.AggregatesModel.PaymentAggregate.ValueObjects;
 
 public class CardDetailsTests
 {

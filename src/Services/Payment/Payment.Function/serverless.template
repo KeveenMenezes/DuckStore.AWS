@@ -3,26 +3,6 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
   "Resources": {
-    "PaymentFunctionFunctionsOrderCreatedConsumerGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Payment.Function::Payment.Function.Functions_OrderCreatedConsumer_Generated::OrderCreatedConsumer"
-          ]
-        }
-      }
-    },
     "PaymentFunctionFunctionsPaymentAuthorizedConsumerGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
@@ -79,6 +59,26 @@
         "ImageConfig": {
           "Command": [
             "Payment.Function::Payment.Function.Functions_PaymentStreamPublisher_Generated::PaymentStreamPublisher"
+          ]
+        }
+      }
+    },
+    "PaymentFunctionFunctionsBasketCheckoutConsumerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Image",
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "Payment.Function::Payment.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer"
           ]
         }
       }

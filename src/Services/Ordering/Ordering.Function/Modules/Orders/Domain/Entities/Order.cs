@@ -33,15 +33,17 @@ public class Order : Aggregate<OrderId>
     }
 
     // Builds a Pending order with all its items from a checkout payload in one step, so callers
-    // never assemble OrderItems themselves.
+    // never assemble OrderItems themselves. orderId is the correlation id Basket generated at
+    // checkout time (ADR-0038) — Order no longer mints its own identity here.
     public static Order CreateFromCheckout(
+        OrderId orderId,
         CustomerId customerId,
         OrderName orderName,
         Address shippingAddress,
         Payment payment,
         IEnumerable<(ProductId ProductId, int Quantity, decimal Price)> items)
     {
-        var order = Create(OrderId.Of(Guid.NewGuid()), customerId, orderName, shippingAddress, payment);
+        var order = Create(orderId, customerId, orderName, shippingAddress, payment);
 
         foreach (var item in items)
             order.Add(item.ProductId, item.Quantity, item.Price);

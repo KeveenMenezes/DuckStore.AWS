@@ -1,4 +1,4 @@
-global using System.Globalization;
+﻿global using System.Globalization;
 global using Amazon.DynamoDBv2;
 global using Amazon.DynamoDBv2.Model;
 global using Amazon.Lambda.Annotations;
@@ -19,7 +19,7 @@ global using Microsoft.Extensions.DependencyInjection;
 global using Payment.Function.Modules.Payments.Data;
 global using Payment.Function.Modules.Payments.Domain.Enums;
 global using Payment.Function.Modules.Payments.Domain.ValueObjects;
-global using Payment.Function.Modules.Payments.EventsIntegration.Consumers.OrderCreated;
+global using Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
 global using Payment.Function.Modules.Payments.EventsIntegration.Consumers.PaymentResult;
 global using Payment.Function.Modules.Payments.EventsIntegration.Publishers;
 global using Payment.Function.Modules.Payments.EventsIntegration.Publishers.Rules;

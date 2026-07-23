@@ -1,4 +1,4 @@
-namespace CatalogView.Function.Modules.Products.EventsIntegration.Publishers;
+﻿namespace CatalogView.Function.Modules.Products.EventsIntegration.Publishers;
 
 // The subset of a catalogview-products item the publisher rules reason about, projected from a
 // DynamoDB Streams image. The table has no Type discriminator (single-entity, Id == ProductId) —

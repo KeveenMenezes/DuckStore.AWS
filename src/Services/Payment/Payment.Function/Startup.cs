@@ -1,4 +1,4 @@
-using BuildingBlocks.ServiceDefaults.Lambda;
+﻿using BuildingBlocks.ServiceDefaults.Lambda;
 using Payment.Function.Shared.Configuration;
 
 namespace Payment.Function;

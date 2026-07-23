@@ -1,4 +1,4 @@
-namespace Catalog.UnitTests.Domain;
+﻿namespace Catalog.UnitTests.Domain;
 
 public class CategoryTests
 {

@@ -1,4 +1,4 @@
-using BuildingBlocks.Messaging.Events;
+﻿using BuildingBlocks.Messaging.Events;
 using BuildingBlocks.Messaging.Streams;
 using Catalog.Function.Modules.Categories.EventsIntegration.Publishers;
 using Catalog.Function.Modules.Categories.EventsIntegration.Publishers.Rules;

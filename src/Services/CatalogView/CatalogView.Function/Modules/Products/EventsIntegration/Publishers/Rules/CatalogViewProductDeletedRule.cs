@@ -1,4 +1,4 @@
-namespace CatalogView.Function.Modules.Products.EventsIntegration.Publishers.Rules;
+﻿namespace CatalogView.Function.Modules.Products.EventsIntegration.Publishers.Rules;
 
 // Publishes CatalogViewProductDeletedEvent whenever a catalogview-products item is removed — one
 // rule per occurrence (ADR-0031), sibling to CatalogViewProductSyncedRule.

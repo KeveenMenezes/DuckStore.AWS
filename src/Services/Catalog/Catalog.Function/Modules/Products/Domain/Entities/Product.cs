@@ -1,4 +1,4 @@
-namespace Catalog.Function.Modules.Products.Domain.Entities;
+﻿namespace Catalog.Function.Modules.Products.Domain.Entities;
 
 public class Product : Aggregate<ProductId>
 {

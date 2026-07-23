@@ -1,4 +1,4 @@
-namespace Payment.Function.Modules.Payments.Domain.ValueObjects;
+﻿namespace Payment.Function.Modules.Payments.Domain.ValueObjects;
 
 public class CardDetails : ValueObject
 {

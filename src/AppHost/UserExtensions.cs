@@ -1,4 +1,4 @@
-using AppHost.Extensions;
+﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
 
 namespace AppHost.User;

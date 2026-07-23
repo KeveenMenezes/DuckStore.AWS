@@ -15,10 +15,6 @@ public record OrderCreatedEvent : IntegrationEvent
     public string State { get; init; } = default!;
     public string ZipCode { get; init; } = default!;
 
-    public string? CardName { get; init; }
-    public string CardNumber { get; init; } = default!;
-    public string Expiration { get; init; } = default!;
-    public string Cvv { get; init; } = default!;
     public int PaymentMethod { get; init; }
 
     public List<OrderCreatedItem> Items { get; init; } = [];

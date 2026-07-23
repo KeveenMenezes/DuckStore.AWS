@@ -1,4 +1,4 @@
-﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.OrderCreated;
+﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
 
 public class CreatePaymentHandler(IPaymentRepository paymentRepository)
     : ICommandHandler<CreatePaymentCommand, CreatePaymentResult>

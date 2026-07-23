@@ -1,4 +1,4 @@
-using Pricing.Function.Modules.Campaigns.Data;
+﻿using Pricing.Function.Modules.Campaigns.Data;
 using Pricing.Function.Modules.Campaigns.Domain.Enums;
 using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
 using Pricing.Function.Modules.GatewayCosts.Data;

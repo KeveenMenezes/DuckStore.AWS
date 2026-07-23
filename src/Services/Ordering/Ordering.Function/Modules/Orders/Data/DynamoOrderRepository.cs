@@ -71,13 +71,9 @@ public class DynamoOrderRepository(IAmazonDynamoDB dynamoDb) : IOrderRepository
             {
                 M = new Dictionary<string, AttributeValue>
                 {
-                    ["CardName"] = new(order.Payment.CardName ?? string.Empty),
-                    ["CardNumber"] = new(order.Payment.CardNumber),
-                    ["Expiration"] = new(order.Payment.Expiration),
-                    ["Cvv"] = new(order.Payment.Cvv),
                     ["PaymentMethod"] = new(order.Payment.PaymentMethod.ToString()),
                     ["Installments"] = new AttributeValue
-                        { N = order.Payment.Installments.ToString(CultureInfo.InvariantCulture) }
+                    { N = order.Payment.Installments.ToString(CultureInfo.InvariantCulture) }
                 }
             },
             ["OrderItems"] = new AttributeValue
@@ -113,10 +109,6 @@ public class DynamoOrderRepository(IAmazonDynamoDB dynamoDb) : IOrderRepository
             addressMap["ZipCode"].S);
 
         var payment = Payment.Of(
-            paymentMap["CardName"].S,
-            paymentMap["CardNumber"].S,
-            paymentMap["Expiration"].S,
-            paymentMap["Cvv"].S,
             Enum.Parse<PaymentMethod>(paymentMap["PaymentMethod"].S),
             int.Parse(paymentMap["Installments"].N, CultureInfo.InvariantCulture));
 

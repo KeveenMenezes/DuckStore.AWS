@@ -1,6 +1,7 @@
 ﻿namespace Ordering.Function.Modules.Orders.EventsIntegration.Consumers.BasketCheckout;
 
 public record CreateOrderCommand(
+    Guid OrderId,
     Guid CustomerId,
     string OrderName,
     AddressDto ShippingAddress,
@@ -16,6 +17,10 @@ public class CreateOrderCommandValidator
 {
     public CreateOrderCommandValidator()
     {
+        RuleFor(x => x.OrderId)
+            .NotEmpty()
+            .WithMessage("OrderId is required");
+
         RuleFor(x => x.CustomerId)
             .NotEmpty()
             .WithMessage("CustomerId is required");
@@ -27,11 +32,6 @@ public class CreateOrderCommandValidator
         RuleFor(x => x.Payment)
             .NotNull()
             .WithMessage("Payment is required");
-
-        RuleFor(x => x.Payment.CardNumber)
-            .CreditCard()
-            .WithMessage("Invalid card number")
-            .When(x => x.Payment.PaymentMethod != PaymentMethod.Cash);
 
         RuleFor(x => x.Payment.PaymentMethod)
             .IsInEnum()

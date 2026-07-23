@@ -8,6 +8,7 @@ public static class BasketCheckoutEventDataTests
         {
             OwnerId = "USER#testuser",
             CustomerId = Guid.NewGuid(),
+            OrderId = Guid.NewGuid(),
             TotalPrice = 1000m,
             FirstName = "John",
             LastName = "Doe",

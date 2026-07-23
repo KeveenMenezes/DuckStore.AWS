@@ -1,4 +1,4 @@
-namespace Payment.Function.Modules.Payments.EventsIntegration.Publishers;
+﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Publishers;
 
 // The subset of a persisted payment the publisher rules reason about, projected from a
 // DynamoDB Streams image — rules never touch raw AttributeValue maps.

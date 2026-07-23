@@ -1,4 +1,4 @@
-namespace Basket.Function.Modules.ShoppingCarts.Domain.Entities;
+﻿namespace Basket.Function.Modules.ShoppingCarts.Domain.Entities;
 
 public class ShoppingCartItem
 {

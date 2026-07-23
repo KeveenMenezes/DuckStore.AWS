@@ -27,16 +27,11 @@ public class CreateOrderHandler(
             orderDto.ShippingAddress.ZipCode);
 
         return Order.CreateFromCheckout(
+            orderId: OrderId.Of(orderDto.OrderId),
             customerId: CustomerId.Of(orderDto.CustomerId),
             orderName: OrderName.Of(orderDto.OrderName),
             shippingAddress: shippingAddress,
-            payment: Payment.Of(
-                orderDto.Payment.CardName,
-                orderDto.Payment.CardNumber,
-                orderDto.Payment.Expiration,
-                orderDto.Payment.Cvv,
-                orderDto.Payment.PaymentMethod,
-                orderDto.Payment.Installments),
+            payment: Payment.Of(orderDto.Payment.PaymentMethod, orderDto.Payment.Installments),
             items: orderDto.OrderItems.Select(item =>
                 (ProductId.Of(item.ProductId), item.Quantity, item.Price)));
     }

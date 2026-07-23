@@ -1,4 +1,4 @@
-namespace Payment.Function.Modules.Payments.Domain.Entities;
+﻿namespace Payment.Function.Modules.Payments.Domain.Entities;
 
 public class Payment : Aggregate<PaymentId>
 {

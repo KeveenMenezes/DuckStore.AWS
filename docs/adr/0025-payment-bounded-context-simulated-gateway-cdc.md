@@ -1,7 +1,7 @@
 # ADR-0025: Payment Bounded Context — Simulated Gateway via Fully Async EventBridge/CDC
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 ---
 

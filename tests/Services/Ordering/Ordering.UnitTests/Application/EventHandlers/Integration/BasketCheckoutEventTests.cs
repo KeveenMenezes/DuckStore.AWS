@@ -12,9 +12,10 @@ public class BasketCheckoutMapperTests
         var command = BasketCheckoutMapper.ToCreateOrderCommand(basketCheckoutEvent);
 
         // Assert
+        Assert.Equal(basketCheckoutEvent.OrderId, command.OrderId);
         Assert.Equal(basketCheckoutEvent.CustomerId, command.CustomerId);
         Assert.Equal(basketCheckoutEvent.EmailAddress, command.OrderName);
-        Assert.Equal(basketCheckoutEvent.CardNumber, command.Payment.CardNumber);
+        Assert.Equal((PaymentMethod)basketCheckoutEvent.PaymentMethod, command.Payment.PaymentMethod);
         Assert.NotEmpty(command.OrderItems);
     }
 }

@@ -1,4 +1,4 @@
-namespace PaymentGateway.UnitTests.Modules.Gateway.EventsIntegration.Consumers;
+﻿namespace PaymentGateway.UnitTests.Modules.Gateway.EventsIntegration.Consumers;
 
 public class PaymentRequestedConsumerTests
 {

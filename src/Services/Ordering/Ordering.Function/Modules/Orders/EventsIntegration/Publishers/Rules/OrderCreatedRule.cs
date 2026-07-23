@@ -31,10 +31,6 @@ public sealed class OrderCreatedRule(IOrderRepository orders) : IStreamRule<Orde
         State = order.ShippingAddress.State,
         ZipCode = order.ShippingAddress.ZipCode,
 
-        CardName = order.Payment.CardName,
-        CardNumber = order.Payment.CardNumber,
-        Expiration = order.Payment.Expiration,
-        Cvv = order.Payment.Cvv,
         PaymentMethod = (int)order.Payment.PaymentMethod,
 
         Items = [.. order.OrderItems.Select(oi =>

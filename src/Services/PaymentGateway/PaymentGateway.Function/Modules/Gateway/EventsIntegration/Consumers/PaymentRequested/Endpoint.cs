@@ -1,4 +1,4 @@
-namespace PaymentGateway.Function;
+﻿namespace PaymentGateway.Function;
 
 // EventBridge-triggered consumer: runs the simulated gateway decision and publishes the result
 // directly. No idempotency inbox — the decision is a pure function of (CardNumber, Amount), so

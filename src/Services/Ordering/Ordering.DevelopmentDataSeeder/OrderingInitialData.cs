@@ -28,18 +28,10 @@ public static class OrderingInitialData
                 "08050");
 
             var payment1 = Payment.Of(
-                "mehmet",
-                "5555555555554444",
-                "12/28",
-                "355",
                 Ordering.Function.Modules.Orders.Domain.Enums.PaymentMethod.Credit,
                 1);
 
             var payment2 = Payment.Of(
-                "john",
-                "8885555555554444",
-                "06/30",
-                "222",
                 Ordering.Function.Modules.Orders.Domain.Enums.PaymentMethod.Debit,
                 1);
 

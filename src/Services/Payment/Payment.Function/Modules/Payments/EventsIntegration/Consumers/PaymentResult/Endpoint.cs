@@ -1,4 +1,4 @@
-namespace Payment.Function;
+﻿namespace Payment.Function;
 
 // EventBridge-triggered consumers: apply the gateway's authorize/decline result to the Payment
 // row (Pending -> Authorized/Declined), idempotent via the payment-processed-events inbox. Two

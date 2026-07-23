@@ -1,4 +1,4 @@
-namespace Payment.Function;
+﻿namespace Payment.Function;
 
 // DynamoDB Streams-triggered publisher: projects each record into a StreamContext (old + new
 // image) and lets the registered IStreamRule<PaymentStreamImage> rules decide what to publish
