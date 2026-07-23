@@ -24,9 +24,19 @@ public class Payment : Aggregate<PaymentId>
         };
     }
 
+    // Maps a Payment gateway's authorize/decline outcome onto the payment's own transition, so
+    // callers never branch on Authorized themselves.
+    public void ApplyPaymentResult(bool authorized, string detail)
+    {
+        if (authorized)
+            Authorize(detail);
+        else
+            Decline(detail);
+    }
+
     // Guards against re-applying a duplicate result delivery beyond what the idempotency inbox
     // already prevents — a Payment only ever leaves Pending once.
-    public void Authorize(string authorizationCode)
+    private void Authorize(string authorizationCode)
     {
         if (Status != PaymentStatus.Pending)
             return;
@@ -35,7 +45,7 @@ public class Payment : Aggregate<PaymentId>
         AuthorizationCode = authorizationCode;
     }
 
-    public void Decline(string reason)
+    private void Decline(string reason)
     {
         if (Status != PaymentStatus.Pending)
             return;

@@ -32,9 +32,36 @@ public class Order : Aggregate<OrderId>
         _orderItems.Add(orderItem);
     }
 
-    // Applied when Payment publishes its authorize/decline result (see ADR-0025). Guards against
-    // re-applying a duplicate result delivery beyond what the idempotency inbox already prevents.
-    public void MarkCompleted()
+    // Builds a Pending order with all its items from a checkout payload in one step, so callers
+    // never assemble OrderItems themselves.
+    public static Order CreateFromCheckout(
+        CustomerId customerId,
+        OrderName orderName,
+        Address shippingAddress,
+        Payment payment,
+        IEnumerable<(ProductId ProductId, int Quantity, decimal Price)> items)
+    {
+        var order = Create(OrderId.Of(Guid.NewGuid()), customerId, orderName, shippingAddress, payment);
+
+        foreach (var item in items)
+            order.Add(item.ProductId, item.Quantity, item.Price);
+
+        return order;
+    }
+
+    // Applied when Payment publishes its authorize/decline result (see ADR-0025). Maps that
+    // outcome onto the order's own transition, so callers never branch on Authorized themselves.
+    public void ApplyPaymentResult(bool authorized)
+    {
+        if (authorized)
+            MarkCompleted();
+        else
+            MarkCancelled();
+    }
+
+    // Guards against re-applying a duplicate result delivery beyond what the idempotency inbox
+    // already prevents.
+    private void MarkCompleted()
     {
         if (Status != OrderStatus.Pending)
             return;
@@ -42,7 +69,7 @@ public class Order : Aggregate<OrderId>
         Status = OrderStatus.Completed;
     }
 
-    public void MarkCancelled()
+    private void MarkCancelled()
     {
         if (Status != OrderStatus.Pending)
             return;

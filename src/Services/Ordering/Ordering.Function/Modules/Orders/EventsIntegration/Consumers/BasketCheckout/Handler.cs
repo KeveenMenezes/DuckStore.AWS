@@ -26,8 +26,7 @@ public class CreateOrderHandler(
             orderDto.ShippingAddress.State,
             orderDto.ShippingAddress.ZipCode);
 
-        var newOrder = Order.Create(
-            id: OrderId.Of(Guid.NewGuid()),
+        return Order.CreateFromCheckout(
             customerId: CustomerId.Of(orderDto.CustomerId),
             orderName: OrderName.Of(orderDto.OrderName),
             shippingAddress: shippingAddress,
@@ -37,12 +36,8 @@ public class CreateOrderHandler(
                 orderDto.Payment.Expiration,
                 orderDto.Payment.Cvv,
                 orderDto.Payment.PaymentMethod,
-                orderDto.Payment.Installments));
-
-        foreach (var orderItemDto in orderDto.OrderItems)
-        {
-            newOrder.Add(ProductId.Of(orderItemDto.ProductId), orderItemDto.Quantity, orderItemDto.Price);
-        }
-        return newOrder;
+                orderDto.Payment.Installments),
+            items: orderDto.OrderItems.Select(item =>
+                (ProductId.Of(item.ProductId), item.Quantity, item.Price)));
     }
 }

@@ -25,10 +25,7 @@ public class ApplyPaymentResultHandler(IOrderRepository orderRepository)
         if (order is null)
             return null;
 
-        if (command.Authorized)
-            order.MarkCompleted();
-        else
-            order.MarkCancelled();
+        order.ApplyPaymentResult(command.Authorized);
 
         return order;
     }

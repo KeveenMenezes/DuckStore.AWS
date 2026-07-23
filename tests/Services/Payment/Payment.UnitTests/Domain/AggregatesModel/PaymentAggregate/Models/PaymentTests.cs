@@ -13,45 +13,45 @@ public class PaymentTests
     }
 
     [Fact]
-    public void Authorize_ShouldTransitionToAuthorized_WhenPending()
+    public void ApplyPaymentResult_ShouldTransitionToAuthorized_WhenPendingAndAuthorized()
     {
         var payment = PaymentDataTests.CreatePendingPayment();
 
-        payment.Authorize("SIM-123");
+        payment.ApplyPaymentResult(authorized: true, "SIM-123");
 
         Assert.Equal(PaymentStatus.Authorized, payment.Status);
         Assert.Equal("SIM-123", payment.AuthorizationCode);
     }
 
     [Fact]
-    public void Decline_ShouldTransitionToDeclined_WhenPending()
+    public void ApplyPaymentResult_ShouldTransitionToDeclined_WhenPendingAndNotAuthorized()
     {
         var payment = PaymentDataTests.CreatePendingPayment();
 
-        payment.Decline("card_declined");
+        payment.ApplyPaymentResult(authorized: false, "card_declined");
 
         Assert.Equal(PaymentStatus.Declined, payment.Status);
         Assert.Equal("card_declined", payment.DeclineReason);
     }
 
     [Fact]
-    public void Authorize_ShouldBeNoOp_WhenAlreadyAuthorized()
+    public void ApplyPaymentResult_ShouldBeNoOp_WhenAlreadyAuthorizedAndAuthorizedAgain()
     {
         var payment = PaymentDataTests.CreatePendingPayment();
-        payment.Authorize("SIM-first");
+        payment.ApplyPaymentResult(authorized: true, "SIM-first");
 
-        payment.Authorize("SIM-second");
+        payment.ApplyPaymentResult(authorized: true, "SIM-second");
 
         Assert.Equal("SIM-first", payment.AuthorizationCode);
     }
 
     [Fact]
-    public void Decline_ShouldBeNoOp_WhenAlreadyAuthorized()
+    public void ApplyPaymentResult_ShouldBeNoOp_WhenAlreadyAuthorizedAndDeclined()
     {
         var payment = PaymentDataTests.CreatePendingPayment();
-        payment.Authorize("SIM-123");
+        payment.ApplyPaymentResult(authorized: true, "SIM-123");
 
-        payment.Decline("card_declined");
+        payment.ApplyPaymentResult(authorized: false, "card_declined");
 
         Assert.Equal(PaymentStatus.Authorized, payment.Status);
         Assert.Null(payment.DeclineReason);
