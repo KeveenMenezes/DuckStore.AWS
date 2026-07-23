@@ -1,4 +1,4 @@
-﻿﻿using Amazon.DynamoDBv2;
+﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 
 namespace CatalogView.Function.Modules.Products.Data;

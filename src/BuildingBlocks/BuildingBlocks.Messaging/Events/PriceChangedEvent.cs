@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Messaging.Events;
+﻿namespace BuildingBlocks.Messaging.Events;
 
 // Published by Pricing's CDC stream publisher whenever a product's nominal price is set or
 // updated (prices table INSERT/MODIFY — ADR-0026). CatalogView consumes it and folds every field

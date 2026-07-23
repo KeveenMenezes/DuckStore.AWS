@@ -1,4 +1,4 @@
-namespace PaymentGateway.Function.Modules.Gateway;
+﻿namespace PaymentGateway.Function.Modules.Gateway;
 
 // Deterministic simulated authorize/decline decision — a stand-in for a real payment provider
 // (ADR-0025). No real gateway is called: this exists purely to illustrate the authorize/decline

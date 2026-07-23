@@ -1,4 +1,4 @@
-using BuildingBlocks.Messaging.Events;
+﻿using BuildingBlocks.Messaging.Events;
 using BuildingBlocks.Messaging.Streams;
 using Review.Function.Modules.Reviews.EventsIntegration.Publishers;
 using Review.Function.Modules.Reviews.EventsIntegration.Publishers.Rules;

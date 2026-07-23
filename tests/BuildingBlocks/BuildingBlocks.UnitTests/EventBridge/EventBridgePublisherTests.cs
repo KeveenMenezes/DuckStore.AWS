@@ -1,4 +1,4 @@
-using Amazon.EventBridge;
+﻿using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
 using BuildingBlocks.Messaging.EventBridge;
 using Microsoft.Extensions.Logging;

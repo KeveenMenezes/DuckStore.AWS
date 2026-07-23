@@ -1,4 +1,4 @@
-namespace Review.Function;
+﻿namespace Review.Function;
 
 public partial class Functions
 {

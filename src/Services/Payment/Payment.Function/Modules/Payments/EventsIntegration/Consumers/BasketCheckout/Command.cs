@@ -1,4 +1,4 @@
-namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.OrderCreated;
+﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
 
 public record CreatePaymentCommand(
     Guid OrderId,

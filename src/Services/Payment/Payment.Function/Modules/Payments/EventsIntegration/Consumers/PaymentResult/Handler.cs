@@ -1,4 +1,4 @@
-namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.PaymentResult;
+﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.PaymentResult;
 
 public class ApplyPaymentResultHandler(IPaymentRepository paymentRepository)
     : ICommandHandler<ApplyPaymentResultCommand>

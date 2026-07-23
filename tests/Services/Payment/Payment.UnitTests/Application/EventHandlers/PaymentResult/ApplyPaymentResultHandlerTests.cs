@@ -1,4 +1,4 @@
-using PaymentResultHandler = Payment.Function.Modules.Payments.EventsIntegration.Consumers.PaymentResult.ApplyPaymentResultHandler;
+﻿using PaymentResultHandler = Payment.Function.Modules.Payments.EventsIntegration.Consumers.PaymentResult.ApplyPaymentResultHandler;
 
 namespace Payment.UnitTests.Application.EventHandlers.PaymentResult;
 

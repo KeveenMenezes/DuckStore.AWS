@@ -1,4 +1,4 @@
-namespace PaymentGateway.Function.Shared.Configuration;
+﻿namespace PaymentGateway.Function.Shared.Configuration;
 
 // Single DI composition for the whole service. No MediatR/FluentValidation pipeline — there is
 // exactly one operation (simulate a gateway decision), so the CQRS ceremony isn't warranted

@@ -1,4 +1,4 @@
-namespace Ordering.Function;
+﻿namespace Ordering.Function;
 
 // EventBridge-triggered consumers: apply Payment's authorize/decline result to the Order
 // (Pending -> Completed/Cancelled), idempotent via the ordering-processed-events inbox. Two

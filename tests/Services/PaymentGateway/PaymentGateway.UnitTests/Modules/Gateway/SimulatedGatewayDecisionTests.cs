@@ -1,4 +1,4 @@
-namespace PaymentGateway.UnitTests.Modules.Gateway;
+﻿namespace PaymentGateway.UnitTests.Modules.Gateway;
 
 public class SimulatedGatewayDecisionTests
 {

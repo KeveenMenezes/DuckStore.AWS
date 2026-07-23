@@ -1,4 +1,4 @@
-namespace Payment.UnitTests.Domain.AggregatesModel.PaymentAggregate.Models;
+﻿namespace Payment.UnitTests.Domain.AggregatesModel.PaymentAggregate.Models;
 
 public class PaymentTests
 {

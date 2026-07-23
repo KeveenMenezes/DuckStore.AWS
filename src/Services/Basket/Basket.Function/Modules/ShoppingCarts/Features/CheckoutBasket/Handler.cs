@@ -14,6 +14,10 @@ public class CheckoutBasketCommandHandler(IShoppingCartRepository basketReposito
             return new CheckoutBasketResult(false);
         }
 
+        // Generated here — the correlation id Ordering and Payment both key their own aggregate
+        // off of, so neither has to mint its own (ADR-0038).
+        command.BasketCheckoutDto.OrderId = Guid.NewGuid();
+
         // Write checkout payload to DynamoDB before deletion so DynamoDB Streams captures it
         // and the ShoppingCartStreamPublisher Lambda's CheckoutedRule can publish to EventBridge.
         var checkoutDataJson = JsonSerializer.Serialize(command.BasketCheckoutDto);

@@ -1,4 +1,4 @@
-using BuildingBlocks.Messaging.Events;
+﻿using BuildingBlocks.Messaging.Events;
 using CatalogView.Function.Modules.Products.Data;
 using CatalogView.Function.Modules.Products.Domain;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductDeleted;

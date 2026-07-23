@@ -1,4 +1,4 @@
-using Amazon.Lambda.DynamoDBEvents;
+﻿using Amazon.Lambda.DynamoDBEvents;
 using Review.Function.Modules.Reviews.EventsIntegration.Publishers;
 
 namespace Review.UnitTests.EventsIntegration;

@@ -1,13 +1,13 @@
-namespace Payment.UnitTests.DataTests;
+﻿namespace Payment.UnitTests.DataTests;
 
-public static class OrderCreatedEventDataTests
+public static class BasketCheckoutEventDataTests
 {
-    public static OrderCreatedEvent CreateValidOrderCreatedEvent() => new()
+    public static BasketCheckoutEvent CreateValidBasketCheckoutEvent() => new()
     {
-        OrderId = Guid.NewGuid(),
+        OwnerId = "USER#testuser",
         CustomerId = Guid.NewGuid(),
-        OrderName = "john.doe@example.com",
-        Status = 2,
+        OrderId = Guid.NewGuid(),
+        TotalPrice = 1400m,
 
         FirstName = "John",
         LastName = "Doe",
@@ -22,11 +22,6 @@ public static class OrderCreatedEventDataTests
         Expiration = "12/25",
         Cvv = "123",
         PaymentMethod = 1,
-
-        Items =
-        [
-            new OrderCreatedItem(Guid.NewGuid(), 2, 500),
-            new OrderCreatedItem(Guid.NewGuid(), 1, 400)
-        ]
+        Installments = 1
     };
 }

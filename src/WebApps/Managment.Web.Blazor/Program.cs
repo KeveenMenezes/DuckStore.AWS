@@ -1,4 +1,4 @@
-using Managment.Web.Blazor;
+﻿using Managment.Web.Blazor;
 using Managment.Web.Blazor.Auth;
 using Managment.Web.Blazor.Services;
 using Microsoft.AspNetCore.Components.Authorization;

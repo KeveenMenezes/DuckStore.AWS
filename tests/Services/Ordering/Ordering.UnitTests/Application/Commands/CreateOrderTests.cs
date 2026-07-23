@@ -45,11 +45,28 @@ public class CreateOrderTests
 
         // Assert
         result.ShouldNotHaveValidationErrorFor(x => x.OrderName);
+        result.ShouldNotHaveValidationErrorFor(x => x.OrderId);
         result.ShouldNotHaveValidationErrorFor(x => x.CustomerId);
         result.ShouldNotHaveValidationErrorFor(x => x.OrderItems);
         result.ShouldNotHaveValidationErrorFor(x => x.Payment);
-        result.ShouldNotHaveValidationErrorFor(x => x.Payment.CardNumber);
         result.ShouldNotHaveValidationErrorFor(x => x.Payment.PaymentMethod);
+    }
+
+    [Fact]
+    public void Validator_ShouldHaveError_WhenOrderIdIsEmpty()
+    {
+        // Arrange
+        var command = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems() with
+        {
+            OrderId = Guid.Empty
+        };
+
+        // Act
+        var result = _validator.TestValidate(command);
+
+        // Assert
+        result.ShouldHaveValidationErrorFor(x => x.OrderId)
+            .WithErrorMessage("OrderId is required");
     }
 
     [Fact]
@@ -87,24 +104,6 @@ public class CreateOrderTests
     }
 
     [Fact]
-    public void Validator_ShouldHaveError_WhenCardNumberIsInvalid()
-    {
-        // Arrange
-        var baseCommand = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems();
-        var command = baseCommand with
-        {
-            Payment = baseCommand.Payment with { CardNumber = "invalid" }
-        };
-
-        // Act
-        var result = _validator.TestValidate(command);
-
-        // Assert
-        result.ShouldHaveValidationErrorFor(x => x.Payment.CardNumber)
-            .WithErrorMessage("Invalid card number");
-    }
-
-    [Fact]
     public void Validator_ShouldHaveError_WhenPaymentMethodIsInvalid()
     {
         // Arrange
@@ -123,20 +122,20 @@ public class CreateOrderTests
     }
 
     [Fact]
-    public void Validator_ShouldNotError_ForCash_EvenWithEmptyCardNumber()
+    public void Validator_ShouldNotError_ForCash_EvenWithNoPaymentMethodValidationOnPayment()
     {
         // Arrange
         var baseCommand = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems();
         var command = baseCommand with
         {
-            Payment = baseCommand.Payment with { CardNumber = "", Cvv = "", PaymentMethod = PaymentMethod.Cash }
+            Payment = baseCommand.Payment with { PaymentMethod = PaymentMethod.Cash }
         };
 
         // Act
         var result = _validator.TestValidate(command);
 
         // Assert
-        result.ShouldNotHaveValidationErrorFor(x => x.Payment.CardNumber);
+        result.ShouldNotHaveValidationErrorFor(x => x.Payment.PaymentMethod);
     }
 
     [Fact]
@@ -149,9 +148,9 @@ public class CreateOrderTests
         var result = _validator.TestValidate(command);
 
         // Assert
+        result.ShouldHaveValidationErrorFor(x => x.OrderId);
         result.ShouldHaveValidationErrorFor(x => x.CustomerId);
         result.ShouldHaveValidationErrorFor(x => x.OrderItems);
-        result.ShouldHaveValidationErrorFor(x => x.Payment.CardNumber);
         result.ShouldHaveValidationErrorFor(x => x.Payment.PaymentMethod);
     }
 }

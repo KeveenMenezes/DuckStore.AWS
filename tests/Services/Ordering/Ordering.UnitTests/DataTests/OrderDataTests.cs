@@ -41,11 +41,5 @@ public static class OrderDataTests
             "38050");
 
     public static Payment CreatePaymentWithVersion(string? suffix = null) =>
-        Payment.Of(
-            $"{suffix}card",
-            "5555555555554444",
-            "12/28",
-            "123",
-            PaymentMethod.Credit,
-            1);
+        Payment.Of(PaymentMethod.Credit, 1);
 }

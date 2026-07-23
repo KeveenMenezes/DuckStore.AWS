@@ -1,4 +1,4 @@
-namespace Managment.Web.Blazor.Services;
+﻿namespace Managment.Web.Blazor.Services;
 
 /// <summary>
 /// Builds product image URLs from the configured CDN base (ADR-0034) — the API only carries

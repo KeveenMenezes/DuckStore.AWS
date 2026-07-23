@@ -6,6 +6,9 @@ public class BasketCheckoutDto
     public Guid CustomerId { get; set; }
     public decimal TotalPrice { get; init; }
 
+    // Generated server-side by CheckoutBasketCommandHandler, not supplied by the client (ADR-0038).
+    public Guid OrderId { get; set; }
+
     public string FirstName { get; set; } = null!;
     public string LastName { get; set; } = null!;
     public string EmailAddress { get; set; } = null!;

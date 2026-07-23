@@ -1,4 +1,4 @@
-namespace Review.Function.Modules.Reviews.EventsIntegration.Publishers.Rules;
+﻿namespace Review.Function.Modules.Reviews.EventsIntegration.Publishers.Rules;
 
 // Fires on an edit to an existing review (MODIFY — the composite Id from ADR-0029 means a
 // resubmission by the same customer for the same product overwrites the row instead of inserting

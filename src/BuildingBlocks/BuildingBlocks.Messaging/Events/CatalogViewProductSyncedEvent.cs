@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Messaging.Events;
+﻿namespace BuildingBlocks.Messaging.Events;
 
 // Published by CatalogView's own CDC stream publisher whenever a catalogview-products item is
 // created or updated (INSERT/MODIFY), regardless of which upstream bounded context caused the

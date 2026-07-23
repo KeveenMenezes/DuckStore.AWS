@@ -20,8 +20,8 @@ public static class PaymentExtensions
             .WithAwsDevEnvironment();
 
         builder.AddAWSLambdaFunction<Projects.Payment_Function>(
-                "payment-order-created-consumer",
-                lambdaHandler: "Payment.Function::Payment.Function.Functions_OrderCreatedConsumer_Generated::OrderCreatedConsumer")
+                "payment-basket-checkout-consumer",
+                lambdaHandler: "Payment.Function::Payment.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer")
             .WaitForCompletion(paymentMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()

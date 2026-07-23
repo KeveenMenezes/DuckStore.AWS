@@ -1,4 +1,4 @@
-namespace Payment.Function.Shared.Data;
+﻿namespace Payment.Function.Shared.Data;
 
 // Used by the OrderCreated/PaymentResult Lambda consumers for idempotency (inbox pattern) —
 // unrelated to publishing PaymentRequestedEvent, which goes through DynamoDB Streams.

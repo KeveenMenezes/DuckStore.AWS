@@ -6,6 +6,8 @@ public record BasketCheckoutEvent : IntegrationEvent
     public Guid CustomerId { get; set; }
     public decimal TotalPrice { get; set; }
 
+    public Guid OrderId { get; set; }
+
     public string FirstName { get; set; } = default!;
     public string LastName { get; set; } = default!;
     public string EmailAddress { get; set; } = default!;

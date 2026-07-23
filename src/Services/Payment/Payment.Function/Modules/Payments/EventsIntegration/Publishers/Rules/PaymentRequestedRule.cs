@@ -1,4 +1,4 @@
-namespace Payment.Function.Modules.Payments.EventsIntegration.Publishers.Rules;
+﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Publishers.Rules;
 
 // Publishes PaymentRequestedEvent when a new, still-pending payment row lands in the table. The
 // aggregate is rehydrated from the repository (a domain abstraction — not AWS infrastructure);

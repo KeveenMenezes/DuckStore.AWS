@@ -1,4 +1,4 @@
-namespace Review.Function.Modules.Reviews.EventsIntegration.Publishers;
+﻿namespace Review.Function.Modules.Reviews.EventsIntegration.Publishers;
 
 // The subset of a persisted review item the publisher rules reason about, projected from a
 // DynamoDB Streams image. Id is now the composite `${productId}#${userId}` key, not a Guid, so

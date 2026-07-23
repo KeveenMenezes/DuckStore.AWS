@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Messaging.Events;
+﻿namespace BuildingBlocks.Messaging.Events;
 
 // Carries the full product payload (hydrated from the DynamoDB Streams image) so CatalogView can
 // index a complete search document without an out-of-band call back into Catalog. Fires on

@@ -14,14 +14,11 @@ public static class BasketCheckoutMapper
             message.ZipCode);
 
         var paymentDto = new PaymentDto(
-            message.CardName,
-            message.CardNumber,
-            message.Expiration,
-            message.Cvv,
             (PaymentMethod)message.PaymentMethod,
             message.Installments);
 
         return new CreateOrderCommand(
+            OrderId: message.OrderId,
             CustomerId: message.CustomerId,
             // OwnerId is now a prefixed technical id (USER#<sub>); the email is the human-readable name.
             OrderName: message.EmailAddress,

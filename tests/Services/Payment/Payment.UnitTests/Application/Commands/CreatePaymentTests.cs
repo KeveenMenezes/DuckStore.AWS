@@ -1,4 +1,4 @@
-namespace Payment.UnitTests.Application.Commands;
+﻿namespace Payment.UnitTests.Application.Commands;
 
 public class CreatePaymentTests
 {

@@ -1,4 +1,4 @@
-using PaymentEntity = Payment.Function.Modules.Payments.Domain.Entities.Payment;
+﻿using PaymentEntity = Payment.Function.Modules.Payments.Domain.Entities.Payment;
 
 namespace Payment.Function.Modules.Payments.Data;
 

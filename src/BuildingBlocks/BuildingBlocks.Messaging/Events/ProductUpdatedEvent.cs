@@ -1,4 +1,4 @@
-namespace BuildingBlocks.Messaging.Events;
+﻿namespace BuildingBlocks.Messaging.Events;
 
 // Lets consumers invalidate a per-product cache tag (e.g. products:{id}) instead of only
 // the blanket "products" tag.

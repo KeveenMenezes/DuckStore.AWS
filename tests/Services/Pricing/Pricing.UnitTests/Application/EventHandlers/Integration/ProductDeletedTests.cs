@@ -1,4 +1,4 @@
-using BuildingBlocks.Messaging.Events;
+﻿using BuildingBlocks.Messaging.Events;
 using Pricing.Function.Modules.Prices.EventsIntegration.Consumers.ProductDeleted;
 
 namespace Pricing.UnitTests.Application.EventHandlers.Integration;

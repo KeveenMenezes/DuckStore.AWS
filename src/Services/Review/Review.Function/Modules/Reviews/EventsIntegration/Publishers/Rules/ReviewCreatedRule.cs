@@ -1,4 +1,4 @@
-namespace Review.Function.Modules.Reviews.EventsIntegration.Publishers.Rules;
+﻿namespace Review.Function.Modules.Reviews.EventsIntegration.Publishers.Rules;
 
 // Fires on a new review (INSERT) and publishes ReviewCreated so CatalogView folds the rating in
 // as a fresh data point: ratingCount+1, ratingSum += rating (ADR-0011, still in effect).
