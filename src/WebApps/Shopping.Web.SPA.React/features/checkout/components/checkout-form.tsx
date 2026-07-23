@@ -175,8 +175,8 @@ export function CheckoutForm({
 
           {!isCash && isLoadingInstallmentPlan && (
             <div className="flex flex-col gap-2">
-              <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-9 w-full" />
+              <Skeleton className="h-4 w-24 animate-none bg-muted skeleton-shimmer" />
+              <Skeleton className="h-9 w-full animate-none bg-muted skeleton-shimmer" />
               <span className="text-xs text-muted-foreground">
                 Calculating installment options — please wait before confirming your order.
               </span>
@@ -247,8 +247,8 @@ function FormField({
   if (loading) {
     return (
       <div className="flex flex-col gap-2">
-        <Skeleton className="h-4 w-24" />
-        <Skeleton className="h-9 w-full" />
+        <Skeleton className="h-4 w-24 animate-none bg-muted skeleton-shimmer" />
+        <Skeleton className="h-9 w-full animate-none bg-muted skeleton-shimmer" />
       </div>
     )
   }

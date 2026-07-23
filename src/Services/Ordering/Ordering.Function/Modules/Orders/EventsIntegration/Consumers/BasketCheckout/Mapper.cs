@@ -5,38 +5,26 @@ public static class BasketCheckoutMapper
     public static CreateOrderCommand ToCreateOrderCommand(BasketCheckoutEvent message)
     {
         var addressDto = new AddressDto(
-            message.FirstName,
-            message.LastName,
-            message.EmailAddress,
-            message.AddressLine,
-            message.Country,
-            message.State,
-            message.ZipCode);
+            message.ShippingAddress.FirstName,
+            message.ShippingAddress.LastName,
+            message.ShippingAddress.EmailAddress,
+            message.ShippingAddress.AddressLine,
+            message.ShippingAddress.Country,
+            message.ShippingAddress.State,
+            message.ShippingAddress.ZipCode);
 
         var paymentDto = new PaymentDto(
-            (PaymentMethod)message.PaymentMethod,
-            message.Installments);
+            (PaymentMethod)message.Payment.PaymentMethod,
+            message.Payment.Installments);
 
         return new CreateOrderCommand(
             OrderId: message.OrderId,
             CustomerId: message.CustomerId,
             // OwnerId is now a prefixed technical id (USER#<sub>); the email is the human-readable name.
-            OrderName: message.EmailAddress,
+            OrderName: message.ShippingAddress.EmailAddress,
             ShippingAddress: addressDto,
             Payment: paymentDto,
-            OrderItems:
-            // TODO: BasketCheckoutEvent doesn't carry cart line items yet, so these are hardcoded
-            // placeholders — replace with a real mapping once the event includes basket items.
-            [
-                new CreateOrderItemDto(
-                    new Guid("5334c996-8457-4cf0-815c-ed2b77c4ff61"),
-                    2,
-                    500),
-
-                new CreateOrderItemDto(
-                    new Guid("c67d6323-e8b1-4bdf-9a75-b0d0d2e7e914"),
-                    1,
-                    400)
-            ]);
+            OrderItems: [.. message.Items.Select(item =>
+                new CreateOrderItemDto(item.ProductId, item.Quantity, item.Price))]);
     }
 }

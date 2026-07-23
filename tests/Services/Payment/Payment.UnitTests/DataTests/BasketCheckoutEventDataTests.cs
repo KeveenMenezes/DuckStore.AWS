@@ -1,4 +1,4 @@
-﻿namespace Payment.UnitTests.DataTests;
+namespace Payment.UnitTests.DataTests;
 
 public static class BasketCheckoutEventDataTests
 {
@@ -9,19 +9,25 @@ public static class BasketCheckoutEventDataTests
         OrderId = Guid.NewGuid(),
         TotalPrice = 1400m,
 
-        FirstName = "John",
-        LastName = "Doe",
-        EmailAddress = "john.doe@example.com",
-        AddressLine = "123 Test Street",
-        Country = "Testland",
-        State = "Teststate",
-        ZipCode = "12345",
+        ShippingAddress = new BasketCheckoutAddress
+        {
+            FirstName = "John",
+            LastName = "Doe",
+            EmailAddress = "john.doe@example.com",
+            AddressLine = "123 Test Street",
+            Country = "Testland",
+            State = "Teststate",
+            ZipCode = "12345",
+        },
 
-        CardName = "John Doe",
-        CardNumber = "4111111111111111",
-        Expiration = "12/25",
-        Cvv = "123",
-        PaymentMethod = 1,
-        Installments = 1
+        Payment = new BasketCheckoutPayment
+        {
+            CardName = "John Doe",
+            CardNumber = "4111111111111111",
+            Expiration = "12/25",
+            Cvv = "123",
+            PaymentMethod = 1,
+            Installments = 1,
+        },
     };
 }

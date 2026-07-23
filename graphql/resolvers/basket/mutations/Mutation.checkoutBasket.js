@@ -9,21 +9,25 @@ export function request(ctx) {
         OwnerId: `USER#${ctx.identity.sub}`,  // Cognito-only mutation — derive owner from the token
         CustomerId: ctx.identity.sub,  // always from Cognito — never trust client value
         TotalPrice: input.totalPrice,
-        FirstName: input.firstName,
-        LastName: input.lastName,
-        EmailAddress: input.emailAddress,
-        AddressLine: input.addressLine,
-        Country: input.country,
-        State: input.state,
-        ZipCode: input.zipCode,
+        ShippingAddress: {
+          FirstName: input.firstName,
+          LastName: input.lastName,
+          EmailAddress: input.emailAddress,
+          AddressLine: input.addressLine,
+          Country: input.country,
+          State: input.state,
+          ZipCode: input.zipCode,
+        },
         // Optional — empty for Cash, which carries no card (BasketCheckoutDto's fields are
         // plain non-nullable strings, so default explicitly rather than passing null through).
-        CardName: input.cardName ?? '',
-        CardNumber: input.cardNumber ?? '',
-        Expiration: input.expiration ?? '',
-        Cvv: input.cvv ?? '',
-        PaymentMethod: input.paymentMethod,
-        Installments: input.installments,
+        Payment: {
+          CardName: input.cardName ?? '',
+          CardNumber: input.cardNumber ?? '',
+          Expiration: input.expiration ?? '',
+          Cvv: input.cvv ?? '',
+          PaymentMethod: input.paymentMethod,
+          Installments: input.installments,
+        },
       },
     },
   }

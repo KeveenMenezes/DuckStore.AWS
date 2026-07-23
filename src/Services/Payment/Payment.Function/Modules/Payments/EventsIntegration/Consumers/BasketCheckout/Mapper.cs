@@ -7,8 +7,8 @@ public static class BasketCheckoutMapper
             OrderId: message.OrderId,
             CustomerId: message.CustomerId,
             Amount: message.TotalPrice,
-            CardNumber: message.CardNumber,
-            Expiration: message.Expiration,
-            Cvv: message.Cvv,
-            PaymentMethod: (PaymentMethod)message.PaymentMethod);
+            CardNumber: message.Payment.CardNumber,
+            Expiration: message.Payment.Expiration,
+            Cvv: message.Payment.Cvv,
+            PaymentMethod: (PaymentMethod)message.Payment.PaymentMethod);
 }
