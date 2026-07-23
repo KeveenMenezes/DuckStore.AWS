@@ -36,7 +36,7 @@ const EMPTY_FORM: CheckoutFormData = {
  */
 export function useCheckout() {
   const { items, totalPrice, totalItems, clearCart } = useCart()
-  const { user, addOrder } = useAuth()
+  const { user, addOrder, refreshOrders } = useAuth()
 
   const [state, setState] = useState<CheckoutState>("form")
   const [orderId, setOrderId] = useState("")
@@ -125,11 +125,17 @@ export function useCheckout() {
         addOrder({
           items: items.map((i) => ({
             name: i.product.name,
+            imageId: i.product.imageId,
             quantity: i.quantity,
             price: i.product.price,
           })),
           total: totalPrice,
         })
+
+        // The optimistic entry above has no shippingAddress/payment (this form doesn't collect
+        // everything Order needs) — replace it with the real, fully-synced order once Ordering
+        // has processed the checkout event. A short delay covers Basket -> EventBridge -> Ordering.
+        setTimeout(() => { void refreshOrders() }, 2500)
       }
 
       clearCart()
