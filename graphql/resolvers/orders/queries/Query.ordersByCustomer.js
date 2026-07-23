@@ -1,5 +1,10 @@
 import { util } from '@aws-appsync/utils'
 
+// Ordering.Function stores PaymentMethod as the C# enum's string name (Payment.cs .ToString()),
+// not its numeric value — the GraphQL schema declares paymentMethod as Int!, so it must be
+// converted here. Keep in sync with Ordering.Function.Modules.Orders.Domain.Enums.PaymentMethod.
+const PAYMENT_METHOD_TO_INT = { Debit: 1, Credit: 2, Cash: 3 }
+
 // AppSync direct DynamoDB resolver (ADR-0009): Query the ordering GSI1 by customer, newest-first.
 // Always uses the authenticated user's sub — never trusts a client-supplied customerId.
 export function request(ctx) {
@@ -35,7 +40,7 @@ export function response(ctx) {
         zipCode: item.ShippingAddress?.ZipCode ?? '',
       },
       payment: {
-        paymentMethod: item.Payment?.PaymentMethod ?? 0,
+        paymentMethod: PAYMENT_METHOD_TO_INT[item.Payment?.PaymentMethod] ?? 0,
         installments: item.Payment?.Installments ?? 1,
       },
       orderItems: (item.OrderItems ?? []).map(orderItem => ({
