@@ -22,6 +22,8 @@ export function CheckoutView() {
     totalItems,
     totalPrice,
     installmentPlan,
+    isLoadingInstallmentPlan,
+    isLoadingProfile,
     updateField,
     updatePaymentMethod,
     handleSubmit,
@@ -62,6 +64,8 @@ export function CheckoutView() {
           errors={errors}
           totalPrice={totalPrice}
           installmentPlan={installmentPlan}
+          isLoadingInstallmentPlan={isLoadingInstallmentPlan}
+          isLoadingProfile={isLoadingProfile}
           onFieldChange={updateField}
           onPaymentMethodChange={updatePaymentMethod}
           onSubmit={handleSubmit}
