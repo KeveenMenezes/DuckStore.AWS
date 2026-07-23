@@ -1,5 +1,10 @@
 import { util } from '@aws-appsync/utils'
 
+// Ordering.Function stores PaymentMethod as the C# enum's string name (Payment.cs .ToString()),
+// not its numeric value — the GraphQL schema declares paymentMethod as Int!, so it must be
+// converted here. Keep in sync with Ordering.Function.Modules.Orders.Domain.Enums.PaymentMethod.
+const PAYMENT_METHOD_TO_INT = { Debit: 1, Credit: 2, Cash: 3 }
+
 export function request(ctx) {
   const groups = ctx.identity?.groups ?? []
   if (!groups.includes('Admin')) util.unauthorized()
@@ -36,13 +41,14 @@ export function response(ctx) {
         zipCode: item.ShippingAddress?.ZipCode ?? '',
       },
       payment: {
-        cardName: item.Payment?.CardName ?? '',
-        cardNumber: item.Payment?.CardNumber ?? '',
-        expiration: item.Payment?.Expiration ?? '',
-        cvv: item.Payment?.Cvv ?? '',
-        paymentMethod: item.Payment?.PaymentMethod ?? 0,
+        paymentMethod: PAYMENT_METHOD_TO_INT[item.Payment?.PaymentMethod] ?? 0,
         installments: item.Payment?.Installments ?? 1,
       },
+      orderItems: (item.OrderItems ?? []).map(orderItem => ({
+        productId: orderItem.ProductId,
+        quantity: orderItem.Quantity,
+        price: orderItem.Price,
+      })),
     })),
     nextToken: ctx.result.nextToken ?? null,
   }
