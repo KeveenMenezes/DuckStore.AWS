@@ -19,19 +19,13 @@ public class GetInstallmentPlanHandler(
                 installmentOptions.ActiveProvider, cancellationToken)
             ?? throw new GatewayCostNotFoundException(installmentOptions.ActiveProvider);
 
-        var breakdown = InstallmentCalculator.Calculate(
-            price.Cost, price.NominalPrice, gatewayCost, installmentOptions.MinMarginPercent,
-            installmentOptions.ValueTiers);
-
         var activeDiscount = await campaignRepository.GetActiveDiscountForProductAsync(
             query.ProductId, cancellationToken);
+        var discount = activeDiscount is null ? null : DiscountValue.Of(activeDiscount.Type, activeDiscount.Amount);
 
-        if (activeDiscount is not null)
-        {
-            var discount = DiscountValue.Of(activeDiscount.Type, activeDiscount.Amount);
-            breakdown = InstallmentCalculator.ApplyDiscount(
-                breakdown, price.NominalPrice, gatewayCost, discount, installmentOptions.ValueTiers);
-        }
+        var breakdown = InstallmentCalculator.CalculateWithOptionalDiscount(
+            price.Cost, price.NominalPrice, gatewayCost, installmentOptions.MinMarginPercent,
+            installmentOptions.ValueTiers, discount);
 
         return new GetInstallmentPlanResult(
             query.ProductId,

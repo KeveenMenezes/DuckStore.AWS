@@ -1,5 +1,6 @@
 ﻿using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
 using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
+using Pricing.Function.Modules.Prices.Domain.Entities;
 using Pricing.Function.Shared.Configuration;
 
 namespace Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
@@ -12,6 +13,8 @@ public sealed record PricingBreakdown(
     int MaxInstallmentsWithoutInterest,
     decimal MaxInstallmentValue,
     IReadOnlyList<InstallmentPlanEntry> InstallmentPlan);
+
+public sealed record CartPricingBreakdown(decimal TotalOriginalPrice, PricingBreakdown Breakdown);
 
 // Pure calculation, no I/O. Replaces the old flat "margin over sale price" walk with a cost-floor
 // model: the merchant's minimum acceptable net (Cost + MinMarginPercent) drives both the à vista
@@ -43,6 +46,35 @@ public static class InstallmentCalculator
             BuildInstallmentPlan(price, originalPrice, gatewayCost, valueTiers);
 
         return new PricingBreakdown(price, cashPrice, maxInstallmentsWithoutInterest, maxInstallmentValue, plan);
+    }
+
+    // Treats the whole cart as one virtual transaction: sums Cost/NominalPrice across every item
+    // (weighted by quantity) and runs the totals through Calculate. This is more correct than
+    // summing already-computed per-item plans, since the gateway's flat fee is charged once per
+    // checkout, not once per item — see ADR-0028.
+    public static CartPricingBreakdown CalculateForCart(
+        IReadOnlyList<(Price Price, int Quantity)> items, GatewayCost gatewayCost, decimal minMarginPercent,
+        IReadOnlyList<ValueTier> valueTiers)
+    {
+        var totalCost = items.Sum(i => i.Price.Cost * i.Quantity);
+        var totalOriginalPrice = items.Sum(i => i.Price.NominalPrice * i.Quantity);
+
+        var breakdown = Calculate(totalCost, totalOriginalPrice, gatewayCost, minMarginPercent, valueTiers);
+
+        return new CartPricingBreakdown(totalOriginalPrice, breakdown);
+    }
+
+    // Composes Calculate with an optional campaign discount as a single step, so callers never
+    // have to branch on whether a discount is active — a null discount is simply a no-op.
+    public static PricingBreakdown CalculateWithOptionalDiscount(
+        decimal cost, decimal originalPrice, GatewayCost gatewayCost, decimal minMarginPercent,
+        IReadOnlyList<ValueTier> valueTiers, DiscountValue? discount)
+    {
+        var breakdown = Calculate(cost, originalPrice, gatewayCost, minMarginPercent, valueTiers);
+
+        return discount is null
+            ? breakdown
+            : ApplyDiscount(breakdown, originalPrice, gatewayCost, discount, valueTiers);
     }
 
     // Merges an active campaign's discount into the price side of the breakdown. originalPrice

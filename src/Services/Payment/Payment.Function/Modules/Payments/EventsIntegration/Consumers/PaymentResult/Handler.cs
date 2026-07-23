@@ -25,10 +25,7 @@ public class ApplyPaymentResultHandler(IPaymentRepository paymentRepository)
         if (payment is null)
             return null;
 
-        if (command.Authorized)
-            payment.Authorize(command.Detail);
-        else
-            payment.Decline(command.Detail);
+        payment.ApplyPaymentResult(command.Authorized, command.Detail);
 
         return payment;
     }
