@@ -3,8 +3,6 @@ export const GET_ORDERS_BY_CUSTOMER = `
     ordersByCustomer(customerId: $customerId) {
       items {
         id
-        customerId
-        orderName
         status
         createdAt
         shippingAddress {
