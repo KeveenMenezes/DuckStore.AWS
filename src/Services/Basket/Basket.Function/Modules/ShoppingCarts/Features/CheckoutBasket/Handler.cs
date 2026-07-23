@@ -18,6 +18,12 @@ public class CheckoutBasketCommandHandler(IShoppingCartRepository basketReposito
         // off of, so neither has to mint its own (ADR-0038).
         command.BasketCheckoutDto.OrderId = Guid.NewGuid();
 
+        // The real cart lines being checked out — Ordering.Function builds the actual OrderItems
+        // from this instead of hardcoded placeholders.
+        command.BasketCheckoutDto.Items = basket.Items
+            .Select(item => new BasketCheckoutItemDto(item.ProductId.Value, item.Quantity, item.Price))
+            .ToList();
+
         // Write checkout payload to DynamoDB before deletion so DynamoDB Streams captures it
         // and the ShoppingCartStreamPublisher Lambda's CheckoutedRule can publish to EventBridge.
         var checkoutDataJson = JsonSerializer.Serialize(command.BasketCheckoutDto);

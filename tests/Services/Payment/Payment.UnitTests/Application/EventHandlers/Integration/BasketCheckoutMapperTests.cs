@@ -11,7 +11,7 @@ public class BasketCheckoutMapperTests
 
         Assert.Equal(basketCheckoutEvent.OrderId, command.OrderId);
         Assert.Equal(basketCheckoutEvent.CustomerId, command.CustomerId);
-        Assert.Equal(basketCheckoutEvent.CardNumber, command.CardNumber);
+        Assert.Equal(basketCheckoutEvent.Payment.CardNumber, command.CardNumber);
         Assert.Equal(basketCheckoutEvent.TotalPrice, command.Amount);
     }
 }
