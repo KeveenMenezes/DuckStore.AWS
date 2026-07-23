@@ -113,6 +113,11 @@ async function invokeLambda<T>(functionName: string, payload: unknown): Promise<
   return JSON.parse(body) as T
 }
 
+// Ordering.Function stores PaymentMethod as the C# enum's string name (Payment.cs .ToString()),
+// not its numeric value — the GraphQL schema declares paymentMethod as Int!, so it must be
+// converted here. Keep in sync with Ordering.Function.Modules.Orders.Domain.Enums.PaymentMethod.
+const PAYMENT_METHOD_TO_INT: Record<string, number> = { Debit: 1, Credit: 2, Cash: 3 }
+
 function mapOrder(item: Record<string, unknown>) {
   const addr = (item.ShippingAddress ?? {}) as Record<string, string>
   const pay = (item.Payment ?? {}) as Record<string, unknown>
@@ -135,7 +140,7 @@ function mapOrder(item: Record<string, unknown>) {
       zipCode: addr.ZipCode ?? '',
     },
     payment: {
-      paymentMethod: (pay.PaymentMethod as number) ?? 0,
+      paymentMethod: PAYMENT_METHOD_TO_INT[pay.PaymentMethod as string] ?? 0,
       installments: (pay.Installments as number) ?? 1,
     },
     orderItems: rawItems.map(oi => ({
