@@ -25,6 +25,6 @@ public static class BasketCheckoutMapper
             ShippingAddress: addressDto,
             Payment: paymentDto,
             OrderItems: [.. message.Items.Select(item =>
-                new CreateOrderItemDto(item.ProductId, item.Quantity, item.Price))]);
+                new CreateOrderItemDto(item.ProductId, item.ProductName, item.ImageId, item.Quantity, item.Price))]);
     }
 }

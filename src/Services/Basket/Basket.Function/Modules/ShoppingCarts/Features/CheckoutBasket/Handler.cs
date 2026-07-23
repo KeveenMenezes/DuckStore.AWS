@@ -21,7 +21,8 @@ public class CheckoutBasketCommandHandler(IShoppingCartRepository basketReposito
         // The real cart lines being checked out — Ordering.Function builds the actual OrderItems
         // from this instead of hardcoded placeholders.
         command.BasketCheckoutDto.Items = basket.Items
-            .Select(item => new BasketCheckoutItemDto(item.ProductId.Value, item.Quantity, item.Price))
+            .Select(item => new BasketCheckoutItemDto(
+                item.ProductId.Value, item.ProductName, item.ImageId, item.Quantity, item.Price))
             .ToList();
 
         // Write checkout payload to DynamoDB before deletion so DynamoDB Streams captures it

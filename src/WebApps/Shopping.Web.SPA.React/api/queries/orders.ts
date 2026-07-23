@@ -12,7 +12,7 @@ export const GET_ORDERS_BY_CUSTOMER = `
           paymentMethod installments
         }
         orderItems {
-          productId quantity price
+          productId productName imageId quantity price
         }
       }
       nextToken

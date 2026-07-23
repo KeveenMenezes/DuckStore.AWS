@@ -30,8 +30,8 @@ public static class BasketCheckoutEventDataTests
             },
             Items =
             [
-                new BasketCheckoutItem(Guid.NewGuid(), 2, 500m),
-                new BasketCheckoutItem(Guid.NewGuid(), 1, 400m)
+                new BasketCheckoutItem(Guid.NewGuid(), "Rubber Duck Classic", null, 2, 500m),
+                new BasketCheckoutItem(Guid.NewGuid(), "Rubber Duck Pirate", null, 1, 400m)
             ]
         };
     }

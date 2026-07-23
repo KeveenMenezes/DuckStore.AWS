@@ -8,8 +8,49 @@ import { useScore } from "@/features/challenges/hooks/use-score"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useTheme } from "@/features/theme/hooks/use-theme"
 import { UserDropdown } from "@/shared/layout/user-dropdown"
+import { Skeleton } from "@/components/ui/skeleton"
 import { ROUTES } from "@/shared/constants/routes"
 import { useState } from "react"
+
+interface AuthSlotProps {
+  isLoading: boolean
+  user: unknown
+  loginWithCognito: () => void
+  signUpWithCognito: () => void
+}
+
+function AuthSlot({ isLoading, user, loginWithCognito, signUpWithCognito }: AuthSlotProps) {
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 px-2">
+        <Skeleton className="h-7 w-7 rounded-full" />
+        <Skeleton className="hidden h-4 w-16 sm:inline-block" />
+      </div>
+    )
+  }
+
+  if (user) {
+    return <UserDropdown />
+  }
+
+  return (
+    <div className="hidden items-center gap-1 sm:flex">
+      <Button
+        variant="ghost"
+        size="sm"
+        className="gap-1.5 text-muted-foreground hover:text-foreground"
+        onClick={() => loginWithCognito()}
+      >
+        <LogIn className="h-4 w-4" />
+        Sign in
+      </Button>
+      <Button size="sm" className="gap-1.5" onClick={signUpWithCognito}>
+        <UserPlus className="h-4 w-4" />
+        Sign up
+      </Button>
+    </div>
+  )
+}
 
 export function Header() {
   const { totalItems } = useCart()
@@ -74,31 +115,12 @@ export function Header() {
               </Button>
             </Link>
 
-            {!isLoading && (
-              user ? (
-                <UserDropdown />
-              ) : (
-                <div className="hidden items-center gap-1 sm:flex">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="gap-1.5 text-muted-foreground hover:text-foreground"
-                    onClick={() => loginWithCognito()}
-                  >
-                    <LogIn className="h-4 w-4" />
-                    Sign in
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={signUpWithCognito}
-                  >
-                    <UserPlus className="h-4 w-4" />
-                    Sign up
-                  </Button>
-                </div>
-              )
-            )}
+            <AuthSlot
+              isLoading={isLoading}
+              user={user}
+              loginWithCognito={loginWithCognito}
+              signUpWithCognito={signUpWithCognito}
+            />
 
             <Button
               variant="ghost"

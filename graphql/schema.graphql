@@ -186,6 +186,10 @@ type OrderPayment @aws_cognito_user_pools {
 
 type OrderItem @aws_cognito_user_pools {
   productId: ID!
+  # Snapshot of the product's name/imageId at checkout time (ADR-0034 pattern) — not a live
+  # Catalog lookup, so it stays stable even if the product is later renamed or its image swapped.
+  productName: String!
+  imageId: String
   quantity: Int!
   price: Float!
 }

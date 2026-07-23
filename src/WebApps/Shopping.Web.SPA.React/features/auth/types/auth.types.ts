@@ -8,6 +8,7 @@ export type OrderStatus = "processing" | "shipped" | "delivered"
 
 export interface OrderItem {
   name: string
+  imageId?: string | null
   quantity: number
   price: number
 }

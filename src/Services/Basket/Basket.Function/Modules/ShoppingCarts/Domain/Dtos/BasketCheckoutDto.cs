@@ -41,4 +41,4 @@ public class BasketCheckoutPaymentDto
     public int Installments { get; set; }
 }
 
-public record BasketCheckoutItemDto(Guid ProductId, int Quantity, decimal Price);
+public record BasketCheckoutItemDto(Guid ProductId, string ProductName, string? ImageId, int Quantity, decimal Price);

@@ -10,6 +10,7 @@ import { useAuth } from "@/features/auth/hooks/use-auth"
 import { formatBRL } from "@/shared/lib/format"
 import { ROUTES } from "@/shared/constants/routes"
 import type { OrderStatus } from "@/features/auth/types/auth.types"
+import { ProductPicture } from "@/features/products/components/product-picture"
 
 const statusMap: Record<OrderStatus, { label: string; variant: "secondary" | "default" | "outline" }> = {
   processing: { label: "Processing", variant: "secondary" },
@@ -123,11 +124,22 @@ export function OrdersView() {
                     </div>
                   )}
                   {order.items.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">
-                        {item.name} <span className="text-xs">x{item.quantity}</span>
-                      </span>
-                      <span className="font-medium text-foreground">
+                    <div key={idx} className="flex items-center justify-between gap-3 text-sm">
+                      <div className="flex min-w-0 items-center gap-3">
+                        <div className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-md bg-secondary">
+                          <ProductPicture
+                            imageId={item.imageId ?? null}
+                            alt={item.name}
+                            sizes="48px"
+                            fallbackWidth={160}
+                            className="absolute inset-0 h-full w-full object-cover"
+                          />
+                        </div>
+                        <span className="truncate text-muted-foreground">
+                          {item.name} <span className="text-xs">x{item.quantity}</span>
+                        </span>
+                      </div>
+                      <span className="flex-shrink-0 font-medium text-foreground">
                         {formatBRL(item.price * item.quantity)}
                       </span>
                     </div>

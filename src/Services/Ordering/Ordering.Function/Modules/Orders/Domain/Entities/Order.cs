@@ -25,9 +25,9 @@ public class Order : Aggregate<OrderId>
         return order;
     }
 
-    public void Add(ProductId productId, int quantity, decimal price)
+    public void Add(ProductId productId, string productName, string? imageId, int quantity, decimal price)
     {
-        var orderItem = new OrderItem(Id, productId, quantity, price);
+        var orderItem = new OrderItem(Id, productId, productName, imageId, quantity, price);
 
         _orderItems.Add(orderItem);
     }
@@ -41,12 +41,12 @@ public class Order : Aggregate<OrderId>
         OrderName orderName,
         Address shippingAddress,
         Payment payment,
-        IEnumerable<(ProductId ProductId, int Quantity, decimal Price)> items)
+        IEnumerable<(ProductId ProductId, string ProductName, string? ImageId, int Quantity, decimal Price)> items)
     {
         var order = Create(orderId, customerId, orderName, shippingAddress, payment);
 
         foreach (var item in items)
-            order.Add(item.ProductId, item.Quantity, item.Price);
+            order.Add(item.ProductId, item.ProductName, item.ImageId, item.Quantity, item.Price);
 
         return order;
     }

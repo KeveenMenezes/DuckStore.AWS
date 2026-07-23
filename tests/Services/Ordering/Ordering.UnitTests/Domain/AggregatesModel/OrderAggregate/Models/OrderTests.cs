@@ -49,17 +49,21 @@ public class OrderTests
             payment);
 
         var productId = ProductId.Of(Guid.NewGuid());
+        var productName = "Rubber Duck Classic";
+        var imageId = "img-123";
         var quantity = 2;
         var price = 50m;
 
         // Act
-        order.Add(productId, quantity, price);
+        order.Add(productId, productName, imageId, quantity, price);
 
         // Assert
         Assert.Single(order.OrderItems);
 
         var orderItem = order.OrderItems[0];
         Assert.Equal(productId, orderItem?.ProductId);
+        Assert.Equal(productName, orderItem?.ProductName);
+        Assert.Equal(imageId, orderItem?.ImageId);
         Assert.Equal(quantity, orderItem?.Quantity);
         Assert.Equal(price, orderItem?.Price);
     }
@@ -81,7 +85,7 @@ public class OrderTests
 
         // Act & Assert
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            order.Add(productId, quantity, price));
+            order.Add(productId, "Rubber Duck Classic", null, quantity, price));
     }
 
     [Fact]
@@ -101,6 +105,6 @@ public class OrderTests
 
         // Act & Assert
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            order.Add(productId, quantity, price));
+            order.Add(productId, "Rubber Duck Classic", null, quantity, price));
     }
 }
