@@ -173,8 +173,7 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
     {
         var ratingSumDelta = newRating - oldRating;
 
-        var expressionAttributeNames =
-            new Dictionary<string, string> { ["#new"] = $"{newRating}" };
+        var expressionAttributeNames = new Dictionary<string, string>();
 
         var expressionAttributeValues =
             new Dictionary<string, AttributeValue>
@@ -187,14 +186,24 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
                 {
                     N = ratingCountDelta.ToString(CultureInfo.InvariantCulture)
                 },
-                [":one"] = new AttributeValue { N = "1" },
                 [":eventId"] = new(eventId)
             };
 
-        if (oldRating > 0)
+        // When oldRating == newRating the distribution bucket is unchanged (net-zero) — skip it
+        // entirely, since referencing RatingDistribution.#old and RatingDistribution.#new with the
+        // same bucket in one UpdateExpression makes DynamoDB reject the request as overlapping
+        // document paths.
+        var distributionChanged = oldRating != newRating;
+        if (distributionChanged)
         {
-            expressionAttributeNames["#old"] = $"{oldRating}";
-            expressionAttributeValues[":minusOne"] = new AttributeValue { N = "-1" };
+            expressionAttributeNames["#new"] = $"{newRating}";
+            expressionAttributeValues[":one"] = new AttributeValue { N = "1" };
+
+            if (oldRating > 0)
+            {
+                expressionAttributeNames["#old"] = $"{oldRating}";
+                expressionAttributeValues[":minusOne"] = new AttributeValue { N = "-1" };
+            }
         }
 
         try
@@ -206,13 +215,14 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
                     Key = new Dictionary<string, AttributeValue> { ["Id"] = new(productId) },
                     UpdateExpression = @$"
                         ADD RatingSum :ratingSumDelta,
-                            RatingCount :ratingCountDelta,
-                            RatingDistribution.#new :one
-                            {(oldRating > 0 ? ", RatingDistribution.#old :minusOne" : "")}
+                            RatingCount :ratingCountDelta
+                            {(distributionChanged ? ", RatingDistribution.#new :one" : "")}
+                            {(distributionChanged && oldRating > 0 ? ", RatingDistribution.#old :minusOne" : "")}
                         SET LastRatingEventId = :eventId",
                     ConditionExpression =
                         "attribute_not_exists(LastRatingEventId) OR LastRatingEventId <> :eventId",
-                    ExpressionAttributeNames = expressionAttributeNames,
+                    ExpressionAttributeNames =
+                        expressionAttributeNames.Count > 0 ? expressionAttributeNames : null,
                     ExpressionAttributeValues = expressionAttributeValues
                 },
                 cancellationToken);
