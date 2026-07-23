@@ -14,6 +14,10 @@ interface AuthContextType {
   signUpWithCognito: () => void
   logout: () => void
   addOrder: (order: NewOrderInput) => void
+  // Re-fetches the authoritative order list from Ordering, replacing any optimistic
+  // placeholder addOrder() appended. Optional id override for the just-restored-session case,
+  // where customerId hasn't finished propagating into state yet.
+  refreshOrders: (customerId?: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -23,6 +27,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [ordersLoading, setOrdersLoading] = useState(false)
+  const [customerId, setCustomerId] = useState<string | null>(null)
+
+  // Orders are Cognito-scoped: ordersByCustomer derives the customer from the token, so
+  // customerId is only used as a cache key here, never sent as a trusted argument.
+  const refreshOrders = useCallback(async (id?: string) => {
+    const targetId = id ?? customerId
+    if (!targetId) return
+    setOrdersLoading(true)
+    try {
+      const o = await getOrdersForCustomer(targetId)
+      setOrders(o)
+    } catch (error) {
+      console.error('Failed to fetch orders for customer', error)
+    } finally {
+      setOrdersLoading(false)
+    }
+  }, [customerId])
 
   // Restore the Cognito session on mount. /api/auth/me always responds 200:
   // { authenticated, user }. "Not logged in" is a valid state (user: null), not an error.
@@ -37,14 +58,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // `username` is a Cognito UUID. Fall back to email so `name` is never
         // undefined downstream (user-dropdown, initials, etc.).
         setUser({ id: me.user.sub, name: me.user.name || me.user.email, email: me.user.email })
-
-        // Orders are Cognito-scoped: ordersByCustomer derives the customer from the token,
-        // so the argument is ignored server-side — we only fetch once authenticated.
-        setOrdersLoading(true)
-        getOrdersForCustomer(me.user.sub)
-          .then((o) => { if (!cancelled) setOrders(o) })
-          .catch((error) => console.error('Failed to fetch orders for customer', error))
-          .finally(() => { if (!cancelled) setOrdersLoading(false) })
+        setCustomerId(me.user.sub)
+        void refreshOrders(me.user.sub)
       })
       .catch((error) => console.error('Failed to restore Cognito session from /api/auth/me', error))
       .finally(() => { if (!cancelled) setIsLoading(false) })
@@ -79,8 +94,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, orders, isLoading, ordersLoading, loginWithCognito, signUpWithCognito, logout, addOrder }),
-    [user, orders, isLoading, ordersLoading, loginWithCognito, signUpWithCognito, logout, addOrder],
+    () => ({
+      user, orders, isLoading, ordersLoading, loginWithCognito, signUpWithCognito, logout, addOrder,
+      refreshOrders,
+    }),
+    [
+      user, orders, isLoading, ordersLoading, loginWithCognito, signUpWithCognito, logout, addOrder,
+      refreshOrders,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
