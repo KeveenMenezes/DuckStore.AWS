@@ -147,7 +147,7 @@ export interface GqlUserProfile {
   country: string | null
 }
 
-export interface GqlShippingAddress {
+export interface GqlOrderShippingAddress {
   firstName: string
   lastName: string
   emailAddress: string
@@ -170,11 +170,9 @@ export interface GqlOrderItem {
 
 export interface GqlOrder {
   id: string
-  customerId: string
-  orderName: string
   status: string
   createdAt: string | null
-  shippingAddress: GqlShippingAddress
+  shippingAddress: GqlOrderShippingAddress
   payment: GqlOrderPayment
   orderItems: GqlOrderItem[]
 }

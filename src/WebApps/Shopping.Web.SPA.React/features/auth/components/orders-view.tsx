@@ -105,6 +105,23 @@ export function OrdersView() {
                   <Badge variant={status.variant}>{status.label}</Badge>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
+                  {(order.shippingAddress || order.payment) && (
+                    <div className="flex flex-col gap-1 border-b border-border pb-3 text-sm text-muted-foreground">
+                      {order.shippingAddress && (
+                        <p>
+                          Delivering to {order.shippingAddress.addressLine}, {order.shippingAddress.state}
+                          {", "}
+                          {order.shippingAddress.country}
+                        </p>
+                      )}
+                      {order.payment && (
+                        <p>
+                          {order.payment.method}
+                          {order.payment.installments > 1 ? ` in ${order.payment.installments}x` : ""}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   {order.items.map((item, idx) => (
                     <div key={idx} className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
