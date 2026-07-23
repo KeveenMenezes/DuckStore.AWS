@@ -164,6 +164,8 @@ export interface GqlOrderPayment {
 
 export interface GqlOrderItem {
   productId: string
+  productName: string
+  imageId: string | null
   quantity: number
   price: number
 }

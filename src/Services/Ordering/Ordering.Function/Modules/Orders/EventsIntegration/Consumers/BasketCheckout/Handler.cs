@@ -33,6 +33,6 @@ public class CreateOrderHandler(
             shippingAddress: shippingAddress,
             payment: Payment.Of(orderDto.Payment.PaymentMethod, orderDto.Payment.Installments),
             items: orderDto.OrderItems.Select(item =>
-                (ProductId.Of(item.ProductId), item.Quantity, item.Price)));
+                (ProductId.Of(item.ProductId), item.ProductName, item.ImageId, item.Quantity, item.Price)));
     }
 }

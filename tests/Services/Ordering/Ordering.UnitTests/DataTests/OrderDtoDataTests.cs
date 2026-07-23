@@ -19,6 +19,8 @@ public static class CreateOrderCommandTestsDataTests
             [
                 new CreateOrderItemDto(
                     Guid.NewGuid(),
+                    "Rubber Duck Classic",
+                    null,
                     2,
                     50)
             ]

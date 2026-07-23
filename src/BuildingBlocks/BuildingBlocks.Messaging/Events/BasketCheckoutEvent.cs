@@ -37,4 +37,4 @@ public record BasketCheckoutPayment
     public int Installments { get; set; }
 }
 
-public record BasketCheckoutItem(Guid ProductId, int Quantity, decimal Price);
+public record BasketCheckoutItem(Guid ProductId, string ProductName, string? ImageId, int Quantity, decimal Price);

@@ -19,11 +19,15 @@ public static class OrderDataTests
 
         order.Add(
             ProductId.Of(Guid.NewGuid()),
+            "Rubber Duck Classic",
+            null,
             1,
             10);
 
         order.Add(
             ProductId.Of(Guid.NewGuid()),
+            "Rubber Duck Pirate",
+            null,
             2,
             20);
 

@@ -49,6 +49,8 @@ export function response(ctx) {
       },
       orderItems: (item.OrderItems ?? []).map((orderItem) => ({
         productId: orderItem.ProductId,
+        productName: orderItem.ProductName ?? "",
+        imageId: orderItem.ImageId ?? null,
         quantity: orderItem.Quantity,
         price: orderItem.Price,
       })),

@@ -44,11 +44,15 @@ public static class OrderingInitialData
 
             order1.Add(
                 ProductId.Of(new Guid("5334c996-8457-4cf0-815c-ed2b77c4ff61")),
+                "Rubber Duck Classic",
+                null,
                 2,
                 500);
 
             order1.Add(
                 ProductId.Of(new Guid("c67d6323-e8b1-4bdf-9a75-b0d0d2e7e914")),
+                "Rubber Duck Pirate",
+                null,
                 1,
                 400);
 
@@ -61,11 +65,15 @@ public static class OrderingInitialData
 
             order2.Add(
                 ProductId.Of(new Guid("4f136e9f-ff8c-4c1f-9a33-d12f689bdab8")),
+                "Rubber Duck Astronaut",
+                null,
                 1,
                 650);
 
             order2.Add(
                 ProductId.Of(new Guid("6ec1297b-ec0a-4aa1-be25-6726e3b51a27")),
+                "Rubber Duck Ninja",
+                null,
                 2,
                 450);
 

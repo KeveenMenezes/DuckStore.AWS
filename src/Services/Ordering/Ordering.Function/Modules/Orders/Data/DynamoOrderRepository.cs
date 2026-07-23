@@ -84,6 +84,10 @@ public class DynamoOrderRepository(IAmazonDynamoDB dynamoDb) : IOrderRepository
                     {
                         ["Id"] = new(item.Id.Value.ToString()),
                         ["ProductId"] = new(item.ProductId.Value.ToString()),
+                        ["ProductName"] = new(item.ProductName),
+                        ["ImageId"] = item.ImageId is null
+                            ? new AttributeValue { NULL = true }
+                            : new AttributeValue(item.ImageId),
                         ["Quantity"] = new AttributeValue { N = item.Quantity.ToString(CultureInfo.InvariantCulture) },
                         ["Price"] = new AttributeValue { N = item.Price.ToString(CultureInfo.InvariantCulture) }
                     }
@@ -117,6 +121,8 @@ public class DynamoOrderRepository(IAmazonDynamoDB dynamoDb) : IOrderRepository
                 Guid.Parse(i.M["Id"].S),
                 id,
                 Guid.Parse(i.M["ProductId"].S),
+                i.M.TryGetValue("ProductName", out var productName) ? productName.S : string.Empty,
+                i.M.TryGetValue("ImageId", out var imageId) && imageId.NULL != true ? imageId.S : null,
                 int.Parse(i.M["Quantity"].N, CultureInfo.InvariantCulture),
                 decimal.Parse(i.M["Price"].N, CultureInfo.InvariantCulture)));
 

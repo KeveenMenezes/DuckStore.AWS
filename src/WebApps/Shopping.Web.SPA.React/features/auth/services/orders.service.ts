@@ -24,7 +24,8 @@ export async function getOrdersForCustomer(customerId: string): Promise<Order[]>
     status: mapBackendStatus(o.status),
     total: o.orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0),
     items: o.orderItems.map((i) => ({
-      name: `Product ${i.productId.slice(0, 8)}`,
+      name: i.productName || `Product ${i.productId.slice(0, 8)}`,
+      imageId: i.imageId,
       quantity: i.quantity,
       price: i.price,
     })),

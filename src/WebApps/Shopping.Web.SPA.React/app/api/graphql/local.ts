@@ -145,6 +145,8 @@ function mapOrder(item: Record<string, unknown>) {
     },
     orderItems: rawItems.map(oi => ({
       productId: String(oi.ProductId ?? ''),
+      productName: String(oi.ProductName ?? ''),
+      imageId: (oi.ImageId as string) ?? null,
       quantity: Number(oi.Quantity ?? 0),
       price: Number(oi.Price ?? 0),
     })),
