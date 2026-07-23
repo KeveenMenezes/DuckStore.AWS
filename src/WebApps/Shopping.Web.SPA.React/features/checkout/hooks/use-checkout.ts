@@ -44,28 +44,36 @@ export function useCheckout() {
   const [formData, setFormData] = useState<CheckoutFormData>(EMPTY_FORM)
   const [errors, setErrors] = useState<CheckoutFieldErrors>({})
   const [installmentPlan, setInstallmentPlan] = useState<GqlBasketInstallmentPlan | null>(null)
+  const [isLoadingInstallmentPlan, setIsLoadingInstallmentPlan] = useState(false)
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false)
 
   // Fetch the unified cart-level installment plan whenever the cart contents change, and default
   // the selected installment count to the max interest-free option.
   useEffect(() => {
     let cancelled = false
-    const fetchPlan = items.length === 0
-      ? Promise.resolve(null)
-      : getBasketInstallmentPlan(items).catch((error) => {
-          console.error('Failed to fetch basket installment plan', error)
-          return null
-        })
+    if (items.length === 0) {
+      setInstallmentPlan(null)
+      setIsLoadingInstallmentPlan(false)
+      return
+    }
 
-    fetchPlan.then((plan) => {
-      if (cancelled) return
-      setInstallmentPlan(plan)
-      if (plan) {
-        setFormData((prev) => ({
-          ...prev,
-          installments: String(plan.maxInstallmentsWithoutInterest),
-        }))
-      }
-    })
+    setIsLoadingInstallmentPlan(true)
+    getBasketInstallmentPlan(items)
+      .catch((error) => {
+        console.error('Failed to fetch basket installment plan', error)
+        return null
+      })
+      .then((plan) => {
+        if (cancelled) return
+        setInstallmentPlan(plan)
+        setIsLoadingInstallmentPlan(false)
+        if (plan) {
+          setFormData((prev) => ({
+            ...prev,
+            installments: String(plan.maxInstallmentsWithoutInterest),
+          }))
+        }
+      })
     return () => { cancelled = true }
   }, [items])
 
@@ -74,6 +82,7 @@ export function useCheckout() {
   useEffect(() => {
     if (!user) return
     let cancelled = false
+    setIsLoadingProfile(true)
     getMyProfile()
       .then((p) => {
         if (cancelled) return
@@ -86,6 +95,9 @@ export function useCheckout() {
         }))
       })
       .catch((error) => console.error('Failed to fetch profile for checkout prefill', error))
+      .finally(() => {
+        if (!cancelled) setIsLoadingProfile(false)
+      })
     return () => { cancelled = true }
   }, [user])
 
@@ -139,6 +151,8 @@ export function useCheckout() {
     totalItems,
     totalPrice,
     installmentPlan,
+    isLoadingInstallmentPlan,
+    isLoadingProfile,
     updateField,
     updatePaymentMethod,
     handleSubmit,

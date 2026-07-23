@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import { CreditCard, Wallet } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
 import { formatBRL } from "@/shared/lib/format"
 import type {
   CheckoutFieldErrors,
@@ -28,6 +29,9 @@ interface CheckoutFormProps {
   totalPrice: number
   // The unified, cart-level installment plan (null while loading or when the cart is empty).
   installmentPlan: GqlBasketInstallmentPlan | null
+  isLoadingInstallmentPlan: boolean
+  // True while the user's profile is being fetched to prefill the shipping fields.
+  isLoadingProfile: boolean
   onFieldChange: (field: Exclude<keyof CheckoutFormData, "paymentMethod">, value: string) => void
   onPaymentMethodChange: (method: CheckoutPaymentMethod) => void
   onSubmit: (e: FormEvent<HTMLFormElement>) => void | Promise<void>
@@ -38,6 +42,8 @@ export function CheckoutForm({
   errors,
   totalPrice,
   installmentPlan,
+  isLoadingInstallmentPlan,
+  isLoadingProfile,
   onFieldChange,
   onPaymentMethodChange,
   onSubmit,
@@ -64,6 +70,7 @@ export function CheckoutForm({
             placeholder="Your name"
             value={formData.name}
             error={errors.name}
+            loading={isLoadingProfile}
             onChange={(value) => onFieldChange("name", value)}
           />
           <FormField
@@ -73,6 +80,7 @@ export function CheckoutForm({
             placeholder="you@email.com"
             value={formData.email}
             error={errors.email}
+            loading={isLoadingProfile}
             onChange={(value) => onFieldChange("email", value)}
           />
           <FormField
@@ -81,6 +89,7 @@ export function CheckoutForm({
             placeholder="Street, number, complement"
             value={formData.address}
             error={errors.address}
+            loading={isLoadingProfile}
             onChange={(value) => onFieldChange("address", value)}
           />
           <FormField
@@ -89,6 +98,7 @@ export function CheckoutForm({
             placeholder="Your city"
             value={formData.city}
             error={errors.city}
+            loading={isLoadingProfile}
             onChange={(value) => onFieldChange("city", value)}
           />
         </CardContent>
@@ -163,7 +173,17 @@ export function CheckoutForm({
             </>
           )}
 
-          {!isCash && installmentOptions.length > 0 && (
+          {!isCash && isLoadingInstallmentPlan && (
+            <div className="flex flex-col gap-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-9 w-full" />
+              <span className="text-xs text-muted-foreground">
+                Calculating installment options — please wait before confirming your order.
+              </span>
+            </div>
+          )}
+
+          {!isCash && !isLoadingInstallmentPlan && installmentOptions.length > 0 && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="installments" className="text-foreground">
                 Installments
@@ -188,7 +208,12 @@ export function CheckoutForm({
         </CardContent>
       </Card>
 
-      <Button type="submit" size="lg" className="gap-2">
+      <Button
+        type="submit"
+        size="lg"
+        className="gap-2"
+        disabled={isLoadingProfile || (!isCash && isLoadingInstallmentPlan)}
+      >
         <CreditCard className="h-4 w-4" />
         Confirm Order - {formatBRL(totalPrice)}
       </Button>
@@ -205,9 +230,28 @@ interface FormFieldProps {
   error?: string
   type?: string
   maxLength?: number
+  loading?: boolean
 }
 
-function FormField({ id, label, value, placeholder, onChange, error, type, maxLength }: FormFieldProps) {
+function FormField({
+  id,
+  label,
+  value,
+  placeholder,
+  onChange,
+  error,
+  type,
+  maxLength,
+  loading,
+}: FormFieldProps) {
+  if (loading) {
+    return (
+      <div className="flex flex-col gap-2">
+        <Skeleton className="h-4 w-24" />
+        <Skeleton className="h-9 w-full" />
+      </div>
+    )
+  }
   return (
     <div className="flex flex-col gap-2">
       <Label htmlFor={id} className="text-foreground">
