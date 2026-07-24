@@ -17,25 +17,17 @@ export class CatalogViewStack extends cdk.Stack {
       value: dynamoDB.catalogViewProductsTable.tableName,
       exportName: `${this.stackName}-CatalogViewProductsTable`,
     });
-    new cdk.CfnOutput(this, 'ProductSyncConsumerArn', {
-      value: lambdas.productSyncConsumer.functionArn,
-      exportName: `${this.stackName}-ProductSyncConsumerArn`,
+    new cdk.CfnOutput(this, 'CatalogSyncConsumerArn', {
+      value: lambdas.catalogSyncConsumer.functionArn,
+      exportName: `${this.stackName}-CatalogSyncConsumerArn`,
     });
-    new cdk.CfnOutput(this, 'ReviewAggregateConsumerArn', {
-      value: lambdas.reviewAggregateConsumer.functionArn,
-      exportName: `${this.stackName}-ReviewAggregateConsumerArn`,
-    });
-    new cdk.CfnOutput(this, 'ReviewUpdateAggregateConsumerArn', {
-      value: lambdas.reviewUpdateAggregateConsumer.functionArn,
-      exportName: `${this.stackName}-ReviewUpdateAggregateConsumerArn`,
+    new cdk.CfnOutput(this, 'ReviewSyncConsumerArn', {
+      value: lambdas.reviewSyncConsumer.functionArn,
+      exportName: `${this.stackName}-ReviewSyncConsumerArn`,
     });
     new cdk.CfnOutput(this, 'PriceSyncConsumerArn', {
       value: lambdas.priceSyncConsumer.functionArn,
       exportName: `${this.stackName}-PriceSyncConsumerArn`,
-    });
-    new cdk.CfnOutput(this, 'CategorySyncConsumerArn', {
-      value: lambdas.categorySyncConsumer.functionArn,
-      exportName: `${this.stackName}-CategorySyncConsumerArn`,
     });
     new cdk.CfnOutput(this, 'ProductStreamPublisherArn', {
       value: lambdas.productStreamPublisher.functionArn,

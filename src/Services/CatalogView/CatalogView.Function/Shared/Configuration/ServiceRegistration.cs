@@ -15,12 +15,21 @@ public static class ServiceRegistration
 
         services.AddScoped<IProductSearchIndex, DynamoProductIndex>();
 
-        services.AddScoped<ProductSyncedHandler>();
-        services.AddScoped<ProductDeletedHandler>();
-        services.AddScoped<CategorySyncHandler>();
+        // Grouped by producer bounded context (ADR-0040), each with its own strategy contract —
+        // ICatalogSyncStrategy/CatalogSyncDispatcher and IReviewSyncStrategy/ReviewSyncDispatcher
+        // never mix, so a strategy from one producer can never be picked up by the other
+        // producer's dispatcher. PriceSyncHandler stays a plain 1:1 handler — Pricing is the only
+        // producer with a single occurrence relevant here, so the Strategy pattern buys nothing.
+        services.AddScoped<ICatalogSyncStrategy, ProductSyncStrategy>();
+        services.AddScoped<ICatalogSyncStrategy, ProductDeleteStrategy>();
+        services.AddScoped<ICatalogSyncStrategy, CategorySyncStrategy>();
+        services.AddScoped<CatalogSyncDispatcher>();
+
+        services.AddScoped<IReviewSyncStrategy, ReviewCreateStrategy>();
+        services.AddScoped<IReviewSyncStrategy, ReviewUpdateStrategy>();
+        services.AddScoped<ReviewSyncDispatcher>();
+
         services.AddScoped<PriceSyncHandler>();
-        services.AddScoped<ReviewAggregateHandler>();
-        services.AddScoped<ReviewUpdateAggregateHandler>();
 
         // Stream publisher (ADR-0035) — emits CatalogViewProductSyncedEvent/
         // CatalogViewProductDeletedEvent off catalogview-products writes.

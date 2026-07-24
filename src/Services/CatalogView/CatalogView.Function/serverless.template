@@ -3,46 +3,6 @@
   "Transform": "AWS::Serverless-2016-10-31",
   "Description": "This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
   "Resources": {
-    "CatalogViewFunctionFunctionsCatalogProductSyncConsumerGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "CatalogView.Function::CatalogView.Function.Functions_CatalogProductSyncConsumer_Generated::CatalogProductSyncConsumer"
-          ]
-        }
-      }
-    },
-    "CatalogViewFunctionFunctionsReviewAggregateConsumerGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "CatalogView.Function::CatalogView.Function.Functions_ReviewAggregateConsumer_Generated::ReviewAggregateConsumer"
-          ]
-        }
-      }
-    },
     "CatalogViewFunctionFunctionsPriceSyncConsumerGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
@@ -63,66 +23,6 @@
         }
       }
     },
-    "CatalogViewFunctionFunctionsReviewUpdateAggregateConsumerGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "CatalogView.Function::CatalogView.Function.Functions_ReviewUpdateAggregateConsumer_Generated::ReviewUpdateAggregateConsumer"
-          ]
-        }
-      }
-    },
-    "CatalogViewFunctionFunctionsCategorySyncConsumerGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "CatalogView.Function::CatalogView.Function.Functions_CategorySyncConsumer_Generated::CategorySyncConsumer"
-          ]
-        }
-      }
-    },
-    "CatalogViewFunctionFunctionsProductDeletedConsumerGenerated": {
-      "Type": "AWS::Serverless::Function",
-      "Metadata": {
-        "Tool": "Amazon.Lambda.Annotations"
-      },
-      "Properties": {
-        "MemorySize": 512,
-        "Timeout": 30,
-        "Policies": [
-          "AWSLambdaBasicExecutionRole"
-        ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "CatalogView.Function::CatalogView.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer"
-          ]
-        }
-      }
-    },
     "CatalogViewFunctionFunctionsCatalogViewProductStreamPublisherGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
@@ -139,6 +39,46 @@
         "ImageConfig": {
           "Command": [
             "CatalogView.Function::CatalogView.Function.Functions_CatalogViewProductStreamPublisher_Generated::CatalogViewProductStreamPublisher"
+          ]
+        }
+      }
+    },
+    "CatalogViewFunctionFunctionsCatalogSyncConsumerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Image",
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "CatalogView.Function::CatalogView.Function.Functions_CatalogSyncConsumer_Generated::CatalogSyncConsumer"
+          ]
+        }
+      }
+    },
+    "CatalogViewFunctionFunctionsReviewSyncConsumerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Image",
+        "ImageUri": ".",
+        "ImageConfig": {
+          "Command": [
+            "CatalogView.Function::CatalogView.Function.Functions_ReviewSyncConsumer_Generated::ReviewSyncConsumer"
           ]
         }
       }

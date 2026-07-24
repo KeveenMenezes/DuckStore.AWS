@@ -32,7 +32,7 @@ public sealed class SearchDocument
     public List<string> CategoryIds { get; set; } = [];
 
     // Denormalized display names, index-aligned with CategoryIds — kept in sync with Catalog's
-    // categories table by CategorySyncHandler whenever a category is renamed (ADR-0027 extension).
+    // categories table by CategorySyncStrategy whenever a category is renamed (ADR-0027 extension).
     [JsonPropertyName("categories")]
     public List<CategoryRef> Categories { get; set; } = [];
 

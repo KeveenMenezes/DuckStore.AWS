@@ -1,17 +1,27 @@
-﻿using BuildingBlocks.Messaging.Events;
+using System.Text.Json;
+using BuildingBlocks.Messaging.Events;
 using CatalogView.Function.Modules.Products.Data;
 using CatalogView.Function.Modules.Products.Domain;
-using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ProductSync;
+using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CatalogSync.Strategies;
 
 namespace CatalogView.UnitTests.Products;
 
-public class ProductSyncedHandlerTests
+public class ProductSyncStrategyTests
 {
+    [Fact]
+    public void CanHandle_OnlyProductSyncedEvent()
+    {
+        var strategy = new ProductSyncStrategy(Mock.Of<IProductSearchIndex>());
+
+        Assert.True(strategy.CanHandle(nameof(ProductSyncedEvent)));
+        Assert.False(strategy.CanHandle(nameof(ProductDeletedEvent)));
+    }
+
     [Fact]
     public async Task HandleAsync_UpsertsDocument()
     {
         var index = new Mock<IProductSearchIndex>();
-        var handler = new ProductSyncedHandler(index.Object);
+        var strategy = new ProductSyncStrategy(index.Object);
 
         var evt = new ProductSyncedEvent
         {
@@ -24,7 +34,7 @@ public class ProductSyncedHandlerTests
             CategoryNames = ["Languages"]
         };
 
-        await handler.HandleAsync(evt);
+        await strategy.HandleAsync("event-1", JsonSerializer.SerializeToElement(evt));
 
         index.Verify(
             i => i.UpsertAsync(

@@ -7,7 +7,7 @@ public interface IProductSearchIndex
     Task DeleteAsync(string productId, CancellationToken cancellationToken = default);
 
     // Rewrites a category's denormalized name on every product document that references it
-    // (CategorySyncHandler, triggered by a category rename — ADR-0027 extension, ADR-0030).
+    // (CategorySyncStrategy, triggered by a category rename — ADR-0027 extension, ADR-0030).
     Task RenameCategoryAsync(string categoryId, string name, CancellationToken cancellationToken = default);
 
     // Idempotent two-step update (see DynamoProductIndex): a conditional ADD applies the rating

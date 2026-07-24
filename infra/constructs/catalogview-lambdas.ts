@@ -19,17 +19,16 @@ export interface CatalogViewLambdasProps {
   readonly catalogViewProductsTable: dynamodb.Table;
 }
 
-// Six EventBridge-triggered consumer Lambdas — none HTTP/AppSync-invoked (ADR-0030 reverted
+// Three EventBridge-triggered consumer Lambdas — none HTTP/AppSync-invoked (ADR-0030 reverted
 // products/product back to Direct DynamoDB resolvers, so CatalogView no longer exposes any
 // synchronously invoked Lambda). Each keeps `catalogview-products` in sync with a slice of another
-// bounded context's writes via CDC.
+// bounded context's writes via CDC. Grouped by producer bounded context (ADR-0040): Catalog and
+// Review each have 2+ occurrences relevant here, so they share one Lambda dispatching to an
+// ISyncStrategy per detail-type; Pricing has a single occurrence and stays a plain 1:1 consumer.
 export class CatalogViewLambdas extends Construct {
-  public readonly productSyncConsumer: lambda.Function;
-  public readonly productDeletedConsumer: lambda.Function;
-  public readonly reviewAggregateConsumer: lambda.Function;
-  public readonly reviewUpdateAggregateConsumer: lambda.Function;
+  public readonly catalogSyncConsumer: lambda.Function;
+  public readonly reviewSyncConsumer: lambda.Function;
   public readonly priceSyncConsumer: lambda.Function;
-  public readonly categorySyncConsumer: lambda.Function;
   public readonly productStreamPublisher: lambda.Function;
 
   constructor(scope: Construct, id: string, props: CatalogViewLambdasProps) {
@@ -40,11 +39,11 @@ export class CatalogViewLambdas extends Construct {
     // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
 
-    // Shared dead-letter queue for all six CatalogView consumers; a non-empty
+    // Shared dead-letter queue for all CatalogView consumers; a non-empty
     // queue trips the catalogview-dlq-not-empty alarm → duckstore-alerts.
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'catalogview' });
 
-    // All six CatalogView Lambdas share the same image, built once.
+    // All CatalogView Lambdas share the same image, built once.
     const catalogViewImage = new ecrAssets.DockerImageAsset(this, 'CatalogViewImage', {
       directory: REPO_ROOT,
       file: CATALOGVIEW_DOCKERFILE,
@@ -95,121 +94,90 @@ export class CatalogViewLambdas extends Construct {
       );
     };
 
-    // 1. catalogview-product-sync-consumer
-    //    Trigger: ProductSyncedEvent (Catalog's CDC stream publisher, ADR-0027 §1, ADR-0031).
-    //    Upserts the product fields on catalogview-products — never touches
+    // 1. catalogview-catalog-sync-consumer (ADR-0040)
+    //    Triggers: ProductSyncedEvent, ProductDeletedEvent, CatalogCategorySyncEvent — every
+    //    CatalogView consumer sourced from Catalog, grouped behind one Lambda that dispatches to
+    //    the owning ISyncStrategy by detail-type. Each strategy keeps its own narrow write
+    //    boundary via IProductSearchIndex — ProductSyncStrategy never touches
     //    Price/AverageRating/RatingCount/RatingSum/LastRatingEventId (ADR-0027 §3, ADR-0030).
-    //    Deletes are handled by catalogview-product-deleted-consumer below (ADR-0031).
-    this.productSyncConsumer = new lambda.DockerImageFunction(this, 'ProductSyncConsumer', {
-      functionName: 'catalogview-product-sync-consumer',
+    this.catalogSyncConsumer = new lambda.DockerImageFunction(this, 'CatalogSyncConsumer', {
+      functionName: 'catalogview-catalog-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: catalogViewCode([
-        'CatalogView.Function::CatalogView.Function.Functions_CatalogProductSyncConsumer_Generated::CatalogProductSyncConsumer',
+        'CatalogView.Function::CatalogView.Function.Functions_CatalogSyncConsumer_Generated::CatalogSyncConsumer',
       ]),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
-      description: 'Consumes ProductSyncedEvent and upserts catalogview-products',
+      description:
+        'Consumes ProductSyncedEvent/ProductDeletedEvent/CatalogCategorySyncEvent and syncs catalogview-products',
       environment: {
         EventBridge__BusName: eventBus.eventBusName,
       },
     });
-    catalogViewProductsTable.grantReadWriteData(this.productSyncConsumer);
+    catalogViewProductsTable.grantReadWriteData(this.catalogSyncConsumer);
     ruleFor(
       'ProductSync',
-      this.productSyncConsumer,
+      this.catalogSyncConsumer,
       'catalogview-product-sync-consumer-rule',
       'ProductSyncedEvent',
-      'Routes ProductSyncedEvent (source=duckstore) to catalogview-product-sync-consumer',
+      'Routes ProductSyncedEvent (source=duckstore) to catalogview-catalog-sync-consumer',
     );
-
-    // 1b. catalogview-product-deleted-consumer
-    //     Trigger: ProductDeletedEvent — the same thin event Pricing consumes (ADR-0031: named
-    //     after the domain occurrence, no ChangeType discriminator). Deletes the product from the
-    //     search index; write-only, never reads.
-    this.productDeletedConsumer = new lambda.DockerImageFunction(this, 'ProductDeletedConsumer', {
-      functionName: 'catalogview-product-deleted-consumer',
-      tracing: lambda.Tracing.ACTIVE,
-      architecture: DOTNET_ARCH,
-      code: catalogViewCode([
-        'CatalogView.Function::CatalogView.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer',
-      ]),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
-      description: 'Consumes ProductDeletedEvent and removes the product from catalogview-products',
-      environment: {
-        EventBridge__BusName: eventBus.eventBusName,
-      },
-    });
-    catalogViewProductsTable.grantWriteData(this.productDeletedConsumer);
     ruleFor(
       'ProductDeleted',
-      this.productDeletedConsumer,
+      this.catalogSyncConsumer,
       'catalogview-product-deleted-consumer-rule',
       'ProductDeletedEvent',
-      'Routes ProductDeletedEvent (source=duckstore) to catalogview-product-deleted-consumer',
+      'Routes ProductDeletedEvent (source=duckstore) to catalogview-catalog-sync-consumer',
+    );
+    ruleFor(
+      'CategorySync',
+      this.catalogSyncConsumer,
+      'catalogview-category-sync-consumer-rule',
+      'CatalogCategorySyncEvent',
+      'Routes CatalogCategorySyncEvent (source=duckstore) to catalogview-catalog-sync-consumer',
     );
 
-    // 2. catalogview-review-aggregate-consumer
-    //    Trigger: ReviewCreatedEvent (Review's CDC stream publisher, ADR-0011).
-    //    Two-step, non-atomic ADD + recompute average (ADR-0030 accepted trade-off 2).
-    this.reviewAggregateConsumer = new lambda.DockerImageFunction(this, 'ReviewAggregateConsumer', {
-      functionName: 'catalogview-review-aggregate-consumer',
+    // 2. catalogview-review-sync-consumer (ADR-0040)
+    //    Triggers: ReviewCreatedEvent, ReviewUpdatedEvent — every CatalogView consumer sourced
+    //    from Review, grouped behind one Lambda. Both strategies apply the same two-step,
+    //    non-atomic ADD + recompute average (ADR-0030 accepted trade-off 2); ReviewUpdateStrategy
+    //    is the sibling that moves ratingSum by delta instead of ratingCount+1.
+    this.reviewSyncConsumer = new lambda.DockerImageFunction(this, 'ReviewSyncConsumer', {
+      functionName: 'catalogview-review-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: catalogViewCode([
-        'CatalogView.Function::CatalogView.Function.Functions_ReviewAggregateConsumer_Generated::ReviewAggregateConsumer',
+        'CatalogView.Function::CatalogView.Function.Functions_ReviewSyncConsumer_Generated::ReviewSyncConsumer',
       ]),
       timeout: cdk.Duration.seconds(30),
       memorySize: 512,
-      description: 'Consumes ReviewCreatedEvent and folds the new rating into catalogview-products',
+      description: 'Consumes ReviewCreatedEvent/ReviewUpdatedEvent and folds ratings into catalogview-products',
       environment: {
         EventBridge__BusName: eventBus.eventBusName,
       },
     });
-    catalogViewProductsTable.grantReadWriteData(this.reviewAggregateConsumer);
+    catalogViewProductsTable.grantReadWriteData(this.reviewSyncConsumer);
     ruleFor(
       'ReviewAggregate',
-      this.reviewAggregateConsumer,
+      this.reviewSyncConsumer,
       'catalogview-review-aggregate-consumer-rule',
       'ReviewCreatedEvent',
-      'Routes ReviewCreatedEvent (source=duckstore) to catalogview-review-aggregate-consumer',
+      'Routes ReviewCreatedEvent (source=duckstore) to catalogview-review-sync-consumer',
     );
-
-    // 3. catalogview-review-update-aggregate-consumer
-    //    Trigger: ReviewUpdatedEvent (ADR-0029 — a customer editing an existing review).
-    //    Sibling to ReviewAggregateConsumer: ratingCount unchanged, ratingSum moves by delta.
-    this.reviewUpdateAggregateConsumer = new lambda.DockerImageFunction(
-      this,
-      'ReviewUpdateAggregateConsumer',
-      {
-        functionName: 'catalogview-review-update-aggregate-consumer',
-        tracing: lambda.Tracing.ACTIVE,
-        architecture: DOTNET_ARCH,
-        code: catalogViewCode([
-          'CatalogView.Function::CatalogView.Function.Functions_ReviewUpdateAggregateConsumer_Generated::ReviewUpdateAggregateConsumer',
-        ]),
-        timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
-        description:
-          'Consumes ReviewUpdatedEvent and applies the rating delta to catalogview-products',
-        environment: {
-          EventBridge__BusName: eventBus.eventBusName,
-        },
-      },
-    );
-    catalogViewProductsTable.grantReadWriteData(this.reviewUpdateAggregateConsumer);
     ruleFor(
       'ReviewUpdateAggregate',
-      this.reviewUpdateAggregateConsumer,
+      this.reviewSyncConsumer,
       'catalogview-review-update-aggregate-consumer-rule',
       'ReviewUpdatedEvent',
-      'Routes ReviewUpdatedEvent (source=duckstore) to catalogview-review-update-aggregate-consumer',
+      'Routes ReviewUpdatedEvent (source=duckstore) to catalogview-review-sync-consumer',
     );
 
-    // 4. catalogview-price-sync-consumer
-    //    Trigger: PriceChangedEvent (Pricing's CDC stream publisher, ADR-0026/ADR-0028).
-    //    Partial merge of price + payment-highlight fields — naturally idempotent (absolute values).
+    // 3. catalogview-price-sync-consumer
+    //    Trigger: PriceChangedEvent (Pricing's CDC stream publisher, ADR-0026/ADR-0028). Pricing
+    //    is the only producer with a single occurrence relevant to CatalogView, so this stays a
+    //    plain 1:1 consumer (ADR-0040 §1) — partial merge of price + payment-highlight fields,
+    //    naturally idempotent (absolute values).
     this.priceSyncConsumer = new lambda.DockerImageFunction(this, 'PriceSyncConsumer', {
       functionName: 'catalogview-price-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
@@ -233,34 +201,7 @@ export class CatalogViewLambdas extends Construct {
       'Routes PriceChangedEvent (source=duckstore) to catalogview-price-sync-consumer',
     );
 
-    // 5. catalogview-category-sync-consumer
-    //    Trigger: CatalogCategorySyncEvent (a category rename in Catalog, ADR-0027 extension).
-    //    Scan + per-matching-item UpdateItem (ADR-0030 — no _update_by_query equivalent).
-    this.categorySyncConsumer = new lambda.DockerImageFunction(this, 'CategorySyncConsumer', {
-      functionName: 'catalogview-category-sync-consumer',
-      tracing: lambda.Tracing.ACTIVE,
-      architecture: DOTNET_ARCH,
-      code: catalogViewCode([
-        'CatalogView.Function::CatalogView.Function.Functions_CategorySyncConsumer_Generated::CategorySyncConsumer',
-      ]),
-      timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
-      description:
-        'Consumes CatalogCategorySyncEvent and rewrites the denormalized category name on catalogview-products',
-      environment: {
-        EventBridge__BusName: eventBus.eventBusName,
-      },
-    });
-    catalogViewProductsTable.grantReadWriteData(this.categorySyncConsumer);
-    ruleFor(
-      'CategorySync',
-      this.categorySyncConsumer,
-      'catalogview-category-sync-consumer-rule',
-      'CatalogCategorySyncEvent',
-      'Routes CatalogCategorySyncEvent (source=duckstore) to catalogview-category-sync-consumer',
-    );
-
-    // 7. catalogview-product-stream-publisher (ADR-0035)
+    // 4. catalogview-product-stream-publisher (ADR-0035)
     //    Trigger: DynamoDB Streams on catalogview-products, not EventBridge — this is CatalogView's
     //    own CDC publisher, mirroring Pricing's priceStreamPublisher. Emits
     //    CatalogViewProductSyncedEvent (INSERT/MODIFY) / CatalogViewProductDeletedEvent (REMOVE)
