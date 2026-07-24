@@ -27,37 +27,21 @@ public static class CatalogViewExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
+        // Grouped by producer bounded context (ADR-0040): Catalog and Review each dispatch 2+
+        // detail-types to one Lambda via SyncStrategyDispatcher; Pricing stays a plain 1:1 consumer.
         builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
-                "catalogview-product-sync-consumer",
+                "catalogview-catalog-sync-consumer",
                 lambdaHandler:
-                "CatalogView.Function::CatalogView.Function.Functions_CatalogProductSyncConsumer_Generated::CatalogProductSyncConsumer")
+                "CatalogView.Function::CatalogView.Function.Functions_CatalogSyncConsumer_Generated::CatalogSyncConsumer")
             .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
         builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
-                "catalogview-product-deleted-consumer",
+                "catalogview-review-sync-consumer",
                 lambdaHandler:
-                "CatalogView.Function::CatalogView.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer")
-            .WaitForCompletion(catalogViewSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment()
-            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
-
-        builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
-                "catalogview-review-aggregate-consumer",
-                lambdaHandler:
-                "CatalogView.Function::CatalogView.Function.Functions_ReviewAggregateConsumer_Generated::ReviewAggregateConsumer")
-            .WaitForCompletion(catalogViewSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment()
-            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
-
-        builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
-                "catalogview-review-update-aggregate-consumer",
-                lambdaHandler:
-                "CatalogView.Function::CatalogView.Function.Functions_ReviewUpdateAggregateConsumer_Generated::ReviewUpdateAggregateConsumer")
+                "CatalogView.Function::CatalogView.Function.Functions_ReviewSyncConsumer_Generated::ReviewSyncConsumer")
             .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -67,15 +51,6 @@ public static class CatalogViewExtensions
                 "catalogview-price-sync-consumer",
                 lambdaHandler:
                 "CatalogView.Function::CatalogView.Function.Functions_PriceSyncConsumer_Generated::PriceSyncConsumer")
-            .WaitForCompletion(catalogViewSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment()
-            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
-
-        builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
-                "catalogview-category-sync-consumer",
-                lambdaHandler:
-                "CatalogView.Function::CatalogView.Function.Functions_CategorySyncConsumer_Generated::CategorySyncConsumer")
             .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
