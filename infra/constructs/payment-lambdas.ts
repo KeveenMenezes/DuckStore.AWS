@@ -110,7 +110,7 @@ export class PaymentLambdas extends Construct {
       }),
     );
 
-    // 2. payment-requested-publisher
+    // 2. payment-payments-stream-publisher
     //    Trigger: DynamoDB Streams on payments table (NEW_AND_OLD_IMAGES, CDC — ADR-0005/0019)
     //    Rule-based publisher: PaymentRequestedRule emits PaymentRequestedEvent on INSERT of a
     //    Pending payment.
@@ -118,7 +118,7 @@ export class PaymentLambdas extends Construct {
       this,
       'PaymentRequestedPublisher',
       {
-        functionName: 'payment-requested-publisher',
+        functionName: 'payment-payments-stream-publisher',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         code: paymentCode([
@@ -268,7 +268,7 @@ export class PaymentGatewayLambdas extends Construct {
       ],
     });
 
-    // payment-requested-consumer
+    // paymentgateway-payment-requested-consumer
     //    Trigger: EventBridge rule (PaymentRequestedEvent, source=duckstore)
     //    Stateless simulated gateway: the authorize/decline decision is a pure function of
     //    (CardNumber, Amount) — no persistence, no idempotency inbox needed (ADR-0025 §1).
@@ -276,7 +276,7 @@ export class PaymentGatewayLambdas extends Construct {
       this,
       'PaymentRequestedConsumer',
       {
-        functionName: 'paymentgateway-consumer',
+        functionName: 'paymentgateway-payment-requested-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         code: lambda.DockerImageCode.fromEcr(paymentGatewayImage.repository, {
@@ -299,8 +299,9 @@ export class PaymentGatewayLambdas extends Construct {
 
     const paymentRequestedRule = new events.Rule(this, 'PaymentRequestedRule', {
       eventBus,
-      ruleName: 'paymentgateway-consumer-rule',
-      description: 'Routes PaymentRequestedEvent (source=duckstore) to paymentgateway-consumer',
+      ruleName: 'paymentgateway-payment-requested-consumer-rule',
+      description:
+        'Routes PaymentRequestedEvent (source=duckstore) to paymentgateway-payment-requested-consumer',
       eventPattern: {
         source: ['duckstore'],
         detailType: ['PaymentRequestedEvent'],

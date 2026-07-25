@@ -8,7 +8,7 @@ export class BasketDynamoDB extends Construct {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    // Stream feeds basket-shopping-carts-event-publisher via CDC (ADR-0005).
+    // Stream feeds basket-shopping-carts-stream-publisher via CDC (ADR-0005).
     // NEW_IMAGE is enough: the publisher only reads the new state to build the checkout event.
     this.shoppingCartsTable = new dynamodb.Table(this, 'ShoppingCartsTable', {
       tableName: 'shopping-carts',

@@ -76,7 +76,7 @@ public static class PricingExtensions
         // (ADR-0026/0027/0028). Needs the same installment settings as pricing-get-installment-plan
         // since it computes the badge using the active GatewayCost.
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
-                "pricing-prices-event-publisher",
+                "pricing-prices-stream-publisher",
                 lambdaHandler: "Pricing.Function::Pricing.Function.Functions_PriceStreamPublisher_Generated::PriceStreamPublisher")
             .WaitForCompletion(pricingMigration)
             .WithReference(dynamoDb)

@@ -52,7 +52,7 @@ per-event write boundary explicit and testable in isolation:
 | `catalogview-review-sync-consumer` | `ReviewCreatedEvent`, `ReviewUpdatedEvent` | `ReviewCreateStrategy`, `ReviewUpdateStrategy` |
 | `catalogview-price-sync-consumer` | `PriceChangedEvent` | *(unchanged — stays a plain handler)* |
 
-`catalogview-product-stream-publisher` (ADR-0035, DynamoDB Streams-triggered, CDC **out** of
+`catalogview-products-stream-publisher` (ADR-0035, DynamoDB Streams-triggered, CDC **out** of
 CatalogView) is unaffected — this ADR only concerns the CDC **consumers**.
 
 ### 1. `PriceChangedEvent` stays a plain 1:1 handler

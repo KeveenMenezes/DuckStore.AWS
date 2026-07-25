@@ -12,7 +12,7 @@ export class PaymentDynamoDB extends Construct {
     // Single-item-per-payment design, mirroring DynamoOrderRepository (ADR-0025).
     // GSI1 (GSI1PK=ORDER#{orderId}, GSI1SK=CreatedAt) lists payments by order with
     // ProjectionType.ALL, avoiding a follow-up GetItem per result.
-    // Stream feeds payment-requested-publisher via CDC (ADR-0005/0019).
+    // Stream feeds payment-payments-stream-publisher via CDC (ADR-0005/0019).
     this.paymentsTable = new dynamodb.Table(this, 'PaymentsTable', {
       tableName: 'payments',
       partitionKey: { name: 'Id', type: dynamodb.AttributeType.STRING },

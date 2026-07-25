@@ -28,7 +28,7 @@ public static class OrderingExtensions
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
         builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
-                "ordering-order-created-publisher",
+                "ordering-stream-publisher",
                 lambdaHandler:
                 "Ordering.Function::Ordering.Function.Functions_OrderStreamPublisher_Generated::OrderStreamPublisher")
             .WaitForCompletion(orderingMigration)

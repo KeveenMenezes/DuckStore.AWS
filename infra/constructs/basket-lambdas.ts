@@ -54,13 +54,13 @@ export class BasketLambdas extends Construct {
         cmd,
       });
 
-    // 1. basket-shopping-carts-event-publisher
+    // 1. basket-shopping-carts-stream-publisher
     //    Trigger: DynamoDB Streams on shopping-carts (NEW_IMAGE, CDC — ADR-0005)
     //    Rule-based publisher (ADR-0019): on each MODIFY record of Type=Checkout,
     //    CheckoutedRule publishes BasketCheckoutEvent. The basket item's deletion
     //    happens synchronously in CheckoutBasketCommandHandler, not here.
     this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
-      functionName: 'basket-shopping-carts-event-publisher',
+      functionName: 'basket-shopping-carts-stream-publisher',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,

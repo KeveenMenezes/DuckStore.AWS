@@ -23,7 +23,7 @@ public static class BasketExtensions
             .WithAwsDevEnvironment();
 
         builder.AddAWSLambdaFunction<Projects.Basket_Function>(
-                "basket-shopping-carts-event-publisher",
+                "basket-shopping-carts-stream-publisher",
                 lambdaHandler: "Basket.Function::Basket.Function.Functions_ShoppingCartStreamPublisher_Generated::ShoppingCartStreamPublisher")
             .WaitForCompletion(basketSeeder)
             .WithReference(dynamoDb)

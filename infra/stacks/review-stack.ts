@@ -17,9 +17,9 @@ export class ReviewStack extends cdk.Stack {
       value: dynamoDB.reviewsTable.tableName,
       exportName: `${this.stackName}-ReviewsTable`,
     });
-    new cdk.CfnOutput(this, 'ReviewCreatedPublisherArn', {
-      value: lambdas.reviewCreatedPublisher.functionArn,
-      exportName: `${this.stackName}-ReviewCreatedPublisherArn`,
+    new cdk.CfnOutput(this, 'ReviewStreamPublisherArn', {
+      value: lambdas.reviewStreamPublisher.functionArn,
+      exportName: `${this.stackName}-ReviewStreamPublisherArn`,
     });
   }
 }

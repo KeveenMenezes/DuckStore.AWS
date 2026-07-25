@@ -119,21 +119,21 @@ export class CatalogViewLambdas extends Construct {
     ruleFor(
       'ProductSync',
       this.catalogSyncConsumer,
-      'catalogview-product-sync-consumer-rule',
+      'catalogview-product-synced-rule',
       'ProductSyncedEvent',
       'Routes ProductSyncedEvent (source=duckstore) to catalogview-catalog-sync-consumer',
     );
     ruleFor(
       'ProductDeleted',
       this.catalogSyncConsumer,
-      'catalogview-product-deleted-consumer-rule',
+      'catalogview-product-deleted-rule',
       'ProductDeletedEvent',
       'Routes ProductDeletedEvent (source=duckstore) to catalogview-catalog-sync-consumer',
     );
     ruleFor(
       'CategorySync',
       this.catalogSyncConsumer,
-      'catalogview-category-sync-consumer-rule',
+      'catalogview-category-synced-rule',
       'CatalogCategorySyncEvent',
       'Routes CatalogCategorySyncEvent (source=duckstore) to catalogview-catalog-sync-consumer',
     );
@@ -161,14 +161,14 @@ export class CatalogViewLambdas extends Construct {
     ruleFor(
       'ReviewAggregate',
       this.reviewSyncConsumer,
-      'catalogview-review-aggregate-consumer-rule',
+      'catalogview-review-created-rule',
       'ReviewCreatedEvent',
       'Routes ReviewCreatedEvent (source=duckstore) to catalogview-review-sync-consumer',
     );
     ruleFor(
       'ReviewUpdateAggregate',
       this.reviewSyncConsumer,
-      'catalogview-review-update-aggregate-consumer-rule',
+      'catalogview-review-updated-rule',
       'ReviewUpdatedEvent',
       'Routes ReviewUpdatedEvent (source=duckstore) to catalogview-review-sync-consumer',
     );
@@ -201,7 +201,7 @@ export class CatalogViewLambdas extends Construct {
       'Routes PriceChangedEvent (source=duckstore) to catalogview-price-sync-consumer',
     );
 
-    // 4. catalogview-product-stream-publisher (ADR-0035)
+    // 4. catalogview-products-stream-publisher (ADR-0035)
     //    Trigger: DynamoDB Streams on catalogview-products, not EventBridge — this is CatalogView's
     //    own CDC publisher, mirroring Pricing's priceStreamPublisher. Emits
     //    CatalogViewProductSyncedEvent (INSERT/MODIFY) / CatalogViewProductDeletedEvent (REMOVE)
@@ -209,7 +209,7 @@ export class CatalogViewLambdas extends Construct {
     //    instead of the upstream Catalog/Pricing/Review ones) can never invalidate CloudFront before
     //    CatalogView's own data is in place.
     this.productStreamPublisher = new lambda.DockerImageFunction(this, 'ProductStreamPublisher', {
-      functionName: 'catalogview-product-stream-publisher',
+      functionName: 'catalogview-products-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: catalogViewCode([

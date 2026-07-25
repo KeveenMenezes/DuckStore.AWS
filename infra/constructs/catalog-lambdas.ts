@@ -63,11 +63,11 @@ export class CatalogLambdas extends Construct {
         cmd,
       });
 
-    // 1. catalog-stream-event-publisher
+    // 1. catalog-products-stream-publisher
     //    Trigger: DynamoDB Streams on products
     //    IAM: DynamoEventSource grants stream read; grantPutEventsTo for EventBridge
     this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
-      functionName: 'catalog-stream-event-publisher',
+      functionName: 'catalog-products-stream-publisher',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
@@ -105,13 +105,13 @@ export class CatalogLambdas extends Construct {
     // an SST-managed Lambda (revalidator/index.mjs, see the SPA's sst.config.ts) subscribed to
     // this same bus directly — no HTTP webhook needed.
 
-    // 1b. catalog-category-stream-publisher
+    // 1b. catalog-categories-stream-publisher
     //    Trigger: DynamoDB Streams on categories
     //    Fires only on a rename (CatalogCategorySyncRule) — publishes
     //    CatalogCategorySyncEvent so CatalogView can rewrite the denormalized
     //    category name on every product document that references it.
     this.categoryStreamPublisher = new lambda.DockerImageFunction(this, 'CategoryStreamPublisher', {
-      functionName: 'catalog-category-stream-publisher',
+      functionName: 'catalog-categories-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: catalogCode([
@@ -139,7 +139,7 @@ export class CatalogLambdas extends Construct {
     this.eventBus.grantPutEventsTo(this.categoryStreamPublisher);
 
     // The old catalog-review-created-consumer (ADR-0011 §4) is gone: rating aggregation is
-    // owned by CatalogView's catalogview-review-aggregate-consumer (ADR-0027/ADR-0030), so
+    // owned by CatalogView's catalogview-review-sync-consumer (ADR-0027/ADR-0030/ADR-0040), so
     // ReviewCreatedEvent no longer touches the products table.
   }
 }

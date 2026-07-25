@@ -18,7 +18,7 @@ export interface ReviewLambdasProps {
 }
 
 export class ReviewLambdas extends Construct {
-  public readonly reviewCreatedPublisher: lambda.Function;
+  public readonly reviewStreamPublisher: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ReviewLambdasProps) {
     super(scope, id);
@@ -45,16 +45,16 @@ export class ReviewLambdas extends Construct {
       ],
     });
 
-    // review-reviews-event-publisher
+    // review-reviews-stream-publisher
     //   Trigger: DynamoDB Streams on reviews (NEW_AND_OLD_IMAGES, CDC — ADR-0005/ADR-0008)
     //   Rule-based dispatcher (ADR-0019): INSERT → ReviewCreatedEvent, MODIFY →
     //   ReviewUpdatedEvent (old + new rating), consumed by CatalogView to keep the
     //   product's AverageRating/RatingCount aggregate (ADR-0029/ADR-0030).
-    this.reviewCreatedPublisher = new lambda.DockerImageFunction(
+    this.reviewStreamPublisher = new lambda.DockerImageFunction(
       this,
-      'ReviewCreatedPublisher',
+      'ReviewStreamPublisher',
       {
-        functionName: 'review-reviews-event-publisher',
+        functionName: 'review-reviews-stream-publisher',
         // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
@@ -74,7 +74,7 @@ export class ReviewLambdas extends Construct {
       },
     );
 
-    this.reviewCreatedPublisher.addEventSource(
+    this.reviewStreamPublisher.addEventSource(
       new lambdaEventSources.DynamoEventSource(reviewsTable, {
         startingPosition: lambda.StartingPosition.TRIM_HORIZON,
         batchSize: 10,
@@ -86,6 +86,6 @@ export class ReviewLambdas extends Construct {
       }),
     );
 
-    eventBus.grantPutEventsTo(this.reviewCreatedPublisher);
+    eventBus.grantPutEventsTo(this.reviewStreamPublisher);
   }
 }
