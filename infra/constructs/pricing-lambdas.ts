@@ -191,12 +191,12 @@ export class PricingLambdas extends Construct {
       }),
     );
 
-    // 5. pricing-prices-event-publisher
+    // 5. pricing-prices-stream-publisher
     //    Trigger: DynamoDB Streams on prices. CDC: publishes a single PriceChangedEvent (nominal
     //    price + payment badge computed from the active GatewayCost) to EventBridge on
     //    INSERT/MODIFY so CatalogView syncs both in one merge (ADR-0026/0027/0028).
     this.priceStreamPublisher = new lambda.DockerImageFunction(this, 'PriceStreamPublisher', {
-      functionName: 'pricing-prices-event-publisher',
+      functionName: 'pricing-prices-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       code: pricingCode([

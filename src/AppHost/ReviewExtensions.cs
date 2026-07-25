@@ -20,7 +20,7 @@ public static class ReviewExtensions
         // CDC publisher: reviews INSERT/MODIFY → DynamoDB Stream → ReviewCreated/ReviewUpdated on
         // EventBridge (ADR-0011/ADR-0029), dispatched via the rule-based StreamRuleDispatcher (ADR-0019).
         builder.AddAWSLambdaFunction<Projects.Review_Function>(
-                "review-reviews-event-publisher",
+                "review-reviews-stream-publisher",
                 lambdaHandler: "Review.Function::Review.Function.Functions_ReviewStreamPublisher_Generated::ReviewStreamPublisher")
             .WaitForCompletion(reviewSeeder)
             .WithReference(dynamoDb)

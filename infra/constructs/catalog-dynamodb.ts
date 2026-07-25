@@ -9,7 +9,7 @@ export class CatalogDynamoDB extends Construct {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    // Stream feeds catalog-stream-event-publisher via CDC (ADR-0005).
+    // Stream feeds catalog-products-stream-publisher via CDC (ADR-0005).
     this.productsTable = new dynamodb.Table(this, 'ProductsTable', {
       tableName: 'products',
       partitionKey: { name: 'Id', type: dynamodb.AttributeType.STRING },
@@ -18,7 +18,7 @@ export class CatalogDynamoDB extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Stream feeds catalog-category-stream-publisher via CDC — a category rename needs to
+    // Stream feeds catalog-categories-stream-publisher via CDC — a category rename needs to
     // propagate its new name into CatalogView's product documents.
     this.categoriesTable = new dynamodb.Table(this, 'CategoriesTable', {
       tableName: 'categories',

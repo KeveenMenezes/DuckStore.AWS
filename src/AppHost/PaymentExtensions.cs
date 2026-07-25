@@ -28,7 +28,7 @@ public static class PaymentExtensions
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
         builder.AddAWSLambdaFunction<Projects.Payment_Function>(
-                "payment-requested-publisher",
+                "payment-payments-stream-publisher",
                 lambdaHandler: "Payment.Function::Payment.Function.Functions_PaymentStreamPublisher_Generated::PaymentStreamPublisher")
             .WaitForCompletion(paymentMigration)
             .WithReference(dynamoDb)
@@ -53,7 +53,7 @@ public static class PaymentExtensions
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
         builder.AddAWSLambdaFunction<Projects.PaymentGateway_Function>(
-                "paymentgateway-consumer",
+                "paymentgateway-payment-requested-consumer",
                 lambdaHandler: "PaymentGateway.Function::PaymentGateway.Function.Functions_PaymentRequestedConsumer_Generated::PaymentRequestedConsumer")
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");

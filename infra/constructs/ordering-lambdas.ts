@@ -110,7 +110,7 @@ export class OrderingLambdas extends Construct {
       }),
     );
 
-    // 2. ordering-order-created-publisher
+    // 2. ordering-stream-publisher
     //    Trigger: DynamoDB Streams on ordering table (NEW_AND_OLD_IMAGES, CDC — ADR-0005/0019)
     //    Rule-based publisher (ADR-0019): OrderCreatedRule emits OrderCreatedEvent on INSERT of Type=Order.
     //    Gated by FeatureManagement__OrderFullfilment=true.
@@ -118,7 +118,7 @@ export class OrderingLambdas extends Construct {
       this,
       'OrderCreatedPublisher',
       {
-        functionName: 'ordering-order-created-publisher',
+        functionName: 'ordering-stream-publisher',
         // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,

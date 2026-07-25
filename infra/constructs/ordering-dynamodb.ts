@@ -12,7 +12,7 @@ export class OrderingDynamoDB extends Construct {
     // Single-item-per-order design: PK=Id, OrderItems embedded as a list attribute.
     // GSI1 (GSI1PK=CUSTOMER#{id}, GSI1SK=CreatedAt) lists orders by customer with
     // ProjectionType.ALL, avoiding a follow-up GetItem per result.
-    // Stream feeds ordering-order-created-publisher via CDC (ADR-0005).
+    // Stream feeds ordering-stream-publisher via CDC (ADR-0005).
     this.orderingTable = new dynamodb.Table(this, 'OrderingTable', {
       tableName: 'ordering',
       partitionKey: { name: 'Id', type: dynamodb.AttributeType.STRING },

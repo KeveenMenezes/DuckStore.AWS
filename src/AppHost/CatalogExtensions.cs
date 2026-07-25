@@ -18,7 +18,7 @@ public static class CatalogExtensions
             .WithAwsDevEnvironment();
 
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
-                "catalog-stream-event-publisher",
+                "catalog-products-stream-publisher",
                 lambdaHandler: "Catalog.Function::Catalog.Function.Functions_ProductStreamPublisher_Generated::ProductStreamPublisher")
             .WaitForCompletion(catalogSeeder)
             .WithReference(dynamoDb)
@@ -34,7 +34,7 @@ public static class CatalogExtensions
         // also emits ProductSyncedEvent (ProductSyncedRule, ADR-0031) for CatalogView to consume.
 
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
-                "catalog-category-stream-publisher",
+                "catalog-categories-stream-publisher",
                 lambdaHandler: "Catalog.Function::Catalog.Function.Functions_CategoryStreamPublisher_Generated::CategoryStreamPublisher")
             .WaitForCompletion(catalogSeeder)
             .WithReference(dynamoDb)

@@ -6,7 +6,7 @@
       "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer",
       "workingDirectory": "bin/Debug/net10.0/"
     },
-    "Aspire_ordering-order-created-publisher": {
+    "Aspire_ordering-stream-publisher": {
       "commandName": "Executable",
       "executablePath": "dotnet",
       "commandLineArgs": "exec --depsfile ./Ordering.Function.deps.json --runtimeconfig ./Ordering.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Ordering.Function::Ordering.Function.Functions_OrderStreamPublisher_Generated::OrderStreamPublisher",
