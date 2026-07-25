@@ -1,9 +1,4 @@
-﻿using Pricing.Function.Modules.Campaigns.Domain.Enums;
-using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
-using Pricing.Function.Modules.Prices.Domain.ValueObjects;
-using Pricing.Function.Shared.Exceptions;
-
-namespace Pricing.Function.Modules.Campaigns.Domain.Entities;
+﻿namespace Pricing.Function.Modules.Campaigns.Domain.Entities;
 
 // Groups a discount by event (business rule #3 — e.g. "Black Friday") for batch activation across
 // N products. Validity (StartsAt/EndsAt) is checked at read time by consumers of the
