@@ -13,9 +13,10 @@ import type { OrderStatus } from "@/features/auth/types/auth.types"
 import { ProductPicture } from "@/features/products/components/product-picture"
 
 const statusMap: Record<OrderStatus, { label: string; variant: "secondary" | "default" | "outline" }> = {
+  draft: { label: "Draft", variant: "secondary" },
   processing: { label: "Processing", variant: "secondary" },
-  shipped: { label: "Shipped", variant: "default" },
-  delivered: { label: "Delivered", variant: "outline" },
+  completed: { label: "Completed", variant: "default" },
+  cancelled: { label: "Cancelled", variant: "outline" },
 }
 
 /** Per-user order history. Requires a hydrated session (SSR force-dynamic page). */

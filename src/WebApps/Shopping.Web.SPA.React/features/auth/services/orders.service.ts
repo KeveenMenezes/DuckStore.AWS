@@ -3,10 +3,16 @@ import { GET_ORDERS_BY_CUSTOMER } from "@/api/queries/orders"
 import type { Order, OrderStatus, PaymentMethodLabel } from "@/features/auth/types/auth.types"
 import type { GqlOrderPage } from "@/graphql/types"
 
+// Mirrors Ordering.Function's Order.Status (Draft/Pending/Completed/Cancelled).
+const BACKEND_STATUS_MAP: Record<string, OrderStatus> = {
+  Draft: "draft",
+  Pending: "processing",
+  Completed: "completed",
+  Cancelled: "cancelled",
+}
+
 function mapBackendStatus(s: string): OrderStatus {
-  if (s === "2" || /ship/i.test(s)) return "shipped"
-  if (s === "3" || /deliv/i.test(s)) return "delivered"
-  return "processing"
+  return BACKEND_STATUS_MAP[s] ?? "processing"
 }
 
 // Mirrors Ordering.Function's PaymentMethod enum (Debit=1, Credit=2, Cash=3).

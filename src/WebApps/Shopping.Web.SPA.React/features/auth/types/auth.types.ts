@@ -4,7 +4,7 @@ export interface User {
   email: string
 }
 
-export type OrderStatus = "processing" | "shipped" | "delivered"
+export type OrderStatus = "draft" | "processing" | "completed" | "cancelled"
 
 export interface OrderItem {
   name: string
