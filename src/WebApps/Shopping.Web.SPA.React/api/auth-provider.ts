@@ -8,13 +8,13 @@
  * shared `gql` client resolved in api/index.ts) talk to AppSync directly —
  * looping back through this app's own /api/graphql would fail during `next
  * build`'s static generation pass, since no server is listening yet. The
- * ID Token is read from the httpOnly cookie set by /api/auth/callback (PKCE
- * flow) — it carries the identity claims (email, name, sub, cognito:groups)
- * the AppSync resolvers rely on (the access token has no email/name). Requests
- * without a session fall back to the API key so public catalog queries keep
- * working. Client components never need this: they
- * always go through the /api/graphql BFF (app/api/graphql/appsync.ts), which
- * resolves this same header server-side.
+ * ID Token comes from the server-side session (ADR-0041) — it carries the
+ * identity claims (email, name, sub, cognito:groups) the AppSync resolvers rely
+ * on (the access token has no email/name), and getSession() guarantees it is
+ * unexpired, refreshing it transparently when needed. Requests without a session
+ * fall back to the API key so public catalog queries keep working. Client
+ * components never need this: they always go through the /api/graphql BFF
+ * (app/api/graphql/appsync.ts), which resolves this same header server-side.
  */
 export async function getAuthHeaders(): Promise<Record<string, string> | undefined> {
   if (typeof window !== 'undefined') return undefined
@@ -23,12 +23,12 @@ export async function getAuthHeaders(): Promise<Record<string, string> | undefin
   const apiKeyFallback = { 'x-api-key': process.env.APPSYNC_API_KEY! }
 
   try {
-    // Dynamic import keeps `next/headers` out of the static import graph so
-    // bundlers don't reject it when this module is pulled into a Client Component.
-    const { cookies } = await import('next/headers')
-    const cookieStore = await cookies()
-    const idToken = cookieStore.get('id_token')?.value
-    return idToken ? { Authorization: `Bearer ${idToken}` } : apiKeyFallback
+    // Dynamic import keeps `next/headers` and the DynamoDB client out of the static import graph
+    // so bundlers don't reject this module when it's pulled into a Client Component's graph
+    // (api/index.ts is imported from both sides).
+    const { getSession } = await import('@/lib/auth/session')
+    const session = await getSession()
+    return session ? { Authorization: `Bearer ${session.idToken}` } : apiKeyFallback
   } catch {
     // cookies() throws outside of a request context (e.g. during `next build`'s
     // static generation pass) — fall back to the API key so public catalog
@@ -39,11 +39,12 @@ export async function getAuthHeaders(): Promise<Record<string, string> | undefin
 
 /**
  * Auth headers for PUBLIC read queries (catalog, reviews). Deliberately never
- * calls `cookies()` — reading a cookie during render forces the route to be
- * dynamic, which is exactly what stopped `/` and `/products/[id]` from being
- * statically generated / CDN-cached. These queries don't need a user token
- * (the API key authorizes them), so server-side we return the key directly and
- * stay cookie-free; the browser still goes through the /api/graphql BFF.
+ * touches the session — resolving one reads a cookie, and reading a cookie during
+ * render forces the route to be dynamic, which is exactly what stopped `/` and
+ * `/products/[id]` from being statically generated / CDN-cached. These queries
+ * don't need a user token (the API key authorizes them), so server-side we return
+ * the key directly and stay cookie-free; the browser still goes through the
+ * /api/graphql BFF.
  */
 export async function getPublicAuthHeaders(): Promise<Record<string, string> | undefined> {
   if (typeof window !== 'undefined') return undefined

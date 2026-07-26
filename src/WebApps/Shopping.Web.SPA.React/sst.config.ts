@@ -65,6 +65,25 @@ export default $config({
     const cognitoHostedUiUrl = aws.cloudformation.getExportOutput({
       name: "DuckStoreAppSyncStack-HostedUiUrl",
     }).value;
+    // Needed to validate the `iss` claim of ID tokens before a session is opened
+    // (lib/auth/session.ts, ADR-0041 §6).
+    const cognitoUserPoolId = aws.cloudformation.getExportOutput({
+      name: "DuckStoreAppSyncStack-UserPoolId",
+    }).value;
+
+    // BFF-owned session store (ADR-0041). Cognito's access/id tokens are 1h-lived while a session
+    // is 30 days; keeping the tokens here — instead of in browser cookies — is what lets them be
+    // refreshed transparently, keeps the 30-day refresh token off the client entirely, and makes
+    // logout a real revocation rather than a best-effort cookie delete.
+    //
+    // It lives here rather than under infra/ because it is private to this app: no service reads
+    // it, so it has no bounded-context owner, and ADR-0020 put SPA-owned infrastructure in SST.
+    // TTL reaps expired sessions at no compute cost, mirroring the guest-cart TTL of ADR-0016 §4.
+    const sessions = new sst.aws.Dynamo("Sessions", {
+      fields: { SessionId: "string" },
+      primaryIndex: { hashKey: "SessionId" },
+      ttl: "ExpiresAt",
+    });
 
     // Secret for the generic revalidation webhook
     // (app/api/webhooks/revalidate/route.ts) — verifies the HMAC signature
@@ -92,12 +111,17 @@ export default $config({
         paths: "all",
         wait: false,
       },
+      // Grants the server function IAM access to the session table; the table name is passed
+      // explicitly below since lib/auth/session-store.ts reads it from the environment.
+      link: [sessions],
       environment: {
         GRAPHQL_BACKEND: "appsync",
         APPSYNC_URL: appsyncUrl,
         APPSYNC_API_KEY: appsyncApiKey,
         COGNITO_CLIENT_ID: cognitoClientId,
         COGNITO_HOSTED_UI_URL: cognitoHostedUiUrl,
+        COGNITO_USER_POOL_ID: cognitoUserPoolId,
+        SESSIONS_TABLE_NAME: sessions.name,
         WEBHOOK_SECRET: webhookSecret.value,
         NEXT_PUBLIC_SITE_URL: `https://${domainName}`,
         NEXT_PUBLIC_IMAGE_CDN_URL: imageCdnUrl,

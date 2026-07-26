@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { GUEST_COOKIE } from '@/lib/identity'
 import { MERGE_BASKET } from '@/api/mutations/order'
-import { REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_MAX_AGE_SECONDS } from '@/lib/cognito-refresh'
+import { createSession, SESSION_COOKIE, sessionCookieOptions } from '@/lib/auth/session'
 
 // Only same-origin relative paths are accepted (rejects "//host", "http://host", etc.)
 // to avoid turning the stored redirect into an open redirect.
@@ -16,26 +16,19 @@ function sanitizeReturnTo(next: string | null | undefined): string | null {
  * a merge failure must not block login. Goes through this app's own /api/graphql (same
  * endpoint every other GraphQL call uses, whichever GRAPHQL_BACKEND is active) instead of
  * calling AppSync directly, so it also works locally against the Yoga backend — not just
- * when APPSYNC_URL is set. The access_token/id_token/guest_id cookies aren't on this request
- * (the browser doesn't have them yet), so we forward them explicitly via a synthesized Cookie
- * header — resolveOwner()/prepareBasketRequest resolve identity from it exactly as they
- * would for any browser-originated request. id_token must be included too: in the deployed
- * (appsync) backend, getAuthHeaders() reads id_token — not access_token — to build the
- * Authorization: Bearer header AppSync needs to populate ctx.identity for this Cognito-only
- * resolver; without it the call falls back to the API key and mergeBasket always 401s.
+ * when APPSYNC_URL is set. The session/guest cookies aren't on this request (the browser
+ * doesn't have them yet), so we forward them explicitly via a synthesized Cookie header —
+ * resolveOwner()/prepareBasketRequest resolve identity from it exactly as they would for any
+ * browser-originated request, and getAuthHeaders() loads the ID token AppSync needs from the
+ * same session. This is why the session record must already be persisted before this runs.
  */
-async function mergeGuestCart(
-  siteUrl: string,
-  accessToken: string,
-  idToken: string,
-  guestId: string,
-): Promise<void> {
+async function mergeGuestCart(siteUrl: string, sessionId: string, guestId: string): Promise<void> {
   try {
     const res = await fetch(new URL('/api/graphql', siteUrl), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Cookie: `access_token=${accessToken}; id_token=${idToken}; ${GUEST_COOKIE}=${guestId}`,
+        Cookie: `${SESSION_COOKIE}=${sessionId}; ${GUEST_COOKIE}=${guestId}`,
       },
       body: JSON.stringify({
         query: MERGE_BASKET,
@@ -54,9 +47,9 @@ async function mergeGuestCart(
 }
 
 /**
- * Receives the authorization code from Cognito, exchanges it for tokens
- * (PKCE flow, server-side), and stores the Access Token + ID Token in
- * httpOnly cookies — tokens are never exposed to JavaScript.
+ * Receives the authorization code from Cognito, exchanges it for tokens (PKCE flow,
+ * server-side), and opens a server-side session — the browser receives only the opaque
+ * session id. No Cognito token is ever sent to the client (ADR-0041).
  */
 export async function GET(req: NextRequest): Promise<Response> {
   const { searchParams } = new URL(req.url)
@@ -103,29 +96,29 @@ export async function GET(req: NextRequest): Promise<Response> {
     expires_in: number
   }
 
-  const isSecure = process.env.NODE_ENV === 'production'
-  const cookieOpts = {
-    httpOnly: true,
-    secure: isSecure,
-    sameSite: 'lax' as const,
-    maxAge: expires_in,
-    path: '/',
+  let sessionId: string
+  try {
+    sessionId = await createSession({
+      accessToken: access_token,
+      idToken: id_token,
+      refreshToken: refresh_token,
+      expiresIn: expires_in,
+    })
+  } catch (error) {
+    // Claim validation failed, or the session table is unavailable. Either way there is no
+    // session to hand out — better a clean failed login than a half-authenticated state.
+    console.error('Failed to create session after token exchange', error)
+    return NextResponse.redirect(new URL('/?auth_error=session_creation_failed', siteUrl))
   }
 
   // Merge the guest cart into the new session before clearing the guest cookie (login → merge).
+  // Runs after createSession() so the synthesized session cookie resolves to a real record.
   if (guestId) {
-    await mergeGuestCart(siteUrl, access_token, id_token, guestId)
+    await mergeGuestCart(siteUrl, sessionId, guestId)
   }
 
   const response = NextResponse.redirect(new URL(returnTo ?? '/', siteUrl))
-  response.cookies.set('access_token', access_token, cookieOpts)
-  response.cookies.set('id_token', id_token, cookieOpts)
-  // Long-lived: lets middleware.ts silently mint a new access/id token pair once
-  // those expire, instead of the user's session falling back to a fresh GUEST# id.
-  response.cookies.set(REFRESH_TOKEN_COOKIE, refresh_token, {
-    ...cookieOpts,
-    maxAge: REFRESH_TOKEN_MAX_AGE_SECONDS,
-  })
+  response.cookies.set(SESSION_COOKIE, sessionId, sessionCookieOptions())
   response.cookies.delete('pkce_verifier')
   response.cookies.delete('pkce_state')
   response.cookies.delete('post_login_redirect')
