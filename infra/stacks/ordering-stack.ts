@@ -30,5 +30,13 @@ export class OrderingStack extends cdk.Stack {
       value: lambdas.orderCreatedPublisher.functionArn,
       exportName: `${this.stackName}-OrderCreatedPublisherArn`,
     });
+    new cdk.CfnOutput(this, 'PaymentAuthorizedConsumerArn', {
+      value: lambdas.paymentAuthorizedConsumer.functionArn,
+      exportName: `${this.stackName}-PaymentAuthorizedConsumerArn`,
+    });
+    new cdk.CfnOutput(this, 'PaymentDeclinedConsumerArn', {
+      value: lambdas.paymentDeclinedConsumer.functionArn,
+      exportName: `${this.stackName}-PaymentDeclinedConsumerArn`,
+    });
   }
 }

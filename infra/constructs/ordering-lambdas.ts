@@ -23,6 +23,8 @@ export interface OrderingLambdasProps {
 export class OrderingLambdas extends Construct {
   public readonly basketCheckoutConsumer: lambda.Function;
   public readonly orderCreatedPublisher: lambda.Function;
+  public readonly paymentAuthorizedConsumer: lambda.Function;
+  public readonly paymentDeclinedConsumer: lambda.Function;
 
   constructor(scope: Construct, id: string, props: OrderingLambdasProps) {
     super(scope, id);
@@ -152,6 +154,99 @@ export class OrderingLambdas extends Construct {
     // GetItem by orderId after a stream INSERT.
     orderingTable.grantReadData(this.orderCreatedPublisher);
     eventBus.grantPutEventsTo(this.orderCreatedPublisher);
+
+    // 3/4. ordering-payment-authorized-consumer / ordering-payment-declined-consumer
+    //    Trigger: EventBridge rule (PaymentAuthorizedEvent / PaymentDeclinedEvent, source=duckstore)
+    //    Both transition the Order Pending -> Completed/Cancelled, idempotent via the same
+    //    ordering-processed-events inbox (TransactWriteItems). Payment's own PaymentResult
+    //    consumers (in the Payment stack) are independent subscribers of the same two events.
+    this.paymentAuthorizedConsumer = new lambda.DockerImageFunction(
+      this,
+      'PaymentAuthorizedConsumer',
+      {
+        functionName: 'ordering-payment-authorized-consumer',
+        tracing: lambda.Tracing.ACTIVE,
+        architecture: DOTNET_ARCH,
+        code: orderingCode([
+          'Ordering.Function::Ordering.Function.Functions_OrderPaymentAuthorizedConsumer_Generated::OrderPaymentAuthorizedConsumer',
+        ]),
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 512,
+        description: 'Applies PaymentAuthorizedEvent to the Order (Pending -> Completed)',
+        environment: {
+          EventBridge__BusName: eventBus.eventBusName,
+        },
+      },
+    );
+
+    orderingTable.grantReadWriteData(this.paymentAuthorizedConsumer);
+    processedEventsTable.grantWriteData(this.paymentAuthorizedConsumer);
+
+    const paymentAuthorizedRule = new events.Rule(this, 'PaymentAuthorizedRule', {
+      eventBus,
+      ruleName: 'ordering-payment-authorized-consumer-rule',
+      description:
+        'Routes PaymentAuthorizedEvent (source=duckstore) to ordering-payment-authorized-consumer',
+      eventPattern: {
+        source: ['duckstore'],
+        detailType: ['PaymentAuthorizedEvent'],
+      },
+    });
+    this.paymentAuthorizedConsumer.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(dlq.queue),
+      retryAttempts: 2,
+    });
+    paymentAuthorizedRule.addTarget(
+      new targets.LambdaFunction(this.paymentAuthorizedConsumer, {
+        deadLetterQueue: dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
+    );
+
+    this.paymentDeclinedConsumer = new lambda.DockerImageFunction(
+      this,
+      'PaymentDeclinedConsumer',
+      {
+        functionName: 'ordering-payment-declined-consumer',
+        tracing: lambda.Tracing.ACTIVE,
+        architecture: DOTNET_ARCH,
+        code: orderingCode([
+          'Ordering.Function::Ordering.Function.Functions_OrderPaymentDeclinedConsumer_Generated::OrderPaymentDeclinedConsumer',
+        ]),
+        timeout: cdk.Duration.seconds(30),
+        memorySize: 512,
+        description: 'Applies PaymentDeclinedEvent to the Order (Pending -> Cancelled)',
+        environment: {
+          EventBridge__BusName: eventBus.eventBusName,
+        },
+      },
+    );
+
+    orderingTable.grantReadWriteData(this.paymentDeclinedConsumer);
+    processedEventsTable.grantWriteData(this.paymentDeclinedConsumer);
+
+    const paymentDeclinedRule = new events.Rule(this, 'PaymentDeclinedRule', {
+      eventBus,
+      ruleName: 'ordering-payment-declined-consumer-rule',
+      description:
+        'Routes PaymentDeclinedEvent (source=duckstore) to ordering-payment-declined-consumer',
+      eventPattern: {
+        source: ['duckstore'],
+        detailType: ['PaymentDeclinedEvent'],
+      },
+    });
+    this.paymentDeclinedConsumer.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(dlq.queue),
+      retryAttempts: 2,
+    });
+    paymentDeclinedRule.addTarget(
+      new targets.LambdaFunction(this.paymentDeclinedConsumer, {
+        deadLetterQueue: dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
+    );
 
     // Note: ordersByCustomer (read) and deleteOrder (delete) are AppSync direct DynamoDB
     // resolvers (ADR-0009), not Lambdas — see infra/constructs/appsync-api.ts.
