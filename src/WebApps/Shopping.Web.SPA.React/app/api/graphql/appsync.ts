@@ -3,8 +3,9 @@ import { prepareBasketRequest, guestCookieHeader } from '@/lib/basket-bff'
 
 /**
  * AppSync GraphQL proxy: resolves the same auth header the server-side `gql`
- * client uses (Bearer from the httpOnly access_token cookie, or the API Key
- * fallback for guests/public queries) and forwards the request to AppSync.
+ * client uses (Bearer with the ID Token from the server-side session, refreshed
+ * transparently — or the API Key fallback for guests/public queries) and forwards
+ * the request to AppSync.
  *
  * Before forwarding, it injects the BFF-resolved ownerId into basket operations
  * (see prepareBasketRequest) so the browser never sends an identity, and sets the

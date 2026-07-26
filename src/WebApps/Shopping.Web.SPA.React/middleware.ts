@@ -1,10 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import {
-  ACCESS_TOKEN_COOKIE,
-  ID_TOKEN_COOKIE,
-  REFRESH_TOKEN_COOKIE,
-  refreshAccessToken,
-} from '@/lib/cognito-refresh'
 
 // The Lambda Function URL behind CloudFront is public (NONE auth) — see
 // infra/stacks/spa-stack.ts for why AWS_IAM + OAC doesn't work for our POST
@@ -12,70 +6,17 @@ import {
 // requests that reach this Lambda without it didn't come through our
 // distribution. ORIGIN_VERIFY_SECRET is unset in local dev, so this is a
 // no-op outside the deployed Lambda.
+//
+// Token refresh used to live here, scoped to /api/graphql so its Set-Cookie couldn't be baked
+// into an SSG/ISR-cached response. It now lives in lib/auth/session.ts (ADR-0041): tokens are
+// held server-side, so renewal mutates no cookie and there is nothing left to leak into a cached
+// response — the route scoping it required is gone with it. It also could not have stayed here:
+// middleware runs on the Edge runtime, which cannot load the DynamoDB client the session store
+// needs.
 export async function middleware(request: NextRequest) {
   const secret = process.env.ORIGIN_VERIFY_SECRET
   if (secret && request.headers.get('x-origin-verify') !== secret) {
     return new NextResponse('Forbidden', { status: 403 })
-  }
-
-  // The refresh-and-Set-Cookie dance below must stay scoped to /api/graphql —
-  // the only route that actually consumes access_token/id_token (via the BFF's
-  // getAuthHeaders()) — and never run on page routes. Pages like / and
-  // /my-profile are SSG/ISR (s-maxage=31536000 at the CDN/ISR layer); a
-  // Set-Cookie attached to one of those responses gets baked into that cached
-  // response and re-served, cookie included, to every subsequent visitor —
-  // silently re-arming the browser's Max-Age on an increasingly stale JWT
-  // instead of ever refreshing it, and potentially leaking one user's tokens
-  // to another. The client always talks to /api/graphql for personalized data
-  // (see the feature-sliced architecture doc), so gating here is sufficient.
-  if (request.nextUrl.pathname !== '/api/graphql') {
-    return NextResponse.next()
-  }
-
-  const hasAccessToken = request.cookies.has(ACCESS_TOKEN_COOKIE)
-  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value
-
-  // access_token/id_token are 1h-lived (SpaClient in infra/constructs/appsync-auth.ts).
-  // Without this, the first request after they expire has neither cookie, and
-  // resolveOwner() (lib/identity.ts) mints a brand-new GUEST# identity — silently
-  // orphaning the signed-in user's cart in DynamoDB. Refresh here, once, before
-  // any route handler resolves identity from the cookies.
-  if (!hasAccessToken && refreshToken) {
-    const refreshed = await refreshAccessToken(refreshToken)
-    const isSecure = process.env.NODE_ENV === 'production'
-    const cookieOpts = { httpOnly: true, secure: isSecure, sameSite: 'lax' as const, path: '/' }
-
-    if (refreshed) {
-      // Forward the refreshed tokens on the *incoming* request too, so this same
-      // request's route handler (e.g. resolveOwner()) sees the user's real
-      // identity instead of the stale/absent cookie it arrived with.
-      const requestHeaders = new Headers(request.headers)
-      const forwardedCookie = [
-        request.headers.get('cookie'),
-        `${ACCESS_TOKEN_COOKIE}=${refreshed.accessToken}`,
-        `${ID_TOKEN_COOKIE}=${refreshed.idToken}`,
-      ]
-        .filter(Boolean)
-        .join('; ')
-      requestHeaders.set('cookie', forwardedCookie)
-
-      const response = NextResponse.next({ request: { headers: requestHeaders } })
-      response.cookies.set(ACCESS_TOKEN_COOKIE, refreshed.accessToken, {
-        ...cookieOpts,
-        maxAge: refreshed.expiresIn,
-      })
-      response.cookies.set(ID_TOKEN_COOKIE, refreshed.idToken, {
-        ...cookieOpts,
-        maxAge: refreshed.expiresIn,
-      })
-      return response
-    }
-
-    // Refresh token itself is expired/revoked — drop it so we stop retrying on
-    // every request and fall back to the guest identity cleanly.
-    const response = NextResponse.next()
-    response.cookies.delete(REFRESH_TOKEN_COOKIE)
-    return response
   }
 
   return NextResponse.next()
