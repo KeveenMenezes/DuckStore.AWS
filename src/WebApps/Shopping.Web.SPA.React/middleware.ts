@@ -18,6 +18,20 @@ export async function middleware(request: NextRequest) {
     return new NextResponse('Forbidden', { status: 403 })
   }
 
+  // The refresh-and-Set-Cookie dance below must stay scoped to /api/graphql —
+  // the only route that actually consumes access_token/id_token (via the BFF's
+  // getAuthHeaders()) — and never run on page routes. Pages like / and
+  // /my-profile are SSG/ISR (s-maxage=31536000 at the CDN/ISR layer); a
+  // Set-Cookie attached to one of those responses gets baked into that cached
+  // response and re-served, cookie included, to every subsequent visitor —
+  // silently re-arming the browser's Max-Age on an increasingly stale JWT
+  // instead of ever refreshing it, and potentially leaking one user's tokens
+  // to another. The client always talks to /api/graphql for personalized data
+  // (see the feature-sliced architecture doc), so gating here is sufficient.
+  if (request.nextUrl.pathname !== '/api/graphql') {
+    return NextResponse.next()
+  }
+
   const hasAccessToken = request.cookies.has(ACCESS_TOKEN_COOKIE)
   const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value
 

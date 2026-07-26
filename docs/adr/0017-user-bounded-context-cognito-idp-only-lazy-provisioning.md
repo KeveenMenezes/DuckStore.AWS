@@ -1,7 +1,11 @@
 # ADR-0017: User Bounded Context — Cognito as IdP-Only, Profile Data Owned by the User Service, Lazy Provisioning
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026. §4 (resolver classification) **amended July 2026**: `myProfile` shipped
+as a **direct** DynamoDB resolver, not the Lambda (`user-get-profile`) originally specified — see
+the amendment note in §4. §2's `User.Function` service exists but is currently **dead code**: it
+has no `[LambdaFunction]` methods and is not wired into `src/AppHost/UserExtensions.cs`; see
+Consequences → Follow-up.
 
 ---
 
@@ -39,6 +43,11 @@ Mirrors `Catalog.Function` (Amazon.Lambda.Annotations + DynamoDB + MediatR). Tab
 
 The profile record is created **on first authenticated read** (`myProfile`), seeded from the token claims — NOT via a Cognito Post-Confirmation → EventBridge pipeline. The Post-Confirmation trigger keeps its single responsibility (add to the `Customer` group).
 
+> **Amendment (July 2026):** the diagram and resolver classification below describe the
+> *original* design, where the get-or-create shape was judged complex enough to need a Lambda.
+> As implemented, that shape collapsed into a single conditional `UpdateItem` — see the
+> amendment note after §4's table for the current, shipped design.
+
 ```mermaid
 sequenceDiagram
     participant B as Browser
@@ -62,23 +71,51 @@ Why lazy over event-driven: no eventual-consistency window (the profile exists t
 
 Both fields are **Cognito-only** (no `@aws_api_key`). Identity is always derived from `ctx.identity.sub` — the client never supplies a user id.
 
-| Field | Resolver | Justification |
-|---|---|---|
-| `myProfile: UserProfile!` | **Lambda** (`user-get-profile`) | Criterion 1 — read then conditional create (GetItem → seed+Put if absent). Not a single DynamoDB operation. |
-| `updateProfile(input): UserProfile!` | **Direct** DynamoDB `UpdateItem` | Single upsert keyed by `ctx.identity.sub`, `ReturnValues: ALL_NEW`. `email` is Cognito-owned and excluded from the input. |
+| Field | Resolver (as proposed) | Resolver (as shipped) | Justification |
+|---|---|---|---|
+| `myProfile: UserProfile!` | Lambda (`user-get-profile`) | **Direct** DynamoDB `UpdateItem` | Originally scoped as Criterion 1 (read then conditional create — not a single DynamoDB operation). In practice the get-or-create is expressible as one conditional `UpdateItem`; no Lambda needed. |
+| `updateProfile(input): UserProfile!` | Direct DynamoDB `UpdateItem` | **Direct** DynamoDB `UpdateItem` (unchanged) | Single upsert keyed by `ctx.identity.sub`, `ReturnValues: ALL_NEW`. `email` is Cognito-owned and excluded from the input. |
 
-**Correct** — the Lambda resolver passes the identity claims, never a client-supplied id:
+**Amendment — `myProfile` shipped as a direct resolver, not a Lambda.** The get-or-create
+semantics ("seed `Email`/`Name` from claims once, never overwrite on later calls") are
+replicated with `if_not_exists` on a conditional `UpdateItem`, so the whole flow is a single
+DynamoDB operation after all — the Criterion 1 justification for escalating to Lambda no longer
+applies, and ADR-0009's direct-first default governs instead. There is no `user-get-profile`
+Lambda; `src/Services/User/User.Function` has zero `[LambdaFunction]` methods and is not
+registered in `src/AppHost/UserExtensions.cs`.
+
+```mermaid
+sequenceDiagram
+    participant B as Browser
+    participant AS as AppSync
+    participant DS as UserProfilesDS (direct)
+    participant D as DynamoDB (user-profiles)
+
+    B->>AS: query myProfile   [Cognito Bearer]
+    AS->>DS: UpdateItem(UserId=sub, if_not_exists(Email/Name, claims))
+    DS->>D: UpdateItem
+    D-->>DS: item (created or unchanged-and-returned)
+    DS-->>AS: UserProfile
+    AS-->>B: UserProfile
+```
+
+**Correct** — the direct resolver derives identity from `ctx.identity`, never a client-supplied id, and uses `if_not_exists` so the seed only ever applies once:
 
 ```js
-// graphql/resolvers/Query.myProfile.js
+// graphql/resolvers/user/queries/Query.myProfile.js
 export function request(ctx) {
   if (!ctx.identity || !ctx.identity.sub) util.unauthorized()
+
   return {
-    operation: 'Invoke',
-    payload: {
-      UserId: ctx.identity.sub,
-      Email: ctx.identity.claims.email,
-      Name: ctx.identity.claims.name ?? ctx.identity.claims.email,
+    operation: 'UpdateItem',
+    key: { UserId: util.dynamodb.toDynamoDB(ctx.identity.sub) },
+    update: {
+      expression: 'SET Email = if_not_exists(Email, :email), #name = if_not_exists(#name, :name)',
+      expressionNames: { '#name': 'Name' },
+      expressionValues: util.dynamodb.toMapValues({
+        ':email': ctx.identity.claims.email,
+        ':name': ctx.identity.claims.name,
+      }),
     },
   }
 }
@@ -92,9 +129,9 @@ The local `auth-modal`/`login-form`/`register-form`/`auth.service`/`auth-validat
 
 ## Applies To
 
-- `src/Services/User/User.Function` + `src/Services/User/User.DevelopmentDataSeeder` (new).
+- `src/Services/User/User.Function` (dead code as of the §4 amendment — see Follow-up) + `src/Services/User/User.DevelopmentDataSeeder` (table seeding only).
 - `src/AppHost` — `UserExtensions.cs`, `Program.cs`.
-- `infra` — `constructs/user-dynamodb.ts`, `constructs/user-lambdas.ts`, `stacks/user-stack.ts`, `bin/app.ts`, `constructs/appsync-api.ts`, `constructs/appsync-auth.ts` (add `name` attribute).
+- `infra` — `constructs/user-dynamodb.ts`, `stacks/user-stack.ts`, `bin/app.ts`, `constructs/appsync-api.ts` (`UserProfilesDS` + `myProfile`/`updateProfile` resolvers), `constructs/appsync-auth.ts` (add `name` attribute). No `user-lambdas.ts` exists — there is no Lambda in this bounded context.
 - `src/WebApps/Shopping.Web.SPA.React` — delete simulated auth; wire Hosted UI login/signup; add `myProfile`/`updateProfile`; pre-fill checkout.
 
 ---
@@ -110,14 +147,27 @@ The local `auth-modal`/`login-form`/`register-form`/`auth.service`/`auth-validat
 
 ### Negative / Costs
 
-- **`myProfile` is a Lambda** (cold start on first call) — justified by the read-then-conditional-create shape.
-- **A new service to operate** — another `.Function`, seeder, table, stack, and AppSync data sources.
+- **A new service to operate** — another `.Function`, seeder, table, stack, and AppSync data sources (though, per the §4 amendment, `User.Function` currently runs no Lambdas at all — see Follow-up below).
 - **Local dev parity is limited** — profile is Cognito-only, so locally (no real Cognito) it falls back to the BFF-resolved owner, same limitation as local checkout ([ADR-0016](./0016-guest-basket-owner-id-identity-api-key-and-ttl.md)).
+
+~~**`myProfile` is a Lambda (cold start on first call).**~~ Resolved by the §4 amendment — `myProfile` is a direct resolver, no cold start.
 
 ### Mitigation Strategies
 
-- Keep the `user-get-profile` Lambda minimal (GetItem → seed+Put → return); no MediatR sprawl beyond the single command.
-- `email`/`name` stay Cognito-authoritative: `updateProfile` never edits `email`; `myProfile` reseeds only when the record is absent.
+- `email`/`name` stay Cognito-authoritative: `updateProfile` never edits `email`; `myProfile` reseeds only when the attribute is absent (`if_not_exists`).
+
+### Follow-up (identified July 2026)
+
+`src/Services/User/User.Function` predates the §4 amendment and is now dead scaffolding — it
+has no `[LambdaFunction]` methods, is not wired into `src/AppHost/UserExtensions.cs`, and nothing
+in the codebase calls it. Specifically unreferenced:
+
+- `Modules/Users/Domain/Entities/UserProfile.cs`
+- `Modules/Users/Data/DynamoUserProfileRepository.cs` + `IUserProfileRepository.cs`
+- `Modules/Users/Domain/Dtos/UserProfileDto.cs`
+
+These should be deleted in a follow-up cleanup PR; `User.DevelopmentDataSeeder` (which only
+creates the `user-profiles` table) is still live and should be kept.
 
 ### Future Constraints
 
