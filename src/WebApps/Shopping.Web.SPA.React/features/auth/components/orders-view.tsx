@@ -12,10 +12,10 @@ import { ROUTES } from "@/shared/constants/routes"
 import type { OrderStatus } from "@/features/auth/types/auth.types"
 import { ProductPicture } from "@/features/products/components/product-picture"
 
-const statusMap: Record<OrderStatus, { label: string; variant: "secondary" | "default" | "outline" }> = {
+const statusMap: Record<OrderStatus, { label: string; variant: "secondary" | "default" | "outline"; className?: string }> = {
   draft: { label: "Draft", variant: "secondary" },
   processing: { label: "Processing", variant: "secondary" },
-  completed: { label: "Completed", variant: "default" },
+  completed: { label: "Completed", variant: "default", className: "bg-green-600 text-white [a&]:hover:bg-green-600/90" },
   cancelled: { label: "Cancelled", variant: "outline" },
 }
 
@@ -104,7 +104,7 @@ export function OrdersView() {
                       {date.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                     </p>
                   </div>
-                  <Badge variant={status.variant}>{status.label}</Badge>
+                  <Badge variant={status.variant} className={status.className}>{status.label}</Badge>
                 </CardHeader>
                 <CardContent className="flex flex-col gap-3">
                   {(order.shippingAddress || order.payment) && (
