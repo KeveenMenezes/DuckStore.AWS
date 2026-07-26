@@ -6,5 +6,6 @@ global using Ordering.Function.Modules.Orders.Domain.Entities;
 global using Ordering.Function.Modules.Orders.Domain.Enums;
 global using Ordering.Function.Modules.Orders.Domain.ValueObjects;
 global using Ordering.Function.Modules.Orders.EventsIntegration.Consumers.BasketCheckout;
+global using Ordering.Function.Modules.Orders.EventsIntegration.Consumers.PaymentResult;
 global using Ordering.Function.Shared.Exceptions;
 global using Ordering.UnitTests.DataTests;
