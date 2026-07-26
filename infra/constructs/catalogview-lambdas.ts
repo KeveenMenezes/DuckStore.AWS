@@ -62,6 +62,11 @@ export class CatalogViewLambdas extends Construct {
         cmd,
       });
 
+    // A grouped consumer (ADR-0040) is passed to ruleFor once per detail-type it
+    // handles, but CDK only allows configureAsyncInvoke to be called once per
+    // function — track which functions have already been configured.
+    const asyncInvokeConfigured = new Set<lambda.Function>();
+
     const ruleFor = (
       idPrefix: string,
       fn: lambda.Function,
@@ -81,10 +86,13 @@ export class CatalogViewLambdas extends Construct {
       // Two failure paths, one queue: the async-invoke destination captures the
       // event when the Lambda keeps throwing; the rule-target DLQ captures events
       // EventBridge could not deliver to the Lambda at all.
-      fn.configureAsyncInvoke({
-        onFailure: new destinations.SqsDestination(dlq.queue),
-        retryAttempts: 2,
-      });
+      if (!asyncInvokeConfigured.has(fn)) {
+        fn.configureAsyncInvoke({
+          onFailure: new destinations.SqsDestination(dlq.queue),
+          retryAttempts: 2,
+        });
+        asyncInvokeConfigured.add(fn);
+      }
       rule.addTarget(
         new targets.LambdaFunction(fn, {
           deadLetterQueue: dlq.queue,
