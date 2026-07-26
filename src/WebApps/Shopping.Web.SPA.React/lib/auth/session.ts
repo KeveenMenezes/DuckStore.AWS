@@ -1,5 +1,4 @@
 import { cache } from 'react'
-import { cookies } from 'next/headers'
 import { randomBytes } from 'node:crypto'
 import { refreshAccessToken, revokeRefreshToken } from '@/lib/cognito-refresh'
 import {
@@ -68,6 +67,21 @@ const nowEpoch = () => Math.floor(Date.now() / 1000)
 // 256 bits from a CSPRNG. crypto.randomUUID() would be only ~122 bits of entropy and is specified
 // as a UUID, not as an unguessable bearer credential — which is exactly what this value is.
 const newSessionId = () => randomBytes(32).toString('base64url')
+
+/**
+ * Reads the opaque session id from the request.
+ *
+ * `next/headers` is imported dynamically, not at module scope: api/index.ts pulls
+ * api/auth-provider.ts — and therefore this module — into the Client Component graph, and a
+ * static import of next/headers anywhere in that graph fails the build. Deferring the import in
+ * auth-provider.ts alone is not enough; the bundler traces through it and still sees a static
+ * next/headers import here.
+ */
+async function readSessionId(): Promise<string | undefined> {
+  const { cookies } = await import('next/headers')
+  const store = await cookies()
+  return store.get(SESSION_COOKIE)?.value
+}
 
 type IdTokenClaims = { sub: string; email: string; name?: string }
 
@@ -159,8 +173,7 @@ async function ensureFreshTokens(record: SessionRecord): Promise<SessionRecord |
  * confined to /api/graphql (ADR-0041 §5). A cookie pointing at a deleted record is inert.
  */
 export const getSession = cache(async (): Promise<Session | null> => {
-  const store = await cookies()
-  const sessionId = store.get(SESSION_COOKIE)?.value
+  const sessionId = await readSessionId()
   if (!sessionId) return null
 
   const record = await getSessionRecord(sessionId)
@@ -219,8 +232,7 @@ export async function createSession(tokens: CognitoTokenSet): Promise<string> {
  * best-effort on top, so the refresh token is dead at the IdP too.
  */
 export async function destroySession(): Promise<void> {
-  const store = await cookies()
-  const sessionId = store.get(SESSION_COOKIE)?.value
+  const sessionId = await readSessionId()
   if (!sessionId) return
 
   const record = await getSessionRecord(sessionId)
