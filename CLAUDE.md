@@ -31,6 +31,10 @@ dotnet test --filter "FullyQualifiedName~CheckoutBasketCommandHandlerTests"
 
 # Format code (also runs automatically on staged .cs files via .githooks/pre-commit)
 dotnet format DuckStore.sln
+
+# Validate infra/ (CDK) changes locally before pushing — CI runs `cdk deploy` per service on merge
+cd infra && npx cdk synth <StackName>   # e.g. OrderingStack
+cd infra && npx cdk diff <StackName>
 ```
 
 Git hooks live in `.githooks/` (configured via `core.hooksPath`); the pre-commit hook runs `dotnet format` on staged `.cs` files and re-stages them. Don't bypass this with `--no-verify`.
@@ -92,7 +96,7 @@ Shared code referenced across services — check here before adding cross-cuttin
 ### Orchestration and routing
 
 - **src/AppHost** — .NET Aspire AppHost. `Program.cs` is the composition root; per-service wiring lives in one `*Extensions.cs` per service (`BasketExtensions`, `CatalogExtensions`, `CatalogViewExtensions`, `OrderingExtensions`, `PaymentExtensions`, `PricingExtensions`, `ReviewExtensions`, plus `ObservabilityExtensions`). This is the source of truth for **local** infrastructure, Lambda handler names, `WaitFor`/`WaitForCompletion` chains, and DynamoDB Streams sources — for the real-AWS equivalent see `infra/` below. Shared helper in `Extensions/Extensions.cs`: `WithAwsDevEnvironment()` (dummy AWS creds + region for local dev). Add new resources/functions here, not in docker-compose.
-- AppSync (direct DynamoDB resolvers, per ADR-0007/ADR-0009) fronted by the Next.js BFF is the only client entry point, in every environment — there is no self-hosted HTTP gateway. See ADR-0023. GraphQL schema/contract is owned at the monorepo root (ADR-0033).
+- AppSync (direct DynamoDB resolvers, per ADR-0007/ADR-0009) fronted by the Next.js BFF is the only client entry point, in every environment — there is no self-hosted HTTP gateway. See ADR-0023. GraphQL schema/contract is owned at the monorepo root (ADR-0033): `graphql/schema.graphql` + resolver JS under `graphql/resolvers/<domain>/<queries|mutations>/<Type>.<field>.js`, wired into the API by `infra/constructs/appsync-api.ts` (`AppSyncStack`). Use the `resolver-selection` skill when deciding direct-DynamoDB vs. Lambda for a new field.
 - **src/WebApps/Shopping.Web.SPA.React** — React/Next.js SPA (the only SPA). Uses `pnpm` (`pnpm dev` / `pnpm build` / `pnpm lint`). Deployed via SST/OpenNext, not the CDK below (ADR-0020). This directory is slated to move into its own Git repository, linked back into DuckStore as a **git submodule**.
 
 ### Deployment (`infra/`)
