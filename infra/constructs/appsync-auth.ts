@@ -176,6 +176,15 @@ exports.handler = async (event) => {
       idTokenValidity: cdk.Duration.hours(1),
       accessTokenValidity: cdk.Duration.hours(1),
       refreshTokenValidity: cdk.Duration.days(30),
+      // Rotation invalidates the previous refresh token on use, capping a stolen one's useful life
+      // at the next renewal instead of 30 days. It is only safe because the SPA holds its tokens
+      // server-side and refreshes under a single-flight conditional write (ADR-0041 §4) — with
+      // refresh tokens in browser cookies, two concurrent renewals would leave one request holding
+      // an invalidated token. The grace period covers the loser of that race.
+      //
+      // Deploy ordering matters: the SPA must already persist the rotated refresh token
+      // (lib/cognito-refresh.ts) before this is enabled, or live sessions die when it lapses.
+      refreshTokenRotationGracePeriod: cdk.Duration.seconds(30),
       preventUserExistenceErrors: true,
     });
     // CloudFormation must create the IdPs before the client references them.
