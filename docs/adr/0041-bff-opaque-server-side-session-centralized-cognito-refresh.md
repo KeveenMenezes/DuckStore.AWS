@@ -1,7 +1,7 @@
 # ADR-0041: BFF-Owned Opaque Server-Side Sessions — Centralized Cognito Token Refresh
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 This ADR **amends** [ADR-0016](./0016-guest-basket-owner-id-identity-api-key-and-ttl.md) §2: the rule
 ("the BFF is the only place that resolves identity") is unchanged and reinforced, but the
@@ -57,7 +57,11 @@ inherits the same bug, silently.
 
 ## Decision
 
-The BFF becomes a **token-mediating backend**: it holds the Cognito tokens server-side and the
+The BFF becomes a **confidential OAuth client in the Backend-For-Frontend (BFF) shape** — Curity's
+"token handler pattern" — as opposed to the *token-mediating backend*, the sibling pattern in the
+same IETF draft where the backend holds the refresh token but still hands the **access token** to
+the browser. That variant does not apply here: every GraphQL call already proxies through
+`/api/graphql`, so the browser never needs a token at all. It holds the Cognito tokens server-side and the
 browser holds a single opaque session identifier. This is the OAuth 2.0 for Browser-Based Apps
 (BCP) recommendation for a JavaScript app with a server-side component, and it reuses a pattern
 DuckStore already runs — DynamoDB with TTL as expirable server state
@@ -183,8 +187,7 @@ from `CreatedAt`, not from the newest refresh token.
 ### 4.1 The Cognito client stays public
 
 `generateSecret: false` is retained. Once the BFF is the only party calling `/oauth2/token`, the
-client *could* become confidential, and the OAuth BCP does favour that for a token-mediating
-backend. It is deliberately not adopted here: PKCE already binds the authorization code to the
+client *could* take a secret, and the OAuth BCP does favour that for a BFF. It is deliberately not adopted here: PKCE already binds the authorization code to the
 initiating client, the code is redeemed server-side over TLS, and a client secret would add a
 rotation obligation (AWS's own guidance: *"regularly rotate client secrets and credentials"*)
 for a marginal gain. This is recorded as a decision, not an oversight — revisit it if the BFF ever
@@ -363,7 +366,9 @@ TypeScript inside the SPA and its two infrastructure definitions.
 ## References
 
 - AWS Security Blog — [How to use OAuth 2.0 in Amazon Cognito: learn about the different OAuth 2.0 grants](https://aws.amazon.com/blogs/security/how-to-use-oauth-2-0-in-amazon-cognito-learn-about-the-different-oauth-2-0-grants/). Confirms the grant this ADR leaves unchanged (authorization code + PKCE for public clients such as SPAs) and states the session-management guidance §1–§7 implement: *"managing access token lifetimes, storing tokens, rotating refresh tokens, implementing token revocations and providing easy logout mechanisms."* Rotation (§4) was added to this ADR from that guidance.
-- IETF `draft-ietf-oauth-browser-based-apps` — OAuth 2.0 for Browser-Based Apps, the token-mediating backend (BFF) pattern. Goes beyond the AWS post above, which selects a grant but does not address where tokens live afterwards.
+- IETF [`draft-ietf-oauth-browser-based-apps`](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-browser-based-apps) — OAuth 2.0 for Browser-Based Apps. Defines the three architectures for browser apps and is the normative source for the BFF pattern adopted here. Goes beyond the AWS post above, which selects a grant but does not address where tokens live afterwards.
+- IETF [`draft-bertocci-oauth2-tmi-bff`](https://www.ietf.org/archive/id/draft-bertocci-oauth2-tmi-bff-01.html) — Token Mediating and session Information BFF, the sibling pattern deliberately *not* adopted (§Decision): it hands the access token to the browser, which this design has no need to do.
+- Curity — [The Token Handler Pattern](https://curity.io/resources/learn/the-token-handler-pattern/), the industry name for this exact shape (opaque cookie to the browser, tokens in the backend). AWS publishes no equivalent guide for Cognito; its BFF material ([Backends for Frontends Pattern](https://aws.amazon.com/blogs/mobile/backends-for-frontends-pattern/), [Prescriptive Guidance](https://docs.aws.amazon.com/prescriptive-guidance/latest/micro-frontends-aws/api-integration-data-fetching.html)) covers BFF as an API-aggregation pattern, not as an OAuth token-custody pattern.
 - OpenID Connect Core 1.0 §3.1.3.7 — ID Token validation; the TLS/direct-communication allowance relied on in §6.
 - RFC 6265bis §4.1.3 — the `__Host-` cookie name prefix.
 - OAuth 2.0 Security Best Current Practice — refresh token handling for public clients.
