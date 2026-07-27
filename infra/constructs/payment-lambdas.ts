@@ -56,6 +56,7 @@ export class PaymentLambdas extends Construct {
       this,
       'BasketCheckoutConsumer',
       {
+        functionName: 'payment-basket-checkout-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         runtime: DOTNET_RUNTIME,
@@ -106,6 +107,7 @@ export class PaymentLambdas extends Construct {
       this,
       'PaymentRequestedPublisher',
       {
+        functionName: 'payment-payments-stream-publisher',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         runtime: DOTNET_RUNTIME,
@@ -145,6 +147,7 @@ export class PaymentLambdas extends Construct {
       this,
       'PaymentAuthorizedConsumer',
       {
+        functionName: 'payment-result-authorized-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         runtime: DOTNET_RUNTIME,
@@ -190,6 +193,7 @@ export class PaymentLambdas extends Construct {
       this,
       'PaymentDeclinedConsumer',
       {
+        functionName: 'payment-result-declined-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         runtime: DOTNET_RUNTIME,
@@ -261,6 +265,7 @@ export class PaymentGatewayLambdas extends Construct {
       this,
       'PaymentRequestedConsumer',
       {
+        functionName: 'paymentgateway-payment-requested-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         runtime: DOTNET_RUNTIME,

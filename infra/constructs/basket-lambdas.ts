@@ -48,6 +48,7 @@ export class BasketLambdas extends Construct {
     //    CheckoutedRule publishes BasketCheckoutEvent. The basket item's deletion
     //    happens synchronously in CheckoutBasketCommandHandler, not here.
     this.streamPublisher = new lambda.Function(this, 'StreamPublisher', {
+      functionName: 'basket-shopping-carts-stream-publisher',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
@@ -88,6 +89,7 @@ export class BasketLambdas extends Construct {
     //    Writes a Checkout marker to the cart item; the stream publisher picks it
     //    up and publishes BasketCheckoutEvent (CDC pattern, ADR-0005).
     this.checkoutBasket = new lambda.Function(this, 'CheckoutBasket', {
+      functionName: 'basket-checkout-basket',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
@@ -113,6 +115,7 @@ export class BasketLambdas extends Construct {
     //    carts, writes the merged USER# cart, deletes the GUEST# cart. No Function
     //    URL — invoked directly by the AppSync mergeBasket resolver (Invoke).
     this.mergeBasket = new lambda.Function(this, 'MergeBasket', {
+      functionName: 'basket-merge-basket',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,

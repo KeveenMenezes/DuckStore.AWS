@@ -22,10 +22,6 @@ export class CatalogStack extends cdk.Stack {
       value: dynamoDB.categoriesTable.tableName,
       exportName: `${this.stackName}-CategoriesTable`,
     });
-    new cdk.CfnOutput(this, 'EventBusName', {
-      value: lambdas.eventBus.eventBusName,
-      exportName: `${this.stackName}-EventBusName`,
-    });
     new cdk.CfnOutput(this, 'StreamPublisherArn', {
       value: lambdas.streamPublisher.functionArn,
       exportName: `${this.stackName}-StreamPublisherArn`,

@@ -12,6 +12,7 @@ import { AppSyncStack } from '../stacks/appsync-stack';
 import { ManagementStack } from '../stacks/management-stack';
 import { ProductImagesStack } from '../stacks/product-images-stack';
 import { MonitoringStack } from '../stacks/monitoring-stack';
+import { FoundationStack } from '../stacks/foundation-stack';
 
 const app = new cdk.App();
 
@@ -48,6 +49,14 @@ new MonitoringStack(app, 'DuckStoreMonitoringStack', {
   alertsEmail: app.node.tryGetContext('alertsEmail') ?? process.env.ALERTS_EMAIL,
   description:
     'DuckStore shared alerting — duckstore-alerts SNS topic targeted by every CloudWatch alarm',
+});
+
+// Deploy first (alongside Monitoring): every service stack below imports the
+// duckstore-event-bus by fixed name (see EVENT_BUS_NAME in ../stacks/foundation-stack.ts).
+new FoundationStack(app, 'DuckStoreFoundationStack', {
+  env,
+  description:
+    'DuckStore shared foundation — duckstore-event-bus, the single EventBridge bus every service publishes to and consumes from',
 });
 
 new CatalogStack(app, 'DuckStoreCatalogStack', {

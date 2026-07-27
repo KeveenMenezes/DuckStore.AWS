@@ -57,6 +57,7 @@ export class PricingLambdas extends Construct {
     // 1. pricing-get-installment-plan  (AppSync Invoke — Query.installmentPlanFor)
     //    Non-trivial calculation over simulated gateway fee/margin config — Lambda per ADR-0009.
     this.getInstallmentPlan = new lambda.Function(this, 'GetInstallmentPlan', {
+      functionName: 'pricing-get-installment-plan',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
@@ -80,6 +81,7 @@ export class PricingLambdas extends Construct {
     //     Same cost-floor calculation, but summed across every cart item first — the whole cart
     //     is treated as one checkout transaction (ADR-0009).
     this.getBasketInstallmentPlan = new lambda.Function(this, 'GetBasketInstallmentPlan', {
+      functionName: 'pricing-get-basket-installment-plan',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
@@ -101,6 +103,7 @@ export class PricingLambdas extends Construct {
     // 2. pricing-create-campaign  (AppSync Invoke — Mutation.createCampaign)
     //    Fans out a TransactWriteItems across campaigns + product-discounts (ADR-0026 §6).
     this.createCampaign = new lambda.Function(this, 'CreateCampaign', {
+      functionName: 'pricing-create-campaign',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
@@ -118,6 +121,7 @@ export class PricingLambdas extends Construct {
     // 3. pricing-end-campaign  (AppSync Invoke — Mutation.endCampaign)
     //    Reads the campaign, then retracts its product-discounts rows transactionally.
     this.endCampaign = new lambda.Function(this, 'EndCampaign', {
+      functionName: 'pricing-end-campaign',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
@@ -140,6 +144,7 @@ export class PricingLambdas extends Construct {
       this,
       'ProductDeletedConsumer',
       {
+        functionName: 'pricing-product-deleted-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
         runtime: DOTNET_RUNTIME,
@@ -189,6 +194,7 @@ export class PricingLambdas extends Construct {
     //    price + payment badge computed from the active GatewayCost) to EventBridge on
     //    INSERT/MODIFY so CatalogView syncs both in one merge (ADR-0026/0027/0028).
     this.priceStreamPublisher = new lambda.Function(this, 'PriceStreamPublisher', {
+      functionName: 'pricing-prices-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,

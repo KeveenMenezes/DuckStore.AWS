@@ -29,22 +29,6 @@ export class PricingStack extends cdk.Stack {
       value: dynamoDB.productDiscountsTable.tableName,
       exportName: `${this.stackName}-ProductDiscountsTable`,
     });
-    new cdk.CfnOutput(this, 'GetInstallmentPlanArn', {
-      value: lambdas.getInstallmentPlan.functionArn,
-      exportName: `${this.stackName}-GetInstallmentPlanArn`,
-    });
-    new cdk.CfnOutput(this, 'GetBasketInstallmentPlanArn', {
-      value: lambdas.getBasketInstallmentPlan.functionArn,
-      exportName: `${this.stackName}-GetBasketInstallmentPlanArn`,
-    });
-    new cdk.CfnOutput(this, 'CreateCampaignArn', {
-      value: lambdas.createCampaign.functionArn,
-      exportName: `${this.stackName}-CreateCampaignArn`,
-    });
-    new cdk.CfnOutput(this, 'EndCampaignArn', {
-      value: lambdas.endCampaign.functionArn,
-      exportName: `${this.stackName}-EndCampaignArn`,
-    });
     new cdk.CfnOutput(this, 'ProductDeletedConsumerArn', {
       value: lambdas.productDeletedConsumer.functionArn,
       exportName: `${this.stackName}-ProductDeletedConsumerArn`,

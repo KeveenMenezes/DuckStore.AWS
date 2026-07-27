@@ -97,6 +97,7 @@ export class CatalogViewLambdas extends Construct {
     //    boundary via IProductSearchIndex — ProductSyncStrategy never touches
     //    Price/AverageRating/RatingCount/RatingSum/LastRatingEventId (ADR-0027 §3, ADR-0030).
     this.catalogSyncConsumer = new lambda.Function(this, 'CatalogSyncConsumer', {
+      functionName: 'catalogview-catalog-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
@@ -141,6 +142,7 @@ export class CatalogViewLambdas extends Construct {
     //    non-atomic ADD + recompute average (ADR-0030 accepted trade-off 2); ReviewUpdateStrategy
     //    is the sibling that moves ratingSum by delta instead of ratingCount+1.
     this.reviewSyncConsumer = new lambda.Function(this, 'ReviewSyncConsumer', {
+      functionName: 'catalogview-review-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
@@ -177,6 +179,7 @@ export class CatalogViewLambdas extends Construct {
     //    plain 1:1 consumer (ADR-0040 §1) — partial merge of price + payment-highlight fields,
     //    naturally idempotent (absolute values).
     this.priceSyncConsumer = new lambda.Function(this, 'PriceSyncConsumer', {
+      functionName: 'catalogview-price-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
@@ -208,6 +211,7 @@ export class CatalogViewLambdas extends Construct {
     //    instead of the upstream Catalog/Pricing/Review ones) can never invalidate CloudFront before
     //    CatalogView's own data is in place.
     this.productStreamPublisher = new lambda.Function(this, 'ProductStreamPublisher', {
+      functionName: 'catalogview-products-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
