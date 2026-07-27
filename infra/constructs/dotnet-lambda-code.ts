@@ -15,14 +15,19 @@ export const DOTNET_ARCH = lambda.Architecture.ARM_64;
 export const DOTNET_RUNTIME = lambda.Runtime.PROVIDED_AL2023;
 
 /**
- * Memory for the synchronous, user-facing functions that measurably benefit from more CPU.
+ * Memory for every .NET Lambda, in MB.
  *
  * Measured via AWS Lambda Power Tuning + CloudWatch Logs Insights on 2026-07-27 against
- * basket-checkout-basket, basket-merge-basket, and pricing-get-installment-plan: cold start
- * (Init Duration + first-invocation Duration) at 256 MB ranged 670-730ms; at 512 MB it dropped
- * to 380-420ms. Gains beyond 512 MB flatten out (1024-3008 MB shaved only another ~100-150ms)
- * for cost that no longer tracks the improvement, so 512 is the balanced point, not the ceiling.
- * Applies only to functions actually measured — do not apply blindly to the rest.
+ * basket-checkout-basket, basket-merge-basket, and pricing-get-installment-plan (3 of the 6
+ * synchronous, user-facing functions): cold start (Init Duration + first-invocation Duration)
+ * at 256 MB ranged 670-730ms; at 512 MB it dropped to 380-420ms. Gains beyond 512 MB flatten
+ * out (1024-3008 MB shaved only another ~100-150ms) for cost that no longer tracks the
+ * improvement, so 512 is the balanced point, not the ceiling.
+ *
+ * Applied to every function, not just the three measured — including the 19 asynchronous ones,
+ * where per ADR-0042 the latency is invisible to any user. That's a deliberate simplicity
+ * tradeoff (one constant, same as before) over a measured-only per-function override; the
+ * GB-second cost of doubling their memory is small enough in absolute terms not to matter.
  */
 export const DOTNET_MEMORY_MB = 512;
 
