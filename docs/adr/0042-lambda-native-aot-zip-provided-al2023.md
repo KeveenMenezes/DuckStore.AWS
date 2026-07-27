@@ -305,6 +305,28 @@ IL2xxx/IL3xxx warnings. All eight packages are clean at the time of writing.
 
 ---
 
+### 9. Memory drops to 256 MB for all 25 functions
+
+`memorySize: 512` was sized for the container era, when every package carried a full CoreCLR. AOT
+roughly halves the runtime footprint, so the allocation is revised down and centralised as
+`DOTNET_MEMORY_MB` in `dotnet-lambda-code.ts` — one constant rather than 25 literals.
+
+Lambda bills GB-seconds against **allocated** memory, not used, so this halves the compute line.
+The supporting figure is external: a published .NET 10 AOT/JIT comparison measures 42–48 MB peak
+for an AOT function against 88–93 MB for the JIT equivalent, which leaves 256 MB a wide margin.
+
+**This is not measured on this workload, and the trade is not free.** Memory is also the CPU knob on
+Lambda: halving it slows initialization and execution. For the 19 asynchronous functions that is
+invisible. For the six synchronous ones it lands exactly where ADR-0042 set out to reduce latency,
+so the two goals pull against each other here and the decision was taken on the cost side.
+
+`Max Memory Used` and `Billed Duration` in CloudWatch settle it once the change is deployed. If the
+synchronous path regresses, raising `DOTNET_MEMORY_MB` is the whole rollback — no code or artifact
+change. A future amendment SHOULD record the measured numbers and either confirm 256 or split the
+constant so the synchronous functions keep more headroom.
+
+---
+
 ## Applies To
 
 - `src/Services/{Basket,Catalog,CatalogView,Ordering,Payment,PaymentGateway,Pricing,Review}/*.Function`

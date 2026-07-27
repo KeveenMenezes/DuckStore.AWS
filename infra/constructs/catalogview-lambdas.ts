@@ -1,19 +1,19 @@
-import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
+import {
+  DOTNET_ARCH,
+  DOTNET_MEMORY_MB,
+  DOTNET_RUNTIME,
+  dotnetLambdaCode,
+} from './dotnet-lambda-code';
 
-const DOTNET_ARCH = lambda.Architecture.ARM_64;
-
-const REPO_ROOT = path.join(__dirname, '..', '..');
-const CATALOGVIEW_DOCKERFILE = 'src/Services/CatalogView/CatalogView.Function/Dockerfile';
 
 export interface CatalogViewLambdasProps {
   readonly catalogViewProductsTable: dynamodb.Table;
@@ -43,24 +43,12 @@ export class CatalogViewLambdas extends Construct {
     // queue trips the catalogview-dlq-not-empty alarm → duckstore-alerts.
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'catalogview' });
 
-    // All CatalogView Lambdas share the same image, built once.
-    const catalogViewImage = new ecrAssets.DockerImageAsset(this, 'CatalogViewImage', {
-      directory: REPO_ROOT,
-      file: CATALOGVIEW_DOCKERFILE,
-      platform: ecrAssets.Platform.LINUX_ARM64,
-      exclude: [
-        '**',
-        '!Directory.Packages.props',
-        '!nuget.config',
-        '!src/Services/CatalogView/CatalogView.Function/**',
-        '!src/BuildingBlocks/**',
-      ],
-    });
-    const catalogViewCode = (cmd: string[]) =>
-      lambda.DockerImageCode.fromEcr(catalogViewImage.repository, {
-        tagOrDigest: catalogViewImage.imageTag,
-        cmd,
-      });
+    // One ZIP per service, shared by all its functions; each Lambda selects its
+    // handler through ANNOTATIONS_HANDLER instead of a Docker cmd override (ADR-0042).
+    const catalogViewCode = dotnetLambdaCode(
+      'src/Services/CatalogView',
+      'src/Services/CatalogView/CatalogView.Function/CatalogView.Function.csproj',
+    );
 
     // A grouped consumer (ADR-0040) is passed to ruleFor once per detail-type it
     // handles, but CDK only allows configureAsyncInvoke to be called once per
@@ -108,18 +96,20 @@ export class CatalogViewLambdas extends Construct {
     //    the owning ISyncStrategy by detail-type. Each strategy keeps its own narrow write
     //    boundary via IProductSearchIndex — ProductSyncStrategy never touches
     //    Price/AverageRating/RatingCount/RatingSum/LastRatingEventId (ADR-0027 §3, ADR-0030).
-    this.catalogSyncConsumer = new lambda.DockerImageFunction(this, 'CatalogSyncConsumer', {
+    this.catalogSyncConsumer = new lambda.Function(this, 'CatalogSyncConsumer', {
       functionName: 'catalogview-catalog-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: catalogViewCode([
-        'CatalogView.Function::CatalogView.Function.Functions_CatalogSyncConsumer_Generated::CatalogSyncConsumer',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: catalogViewCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description:
         'Consumes ProductSyncedEvent/ProductDeletedEvent/CatalogCategorySyncEvent and syncs catalogview-products',
       environment: {
+        ANNOTATIONS_HANDLER: 'CatalogSyncConsumer',
         EventBridge__BusName: eventBus.eventBusName,
       },
     });
@@ -151,17 +141,19 @@ export class CatalogViewLambdas extends Construct {
     //    from Review, grouped behind one Lambda. Both strategies apply the same two-step,
     //    non-atomic ADD + recompute average (ADR-0030 accepted trade-off 2); ReviewUpdateStrategy
     //    is the sibling that moves ratingSum by delta instead of ratingCount+1.
-    this.reviewSyncConsumer = new lambda.DockerImageFunction(this, 'ReviewSyncConsumer', {
+    this.reviewSyncConsumer = new lambda.Function(this, 'ReviewSyncConsumer', {
       functionName: 'catalogview-review-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: catalogViewCode([
-        'CatalogView.Function::CatalogView.Function.Functions_ReviewSyncConsumer_Generated::ReviewSyncConsumer',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: catalogViewCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description: 'Consumes ReviewCreatedEvent/ReviewUpdatedEvent and folds ratings into catalogview-products',
       environment: {
+        ANNOTATIONS_HANDLER: 'ReviewSyncConsumer',
         EventBridge__BusName: eventBus.eventBusName,
       },
     });
@@ -186,17 +178,19 @@ export class CatalogViewLambdas extends Construct {
     //    is the only producer with a single occurrence relevant to CatalogView, so this stays a
     //    plain 1:1 consumer (ADR-0040 §1) — partial merge of price + payment-highlight fields,
     //    naturally idempotent (absolute values).
-    this.priceSyncConsumer = new lambda.DockerImageFunction(this, 'PriceSyncConsumer', {
+    this.priceSyncConsumer = new lambda.Function(this, 'PriceSyncConsumer', {
       functionName: 'catalogview-price-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: catalogViewCode([
-        'CatalogView.Function::CatalogView.Function.Functions_PriceSyncConsumer_Generated::PriceSyncConsumer',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: catalogViewCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description: 'Consumes PriceChangedEvent and merges price/payment fields into catalogview-products',
       environment: {
+        ANNOTATIONS_HANDLER: 'PriceSyncConsumer',
         EventBridge__BusName: eventBus.eventBusName,
       },
     });
@@ -216,18 +210,20 @@ export class CatalogViewLambdas extends Construct {
     //    only after a CatalogView write commits, so the SPA revalidator (subscribed to these events
     //    instead of the upstream Catalog/Pricing/Review ones) can never invalidate CloudFront before
     //    CatalogView's own data is in place.
-    this.productStreamPublisher = new lambda.DockerImageFunction(this, 'ProductStreamPublisher', {
+    this.productStreamPublisher = new lambda.Function(this, 'ProductStreamPublisher', {
       functionName: 'catalogview-products-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: catalogViewCode([
-        'CatalogView.Function::CatalogView.Function.Functions_CatalogViewProductStreamPublisher_Generated::CatalogViewProductStreamPublisher',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: catalogViewCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description:
         'Publishes CatalogViewProductSyncedEvent/CatalogViewProductDeletedEvent off catalogview-products writes',
       environment: {
+        ANNOTATIONS_HANDLER: 'CatalogViewProductStreamPublisher',
         EventBridge__BusName: eventBus.eventBusName,
       },
     });

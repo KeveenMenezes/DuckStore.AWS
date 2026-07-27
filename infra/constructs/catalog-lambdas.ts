@@ -1,20 +1,17 @@
-import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
+import {
+  DOTNET_ARCH,
+  DOTNET_MEMORY_MB,
+  DOTNET_RUNTIME,
+  dotnetLambdaCode,
+} from './dotnet-lambda-code';
 
-const DOTNET_ARCH = lambda.Architecture.ARM_64;
-
-// Build context is the repo root: Catalog.Function's Dockerfile needs
-// Directory.Packages.props/nuget.config and the BuildingBlocks project
-// references, which all live outside the Catalog.Function folder.
-const REPO_ROOT = path.join(__dirname, '..', '..');
-const CATALOG_DOCKERFILE = 'src/Services/Catalog/Catalog.Function/Dockerfile';
 
 
 export interface CatalogLambdasProps {
@@ -41,44 +38,31 @@ export class CatalogLambdas extends Construct {
       eventBusName: 'duckstore-event-bus',
     });
 
-    // All three Lambdas share the same Catalog.Function image, built once and
-    // referenced per-function with a different handler via the `cmd` override.
-    const catalogImage = new ecrAssets.DockerImageAsset(this, 'CatalogImage', {
-      directory: REPO_ROOT,
-      file: CATALOG_DOCKERFILE,
-      platform: ecrAssets.Platform.LINUX_ARM64,
-      // Scope the build context down to what the Dockerfile actually COPYs —
-      // without this, staging tries to copy the whole repo (.git, cdk.out, etc).
-      exclude: [
-        '**',
-        '!Directory.Packages.props',
-        '!nuget.config',
-        '!src/Services/Catalog/Catalog.Function/**',
-        '!src/BuildingBlocks/**',
-      ],
-    });
-    const catalogCode = (cmd: string[]) =>
-      lambda.DockerImageCode.fromEcr(catalogImage.repository, {
-        tagOrDigest: catalogImage.imageTag,
-        cmd,
-      });
+    // One ZIP per service, shared by all its functions; each Lambda selects its
+    // handler through ANNOTATIONS_HANDLER instead of a Docker cmd override (ADR-0042).
+    const catalogCode = dotnetLambdaCode(
+      'src/Services/Catalog',
+      'src/Services/Catalog/Catalog.Function/Catalog.Function.csproj',
+    );
 
     // 1. catalog-products-stream-publisher
     //    Trigger: DynamoDB Streams on products
     //    IAM: DynamoEventSource grants stream read; grantPutEventsTo for EventBridge
-    this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
+    this.streamPublisher = new lambda.Function(this, 'StreamPublisher', {
       functionName: 'catalog-products-stream-publisher',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: catalogCode([
-        'Catalog.Function::Catalog.Function.Functions_ProductStreamPublisher_Generated::ProductStreamPublisher',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: catalogCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description:
         'CDC: reads DynamoDB Streams on products and publishes ProductCreatedEvent/ProductUpdatedEvent/ProductDeletedEvent/ProductSyncedEvent to EventBridge (ADR-0031)',
       environment: {
+        ANNOTATIONS_HANDLER: 'ProductStreamPublisher',
         EventBridge__BusName: this.eventBus.eventBusName,
       },
     });
@@ -110,18 +94,20 @@ export class CatalogLambdas extends Construct {
     //    Fires only on a rename (CatalogCategorySyncRule) — publishes
     //    CatalogCategorySyncEvent so CatalogView can rewrite the denormalized
     //    category name on every product document that references it.
-    this.categoryStreamPublisher = new lambda.DockerImageFunction(this, 'CategoryStreamPublisher', {
+    this.categoryStreamPublisher = new lambda.Function(this, 'CategoryStreamPublisher', {
       functionName: 'catalog-categories-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: catalogCode([
-        'Catalog.Function::Catalog.Function.Functions_CategoryStreamPublisher_Generated::CategoryStreamPublisher',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: catalogCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description:
         'CDC: reads DynamoDB Streams on categories and publishes CatalogCategorySyncEvent on rename',
       environment: {
+        ANNOTATIONS_HANDLER: 'CategoryStreamPublisher',
         EventBridge__BusName: this.eventBus.eventBusName,
       },
     });

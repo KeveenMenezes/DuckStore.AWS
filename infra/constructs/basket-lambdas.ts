@@ -1,17 +1,17 @@
-import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
+import {
+  DOTNET_ARCH,
+  DOTNET_MEMORY_MB,
+  DOTNET_RUNTIME,
+  dotnetLambdaCode,
+} from './dotnet-lambda-code';
 
-const DOTNET_ARCH = lambda.Architecture.ARM_64;
-
-const REPO_ROOT = path.join(__dirname, '..', '..');
-const BASKET_DOCKERFILE = 'src/Services/Basket/Basket.Function/Dockerfile';
 
 export interface BasketLambdasProps {
   readonly shoppingCartsTable: dynamodb.Table;
@@ -35,43 +35,33 @@ export class BasketLambdas extends Construct {
     // trips the basket-dlq-not-empty alarm → duckstore-alerts.
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'basket' });
 
-    // Docker image — shared by all three Basket Lambda functions.
-    const basketImage = new ecrAssets.DockerImageAsset(this, 'BasketImage', {
-      directory: REPO_ROOT,
-      file: BASKET_DOCKERFILE,
-      platform: ecrAssets.Platform.LINUX_ARM64,
-      exclude: [
-        '**',
-        '!Directory.Packages.props',
-        '!nuget.config',
-        '!src/Services/Basket/Basket.Function/**',
-        '!src/BuildingBlocks/**',
-      ],
-    });
-    const basketCode = (cmd: string[]) =>
-      lambda.DockerImageCode.fromEcr(basketImage.repository, {
-        tagOrDigest: basketImage.imageTag,
-        cmd,
-      });
+    // One ZIP per service, shared by all its functions; each Lambda selects its
+    // handler through ANNOTATIONS_HANDLER instead of a Docker cmd override (ADR-0042).
+    const basketCode = dotnetLambdaCode(
+      'src/Services/Basket',
+      'src/Services/Basket/Basket.Function/Basket.Function.csproj',
+    );
 
     // 1. basket-shopping-carts-stream-publisher
     //    Trigger: DynamoDB Streams on shopping-carts (NEW_IMAGE, CDC — ADR-0005)
     //    Rule-based publisher (ADR-0019): on each MODIFY record of Type=Checkout,
     //    CheckoutedRule publishes BasketCheckoutEvent. The basket item's deletion
     //    happens synchronously in CheckoutBasketCommandHandler, not here.
-    this.streamPublisher = new lambda.DockerImageFunction(this, 'StreamPublisher', {
+    this.streamPublisher = new lambda.Function(this, 'StreamPublisher', {
       functionName: 'basket-shopping-carts-stream-publisher',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: basketCode([
-        'Basket.Function::Basket.Function.Functions_ShoppingCartStreamPublisher_Generated::ShoppingCartStreamPublisher',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: basketCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description:
         'CDC: reads DynamoDB Streams on shopping-carts and publishes BasketCheckoutEvent to EventBridge',
       environment: {
+        ANNOTATIONS_HANDLER: 'ShoppingCartStreamPublisher',
         EventBridge__BusName: eventBus.eventBusName,
       },
     });
@@ -98,18 +88,20 @@ export class BasketLambdas extends Construct {
     //    Talks directly to DynamoDB (no cache).
     //    Writes a Checkout marker to the cart item; the stream publisher picks it
     //    up and publishes BasketCheckoutEvent (CDC pattern, ADR-0005).
-    this.checkoutBasket = new lambda.DockerImageFunction(this, 'CheckoutBasket', {
+    this.checkoutBasket = new lambda.Function(this, 'CheckoutBasket', {
       functionName: 'basket-checkout-basket',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: basketCode([
-        'Basket.Function::Basket.Function.Functions_CheckoutBasket_Generated::CheckoutBasket',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: basketCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description:
         'Marks a cart as checked out; DynamoDB Streams CDC publishes BasketCheckoutEvent',
+      environment: { ANNOTATIONS_HANDLER: 'CheckoutBasket' },
     });
 
     shoppingCartsTable.grantReadWriteData(this.checkoutBasket);
@@ -122,17 +114,19 @@ export class BasketLambdas extends Construct {
     //    Folds a GUEST# cart into the USER# cart on login (ADR-0016): reads both
     //    carts, writes the merged USER# cart, deletes the GUEST# cart. No Function
     //    URL — invoked directly by the AppSync mergeBasket resolver (Invoke).
-    this.mergeBasket = new lambda.DockerImageFunction(this, 'MergeBasket', {
+    this.mergeBasket = new lambda.Function(this, 'MergeBasket', {
       functionName: 'basket-merge-basket',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: basketCode([
-        'Basket.Function::Basket.Function.Functions_MergeBasket_Generated::MergeBasket',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: basketCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description: 'Merges a guest cart into the user cart on login (invoked by AppSync)',
+      environment: { ANNOTATIONS_HANDLER: 'MergeBasket' },
     });
 
     shoppingCartsTable.grantReadWriteData(this.mergeBasket);

@@ -1,20 +1,19 @@
-import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
+import {
+  DOTNET_ARCH,
+  DOTNET_MEMORY_MB,
+  DOTNET_RUNTIME,
+  dotnetLambdaCode,
+} from './dotnet-lambda-code';
 
-const DOTNET_ARCH = lambda.Architecture.ARM_64;
-
-const REPO_ROOT = path.join(__dirname, '..', '..');
-const PAYMENT_DOCKERFILE = 'src/Services/Payment/Payment.Function/Dockerfile';
-const PAYMENTGATEWAY_DOCKERFILE = 'src/Services/PaymentGateway/PaymentGateway.Function/Dockerfile';
 
 export interface PaymentLambdasProps {
   readonly paymentsTable: dynamodb.Table;
@@ -39,24 +38,12 @@ export class PaymentLambdas extends Construct {
     // queue trips the payment-dlq-not-empty alarm → duckstore-alerts (ADR-0015).
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'payment' });
 
-    // All four Payment Lambdas share the same image, built once.
-    const paymentImage = new ecrAssets.DockerImageAsset(this, 'PaymentImage', {
-      directory: REPO_ROOT,
-      file: PAYMENT_DOCKERFILE,
-      platform: ecrAssets.Platform.LINUX_ARM64,
-      exclude: [
-        '**',
-        '!Directory.Packages.props',
-        '!nuget.config',
-        '!src/Services/Payment/Payment.Function/**',
-        '!src/BuildingBlocks/**',
-      ],
-    });
-    const paymentCode = (cmd: string[]) =>
-      lambda.DockerImageCode.fromEcr(paymentImage.repository, {
-        tagOrDigest: paymentImage.imageTag,
-        cmd,
-      });
+    // One ZIP per service, shared by all its functions; each Lambda selects its
+    // handler through ANNOTATIONS_HANDLER instead of a Docker cmd override (ADR-0042).
+    const paymentCode = dotnetLambdaCode(
+      'src/Services/Payment',
+      'src/Services/Payment/Payment.Function/Payment.Function.csproj',
+    );
 
     // 1. payment-basket-checkout-consumer
     //    Trigger: EventBridge rule (BasketCheckoutEvent, source=duckstore)
@@ -65,21 +52,23 @@ export class PaymentLambdas extends Construct {
     //    independent, parallel consumers of the same event (ADR-0038).
     //    Writes the new Payment (Status=Pending) + idempotency record atomically via
     //    TransactWriteItems. EventBridge sets evt.Id as the idempotency key.
-    this.basketCheckoutConsumer = new lambda.DockerImageFunction(
+    this.basketCheckoutConsumer = new lambda.Function(
       this,
       'BasketCheckoutConsumer',
       {
         functionName: 'payment-basket-checkout-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: paymentCode([
-          'Payment.Function::Payment.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer',
-        ]),
+        runtime: DOTNET_RUNTIME,
+        // provided.al2023 runs the file named `bootstrap`; this value is inert.
+        handler: 'bootstrap',
+        code: paymentCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description:
           'Consumes BasketCheckoutEvent and creates a Pending Payment idempotently (ADR-0025/0038)',
         environment: {
+          ANNOTATIONS_HANDLER: 'BasketCheckoutConsumer',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },
@@ -114,21 +103,23 @@ export class PaymentLambdas extends Construct {
     //    Trigger: DynamoDB Streams on payments table (NEW_AND_OLD_IMAGES, CDC — ADR-0005/0019)
     //    Rule-based publisher: PaymentRequestedRule emits PaymentRequestedEvent on INSERT of a
     //    Pending payment.
-    this.paymentRequestedPublisher = new lambda.DockerImageFunction(
+    this.paymentRequestedPublisher = new lambda.Function(
       this,
       'PaymentRequestedPublisher',
       {
         functionName: 'payment-payments-stream-publisher',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: paymentCode([
-          'Payment.Function::Payment.Function.Functions_PaymentStreamPublisher_Generated::PaymentStreamPublisher',
-        ]),
+        runtime: DOTNET_RUNTIME,
+        // provided.al2023 runs the file named `bootstrap`; this value is inert.
+        handler: 'bootstrap',
+        code: paymentCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description:
           'CDC: reads DynamoDB Streams on payments and publishes PaymentRequestedEvent to EventBridge',
         environment: {
+          ANNOTATIONS_HANDLER: 'PaymentStreamPublisher',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },
@@ -152,20 +143,22 @@ export class PaymentLambdas extends Construct {
     //    Both transition the Payment row Pending -> Authorized/Declined, idempotent via the
     //    same payment-processed-events inbox. Ordering's own PaymentResult consumer (in the
     //    Ordering stack) is an independent subscriber of the same two events.
-    this.paymentAuthorizedConsumer = new lambda.DockerImageFunction(
+    this.paymentAuthorizedConsumer = new lambda.Function(
       this,
       'PaymentAuthorizedConsumer',
       {
         functionName: 'payment-result-authorized-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: paymentCode([
-          'Payment.Function::Payment.Function.Functions_PaymentAuthorizedConsumer_Generated::PaymentAuthorizedConsumer',
-        ]),
+        runtime: DOTNET_RUNTIME,
+        // provided.al2023 runs the file named `bootstrap`; this value is inert.
+        handler: 'bootstrap',
+        code: paymentCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description: 'Applies PaymentAuthorizedEvent to the Payment row (Pending -> Authorized)',
         environment: {
+          ANNOTATIONS_HANDLER: 'PaymentAuthorizedConsumer',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },
@@ -196,20 +189,22 @@ export class PaymentLambdas extends Construct {
       }),
     );
 
-    this.paymentDeclinedConsumer = new lambda.DockerImageFunction(
+    this.paymentDeclinedConsumer = new lambda.Function(
       this,
       'PaymentDeclinedConsumer',
       {
         functionName: 'payment-result-declined-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: paymentCode([
-          'Payment.Function::Payment.Function.Functions_PaymentDeclinedConsumer_Generated::PaymentDeclinedConsumer',
-        ]),
+        runtime: DOTNET_RUNTIME,
+        // provided.al2023 runs the file named `bootstrap`; this value is inert.
+        handler: 'bootstrap',
+        code: paymentCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description: 'Applies PaymentDeclinedEvent to the Payment row (Pending -> Declined)',
         environment: {
+          ANNOTATIONS_HANDLER: 'PaymentDeclinedConsumer',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },
@@ -255,41 +250,34 @@ export class PaymentGatewayLambdas extends Construct {
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'paymentgateway' });
 
-    const paymentGatewayImage = new ecrAssets.DockerImageAsset(this, 'PaymentGatewayImage', {
-      directory: REPO_ROOT,
-      file: PAYMENTGATEWAY_DOCKERFILE,
-      platform: ecrAssets.Platform.LINUX_ARM64,
-      exclude: [
-        '**',
-        '!Directory.Packages.props',
-        '!nuget.config',
-        '!src/Services/PaymentGateway/PaymentGateway.Function/**',
-        '!src/BuildingBlocks/**',
-      ],
-    });
+    // One ZIP per service, shared by all its functions; each Lambda selects its
+    // handler through ANNOTATIONS_HANDLER instead of a Docker cmd override (ADR-0042).
+    const paymentGatewayCode = dotnetLambdaCode(
+      'src/Services/PaymentGateway',
+      'src/Services/PaymentGateway/PaymentGateway.Function/PaymentGateway.Function.csproj',
+    );
 
     // paymentgateway-payment-requested-consumer
     //    Trigger: EventBridge rule (PaymentRequestedEvent, source=duckstore)
     //    Stateless simulated gateway: the authorize/decline decision is a pure function of
     //    (CardNumber, Amount) — no persistence, no idempotency inbox needed (ADR-0025 §1).
-    this.paymentRequestedConsumer = new lambda.DockerImageFunction(
+    this.paymentRequestedConsumer = new lambda.Function(
       this,
       'PaymentRequestedConsumer',
       {
         functionName: 'paymentgateway-payment-requested-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: lambda.DockerImageCode.fromEcr(paymentGatewayImage.repository, {
-          tagOrDigest: paymentGatewayImage.imageTag,
-          cmd: [
-            'PaymentGateway.Function::PaymentGateway.Function.Functions_PaymentRequestedConsumer_Generated::PaymentRequestedConsumer',
-          ],
-        }),
+        runtime: DOTNET_RUNTIME,
+        // provided.al2023 runs the file named `bootstrap`; this value is inert.
+        handler: 'bootstrap',
+        code: paymentGatewayCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description:
           'Simulated payment gateway: decides authorize/decline and publishes the result (ADR-0025)',
         environment: {
+          ANNOTATIONS_HANDLER: 'PaymentRequestedConsumer',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },

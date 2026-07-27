@@ -1,19 +1,19 @@
-import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
+import {
+  DOTNET_ARCH,
+  DOTNET_MEMORY_MB,
+  DOTNET_RUNTIME,
+  dotnetLambdaCode,
+} from './dotnet-lambda-code';
 
-const DOTNET_ARCH = lambda.Architecture.ARM_64;
-
-const REPO_ROOT = path.join(__dirname, '..', '..');
-const PRICING_DOCKERFILE = 'src/Services/Pricing/Pricing.Function/Dockerfile';
 
 export interface PricingLambdasProps {
   readonly pricesTable: dynamodb.Table;
@@ -43,24 +43,12 @@ export class PricingLambdas extends Construct {
     // queue trips the pricing-dlq-not-empty alarm → duckstore-alerts.
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'pricing' });
 
-    // All five Pricing Lambdas share the same image, built once.
-    const pricingImage = new ecrAssets.DockerImageAsset(this, 'PricingImage', {
-      directory: REPO_ROOT,
-      file: PRICING_DOCKERFILE,
-      platform: ecrAssets.Platform.LINUX_ARM64,
-      exclude: [
-        '**',
-        '!Directory.Packages.props',
-        '!nuget.config',
-        '!src/Services/Pricing/Pricing.Function/**',
-        '!src/BuildingBlocks/**',
-      ],
-    });
-    const pricingCode = (cmd: string[]) =>
-      lambda.DockerImageCode.fromEcr(pricingImage.repository, {
-        tagOrDigest: pricingImage.imageTag,
-        cmd,
-      });
+    // One ZIP per service, shared by all its functions; each Lambda selects its
+    // handler through ANNOTATIONS_HANDLER instead of a Docker cmd override (ADR-0042).
+    const pricingCode = dotnetLambdaCode(
+      'src/Services/Pricing',
+      'src/Services/Pricing/Pricing.Function/Pricing.Function.csproj',
+    );
 
     // Note: pricing-set-nominal-price (SetNominalPrice command) is gone — setNominalPrice is now
     // an AppSync direct DynamoDB UpdateItem resolver (ADR-0009); see appsync-api.ts and
@@ -68,17 +56,19 @@ export class PricingLambdas extends Construct {
 
     // 1. pricing-get-installment-plan  (AppSync Invoke — Query.installmentPlanFor)
     //    Non-trivial calculation over simulated gateway fee/margin config — Lambda per ADR-0009.
-    this.getInstallmentPlan = new lambda.DockerImageFunction(this, 'GetInstallmentPlan', {
+    this.getInstallmentPlan = new lambda.Function(this, 'GetInstallmentPlan', {
       functionName: 'pricing-get-installment-plan',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: pricingCode([
-        'Pricing.Function::Pricing.Function.Functions_GetInstallmentPlan_Generated::GetInstallmentPlan',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: pricingCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description: 'Computes the max interest-free installments for a product\'s nominal price',
       environment: {
+        ANNOTATIONS_HANDLER: 'GetInstallmentPlan',
         Installments__ActiveProvider: 'Simulated',
         Installments__MinMarginPercent: '5',
       },
@@ -90,17 +80,19 @@ export class PricingLambdas extends Construct {
     // 1b. pricing-get-basket-installment-plan  (AppSync Invoke — Query.basketInstallmentPlan)
     //     Same cost-floor calculation, but summed across every cart item first — the whole cart
     //     is treated as one checkout transaction (ADR-0009).
-    this.getBasketInstallmentPlan = new lambda.DockerImageFunction(this, 'GetBasketInstallmentPlan', {
+    this.getBasketInstallmentPlan = new lambda.Function(this, 'GetBasketInstallmentPlan', {
       functionName: 'pricing-get-basket-installment-plan',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: pricingCode([
-        'Pricing.Function::Pricing.Function.Functions_GetBasketInstallmentPlan_Generated::GetBasketInstallmentPlan',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: pricingCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description: 'Computes the unified interest-free installment plan for an entire cart',
       environment: {
+        ANNOTATIONS_HANDLER: 'GetBasketInstallmentPlan',
         Installments__ActiveProvider: 'Simulated',
         Installments__MinMarginPercent: '5',
       },
@@ -110,32 +102,36 @@ export class PricingLambdas extends Construct {
 
     // 2. pricing-create-campaign  (AppSync Invoke — Mutation.createCampaign)
     //    Fans out a TransactWriteItems across campaigns + product-discounts (ADR-0026 §6).
-    this.createCampaign = new lambda.DockerImageFunction(this, 'CreateCampaign', {
+    this.createCampaign = new lambda.Function(this, 'CreateCampaign', {
       functionName: 'pricing-create-campaign',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: pricingCode([
-        'Pricing.Function::Pricing.Function.Functions_CreateCampaign_Generated::CreateCampaign',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: pricingCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description: 'Creates a discount campaign and fans out product-discounts rows',
+      environment: { ANNOTATIONS_HANDLER: 'CreateCampaign' },
     });
     campaignsTable.grantReadWriteData(this.createCampaign);
     productDiscountsTable.grantReadWriteData(this.createCampaign);
 
     // 3. pricing-end-campaign  (AppSync Invoke — Mutation.endCampaign)
     //    Reads the campaign, then retracts its product-discounts rows transactionally.
-    this.endCampaign = new lambda.DockerImageFunction(this, 'EndCampaign', {
+    this.endCampaign = new lambda.Function(this, 'EndCampaign', {
       functionName: 'pricing-end-campaign',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: pricingCode([
-        'Pricing.Function::Pricing.Function.Functions_EndCampaign_Generated::EndCampaign',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: pricingCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description: 'Cancels a discount campaign and retracts its product-discounts rows',
+      environment: { ANNOTATIONS_HANDLER: 'EndCampaign' },
     });
     campaignsTable.grantReadWriteData(this.endCampaign);
     productDiscountsTable.grantReadWriteData(this.endCampaign);
@@ -144,20 +140,22 @@ export class PricingLambdas extends Construct {
     //    Trigger: EventBridge rule (ProductDeletedEvent, source=duckstore — ADR-0031: named after
     //    the domain occurrence, no ChangeType discriminator). Cleans up prices/product-discounts
     //    rows for the deleted product, idempotent via pricing-processed-events (ADR-0026 §5).
-    this.productDeletedConsumer = new lambda.DockerImageFunction(
+    this.productDeletedConsumer = new lambda.Function(
       this,
       'ProductDeletedConsumer',
       {
         functionName: 'pricing-product-deleted-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: pricingCode([
-          'Pricing.Function::Pricing.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer',
-        ]),
+        runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: pricingCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description: 'Consumes ProductDeletedEvent and cleans up Pricing rows for the deleted product',
         environment: {
+        ANNOTATIONS_HANDLER: 'ProductDeletedConsumer',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },
@@ -195,18 +193,20 @@ export class PricingLambdas extends Construct {
     //    Trigger: DynamoDB Streams on prices. CDC: publishes a single PriceChangedEvent (nominal
     //    price + payment badge computed from the active GatewayCost) to EventBridge on
     //    INSERT/MODIFY so CatalogView syncs both in one merge (ADR-0026/0027/0028).
-    this.priceStreamPublisher = new lambda.DockerImageFunction(this, 'PriceStreamPublisher', {
+    this.priceStreamPublisher = new lambda.Function(this, 'PriceStreamPublisher', {
       functionName: 'pricing-prices-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
-      code: pricingCode([
-        'Pricing.Function::Pricing.Function.Functions_PriceStreamPublisher_Generated::PriceStreamPublisher',
-      ]),
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: pricingCode,
       timeout: cdk.Duration.seconds(30),
-      memorySize: 512,
+      memorySize: DOTNET_MEMORY_MB,
       description:
         'CDC: reads DynamoDB Streams on prices and publishes PriceChangedEvent (price + payment badge) to EventBridge',
       environment: {
+        ANNOTATIONS_HANDLER: 'PriceStreamPublisher',
         EventBridge__BusName: eventBus.eventBusName,
         Installments__ActiveProvider: 'Simulated',
         Installments__MinMarginPercent: '5',
