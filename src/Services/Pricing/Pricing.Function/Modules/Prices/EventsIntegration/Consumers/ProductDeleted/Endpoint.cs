@@ -6,7 +6,7 @@
 // TransactWriteItems shape as Ordering's BasketCheckoutConsumer.
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task ProductDeletedConsumer(
         EventBridgeEvent<ProductDeletedEvent> evt,
         [FromServices] IIdempotentEventConsumer consumer)

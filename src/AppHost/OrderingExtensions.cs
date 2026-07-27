@@ -1,5 +1,6 @@
 ﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
+using static AppHost.Extensions.Extensions;
 
 namespace AppHost.Ordering;
 
@@ -21,7 +22,7 @@ public static class OrderingExtensions
 
         builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
                 "ordering-basket-checkout-consumer",
-                lambdaHandler: "Ordering.Function::Ordering.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer")
+                lambdaHandler: LambdaHandler("Ordering.Function", "BasketCheckoutConsumer"))
             .WaitForCompletion(orderingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -30,7 +31,7 @@ public static class OrderingExtensions
         builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
                 "ordering-stream-publisher",
                 lambdaHandler:
-                "Ordering.Function::Ordering.Function.Functions_OrderStreamPublisher_Generated::OrderStreamPublisher")
+                LambdaHandler("Ordering.Function", "OrderStreamPublisher"))
             .WaitForCompletion(orderingMigration)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(OrderingTableName)
@@ -40,7 +41,7 @@ public static class OrderingExtensions
         builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
                 "ordering-payment-authorized-consumer",
                 lambdaHandler:
-                "Ordering.Function::Ordering.Function.Functions_OrderPaymentAuthorizedConsumer_Generated::OrderPaymentAuthorizedConsumer")
+                LambdaHandler("Ordering.Function", "OrderPaymentAuthorizedConsumer"))
             .WaitForCompletion(orderingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -49,7 +50,7 @@ public static class OrderingExtensions
         builder.AddAWSLambdaFunction<Projects.Ordering_Function>(
                 "ordering-payment-declined-consumer",
                 lambdaHandler:
-                "Ordering.Function::Ordering.Function.Functions_OrderPaymentDeclinedConsumer_Generated::OrderPaymentDeclinedConsumer")
+                LambdaHandler("Ordering.Function", "OrderPaymentDeclinedConsumer"))
             .WaitForCompletion(orderingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()

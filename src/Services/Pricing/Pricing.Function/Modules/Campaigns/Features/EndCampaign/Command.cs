@@ -1,15 +1,18 @@
-﻿namespace Pricing.Function.Modules.Campaigns.Features.EndCampaign;
+﻿using BuildingBlocks.Core.Validation;
+
+namespace Pricing.Function.Modules.Campaigns.Features.EndCampaign;
 
 public record EndCampaignCommand(Guid CampaignId) : ICommand<EndCampaignResult>;
 
 public record EndCampaignResult(Guid CampaignId, bool Ended);
 
-public class EndCampaignCommandValidator : AbstractValidator<EndCampaignCommand>
+public class EndCampaignCommandValidator : IValidator<EndCampaignCommand>
 {
-    public EndCampaignCommandValidator()
+    public IEnumerable<ValidationFailure> Validate(EndCampaignCommand instance)
     {
-        RuleFor(x => x.CampaignId)
-            .NotEmpty()
-            .WithMessage("CampaignId is required");
+        if (instance.CampaignId == Guid.Empty)
+        {
+            yield return new(nameof(instance.CampaignId), "CampaignId is required");
+        }
     }
 }

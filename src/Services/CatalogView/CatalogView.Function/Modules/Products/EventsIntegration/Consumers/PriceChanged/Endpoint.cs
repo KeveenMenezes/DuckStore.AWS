@@ -4,7 +4,7 @@
 // the catalogview-products projection.
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task PriceSyncConsumer(
         EventBridgeEvent<PriceChangedEvent> evt,
         [FromServices] PriceSyncHandler handler)

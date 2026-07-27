@@ -14,13 +14,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Ordering.Function::Ordering.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "BasketCheckoutConsumer"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     },
     "OrderingFunctionFunctionsOrderStreamPublisherGenerated": {
@@ -34,13 +36,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Ordering.Function::Ordering.Function.Functions_OrderStreamPublisher_Generated::OrderStreamPublisher"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "OrderStreamPublisher"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     },
     "OrderingFunctionFunctionsOrderPaymentAuthorizedConsumerGenerated": {
@@ -54,13 +58,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Ordering.Function::Ordering.Function.Functions_OrderPaymentAuthorizedConsumer_Generated::OrderPaymentAuthorizedConsumer"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "OrderPaymentAuthorizedConsumer"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     },
     "OrderingFunctionFunctionsOrderPaymentDeclinedConsumerGenerated": {
@@ -74,13 +80,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Ordering.Function::Ordering.Function.Functions_OrderPaymentDeclinedConsumer_Generated::OrderPaymentDeclinedConsumer"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "OrderPaymentDeclinedConsumer"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     }
   },

@@ -1,3 +1,4 @@
+﻿using BuildingBlocks.Messaging.Serialization;
 namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewSync.Strategies;
 
 // Consumes ReviewCreatedEvent (ADR-0011, still owned/published by Review) and folds the new rating
@@ -10,7 +11,7 @@ public sealed class ReviewCreateStrategy(IProductSearchIndex index) : IReviewSyn
 
     public Task HandleAsync(string eventId, JsonElement detail, CancellationToken cancellationToken = default)
     {
-        var evt = detail.Deserialize<ReviewCreatedEvent>()!;
+        var evt = detail.Deserialize(MessagingSerializerContext.Default.ReviewCreatedEvent)!;
         return index.ApplyRatingAsync(evt.ProductId.ToString(), eventId, evt.Rating, cancellationToken);
     }
 }

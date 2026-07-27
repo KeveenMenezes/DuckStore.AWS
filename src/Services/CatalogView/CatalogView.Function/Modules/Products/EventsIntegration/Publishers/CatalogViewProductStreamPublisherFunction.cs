@@ -7,7 +7,7 @@
 // invalidate CloudFront before CatalogView's data is actually in place.
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task CatalogViewProductStreamPublisher(
         DynamoDBEvent dynamoEvent,
         [FromServices] StreamRuleDispatcher<CatalogViewProductStreamImage> dispatcher)

@@ -1,4 +1,5 @@
-﻿namespace Basket.Function.Modules.ShoppingCarts.EventsIntegration.Publishers.Rules;
+﻿using Basket.Function.Shared.Configuration;
+namespace Basket.Function.Modules.ShoppingCarts.EventsIntegration.Publishers.Rules;
 
 // Publishes BasketCheckoutEvent when CheckoutBasketCommandHandler marks a cart row as checked
 // out. Unlike OrderCreatedRule (Ordering), this rule does NOT re-hydrate from the repository:
@@ -12,7 +13,8 @@ public sealed class CheckoutedRule : IStreamRule<ShoppingCartStreamImage>
     public Task<PublishInstruction> BuildAsync(
         StreamContext<ShoppingCartStreamImage> context, CancellationToken cancellationToken = default)
     {
-        var checkoutEvent = JsonSerializer.Deserialize<BasketCheckoutEvent>(context.New!.CheckoutData!)!;
+        var checkoutEvent = JsonSerializer.Deserialize(
+            context.New!.CheckoutData!, BasketSerializerContext.Default.BasketCheckoutEvent)!;
 
         return Task.FromResult(new PublishInstruction(nameof(BasketCheckoutEvent), checkoutEvent));
     }

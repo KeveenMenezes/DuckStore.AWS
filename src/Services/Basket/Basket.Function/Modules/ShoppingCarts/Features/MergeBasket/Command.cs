@@ -1,19 +1,23 @@
-﻿namespace Basket.Function.Modules.ShoppingCarts.Features.MergeBasket;
+﻿using BuildingBlocks.Core.Validation;
+
+namespace Basket.Function.Modules.ShoppingCarts.Features.MergeBasket;
 
 // Called right after login: moves the visitor's GUEST# cart into the authenticated USER# cart.
 public record MergeBasketCommand(string OwnerId, string GuestId) : ICommand<MergeBasketResult>;
 public record MergeBasketResult(string OwnerId);
 
-public class MergeBasketCommandValidator : AbstractValidator<MergeBasketCommand>
+public class MergeBasketCommandValidator : IValidator<MergeBasketCommand>
 {
-    public MergeBasketCommandValidator()
+    public IEnumerable<ValidationFailure> Validate(MergeBasketCommand instance)
     {
-        RuleFor(x => x.OwnerId)
-            .Must(id => id?.StartsWith("USER#", StringComparison.Ordinal) == true)
-            .WithMessage("OwnerId must be a USER# identity");
+        if (instance.OwnerId?.StartsWith("USER#", StringComparison.Ordinal) != true)
+        {
+            yield return new(nameof(instance.OwnerId), "OwnerId must be a USER# identity");
+        }
 
-        RuleFor(x => x.GuestId)
-            .Must(id => id?.StartsWith("GUEST#", StringComparison.Ordinal) == true)
-            .WithMessage("GuestId must be a GUEST# identity");
+        if (instance.GuestId?.StartsWith("GUEST#", StringComparison.Ordinal) != true)
+        {
+            yield return new(nameof(instance.GuestId), "GuestId must be a GUEST# identity");
+        }
     }
 }

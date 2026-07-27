@@ -11,6 +11,19 @@
     <PackageReference Include="OpenTelemetry" />
     <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AWS" />
+    <!-- Behaviors/: the mediator pipeline moved here from BuildingBlocks.ServiceDefaults so
+         that Lambda packages stop dragging in Serilog/Elasticsearch/ServiceDiscovery — 89 MB
+         of a self-contained ZIP that no Lambda ever executes (ADR-0042 §3). -->
+    <PackageReference Include="Mediator.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- IValidator<T>/ValidationFailure and ValidationException live in Core. -->
+    <ProjectReference Include="..\BuildingBlocks.Core\BuildingBlocks.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Mediator" />
   </ItemGroup>
 
 </Project>

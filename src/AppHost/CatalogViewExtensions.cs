@@ -1,5 +1,6 @@
 ﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
+using static AppHost.Extensions.Extensions;
 
 namespace AppHost.CatalogView;
 
@@ -32,7 +33,7 @@ public static class CatalogViewExtensions
         builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
                 "catalogview-catalog-sync-consumer",
                 lambdaHandler:
-                "CatalogView.Function::CatalogView.Function.Functions_CatalogSyncConsumer_Generated::CatalogSyncConsumer")
+                LambdaHandler("CatalogView.Function", "CatalogSyncConsumer"))
             .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -41,7 +42,7 @@ public static class CatalogViewExtensions
         builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
                 "catalogview-review-sync-consumer",
                 lambdaHandler:
-                "CatalogView.Function::CatalogView.Function.Functions_ReviewSyncConsumer_Generated::ReviewSyncConsumer")
+                LambdaHandler("CatalogView.Function", "ReviewSyncConsumer"))
             .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -50,7 +51,7 @@ public static class CatalogViewExtensions
         builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
                 "catalogview-price-sync-consumer",
                 lambdaHandler:
-                "CatalogView.Function::CatalogView.Function.Functions_PriceSyncConsumer_Generated::PriceSyncConsumer")
+                LambdaHandler("CatalogView.Function", "PriceSyncConsumer"))
             .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()

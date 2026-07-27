@@ -10,13 +10,13 @@ public record MergeBasketResponse(string OwnerId);
 // USER# cart, deletes the GUEST# cart.
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task<MergeBasketResponse> MergeBasket(
         MergeBasketRequest request,
         [FromServices] ISender sender)
     {
-        var command = request.Adapt<MergeBasketCommand>();
+        var command = new MergeBasketCommand(request.OwnerId, request.GuestId);
         var result = await sender.Send(command, CancellationToken.None);
-        return result.Adapt<MergeBasketResponse>();
+        return new MergeBasketResponse(result.OwnerId);
     }
 }

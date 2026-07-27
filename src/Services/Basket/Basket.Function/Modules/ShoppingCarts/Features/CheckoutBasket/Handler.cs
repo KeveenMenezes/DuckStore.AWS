@@ -1,9 +1,10 @@
-﻿namespace Basket.Function.Modules.ShoppingCarts.Features.CheckoutBasket;
+﻿using Basket.Function.Shared.Configuration;
+namespace Basket.Function.Modules.ShoppingCarts.Features.CheckoutBasket;
 
 public class CheckoutBasketCommandHandler(IShoppingCartRepository basketRepository)
     : ICommandHandler<CheckoutBasketCommand, CheckoutBasketResult>
 {
-    public async Task<CheckoutBasketResult> Handle(
+    public async ValueTask<CheckoutBasketResult> Handle(
         CheckoutBasketCommand command, CancellationToken cancellationToken)
     {
         var basket = await basketRepository.TryGetBasket(
@@ -27,7 +28,8 @@ public class CheckoutBasketCommandHandler(IShoppingCartRepository basketReposito
 
         // Write checkout payload to DynamoDB before deletion so DynamoDB Streams captures it
         // and the ShoppingCartStreamPublisher Lambda's CheckoutedRule can publish to EventBridge.
-        var checkoutDataJson = JsonSerializer.Serialize(command.BasketCheckoutDto);
+        var checkoutDataJson = JsonSerializer.Serialize(
+            command.BasketCheckoutDto, BasketSerializerContext.Default.BasketCheckoutDto);
         await basketRepository.MarkCheckoutAsync(
             command.BasketCheckoutDto.OwnerId, checkoutDataJson, cancellationToken);
 

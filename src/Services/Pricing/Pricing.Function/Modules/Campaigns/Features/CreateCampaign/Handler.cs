@@ -3,7 +3,7 @@
 public class CreateCampaignHandler(ICampaignRepository campaignRepository)
     : ICommandHandler<CreateCampaignCommand, CreateCampaignResult>
 {
-    public async Task<CreateCampaignResult> Handle(
+    public async ValueTask<CreateCampaignResult> Handle(
         CreateCampaignCommand command, CancellationToken cancellationToken)
     {
         var campaign = Campaign.Create(

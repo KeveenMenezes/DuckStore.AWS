@@ -6,7 +6,7 @@
 // is the one with the idempotency guard against double-applying the result (ADR-0025).
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task PaymentRequestedConsumer(
         EventBridgeEvent<PaymentRequestedEvent> evt,
         [FromServices] IEventPublisher publisher)

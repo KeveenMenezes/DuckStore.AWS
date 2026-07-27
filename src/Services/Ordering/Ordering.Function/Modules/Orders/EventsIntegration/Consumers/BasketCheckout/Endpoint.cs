@@ -6,7 +6,7 @@
 // input deserialization are provided by the Amazon.Lambda.Annotations generator from [LambdaStartup].
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task BasketCheckoutConsumer(
         EventBridgeEvent<BasketCheckoutEvent> evt,
         [FromServices] IIdempotentEventConsumer consumer)

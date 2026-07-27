@@ -3,7 +3,7 @@
 public class MergeBasketCommandHandler(IShoppingCartRepository repository)
     : ICommandHandler<MergeBasketCommand, MergeBasketResult>
 {
-    public async Task<MergeBasketResult> Handle(MergeBasketCommand command, CancellationToken cancellationToken)
+    public async ValueTask<MergeBasketResult> Handle(MergeBasketCommand command, CancellationToken cancellationToken)
     {
         var guestCart = await repository.TryGetBasket(command.GuestId, cancellationToken);
 

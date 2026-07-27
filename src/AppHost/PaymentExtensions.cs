@@ -1,5 +1,6 @@
 ﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
+using static AppHost.Extensions.Extensions;
 
 namespace AppHost.Payment;
 
@@ -21,7 +22,7 @@ public static class PaymentExtensions
 
         builder.AddAWSLambdaFunction<Projects.Payment_Function>(
                 "payment-basket-checkout-consumer",
-                lambdaHandler: "Payment.Function::Payment.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer")
+                lambdaHandler: LambdaHandler("Payment.Function", "BasketCheckoutConsumer"))
             .WaitForCompletion(paymentMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -29,7 +30,7 @@ public static class PaymentExtensions
 
         builder.AddAWSLambdaFunction<Projects.Payment_Function>(
                 "payment-payments-stream-publisher",
-                lambdaHandler: "Payment.Function::Payment.Function.Functions_PaymentStreamPublisher_Generated::PaymentStreamPublisher")
+                lambdaHandler: LambdaHandler("Payment.Function", "PaymentStreamPublisher"))
             .WaitForCompletion(paymentMigration)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(PaymentsTableName)
@@ -38,7 +39,7 @@ public static class PaymentExtensions
 
         builder.AddAWSLambdaFunction<Projects.Payment_Function>(
                 "payment-result-authorized-consumer",
-                lambdaHandler: "Payment.Function::Payment.Function.Functions_PaymentAuthorizedConsumer_Generated::PaymentAuthorizedConsumer")
+                lambdaHandler: LambdaHandler("Payment.Function", "PaymentAuthorizedConsumer"))
             .WaitForCompletion(paymentMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -46,7 +47,7 @@ public static class PaymentExtensions
 
         builder.AddAWSLambdaFunction<Projects.Payment_Function>(
                 "payment-result-declined-consumer",
-                lambdaHandler: "Payment.Function::Payment.Function.Functions_PaymentDeclinedConsumer_Generated::PaymentDeclinedConsumer")
+                lambdaHandler: LambdaHandler("Payment.Function", "PaymentDeclinedConsumer"))
             .WaitForCompletion(paymentMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -54,7 +55,7 @@ public static class PaymentExtensions
 
         builder.AddAWSLambdaFunction<Projects.PaymentGateway_Function>(
                 "paymentgateway-payment-requested-consumer",
-                lambdaHandler: "PaymentGateway.Function::PaymentGateway.Function.Functions_PaymentRequestedConsumer_Generated::PaymentRequestedConsumer")
+                lambdaHandler: LambdaHandler("PaymentGateway.Function", "PaymentRequestedConsumer"))
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
     }

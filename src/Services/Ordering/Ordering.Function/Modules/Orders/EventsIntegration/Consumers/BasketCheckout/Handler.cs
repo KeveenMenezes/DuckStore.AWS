@@ -4,7 +4,7 @@ public class CreateOrderHandler(
     IOrderRepository orderRepository)
     : ICommandHandler<CreateOrderCommand, CreateOrderResult>
 {
-    public async Task<CreateOrderResult> Handle(
+    public async ValueTask<CreateOrderResult> Handle(
         CreateOrderCommand command,
         CancellationToken cancellationToken)
     {

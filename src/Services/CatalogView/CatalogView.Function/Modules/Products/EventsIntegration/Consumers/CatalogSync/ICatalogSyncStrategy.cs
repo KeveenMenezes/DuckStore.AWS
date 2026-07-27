@@ -1,4 +1,4 @@
-namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CatalogSync;
+﻿namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CatalogSync;
 
 // One business reason to write to catalogview-products on behalf of Catalog (ADR-0040). A
 // strategy answers "do I own this detail-type?" (CanHandle) and, when it does, applies its

@@ -1,4 +1,4 @@
-namespace Basket.Function.Modules.ShoppingCarts.Domain.Dtos;
+﻿namespace Basket.Function.Modules.ShoppingCarts.Domain.Dtos;
 
 // Mirrors BasketCheckoutEvent's shape exactly: CheckoutBasketCommandHandler serializes this to
 // JSON (stored in the cart row's CheckoutData attribute), and CheckoutedRule deserializes that

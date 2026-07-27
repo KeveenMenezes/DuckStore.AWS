@@ -1,3 +1,4 @@
+﻿using BuildingBlocks.Messaging.Serialization;
 namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CatalogSync.Strategies;
 
 // Consumes CatalogCategorySyncEvent (a category rename — ADR-0027 extension) and rewrites the
@@ -10,7 +11,7 @@ public sealed class CategorySyncStrategy(IProductSearchIndex index) : ICatalogSy
     public Task HandleAsync(
         string eventId, JsonElement detail, CancellationToken cancellationToken = default)
     {
-        var evt = detail.Deserialize<CatalogCategorySyncEvent>()!;
+        var evt = detail.Deserialize(MessagingSerializerContext.Default.CatalogCategorySyncEvent)!;
         return index.RenameCategoryAsync(evt.CategoryId, evt.Name, cancellationToken);
     }
 }

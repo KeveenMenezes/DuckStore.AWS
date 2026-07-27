@@ -1,4 +1,6 @@
-﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
+﻿using BuildingBlocks.Core.Validation;
+
+namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
 
 public record CreatePaymentCommand(
     Guid OrderId,
@@ -12,29 +14,75 @@ public record CreatePaymentCommand(
 
 public record CreatePaymentResult(Guid Id);
 
-public class CreatePaymentCommandValidator : AbstractValidator<CreatePaymentCommand>
+public class CreatePaymentCommandValidator : IValidator<CreatePaymentCommand>
 {
-    public CreatePaymentCommandValidator()
+    public IEnumerable<ValidationFailure> Validate(CreatePaymentCommand instance)
     {
-        RuleFor(x => x.OrderId)
-            .NotEmpty()
-            .WithMessage("OrderId is required");
+        if (instance.OrderId == Guid.Empty)
+        {
+            yield return new(nameof(instance.OrderId), "OrderId is required");
+        }
 
-        RuleFor(x => x.CustomerId)
-            .NotEmpty()
-            .WithMessage("CustomerId is required");
+        if (instance.CustomerId == Guid.Empty)
+        {
+            yield return new(nameof(instance.CustomerId), "CustomerId is required");
+        }
 
-        RuleFor(x => x.Amount)
-            .GreaterThan(0)
-            .WithMessage("Amount must be greater than zero");
+        if (instance.Amount <= 0)
+        {
+            yield return new(nameof(instance.Amount), "Amount must be greater than zero");
+        }
 
-        RuleFor(x => x.CardNumber)
-            .CreditCard()
-            .WithMessage("Invalid card number")
-            .When(x => x.PaymentMethod != PaymentMethod.Cash);
+        // Cash orders carry no card, so the Luhn check only applies to the other methods.
+        if (instance.PaymentMethod != PaymentMethod.Cash && !IsValidCardNumber(instance.CardNumber))
+        {
+            yield return new(nameof(instance.CardNumber), "Invalid card number");
+        }
 
-        RuleFor(x => x.PaymentMethod)
-            .IsInEnum()
-            .WithMessage("Invalid payment method");
+        if (!Enum.IsDefined(instance.PaymentMethod))
+        {
+            yield return new(nameof(instance.PaymentMethod), "Invalid payment method");
+        }
+    }
+
+    // Luhn checksum — the same rule FluentValidation's CreditCard() applied.
+    private static bool IsValidCardNumber(string? cardNumber)
+    {
+        if (string.IsNullOrWhiteSpace(cardNumber))
+        {
+            return false;
+        }
+
+        var sum = 0;
+        var even = false;
+
+        for (var i = cardNumber.Length - 1; i >= 0; i--)
+        {
+            var c = cardNumber[i];
+            if (c is ' ' or '-')
+            {
+                continue;
+            }
+
+            if (!char.IsDigit(c))
+            {
+                return false;
+            }
+
+            var digit = c - '0';
+            if (even)
+            {
+                digit *= 2;
+                if (digit > 9)
+                {
+                    digit -= 9;
+                }
+            }
+
+            sum += digit;
+            even = !even;
+        }
+
+        return sum % 10 == 0;
     }
 }

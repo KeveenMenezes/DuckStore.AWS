@@ -1,4 +1,4 @@
-namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewSync;
+﻿namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewSync;
 
 // Resolves the one IReviewSyncStrategy that owns a given EventBridge detail-type and delegates
 // to it (ADR-0040). Backs ReviewSyncConsumer only — which strategies are actually reachable is

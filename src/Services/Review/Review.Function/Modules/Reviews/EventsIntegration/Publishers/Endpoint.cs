@@ -6,7 +6,7 @@ public partial class Functions
     // IStreamRule<ReviewStreamImage> rules (ADR-0019): ReviewCreatedRule on INSERT, ReviewUpdatedRule
     // on MODIFY (ADR-0029) — so both a brand-new review and an upsert-edit of an existing one feed
     // CatalogView's rating aggregation.
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task ReviewStreamPublisher(
         DynamoDBEvent dynamoEvent,
         [FromServices] StreamRuleDispatcher<ReviewStreamImage> dispatcher)

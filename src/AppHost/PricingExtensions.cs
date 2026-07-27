@@ -1,5 +1,6 @@
 ﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
+using static AppHost.Extensions.Extensions;
 
 namespace AppHost.Pricing;
 
@@ -21,7 +22,7 @@ public static class PricingExtensions
 
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
                 "pricing-get-installment-plan",
-                lambdaHandler: "Pricing.Function::Pricing.Function.Functions_GetInstallmentPlan_Generated::GetInstallmentPlan")
+                lambdaHandler: LambdaHandler("Pricing.Function", "GetInstallmentPlan"))
             .WaitForCompletion(pricingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -35,7 +36,7 @@ public static class PricingExtensions
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
                 "pricing-get-basket-installment-plan",
                 lambdaHandler:
-                "Pricing.Function::Pricing.Function.Functions_GetBasketInstallmentPlan_Generated::GetBasketInstallmentPlan")
+                LambdaHandler("Pricing.Function", "GetBasketInstallmentPlan"))
             .WaitForCompletion(pricingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -50,14 +51,14 @@ public static class PricingExtensions
 
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
                 "pricing-create-campaign",
-                lambdaHandler: "Pricing.Function::Pricing.Function.Functions_CreateCampaign_Generated::CreateCampaign")
+                lambdaHandler: LambdaHandler("Pricing.Function", "CreateCampaign"))
             .WaitForCompletion(pricingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
                 "pricing-end-campaign",
-                lambdaHandler: "Pricing.Function::Pricing.Function.Functions_EndCampaign_Generated::EndCampaign")
+                lambdaHandler: LambdaHandler("Pricing.Function", "EndCampaign"))
             .WaitForCompletion(pricingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
@@ -65,7 +66,7 @@ public static class PricingExtensions
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
                 "pricing-product-deleted-consumer",
                 lambdaHandler:
-                "Pricing.Function::Pricing.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer")
+                LambdaHandler("Pricing.Function", "ProductDeletedConsumer"))
             .WaitForCompletion(pricingMigration)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()
@@ -77,7 +78,7 @@ public static class PricingExtensions
         // since it computes the badge using the active GatewayCost.
         builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
                 "pricing-prices-stream-publisher",
-                lambdaHandler: "Pricing.Function::Pricing.Function.Functions_PriceStreamPublisher_Generated::PriceStreamPublisher")
+                lambdaHandler: LambdaHandler("Pricing.Function", "PriceStreamPublisher"))
             .WaitForCompletion(pricingMigration)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource("prices")

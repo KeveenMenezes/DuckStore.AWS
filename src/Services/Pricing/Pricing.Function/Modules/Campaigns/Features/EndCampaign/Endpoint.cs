@@ -1,5 +1,4 @@
-﻿using Mapster;
-using Pricing.Function.Modules.Campaigns.Features.EndCampaign;
+﻿using Pricing.Function.Modules.Campaigns.Features.EndCampaign;
 
 namespace Pricing.Function;
 
@@ -10,13 +9,13 @@ public record EndCampaignResponse(Guid CampaignId, bool Ended);
 // product-discounts rows to retract, then fans out a TransactWriteItems delete).
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task<EndCampaignResponse> EndCampaign(
         EndCampaignRequest request,
         [FromServices] ISender sender)
     {
-        var command = request.Adapt<EndCampaignCommand>();
+        var command = new EndCampaignCommand(request.CampaignId);
         var result = await sender.Send(command, CancellationToken.None);
-        return result.Adapt<EndCampaignResponse>();
+        return new EndCampaignResponse(result.CampaignId, result.Ended);
     }
 }

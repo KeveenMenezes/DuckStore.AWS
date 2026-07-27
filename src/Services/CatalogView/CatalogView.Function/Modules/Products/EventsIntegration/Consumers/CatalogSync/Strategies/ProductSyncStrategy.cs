@@ -1,3 +1,4 @@
+﻿using BuildingBlocks.Messaging.Serialization;
 namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CatalogSync.Strategies;
 
 // Consumes ProductSyncedEvent (ADR-0027/ADR-0031) and upserts the catalogview-products item to
@@ -10,7 +11,7 @@ public sealed class ProductSyncStrategy(IProductSearchIndex index) : ICatalogSyn
 
     public Task HandleAsync(
         string eventId, JsonElement detail, CancellationToken cancellationToken = default) =>
-        index.UpsertAsync(ToDocument(detail.Deserialize<ProductSyncedEvent>()!), cancellationToken);
+        index.UpsertAsync(ToDocument(detail.Deserialize(MessagingSerializerContext.Default.ProductSyncedEvent)!), cancellationToken);
 
     // Price is deliberately not set here: Pricing owns it (ADR-0026) and PriceSyncHandler merges
     // it separately — UpsertAsync's partial merge never touches the price field.

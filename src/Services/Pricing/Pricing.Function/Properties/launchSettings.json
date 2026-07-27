@@ -9,31 +9,31 @@
     "Aspire_pricing-get-installment-plan": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Pricing.Function.deps.json --runtimeconfig ./Pricing.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Pricing.Function::Pricing.Function.Functions_GetInstallmentPlan_Generated::GetInstallmentPlan",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Pricing.Function.Functions_GetInstallmentPlan_Generated::GetInstallmentPlan",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_pricing-create-campaign": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Pricing.Function.deps.json --runtimeconfig ./Pricing.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Pricing.Function::Pricing.Function.Functions_CreateCampaign_Generated::CreateCampaign",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Pricing.Function.Functions_CreateCampaign_Generated::CreateCampaign",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_pricing-end-campaign": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Pricing.Function.deps.json --runtimeconfig ./Pricing.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Pricing.Function::Pricing.Function.Functions_EndCampaign_Generated::EndCampaign",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Pricing.Function.Functions_EndCampaign_Generated::EndCampaign",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_pricing-prices-stream-publisher": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Pricing.Function.deps.json --runtimeconfig ./Pricing.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Pricing.Function::Pricing.Function.Functions_PriceStreamPublisher_Generated::PriceStreamPublisher",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Pricing.Function.Functions_PriceStreamPublisher_Generated::PriceStreamPublisher",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_pricing-product-deleted-consumer": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Pricing.Function.deps.json --runtimeconfig ./Pricing.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Pricing.Function::Pricing.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Pricing.Function.Functions_ProductDeletedConsumer_Generated::ProductDeletedConsumer",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_pricing-set-gateway-cost": {
@@ -45,7 +45,7 @@
     "Aspire_pricing-get-basket-installment-plan": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Pricing.Function.deps.json --runtimeconfig ./Pricing.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Pricing.Function::Pricing.Function.Functions_GetBasketInstallmentPlan_Generated::GetBasketInstallmentPlan",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Pricing.Function.Functions_GetBasketInstallmentPlan_Generated::GetBasketInstallmentPlan",
       "workingDirectory": "bin/Debug/net10.0/"
     }
   }

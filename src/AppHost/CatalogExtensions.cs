@@ -1,5 +1,6 @@
 ﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
+using static AppHost.Extensions.Extensions;
 
 namespace AppHost.Catalog;
 
@@ -19,7 +20,7 @@ public static class CatalogExtensions
 
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
                 "catalog-products-stream-publisher",
-                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_ProductStreamPublisher_Generated::ProductStreamPublisher")
+                lambdaHandler: LambdaHandler("Catalog.Function", "ProductStreamPublisher"))
             .WaitForCompletion(catalogSeeder)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(ProductsTableName)
@@ -35,7 +36,7 @@ public static class CatalogExtensions
 
         builder.AddAWSLambdaFunction<Projects.Catalog_Function>(
                 "catalog-categories-stream-publisher",
-                lambdaHandler: "Catalog.Function::Catalog.Function.Functions_CategoryStreamPublisher_Generated::CategoryStreamPublisher")
+                lambdaHandler: LambdaHandler("Catalog.Function", "CategoryStreamPublisher"))
             .WaitForCompletion(catalogSeeder)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(CategoriesTableName)

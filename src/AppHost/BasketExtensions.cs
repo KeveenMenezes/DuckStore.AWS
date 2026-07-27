@@ -1,6 +1,7 @@
 ﻿using AppHost.Extensions;
 using Aspire.Hosting.AWS.DynamoDB;
 using Aspire.Hosting.AWS.Lambda;
+using static AppHost.Extensions.Extensions;
 
 namespace AppHost.Basket;
 
@@ -24,7 +25,7 @@ public static class BasketExtensions
 
         builder.AddAWSLambdaFunction<Projects.Basket_Function>(
                 "basket-shopping-carts-stream-publisher",
-                lambdaHandler: "Basket.Function::Basket.Function.Functions_ShoppingCartStreamPublisher_Generated::ShoppingCartStreamPublisher")
+                lambdaHandler: LambdaHandler("Basket.Function", "ShoppingCartStreamPublisher"))
             .WaitForCompletion(basketSeeder)
             .WithReference(dynamoDb)
             .WithDynamoDBStreamsEventSource(ShoppingCartsTableName)
@@ -34,14 +35,14 @@ public static class BasketExtensions
         // storeBasket is gone — it's now an AppSync direct DynamoDB PutItem resolver (ADR-0009).
         var checkoutBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(
                 "basket-checkout-basket",
-                lambdaHandler: "Basket.Function::Basket.Function.Functions_CheckoutBasket_Generated::CheckoutBasket")
+                lambdaHandler: LambdaHandler("Basket.Function", "CheckoutBasket"))
             .WaitForCompletion(basketSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
         var mergeBasket = builder.AddAWSLambdaFunction<Projects.Basket_Function>(
                 "basket-merge-basket",
-                lambdaHandler: "Basket.Function::Basket.Function.Functions_MergeBasket_Generated::MergeBasket")
+                lambdaHandler: LambdaHandler("Basket.Function", "MergeBasket"))
             .WaitForCompletion(basketSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
