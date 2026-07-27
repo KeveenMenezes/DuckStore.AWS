@@ -15,19 +15,16 @@ export const DOTNET_ARCH = lambda.Architecture.ARM_64;
 export const DOTNET_RUNTIME = lambda.Runtime.PROVIDED_AL2023;
 
 /**
- * Memory for every .NET Lambda, in MB.
+ * Memory for the synchronous, user-facing functions that measurably benefit from more CPU.
  *
- * 512 was sized for the container era, when the package carried a full CoreCLR. Native AOT roughly
- * halved the runtime footprint — published benchmarks put a comparable .NET 10 AOT Lambda at
- * 42–48 MB peak against 88–93 MB for the JIT build — so 256 leaves a wide margin and halves the
- * GB-second bill (ADR-0042 §9).
- *
- * Memory is also the CPU knob on Lambda: halving it slows init and execution. That trade is free
- * for the 19 asynchronous functions and real for the 6 synchronous ones, and it has not been
- * measured on this workload. `Max Memory Used` and `Billed Duration` in CloudWatch are the numbers
- * that settle it; raising this constant is the rollback.
+ * Measured via AWS Lambda Power Tuning + CloudWatch Logs Insights on 2026-07-27 against
+ * basket-checkout-basket, basket-merge-basket, and pricing-get-installment-plan: cold start
+ * (Init Duration + first-invocation Duration) at 256 MB ranged 670-730ms; at 512 MB it dropped
+ * to 380-420ms. Gains beyond 512 MB flatten out (1024-3008 MB shaved only another ~100-150ms)
+ * for cost that no longer tracks the improvement, so 512 is the balanced point, not the ceiling.
+ * Applies only to functions actually measured — do not apply blindly to the rest.
  */
-export const DOTNET_MEMORY_MB = 256;
+export const DOTNET_MEMORY_MB = 512;
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 
