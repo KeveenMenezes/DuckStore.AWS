@@ -1,4 +1,5 @@
-﻿namespace Ordering.UnitTests.Application.Commands;
+﻿using BuildingBlocks.Core.Validation;
+namespace Ordering.UnitTests.Application.Commands;
 
 public class CreateOrderTests
 {
@@ -41,15 +42,15 @@ public class CreateOrderTests
         var command = CreateOrderCommandTestsDataTests.CreateOrderDtoWithValidItems();
 
         // Act
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
         // Assert
-        result.ShouldNotHaveValidationErrorFor(x => x.OrderName);
-        result.ShouldNotHaveValidationErrorFor(x => x.OrderId);
-        result.ShouldNotHaveValidationErrorFor(x => x.CustomerId);
-        result.ShouldNotHaveValidationErrorFor(x => x.OrderItems);
-        result.ShouldNotHaveValidationErrorFor(x => x.Payment);
-        result.ShouldNotHaveValidationErrorFor(x => x.Payment.PaymentMethod);
+        Assert.DoesNotContain(result, f => f.PropertyName == "OrderName");
+        Assert.DoesNotContain(result, f => f.PropertyName == "OrderId");
+        Assert.DoesNotContain(result, f => f.PropertyName == "CustomerId");
+        Assert.DoesNotContain(result, f => f.PropertyName == "OrderItems");
+        Assert.DoesNotContain(result, f => f.PropertyName == "Payment");
+        Assert.DoesNotContain(result, f => f.PropertyName == "PaymentMethod");
     }
 
     [Fact]
@@ -62,11 +63,10 @@ public class CreateOrderTests
         };
 
         // Act
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
         // Assert
-        result.ShouldHaveValidationErrorFor(x => x.OrderId)
-            .WithErrorMessage("OrderId is required");
+        Assert.Contains(result, f => f.PropertyName == "OrderId" && f.ErrorMessage == "OrderId is required");
     }
 
     [Fact]
@@ -79,11 +79,10 @@ public class CreateOrderTests
         };
 
         // Act
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
         // Assert
-        result.ShouldHaveValidationErrorFor(x => x.CustomerId)
-            .WithErrorMessage("CustomerId is required");
+        Assert.Contains(result, f => f.PropertyName == "CustomerId" && f.ErrorMessage == "CustomerId is required");
     }
 
     [Fact]
@@ -96,11 +95,10 @@ public class CreateOrderTests
         };
 
         // Act
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
         // Assert
-        result.ShouldHaveValidationErrorFor(x => x.OrderItems)
-            .WithErrorMessage("OrderItems should not be empty");
+        Assert.Contains(result, f => f.PropertyName == "OrderItems" && f.ErrorMessage == "OrderItems should not be empty");
     }
 
     [Fact]
@@ -114,11 +112,10 @@ public class CreateOrderTests
         };
 
         // Act
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
         // Assert
-        result.ShouldHaveValidationErrorFor(x => x.Payment.PaymentMethod)
-            .WithErrorMessage("Invalid payment method");
+        Assert.Contains(result, f => f.PropertyName == "PaymentMethod" && f.ErrorMessage == "Invalid payment method");
     }
 
     [Fact]
@@ -132,10 +129,10 @@ public class CreateOrderTests
         };
 
         // Act
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
         // Assert
-        result.ShouldNotHaveValidationErrorFor(x => x.Payment.PaymentMethod);
+        Assert.DoesNotContain(result, f => f.PropertyName == "PaymentMethod");
     }
 
     [Fact]
@@ -145,12 +142,12 @@ public class CreateOrderTests
         var command = CreateOrderCommandTestsDataTests.CreateOrderDtoWithInvalidItems();
 
         // Act
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
         // Assert
-        result.ShouldHaveValidationErrorFor(x => x.OrderId);
-        result.ShouldHaveValidationErrorFor(x => x.CustomerId);
-        result.ShouldHaveValidationErrorFor(x => x.OrderItems);
-        result.ShouldHaveValidationErrorFor(x => x.Payment.PaymentMethod);
+        Assert.Contains(result, f => f.PropertyName == "OrderId");
+        Assert.Contains(result, f => f.PropertyName == "CustomerId");
+        Assert.Contains(result, f => f.PropertyName == "OrderItems");
+        Assert.Contains(result, f => f.PropertyName == "PaymentMethod");
     }
 }

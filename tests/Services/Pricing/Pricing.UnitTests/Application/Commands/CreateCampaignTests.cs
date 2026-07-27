@@ -1,4 +1,5 @@
-﻿using Pricing.Function.Modules.Campaigns.Features.CreateCampaign;
+﻿using BuildingBlocks.Core.Validation;
+using Pricing.Function.Modules.Campaigns.Features.CreateCampaign;
 
 namespace Pricing.UnitTests.Application.Commands;
 
@@ -48,9 +49,9 @@ public class CreateCampaignTests
     {
         var command = ValidCommand() with { EndsAt = ValidCommand().StartsAt };
 
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
-        result.ShouldHaveValidationErrorFor(x => x.EndsAt);
+        Assert.Contains(result, f => f.PropertyName == "EndsAt");
     }
 
     [Fact]
@@ -58,9 +59,9 @@ public class CreateCampaignTests
     {
         var command = ValidCommand() with { ProductIds = [] };
 
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
-        result.ShouldHaveValidationErrorFor(x => x.ProductIds);
+        Assert.Contains(result, f => f.PropertyName == "ProductIds");
     }
 
     [Fact]
@@ -68,8 +69,8 @@ public class CreateCampaignTests
     {
         var command = ValidCommand() with { Value = 0 };
 
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
-        result.ShouldHaveValidationErrorFor(x => x.Value);
+        Assert.Contains(result, f => f.PropertyName == "Value");
     }
 }

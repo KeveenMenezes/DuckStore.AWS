@@ -1,14 +1,26 @@
-﻿using BuildingBlocks.Core.CQRS;
-using BuildingBlocks.ServiceDefaults.Behaviors;
-using FluentValidation;
-using FluentValidation.Results;
-using MediatR;
+﻿using BuildingBlocks.Core.Exceptions;
+using BuildingBlocks.Core.Validation;
+using BuildingBlocks.ServiceDefaults.Lambda.Behaviors;
+using Mediator;
 
 namespace BuildingBlocks.UnitTests.Behaviors;
 
 public class ValidationBehaviorTests
 {
     public sealed record TestCommand(string Value) : ICommand<Unit>;
+
+    // Validators are plain classes now, so the tests use real ones rather than mocks —
+    // there is no reflection-driven API left to stub (ADR-0042 §7).
+    private sealed class FailingValidator(params string[] messages) : IValidator<TestCommand>
+    {
+        public IEnumerable<ValidationFailure> Validate(TestCommand instance) =>
+            messages.Select(m => new ValidationFailure(nameof(TestCommand.Value), m));
+    }
+
+    private sealed class PassingValidator : IValidator<TestCommand>
+    {
+        public IEnumerable<ValidationFailure> Validate(TestCommand instance) => [];
+    }
 
     [Fact]
     public async Task Handle_CallsNext_WhenNoValidatorsRegistered()
@@ -18,7 +30,7 @@ public class ValidationBehaviorTests
 
         var result = await behavior.Handle(
             new TestCommand("anything"),
-            _ => { nextCalled = true; return Task.FromResult(Unit.Value); },
+            (_, _) => { nextCalled = true; return ValueTask.FromResult(Unit.Value); },
             CancellationToken.None);
 
         Assert.True(nextCalled);
@@ -28,17 +40,12 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_CallsNext_WhenAllValidatorsPass()
     {
-        var validator = new Mock<IValidator<TestCommand>>();
-        validator
-            .Setup(v => v.ValidateAsync(It.IsAny<ValidationContext<TestCommand>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ValidationResult());
-
-        var behavior = new ValidationBehavior<TestCommand, Unit>([validator.Object]);
+        var behavior = new ValidationBehavior<TestCommand, Unit>([new PassingValidator()]);
         var nextCalled = false;
 
         await behavior.Handle(
             new TestCommand("anything"),
-            _ => { nextCalled = true; return Task.FromResult(Unit.Value); },
+            (_, _) => { nextCalled = true; return ValueTask.FromResult(Unit.Value); },
             CancellationToken.None);
 
         Assert.True(nextCalled);
@@ -47,42 +54,28 @@ public class ValidationBehaviorTests
     [Fact]
     public async Task Handle_ThrowsValidationException_WhenAValidatorFails()
     {
-        var validator = new Mock<IValidator<TestCommand>>();
-        validator
-            .Setup(v => v.ValidateAsync(It.IsAny<ValidationContext<TestCommand>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ValidationResult(
-                [new ValidationFailure(nameof(TestCommand.Value), "Value is required")]));
+        var behavior = new ValidationBehavior<TestCommand, Unit>(
+            [new FailingValidator("Value is required")]);
 
-        var behavior = new ValidationBehavior<TestCommand, Unit>([validator.Object]);
-
-        var exception = await Assert.ThrowsAsync<ValidationException>(() => behavior.Handle(
+        var exception = await Assert.ThrowsAsync<ValidationException>(async () => await behavior.Handle(
             new TestCommand(""),
-            _ => Task.FromResult(Unit.Value),
+            (_, _) => ValueTask.FromResult(Unit.Value),
             CancellationToken.None));
 
-        Assert.Contains(exception.Errors, e => e.ErrorMessage == "Value is required");
+        Assert.Contains(exception.Failures, f => f.ErrorMessage == "Value is required");
     }
 
     [Fact]
     public async Task Handle_AggregatesFailures_FromMultipleValidators()
     {
-        var firstValidator = new Mock<IValidator<TestCommand>>();
-        firstValidator
-            .Setup(v => v.ValidateAsync(It.IsAny<ValidationContext<TestCommand>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ValidationResult([new ValidationFailure("Value", "First failure")]));
+        var behavior = new ValidationBehavior<TestCommand, Unit>(
+            [new FailingValidator("First failure"), new FailingValidator("Second failure")]);
 
-        var secondValidator = new Mock<IValidator<TestCommand>>();
-        secondValidator
-            .Setup(v => v.ValidateAsync(It.IsAny<ValidationContext<TestCommand>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ValidationResult([new ValidationFailure("Value", "Second failure")]));
-
-        var behavior = new ValidationBehavior<TestCommand, Unit>([firstValidator.Object, secondValidator.Object]);
-
-        var exception = await Assert.ThrowsAsync<ValidationException>(() => behavior.Handle(
+        var exception = await Assert.ThrowsAsync<ValidationException>(async () => await behavior.Handle(
             new TestCommand(""),
-            _ => Task.FromResult(Unit.Value),
+            (_, _) => ValueTask.FromResult(Unit.Value),
             CancellationToken.None));
 
-        Assert.Equal(2, exception.Errors.Count());
+        Assert.Equal(2, exception.Failures.Count);
     }
 }

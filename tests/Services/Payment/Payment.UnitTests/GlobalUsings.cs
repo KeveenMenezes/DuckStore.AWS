@@ -1,7 +1,6 @@
 ﻿global using BuildingBlocks.Messaging.EventBridge;
 global using BuildingBlocks.Messaging.Events;
 global using BuildingBlocks.Messaging.Streams;
-global using FluentValidation.TestHelper;
 global using Payment.Function.Modules.Payments.Data;
 global using Payment.Function.Modules.Payments.Domain.Enums;
 global using Payment.Function.Modules.Payments.Domain.ValueObjects;

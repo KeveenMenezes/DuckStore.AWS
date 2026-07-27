@@ -2,7 +2,6 @@
 using Basket.Function.Modules.ShoppingCarts.Domain.Entities;
 using Basket.Function.Modules.ShoppingCarts.Domain.ValueObjects;
 using Basket.Function.Modules.ShoppingCarts.Features.MergeBasket;
-using FluentValidation.TestHelper;
 
 namespace Basket.UnitTests;
 
@@ -110,8 +109,8 @@ public class MergeBasketCommandHandlerTests
     [InlineData(UserId, "user-456")]    // GuestId not a GUEST# identity
     public void Validator_ShouldHaveError_ForMismatchedPrefixes(string ownerId, string guestId)
     {
-        var result = _validator.TestValidate(new MergeBasketCommand(ownerId, guestId));
+        var result = _validator.Validate(new MergeBasketCommand(ownerId, guestId)).ToList();
 
-        Assert.False(result.IsValid);
+        Assert.NotEmpty(result);
     }
 }

@@ -1,4 +1,5 @@
-﻿#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
+﻿using BuildingBlocks.Core.Validation;
+#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
 #pragma warning disable CS8620 // Argument cannot be used for parameter due to differences in the nullability of reference types.
 
@@ -7,7 +8,6 @@ using Basket.Function.Modules.ShoppingCarts.Domain.Dtos;
 using Basket.Function.Modules.ShoppingCarts.Domain.Entities;
 using Basket.Function.Modules.ShoppingCarts.Domain.ValueObjects;
 using Basket.Function.Modules.ShoppingCarts.Features.CheckoutBasket;
-using FluentValidation.TestHelper;
 
 namespace Basket.UnitTests;
 
@@ -107,11 +107,11 @@ public class CheckoutBasketCommandHandlerTests
         });
 
         // Act
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
         // Assert
-        result.ShouldNotHaveValidationErrorFor(x => x.BasketCheckoutDto);
-        result.ShouldNotHaveValidationErrorFor(x => x.BasketCheckoutDto.OwnerId);
+        Assert.DoesNotContain(result, f => f.PropertyName == "BasketCheckoutDto");
+        Assert.DoesNotContain(result, f => f.PropertyName == "OwnerId");
     }
 
     [Fact]
@@ -121,10 +121,9 @@ public class CheckoutBasketCommandHandlerTests
         var command = new CheckoutBasketCommand(null);
 
         // Act
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
         // Assert
-        result.ShouldHaveValidationErrorFor(x => x.BasketCheckoutDto)
-            .WithErrorMessage("BasketCheckoutDto can't be null");
+        Assert.Contains(result, f => f.PropertyName == "BasketCheckoutDto" && f.ErrorMessage == "BasketCheckoutDto can't be null");
     }
 }

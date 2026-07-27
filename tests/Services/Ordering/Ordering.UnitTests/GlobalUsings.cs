@@ -1,5 +1,4 @@
 ﻿global using BuildingBlocks.Messaging.Events;
-global using FluentValidation.TestHelper;
 global using Ordering.Function.Modules.Orders.Data;
 global using Ordering.Function.Modules.Orders.Domain.Dtos;
 global using Ordering.Function.Modules.Orders.Domain.Entities;

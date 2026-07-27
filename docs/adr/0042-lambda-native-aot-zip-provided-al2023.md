@@ -353,6 +353,8 @@ constant so the synchronous functions keep more headroom.
   growing. Combined with `cdk gc`, ECR storage for this account goes to zero.
 - **The deployment artifact shrinks 40×** — 248 MB compressed image → 6.1 MB ZIP holding a single
   `bootstrap` binary — which is the bytes Lambda fetches before it can initialize.
+- **The compute bill halves** on top of that: the smaller runtime footprint is what allows §9's
+  512 → 256 MB cut, and Lambda bills GB-seconds against the allocation.
 - **There is no runtime to start.** Native AOT removes JIT and assembly loading from init entirely;
   the ZIP also no longer carries the 89 MB Elasticsearch client that was never executed.
 - **The nine service Dockerfiles are deleted.** Docker survives only as a build toolchain
@@ -376,6 +378,9 @@ constant so the synchronous functions keep more headroom.
   hand-written code that can drift.
 - **`InvariantGlobalization` changes behaviour**, not just size: culture-aware formatting and
   comparison fall back to the invariant culture.
+- **The 256 MB allocation is unverified on this workload** (§9). It halves the compute bill but also
+  halves available CPU, and no cold-start or duration measurement exists for these functions —
+  the claim that AOT lowers latency rests on published benchmarks, not on ours.
 - **`AssemblyName` is now `bootstrap` for eight projects**, so the assembly no longer matches the
   project name. Aspire's Lambda emulator resolves handlers by reflection over that name, and its
   strings had to change from `Catalog.Function::…` to `bootstrap::…`. **This drift is silent**: a
