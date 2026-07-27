@@ -1,19 +1,19 @@
-import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import * as targets from 'aws-cdk-lib/aws-events-targets';
 import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
+import {
+  DOTNET_ARCH,
+  DOTNET_MEMORY_MB,
+  DOTNET_RUNTIME,
+  dotnetLambdaCode,
+} from './dotnet-lambda-code';
 
-const DOTNET_ARCH = lambda.Architecture.ARM_64;
-
-const REPO_ROOT = path.join(__dirname, '..', '..');
-const ORDERING_DOCKERFILE = 'src/Services/Ordering/Ordering.Function/Dockerfile';
 
 export interface OrderingLambdasProps {
   readonly orderingTable: dynamodb.Table;
@@ -38,30 +38,18 @@ export class OrderingLambdas extends Construct {
     // queue trips the ordering-dlq-not-empty alarm → duckstore-alerts.
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'ordering' });
 
-    // All four Ordering Lambdas share the same image, built once.
-    const orderingImage = new ecrAssets.DockerImageAsset(this, 'OrderingImage', {
-      directory: REPO_ROOT,
-      file: ORDERING_DOCKERFILE,
-      platform: ecrAssets.Platform.LINUX_ARM64,
-      exclude: [
-        '**',
-        '!Directory.Packages.props',
-        '!nuget.config',
-        '!src/Services/Ordering/Ordering.Function/**',
-        '!src/BuildingBlocks/**',
-      ],
-    });
-    const orderingCode = (cmd: string[]) =>
-      lambda.DockerImageCode.fromEcr(orderingImage.repository, {
-        tagOrDigest: orderingImage.imageTag,
-        cmd,
-      });
+    // One ZIP per service, shared by all its functions; each Lambda selects its
+    // handler through ANNOTATIONS_HANDLER instead of a Docker cmd override (ADR-0042).
+    const orderingCode = dotnetLambdaCode(
+      'src/Services/Ordering',
+      'src/Services/Ordering/Ordering.Function/Ordering.Function.csproj',
+    );
 
     // 1. ordering-basket-checkout-consumer
     //    Trigger: EventBridge rule (BasketCheckoutEvent, source=duckstore)
     //    Writes the new Order + idempotency record atomically via TransactWriteItems.
     //    EventBridge sets evt.Id as the idempotency key (ADR-0011).
-    this.basketCheckoutConsumer = new lambda.DockerImageFunction(
+    this.basketCheckoutConsumer = new lambda.Function(
       this,
       'BasketCheckoutConsumer',
       {
@@ -69,14 +57,16 @@ export class OrderingLambdas extends Construct {
         // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: orderingCode([
-          'Ordering.Function::Ordering.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer',
-        ]),
+        runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: orderingCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description:
           'Consumes BasketCheckoutEvent and creates an Order idempotently (ADR-0011, TransactWriteItems)',
         environment: {
+        ANNOTATIONS_HANDLER: 'BasketCheckoutConsumer',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },
@@ -116,7 +106,7 @@ export class OrderingLambdas extends Construct {
     //    Trigger: DynamoDB Streams on ordering table (NEW_AND_OLD_IMAGES, CDC — ADR-0005/0019)
     //    Rule-based publisher (ADR-0019): OrderCreatedRule emits OrderCreatedEvent on INSERT of Type=Order.
     //    Gated by FeatureManagement__OrderFullfilment=true.
-    this.orderCreatedPublisher = new lambda.DockerImageFunction(
+    this.orderCreatedPublisher = new lambda.Function(
       this,
       'OrderCreatedPublisher',
       {
@@ -124,14 +114,16 @@ export class OrderingLambdas extends Construct {
         // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: orderingCode([
-          'Ordering.Function::Ordering.Function.Functions_OrderStreamPublisher_Generated::OrderStreamPublisher',
-        ]),
+        runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: orderingCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description:
           'CDC: reads DynamoDB Streams on ordering and publishes OrderCreatedEvent to EventBridge',
         environment: {
+        ANNOTATIONS_HANDLER: 'OrderStreamPublisher',
           EventBridge__BusName: eventBus.eventBusName,
           // Enable the OrderFulfillment feature gate so the publisher actually fires.
           FeatureManagement__OrderFullfilment: 'true',
@@ -160,20 +152,22 @@ export class OrderingLambdas extends Construct {
     //    Both transition the Order Pending -> Completed/Cancelled, idempotent via the same
     //    ordering-processed-events inbox (TransactWriteItems). Payment's own PaymentResult
     //    consumers (in the Payment stack) are independent subscribers of the same two events.
-    this.paymentAuthorizedConsumer = new lambda.DockerImageFunction(
+    this.paymentAuthorizedConsumer = new lambda.Function(
       this,
       'PaymentAuthorizedConsumer',
       {
         functionName: 'ordering-payment-authorized-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: orderingCode([
-          'Ordering.Function::Ordering.Function.Functions_OrderPaymentAuthorizedConsumer_Generated::OrderPaymentAuthorizedConsumer',
-        ]),
+        runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: orderingCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description: 'Applies PaymentAuthorizedEvent to the Order (Pending -> Completed)',
         environment: {
+        ANNOTATIONS_HANDLER: 'OrderPaymentAuthorizedConsumer',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },
@@ -204,20 +198,22 @@ export class OrderingLambdas extends Construct {
       }),
     );
 
-    this.paymentDeclinedConsumer = new lambda.DockerImageFunction(
+    this.paymentDeclinedConsumer = new lambda.Function(
       this,
       'PaymentDeclinedConsumer',
       {
         functionName: 'ordering-payment-declined-consumer',
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: orderingCode([
-          'Ordering.Function::Ordering.Function.Functions_OrderPaymentDeclinedConsumer_Generated::OrderPaymentDeclinedConsumer',
-        ]),
+        runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: orderingCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description: 'Applies PaymentDeclinedEvent to the Order (Pending -> Cancelled)',
         environment: {
+        ANNOTATIONS_HANDLER: 'OrderPaymentDeclinedConsumer',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },

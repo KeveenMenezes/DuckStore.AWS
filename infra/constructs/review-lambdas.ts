@@ -1,17 +1,17 @@
-import * as path from 'path';
 import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
-import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets';
 import * as events from 'aws-cdk-lib/aws-events';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
+import {
+  DOTNET_ARCH,
+  DOTNET_MEMORY_MB,
+  DOTNET_RUNTIME,
+  dotnetLambdaCode,
+} from './dotnet-lambda-code';
 
-const DOTNET_ARCH = lambda.Architecture.ARM_64;
-
-const REPO_ROOT = path.join(__dirname, '..', '..');
-const REVIEW_DOCKERFILE = 'src/Services/Review/Review.Function/Dockerfile';
 
 export interface ReviewLambdasProps {
   readonly reviewsTable: dynamodb.Table;
@@ -32,25 +32,19 @@ export class ReviewLambdas extends Construct {
     // trips the review-dlq-not-empty alarm → duckstore-alerts.
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'review' });
 
-    const reviewImage = new ecrAssets.DockerImageAsset(this, 'ReviewImage', {
-      directory: REPO_ROOT,
-      file: REVIEW_DOCKERFILE,
-      platform: ecrAssets.Platform.LINUX_ARM64,
-      exclude: [
-        '**',
-        '!Directory.Packages.props',
-        '!nuget.config',
-        '!src/Services/Review/Review.Function/**',
-        '!src/BuildingBlocks/**',
-      ],
-    });
+    // One ZIP per service, shared by all its functions; each Lambda selects its
+    // handler through ANNOTATIONS_HANDLER instead of a Docker cmd override (ADR-0042).
+    const reviewCode = dotnetLambdaCode(
+      'src/Services/Review',
+      'src/Services/Review/Review.Function/Review.Function.csproj',
+    );
 
     // review-reviews-stream-publisher
     //   Trigger: DynamoDB Streams on reviews (NEW_AND_OLD_IMAGES, CDC — ADR-0005/ADR-0008)
     //   Rule-based dispatcher (ADR-0019): INSERT → ReviewCreatedEvent, MODIFY →
     //   ReviewUpdatedEvent (old + new rating), consumed by CatalogView to keep the
     //   product's AverageRating/RatingCount aggregate (ADR-0029/ADR-0030).
-    this.reviewStreamPublisher = new lambda.DockerImageFunction(
+    this.reviewStreamPublisher = new lambda.Function(
       this,
       'ReviewStreamPublisher',
       {
@@ -58,17 +52,16 @@ export class ReviewLambdas extends Construct {
         // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,
-        code: lambda.DockerImageCode.fromEcr(reviewImage.repository, {
-          tagOrDigest: reviewImage.imageTag,
-          cmd: [
-            'Review.Function::Review.Function.Functions_ReviewStreamPublisher_Generated::ReviewStreamPublisher',
-          ],
-        }),
+        runtime: DOTNET_RUNTIME,
+        // provided.al2023 runs the file named `bootstrap`; this value is inert.
+        handler: 'bootstrap',
+        code: reviewCode,
         timeout: cdk.Duration.seconds(30),
-        memorySize: 512,
+        memorySize: DOTNET_MEMORY_MB,
         description:
           'CDC: reads DynamoDB Streams on reviews and publishes ReviewCreated/ReviewUpdated to EventBridge',
         environment: {
+          ANNOTATIONS_HANDLER: 'ReviewStreamPublisher',
           EventBridge__BusName: eventBus.eventBusName,
         },
       },
