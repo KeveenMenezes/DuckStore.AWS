@@ -20,7 +20,7 @@ export interface CatalogLambdasProps {
 }
 
 export class CatalogLambdas extends Construct {
-  public readonly eventBus: events.EventBus;
+  public readonly eventBus: events.IEventBus;
   public readonly streamPublisher: lambda.Function;
   public readonly categoryStreamPublisher: lambda.Function;
 
@@ -33,10 +33,11 @@ export class CatalogLambdas extends Construct {
     // queue trips the catalog-dlq-not-empty alarm → duckstore-alerts.
     const dlq = new ContextDlq(this, 'Dlq', { contextName: 'catalog' });
 
-    // All Catalog integration events flow through this bus (ADR-0004).
-    this.eventBus = new events.EventBus(this, 'EventBus', {
-      eventBusName: 'duckstore-event-bus',
-    });
+    // All Catalog integration events flow through this bus (ADR-0004). Owned by
+    // FoundationStack, not Catalog — a resource shared by 7 stacks can't live inside
+    // one of its consumers (see infra/stacks/foundation-stack.ts). Imported by fixed
+    // name like every other consumer; FoundationStack just has to deploy first.
+    this.eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
 
     // One ZIP per service, shared by all its functions; each Lambda selects its
     // handler through ANNOTATIONS_HANDLER instead of a Docker cmd override (ADR-0042).
@@ -49,6 +50,7 @@ export class CatalogLambdas extends Construct {
     //    Trigger: DynamoDB Streams on products
     //    IAM: DynamoEventSource grants stream read; grantPutEventsTo for EventBridge
     this.streamPublisher = new lambda.Function(this, 'StreamPublisher', {
+      functionName: 'catalog-products-stream-publisher',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
@@ -94,6 +96,7 @@ export class CatalogLambdas extends Construct {
     //    CatalogCategorySyncEvent so CatalogView can rewrite the denormalized
     //    category name on every product document that references it.
     this.categoryStreamPublisher = new lambda.Function(this, 'CategoryStreamPublisher', {
+      functionName: 'catalog-categories-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,

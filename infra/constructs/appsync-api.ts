@@ -208,36 +208,22 @@ export class AppSyncApi extends Construct {
     gatewayCostsTable.grantReadWriteData(gatewayCostsDs);
     catalogViewProductsTable.grantReadData(catalogViewProductsDs);
 
-    // Lambda data sources — imported by ARN via CloudFormation exports (no fixed function names).
-    // sameEnvironment: true allows addLambdaDataSource to grant lambda:InvokeFunction on the DS role.
-    const checkoutFn = lambda.Function.fromFunctionAttributes(this, 'CheckoutFn', {
-      functionArn: cdk.Fn.importValue('DuckStoreBasketStack-CheckoutBasketArn'),
-      sameEnvironment: true,
-    });
-    const mergeBasketFn = lambda.Function.fromFunctionAttributes(this, 'MergeBasketFn', {
-      functionArn: cdk.Fn.importValue('DuckStoreBasketStack-MergeBasketArn'),
-      sameEnvironment: true,
-    });
-    const createCampaignFn = lambda.Function.fromFunctionAttributes(this, 'CreateCampaignFn', {
-      functionArn: cdk.Fn.importValue('DuckStorePricingStack-CreateCampaignArn'),
-      sameEnvironment: true,
-    });
-    const endCampaignFn = lambda.Function.fromFunctionAttributes(this, 'EndCampaignFn', {
-      functionArn: cdk.Fn.importValue('DuckStorePricingStack-EndCampaignArn'),
-      sameEnvironment: true,
-    });
-    const getInstallmentPlanFn = lambda.Function.fromFunctionAttributes(this, 'GetInstallmentPlanFn', {
-      functionArn: cdk.Fn.importValue('DuckStorePricingStack-GetInstallmentPlanArn'),
-      sameEnvironment: true,
-    });
-    const getBasketInstallmentPlanFn = lambda.Function.fromFunctionAttributes(this, 'GetBasketInstallmentPlanFn', {
-      functionArn: cdk.Fn.importValue('DuckStorePricingStack-GetBasketInstallmentPlanArn'),
-      sameEnvironment: true,
-    });
-    const presignImageUploadFn = lambda.Function.fromFunctionAttributes(this, 'PresignImageUploadFn', {
-      functionArn: cdk.Fn.importValue('DuckStoreProductImagesStack-PresignFunctionArn'),
-      sameEnvironment: true,
-    });
+    // Lambda data sources — imported by function name (no CF coupling)
+    const checkoutFn = lambda.Function.fromFunctionName(this, 'CheckoutFn', 'basket-checkout-basket');
+    const mergeBasketFn = lambda.Function.fromFunctionName(this, 'MergeBasketFn', 'basket-merge-basket');
+    const createCampaignFn = lambda.Function.fromFunctionName(
+      this, 'CreateCampaignFn', 'pricing-create-campaign',
+    );
+    const endCampaignFn = lambda.Function.fromFunctionName(this, 'EndCampaignFn', 'pricing-end-campaign');
+    const getInstallmentPlanFn = lambda.Function.fromFunctionName(
+      this, 'GetInstallmentPlanFn', 'pricing-get-installment-plan',
+    );
+    const getBasketInstallmentPlanFn = lambda.Function.fromFunctionName(
+      this, 'GetBasketInstallmentPlanFn', 'pricing-get-basket-installment-plan',
+    );
+    const presignImageUploadFn = lambda.Function.fromFunctionName(
+      this, 'PresignImageUploadFn', 'product-images-presign',
+    );
     // addLambdaDataSource automatically grants lambda:InvokeFunction to the DS role
     const checkoutDs = api.addLambdaDataSource('CheckoutDS', checkoutFn);
     const mergeBasketDs = api.addLambdaDataSource('MergeBasketDS', mergeBasketFn);

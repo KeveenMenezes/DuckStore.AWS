@@ -25,13 +25,5 @@ export class BasketStack extends cdk.Stack {
       value: lambdas.checkoutBasketUrl.url,
       exportName: `${this.stackName}-CheckoutBasketUrl`,
     });
-    new cdk.CfnOutput(this, 'CheckoutBasketArn', {
-      value: lambdas.checkoutBasket.functionArn,
-      exportName: `${this.stackName}-CheckoutBasketArn`,
-    });
-    new cdk.CfnOutput(this, 'MergeBasketArn', {
-      value: lambdas.mergeBasket.functionArn,
-      exportName: `${this.stackName}-MergeBasketArn`,
-    });
   }
 }
