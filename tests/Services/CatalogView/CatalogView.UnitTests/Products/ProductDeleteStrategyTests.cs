@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using BuildingBlocks.Messaging.Events;
 using CatalogView.Function.Modules.Products.Data;
 using CatalogView.Function.Modules.Products.Domain;

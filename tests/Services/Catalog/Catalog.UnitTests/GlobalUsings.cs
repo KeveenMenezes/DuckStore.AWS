@@ -2,4 +2,3 @@
 global using Catalog.Function.Modules.Categories.Domain.Entities;
 global using Catalog.Function.Modules.Categories.Domain.ValueObjects;
 global using Catalog.Function.Modules.Products.Data;
-global using FluentValidation.TestHelper;

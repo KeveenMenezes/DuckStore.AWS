@@ -1,4 +1,5 @@
-﻿using Pricing.Function.Modules.Campaigns.Data;
+﻿using BuildingBlocks.Core.Validation;
+using Pricing.Function.Modules.Campaigns.Data;
 using Pricing.Function.Modules.Campaigns.Domain.Enums;
 using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
 using Pricing.Function.Modules.GatewayCosts.Data;
@@ -297,7 +298,7 @@ public class GetInstallmentPlanTests
         var handler = CreateHandler(new InstallmentOptions());
 
         await Assert.ThrowsAsync<PriceNotFoundException>(
-            () => handler.Handle(new GetInstallmentPlanQuery(Guid.NewGuid()), CancellationToken.None));
+            async () => await handler.Handle(new GetInstallmentPlanQuery(Guid.NewGuid()), CancellationToken.None));
     }
 
     [Fact]
@@ -313,14 +314,14 @@ public class GetInstallmentPlanTests
         var handler = CreateHandler(new InstallmentOptions());
 
         await Assert.ThrowsAsync<GatewayCostNotFoundException>(
-            () => handler.Handle(new GetInstallmentPlanQuery(Guid.NewGuid()), CancellationToken.None));
+            async () => await handler.Handle(new GetInstallmentPlanQuery(Guid.NewGuid()), CancellationToken.None));
     }
 
     [Fact]
     public void Validator_ShouldHaveError_WhenProductIdIsEmpty()
     {
-        var result = _validator.TestValidate(new GetInstallmentPlanQuery(Guid.Empty));
+        var result = _validator.Validate(new GetInstallmentPlanQuery(Guid.Empty)).ToList();
 
-        result.ShouldHaveValidationErrorFor(x => x.ProductId);
+        Assert.Contains(result, f => f.PropertyName == "ProductId");
     }
 }

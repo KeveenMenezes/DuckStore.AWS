@@ -1,4 +1,5 @@
-﻿using Pricing.Function.Modules.Campaigns.Features.EndCampaign;
+﻿using BuildingBlocks.Core.Validation;
+using Pricing.Function.Modules.Campaigns.Features.EndCampaign;
 
 namespace Pricing.UnitTests.Application.Commands;
 
@@ -52,14 +53,14 @@ public class EndCampaignTests
         var command = new EndCampaignCommand(Guid.NewGuid());
 
         await Assert.ThrowsAsync<CampaignIdBadRequestException>(
-            () => _handler.Handle(command, CancellationToken.None));
+            async () => await _handler.Handle(command, CancellationToken.None));
     }
 
     [Fact]
     public void Validator_ShouldHaveError_WhenCampaignIdIsEmpty()
     {
-        var result = _validator.TestValidate(new EndCampaignCommand(Guid.Empty));
+        var result = _validator.Validate(new EndCampaignCommand(Guid.Empty)).ToList();
 
-        result.ShouldHaveValidationErrorFor(x => x.CampaignId);
+        Assert.Contains(result, f => f.PropertyName == "CampaignId");
     }
 }

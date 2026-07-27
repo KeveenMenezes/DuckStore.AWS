@@ -1,4 +1,4 @@
-namespace Payment.UnitTests.DataTests;
+﻿namespace Payment.UnitTests.DataTests;
 
 public static class BasketCheckoutEventDataTests
 {

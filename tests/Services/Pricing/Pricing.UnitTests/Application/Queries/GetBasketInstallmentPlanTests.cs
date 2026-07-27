@@ -1,4 +1,5 @@
-﻿using Pricing.Function.Modules.GatewayCosts.Data;
+﻿using BuildingBlocks.Core.Validation;
+using Pricing.Function.Modules.GatewayCosts.Data;
 using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
 using Pricing.Function.Modules.GatewayCosts.Domain.ValueObjects;
 using Pricing.Function.Modules.Prices.Data;
@@ -112,7 +113,8 @@ public class GetBasketInstallmentPlanTests
 
         var handler = CreateHandler();
 
-        await Assert.ThrowsAsync<PriceNotFoundException>(() => handler.Handle(
+        await Assert.ThrowsAsync<PriceNotFoundException>(
+            async () => await handler.Handle(
             new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 1)]),
             CancellationToken.None));
     }
@@ -130,7 +132,8 @@ public class GetBasketInstallmentPlanTests
 
         var handler = CreateHandler();
 
-        await Assert.ThrowsAsync<GatewayCostNotFoundException>(() => handler.Handle(
+        await Assert.ThrowsAsync<GatewayCostNotFoundException>(
+            async () => await handler.Handle(
             new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 1)]),
             CancellationToken.None));
     }
@@ -138,17 +141,17 @@ public class GetBasketInstallmentPlanTests
     [Fact]
     public void Validator_ShouldHaveError_WhenItemsIsEmpty()
     {
-        var result = _validator.TestValidate(new GetBasketInstallmentPlanQuery([]));
+        var result = _validator.Validate(new GetBasketInstallmentPlanQuery([])).ToList();
 
-        result.ShouldHaveValidationErrorFor(x => x.Items);
+        Assert.Contains(result, f => f.PropertyName == "Items");
     }
 
     [Fact]
     public void Validator_ShouldHaveError_WhenAnyItemHasZeroQuantity()
     {
-        var result = _validator.TestValidate(
-            new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(Guid.NewGuid(), 0)]));
+        var result = _validator.Validate(
+            new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(Guid.NewGuid(), 0)])).ToList();
 
-        Assert.False(result.IsValid);
+        Assert.NotEmpty(result);
     }
 }

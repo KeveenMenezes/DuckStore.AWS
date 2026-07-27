@@ -1,4 +1,5 @@
-﻿namespace Payment.UnitTests.Application.Commands;
+﻿using BuildingBlocks.Core.Validation;
+namespace Payment.UnitTests.Application.Commands;
 
 public class CreatePaymentTests
 {
@@ -43,13 +44,13 @@ public class CreatePaymentTests
     [Fact]
     public void Validator_ShouldNotError_WhenCommandIsValid()
     {
-        var result = _validator.TestValidate(ValidCommand());
+        var result = _validator.Validate(ValidCommand()).ToList();
 
-        result.ShouldNotHaveValidationErrorFor(x => x.OrderId);
-        result.ShouldNotHaveValidationErrorFor(x => x.CustomerId);
-        result.ShouldNotHaveValidationErrorFor(x => x.Amount);
-        result.ShouldNotHaveValidationErrorFor(x => x.CardNumber);
-        result.ShouldNotHaveValidationErrorFor(x => x.PaymentMethod);
+        Assert.DoesNotContain(result, f => f.PropertyName == "OrderId");
+        Assert.DoesNotContain(result, f => f.PropertyName == "CustomerId");
+        Assert.DoesNotContain(result, f => f.PropertyName == "Amount");
+        Assert.DoesNotContain(result, f => f.PropertyName == "CardNumber");
+        Assert.DoesNotContain(result, f => f.PropertyName == "PaymentMethod");
     }
 
     [Fact]
@@ -57,10 +58,9 @@ public class CreatePaymentTests
     {
         var command = ValidCommand() with { OrderId = Guid.Empty };
 
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
-        result.ShouldHaveValidationErrorFor(x => x.OrderId)
-            .WithErrorMessage("OrderId is required");
+        Assert.Contains(result, f => f.PropertyName == "OrderId" && f.ErrorMessage == "OrderId is required");
     }
 
     [Fact]
@@ -68,10 +68,9 @@ public class CreatePaymentTests
     {
         var command = ValidCommand() with { Amount = 0 };
 
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
-        result.ShouldHaveValidationErrorFor(x => x.Amount)
-            .WithErrorMessage("Amount must be greater than zero");
+        Assert.Contains(result, f => f.PropertyName == "Amount" && f.ErrorMessage == "Amount must be greater than zero");
     }
 
     [Fact]
@@ -79,10 +78,9 @@ public class CreatePaymentTests
     {
         var command = ValidCommand() with { CardNumber = "invalid" };
 
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
-        result.ShouldHaveValidationErrorFor(x => x.CardNumber)
-            .WithErrorMessage("Invalid card number");
+        Assert.Contains(result, f => f.PropertyName == "CardNumber" && f.ErrorMessage == "Invalid card number");
     }
 
     [Fact]
@@ -90,8 +88,8 @@ public class CreatePaymentTests
     {
         var command = ValidCommand() with { CardNumber = "", Cvv = "", PaymentMethod = PaymentMethod.Cash };
 
-        var result = _validator.TestValidate(command);
+        var result = _validator.Validate(command).ToList();
 
-        result.ShouldNotHaveValidationErrorFor(x => x.CardNumber);
+        Assert.DoesNotContain(result, f => f.PropertyName == "CardNumber");
     }
 }

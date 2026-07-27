@@ -1,4 +1,4 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using BuildingBlocks.Messaging.EventBridge;
 using BuildingBlocks.Messaging.Events;
 using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewSync;
