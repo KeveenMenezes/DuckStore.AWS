@@ -92,7 +92,12 @@ jobs:
       - name: Deploy Management CDK stack
         working-directory: infra
         run: |
+          # --exclusively narrows aws:cdk:bundling-stacks to this stack. Without it the CLI
+          # sets it to ["**"] and every stack's assets bundle on every deploy, which means
+          # compiling all eight AOT packages here (ADR-0042 §8). Safe because the stacks share
+          # nothing through CloudFormation — they import by name.
           npx cdk deploy DuckStoreManagementStack \
+            --exclusively \
             -c deployManagement=true \
             --require-approval never
 
