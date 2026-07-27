@@ -158,9 +158,6 @@ export class ProductImagesStack extends cdk.Stack {
     // --- Presign Lambda (AppSync resolver datasource, imported by name) ---------------
 
     const presign = new NodejsFunction(this, 'PresignFunction', {
-      // Fixed name — appsync-api.ts imports it via Function.fromFunctionName, the same
-      // no-CloudFormation-coupling convention as every other Lambda datasource.
-      functionName: 'product-images-presign',
       entry: path.join(PRODUCT_IMAGES_DIR, 'presign/handler.ts'),
       depsLockFilePath: path.join(PRODUCT_IMAGES_DIR, 'package-lock.json'),
       runtime: lambda.Runtime.NODEJS_22_X,
@@ -237,5 +234,9 @@ export class ProductImagesStack extends cdk.Stack {
 
     new cdk.CfnOutput(this, 'OriginalsBucketName', { value: originalsBucket.bucketName });
     new cdk.CfnOutput(this, 'ProcessedBucketName', { value: processedBucket.bucketName });
+    new cdk.CfnOutput(this, 'PresignFunctionArn', {
+      value: presign.functionArn,
+      exportName: `${this.stackName}-PresignFunctionArn`,
+    });
   }
 }
