@@ -31,8 +31,21 @@ export const DOTNET_MEMORY_MB = 256;
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 
-/** SDK plus the clang/zlib toolchain the ILCompiler links against; see the Dockerfile. */
-const AOT_BUILD_IMAGE = path.join(__dirname, '..', 'docker', 'dotnet-aot');
+/**
+ * Referenced by tag, never built here.
+ *
+ * `DockerImage.fromBuild()` runs `docker build` at *construct* time, which happens while
+ * `bin/app.ts` instantiates every stack — outside the gate CDK uses to skip bundling for stacks
+ * that are not being deployed (`Stack.bundlingRequired`, from `aws:cdk:bundling-stacks`). That
+ * made every workflow, including the ones deploying stacks with no .NET Lambda at all, build eight
+ * arm64 images; on an x64 runner it failed outright with `exec format error`.
+ * `fromRegistry` touches Docker only from inside the gated bundling path.
+ */
+const SDK_IMAGE = 'mcr.microsoft.com/dotnet/sdk:10.0';
+
+/** The SDK image has no native linker; the ILCompiler needs clang and zlib to link. */
+const AOT_TOOLCHAIN =
+  'apt-get update -qq && apt-get install -y -qq --no-install-recommends clang zlib1g-dev >/dev/null';
 
 /** Staged into the bundling container; mirrors what the old Dockerfiles chose to COPY. */
 const ASSET_INCLUDES = ['Directory.Packages.props', 'nuget.config', 'src/BuildingBlocks'];
@@ -110,12 +123,15 @@ export function dotnetLambdaCode(serviceDir: string, projectPath: string): lambd
       ...ASSET_INCLUDES.map((include) => `!${include}${include.includes('.') ? '' : '/**'}`),
     ],
     bundling: {
-      image: DockerImage.fromBuild(AOT_BUILD_IMAGE, { platform: 'linux/arm64' }),
+      image: DockerImage.fromRegistry(SDK_IMAGE),
       platform: 'linux/arm64',
+      // Root so the toolchain install works: CDK otherwise runs bundling as the calling uid,
+      // which cannot apt-get. Outputs stay readable for the staging copy that follows.
+      user: 'root',
       command: [
         'bash',
         '-c',
-        publishCommand(path.posix.join('/asset-input', projectPath), '/asset-output'),
+        `${AOT_TOOLCHAIN} && ${publishCommand(path.posix.join('/asset-input', projectPath), '/asset-output')}`,
       ],
       local: {
         tryBundle(outputDir: string): boolean {
