@@ -8,7 +8,7 @@
 // parallel consumers of the same event.
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task BasketCheckoutConsumer(
         EventBridgeEvent<BasketCheckoutEvent> evt,
         [FromServices] IIdempotentEventConsumer consumer)

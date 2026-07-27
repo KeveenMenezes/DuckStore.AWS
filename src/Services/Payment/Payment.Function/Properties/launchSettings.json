@@ -3,25 +3,25 @@
     "Aspire_payment-basket-checkout-consumer": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Payment.Function.deps.json --runtimeconfig ./Payment.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Payment.Function::Payment.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Payment.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_payment-payments-stream-publisher": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Payment.Function.deps.json --runtimeconfig ./Payment.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Payment.Function::Payment.Function.Functions_PaymentStreamPublisher_Generated::PaymentStreamPublisher",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Payment.Function.Functions_PaymentStreamPublisher_Generated::PaymentStreamPublisher",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_payment-result-authorized-consumer": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Payment.Function.deps.json --runtimeconfig ./Payment.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Payment.Function::Payment.Function.Functions_PaymentAuthorizedConsumer_Generated::PaymentAuthorizedConsumer",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Payment.Function.Functions_PaymentAuthorizedConsumer_Generated::PaymentAuthorizedConsumer",
       "workingDirectory": "bin/Debug/net10.0/"
     },
     "Aspire_payment-result-declined-consumer": {
       "commandName": "Executable",
       "executablePath": "dotnet",
-      "commandLineArgs": "exec --depsfile ./Payment.Function.deps.json --runtimeconfig ./Payment.Function.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll Payment.Function::Payment.Function.Functions_PaymentDeclinedConsumer_Generated::PaymentDeclinedConsumer",
+      "commandLineArgs": "exec --depsfile ./bootstrap.deps.json --runtimeconfig ./bootstrap.runtimeconfig.json $(HOME)/.dotnet/tools/.store/amazon.lambda.testtool/0.15.0/amazon.lambda.testtool/0.15.0/content/Amazon.Lambda.RuntimeSupport/net10.0/Amazon.Lambda.RuntimeSupport.TestTool.dll bootstrap::Payment.Function.Functions_PaymentDeclinedConsumer_Generated::PaymentDeclinedConsumer",
       "workingDirectory": "bin/Debug/net10.0/"
     }
   }

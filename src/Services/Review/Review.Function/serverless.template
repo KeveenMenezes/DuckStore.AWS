@@ -14,13 +14,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Review.Function::Review.Function.Functions_ReviewStreamPublisher_Generated::ReviewStreamPublisher"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "ReviewStreamPublisher"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     }
   }

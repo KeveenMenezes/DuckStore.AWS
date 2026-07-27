@@ -14,14 +14,16 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
+        "PackageType": "Zip",
         "Events": {},
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Basket.Function::Basket.Function.Functions_CheckoutBasket_Generated::CheckoutBasket"
-          ]
-        }
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "CheckoutBasket"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     },
     "BasketFunctionFunctionsMergeBasketGenerated": {
@@ -35,13 +37,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Basket.Function::Basket.Function.Functions_MergeBasket_Generated::MergeBasket"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "MergeBasket"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     },
     "BasketFunctionFunctionsShoppingCartStreamPublisherGenerated": {
@@ -55,13 +59,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Basket.Function::Basket.Function.Functions_ShoppingCartStreamPublisher_Generated::ShoppingCartStreamPublisher"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "ShoppingCartStreamPublisher"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     }
   },

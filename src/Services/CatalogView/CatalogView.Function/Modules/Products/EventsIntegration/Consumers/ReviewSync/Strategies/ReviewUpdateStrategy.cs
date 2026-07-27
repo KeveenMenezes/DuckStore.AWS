@@ -1,3 +1,4 @@
+﻿using BuildingBlocks.Messaging.Serialization;
 namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewSync.Strategies;
 
 // Consumes ReviewUpdatedEvent (ADR-0029 — a customer editing their existing review, enabled by the
@@ -12,7 +13,7 @@ public sealed class ReviewUpdateStrategy(IProductSearchIndex index) : IReviewSyn
 
     public Task HandleAsync(string eventId, JsonElement detail, CancellationToken cancellationToken = default)
     {
-        var evt = detail.Deserialize<ReviewUpdatedEvent>()!;
+        var evt = detail.Deserialize(MessagingSerializerContext.Default.ReviewUpdatedEvent)!;
         return index.ApplyRatingUpdateAsync(
             evt.ProductId.ToString(), eventId, evt.OldRating, evt.NewRating, cancellationToken);
     }

@@ -10,7 +10,7 @@ public class GetBasketInstallmentPlanHandler(
     InstallmentOptions installmentOptions)
     : IQueryHandler<GetBasketInstallmentPlanQuery, GetBasketInstallmentPlanResult>
 {
-    public async Task<GetBasketInstallmentPlanResult> Handle(
+    public async ValueTask<GetBasketInstallmentPlanResult> Handle(
         GetBasketInstallmentPlanQuery query, CancellationToken cancellationToken)
     {
         var productIds = query.Items.Select(item => item.ProductId).ToList();

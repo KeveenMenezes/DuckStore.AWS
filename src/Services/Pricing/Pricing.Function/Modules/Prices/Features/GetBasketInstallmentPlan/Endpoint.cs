@@ -1,5 +1,4 @@
-﻿using Mapster;
-using Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
+﻿using Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
 
 namespace Pricing.Function;
 
@@ -20,13 +19,20 @@ public record GetBasketInstallmentPlanResponse(
 // cart, not a key lookup).
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task<GetBasketInstallmentPlanResponse> GetBasketInstallmentPlan(
         GetBasketInstallmentPlanRequest request,
         [FromServices] ISender sender)
     {
-        var query = request.Adapt<GetBasketInstallmentPlanQuery>();
+        var query = new GetBasketInstallmentPlanQuery(
+            [.. request.Items.Select(i => new BasketInstallmentItem(i.ProductId, i.Quantity))]);
         var result = await sender.Send(query, CancellationToken.None);
-        return result.Adapt<GetBasketInstallmentPlanResponse>();
+        return new GetBasketInstallmentPlanResponse(
+            result.TotalOriginalPrice,
+            result.Price,
+            result.CashPrice,
+            result.MaxInstallmentsWithoutInterest,
+            [.. result.InstallmentPlan.Select(e =>
+                new BasketInstallmentPlanEntryResponse(e.Count, e.Value, e.TotalValue, e.HasInterest))]);
     }
 }

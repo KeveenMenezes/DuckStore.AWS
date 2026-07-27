@@ -6,7 +6,7 @@
 // Amazon.Lambda.Annotations generator via [LambdaStartup] Startup.
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task ShoppingCartStreamPublisher(
         DynamoDBEvent dynamoEvent,
         [FromServices] StreamRuleDispatcher<ShoppingCartStreamImage> dispatcher)

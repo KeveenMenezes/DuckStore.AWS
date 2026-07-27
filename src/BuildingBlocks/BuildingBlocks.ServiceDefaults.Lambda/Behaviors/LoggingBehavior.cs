@@ -1,29 +1,29 @@
 ﻿using System.Diagnostics;
 using Microsoft.Extensions.Logging;
 
-namespace BuildingBlocks.ServiceDefaults.Behaviors;
+namespace BuildingBlocks.ServiceDefaults.Lambda.Behaviors;
 
 public class LoggingBehavior<TRequest, TResponse>
     (ILogger<LoggingBehavior<TRequest, TResponse>> logger)
     : IPipelineBehavior<TRequest, TResponse>
-    where TRequest : notnull, IRequest<TResponse>
+    where TRequest : notnull, IMessage
     where TResponse : notnull
 {
-    public async Task<TResponse> Handle(
-        TRequest request,
-        RequestHandlerDelegate<TResponse> next,
+    public async ValueTask<TResponse> Handle(
+        TRequest message,
+        MessageHandlerDelegate<TRequest, TResponse> next,
         CancellationToken cancellationToken)
     {
         logger.LogInformation(
             @"[START] Handle request= {Request}
             Response= {Response}
             ResquestData= {RequestData}",
-            typeof(TRequest).Name, typeof(TResponse).Name, request);
+            typeof(TRequest).Name, typeof(TResponse).Name, message);
 
         var timer = new Stopwatch();
 
         timer.Start();
-        var response = await next();
+        var response = await next(message, cancellationToken);
         timer.Stop();
 
         var timeTaken = timer.Elapsed;
@@ -37,7 +37,7 @@ public class LoggingBehavior<TRequest, TResponse>
             @"[END] Handle request={Request}
             Response={Response}
             ResquestData={RequestData}",
-            typeof(TRequest).Name, typeof(TResponse).Name, request);
+            typeof(TRequest).Name, typeof(TResponse).Name, message);
 
         return response;
     }

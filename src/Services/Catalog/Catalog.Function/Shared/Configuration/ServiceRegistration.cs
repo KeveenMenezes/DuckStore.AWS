@@ -6,14 +6,11 @@ public static class ServiceRegistration
         this IServiceCollection services, IConfiguration configuration)
     {
         var assembly = typeof(ServiceRegistration).Assembly;
-        services
-            .AddMediatR(cfg =>
-            {
-                cfg.RegisterServicesFromAssembly(assembly);
-                cfg.AddOpenBehavior(typeof(ValidationBehavior<,>));
-                cfg.AddOpenBehavior(typeof(LoggingBehavior<,>));
-            })
-            .AddValidatorsFromAssembly(assembly);
+        // Mediator generates the dispatch table at compile time; AddMediator() is the
+        // generated registration, so no assembly is scanned at startup (ADR-0042 §7).
+        services.AddMediator(options => options.ServiceLifetime = ServiceLifetime.Scoped);
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
         services.AddScoped<IProductRepository, DynamoProductRepository>();

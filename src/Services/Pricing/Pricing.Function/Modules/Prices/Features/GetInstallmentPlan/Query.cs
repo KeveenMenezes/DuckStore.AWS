@@ -1,4 +1,6 @@
-﻿namespace Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
+﻿using BuildingBlocks.Core.Validation;
+
+namespace Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
 
 public record GetInstallmentPlanQuery(Guid ProductId) : IQuery<GetInstallmentPlanResult>;
 
@@ -12,12 +14,13 @@ public record GetInstallmentPlanResult(
     int MaxInstallmentsWithoutInterest,
     IReadOnlyList<InstallmentPlanEntryDto> InstallmentPlan);
 
-public class GetInstallmentPlanQueryValidator : AbstractValidator<GetInstallmentPlanQuery>
+public class GetInstallmentPlanQueryValidator : IValidator<GetInstallmentPlanQuery>
 {
-    public GetInstallmentPlanQueryValidator()
+    public IEnumerable<ValidationFailure> Validate(GetInstallmentPlanQuery instance)
     {
-        RuleFor(x => x.ProductId)
-            .NotEmpty()
-            .WithMessage("ProductId is required");
+        if (instance.ProductId == Guid.Empty)
+        {
+            yield return new(nameof(instance.ProductId), "ProductId is required");
+        }
     }
 }

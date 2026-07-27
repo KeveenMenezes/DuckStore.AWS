@@ -1,5 +1,4 @@
-﻿using Mapster;
-using Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
+﻿using Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
 
 namespace Pricing.Function;
 
@@ -19,13 +18,20 @@ public record GetInstallmentPlanResponse(
 // lookup).
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task<GetInstallmentPlanResponse> GetInstallmentPlan(
         GetInstallmentPlanRequest request,
         [FromServices] ISender sender)
     {
-        var query = request.Adapt<GetInstallmentPlanQuery>();
+        var query = new GetInstallmentPlanQuery(request.ProductId);
         var result = await sender.Send(query, CancellationToken.None);
-        return result.Adapt<GetInstallmentPlanResponse>();
+        return new GetInstallmentPlanResponse(
+            result.ProductId,
+            result.OriginalPrice,
+            result.Price,
+            result.CashPrice,
+            result.MaxInstallmentsWithoutInterest,
+            [.. result.InstallmentPlan.Select(e =>
+                new InstallmentPlanEntryResponse(e.Count, e.Value, e.TotalValue, e.HasInterest))]);
     }
 }

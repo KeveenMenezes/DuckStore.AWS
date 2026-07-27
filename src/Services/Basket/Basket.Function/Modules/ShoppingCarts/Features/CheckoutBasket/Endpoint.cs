@@ -10,13 +10,13 @@ public record CheckoutBasketResponse(bool IsSuccess);
 // publishes BasketCheckoutEvent (CDC pattern, ADR-0005).
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task<CheckoutBasketResponse> CheckoutBasket(
         CheckoutBasketRequest request,
         [FromServices] ISender sender)
     {
-        var command = request.Adapt<CheckoutBasketCommand>();
+        var command = new CheckoutBasketCommand(request.BasketCheckoutDto);
         var result = await sender.Send(command, CancellationToken.None);
-        return result.Adapt<CheckoutBasketResponse>();
+        return new CheckoutBasketResponse(result.IsSuccess);
     }
 }

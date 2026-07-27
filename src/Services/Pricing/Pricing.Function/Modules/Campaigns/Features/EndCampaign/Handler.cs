@@ -3,7 +3,7 @@
 public class EndCampaignHandler(ICampaignRepository campaignRepository)
     : ICommandHandler<EndCampaignCommand, EndCampaignResult>
 {
-    public async Task<EndCampaignResult> Handle(
+    public async ValueTask<EndCampaignResult> Handle(
         EndCampaignCommand command, CancellationToken cancellationToken)
     {
         var campaign = await campaignRepository.GetByIdAsync(command.CampaignId, cancellationToken)

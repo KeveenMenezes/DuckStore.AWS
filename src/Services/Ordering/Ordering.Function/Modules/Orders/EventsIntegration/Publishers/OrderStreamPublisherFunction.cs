@@ -6,7 +6,7 @@
 // come from the Amazon.Lambda.Annotations generator via [LambdaStartup] Startup.
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task OrderStreamPublisher(
         DynamoDBEvent dynamoEvent,
         [FromServices] StreamRuleDispatcher<OrderStreamImage> dispatcher,

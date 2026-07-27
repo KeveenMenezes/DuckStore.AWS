@@ -14,13 +14,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Payment.Function::Payment.Function.Functions_PaymentAuthorizedConsumer_Generated::PaymentAuthorizedConsumer"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "PaymentAuthorizedConsumer"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     },
     "PaymentFunctionFunctionsPaymentDeclinedConsumerGenerated": {
@@ -34,13 +36,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Payment.Function::Payment.Function.Functions_PaymentDeclinedConsumer_Generated::PaymentDeclinedConsumer"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "PaymentDeclinedConsumer"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     },
     "PaymentFunctionFunctionsPaymentStreamPublisherGenerated": {
@@ -54,13 +58,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Payment.Function::Payment.Function.Functions_PaymentStreamPublisher_Generated::PaymentStreamPublisher"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "PaymentStreamPublisher"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     },
     "PaymentFunctionFunctionsBasketCheckoutConsumerGenerated": {
@@ -74,13 +80,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Payment.Function::Payment.Function.Functions_BasketCheckoutConsumer_Generated::BasketCheckoutConsumer"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "BasketCheckoutConsumer"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     }
   }

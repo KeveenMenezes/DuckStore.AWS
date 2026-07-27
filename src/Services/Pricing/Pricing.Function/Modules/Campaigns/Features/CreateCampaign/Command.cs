@@ -1,4 +1,6 @@
-﻿namespace Pricing.Function.Modules.Campaigns.Features.CreateCampaign;
+﻿using BuildingBlocks.Core.Validation;
+
+namespace Pricing.Function.Modules.Campaigns.Features.CreateCampaign;
 
 public record CreateCampaignCommand(
     string Name,
@@ -10,28 +12,33 @@ public record CreateCampaignCommand(
 
 public record CreateCampaignResult(Guid Id);
 
-public class CreateCampaignCommandValidator : AbstractValidator<CreateCampaignCommand>
+public class CreateCampaignCommandValidator : IValidator<CreateCampaignCommand>
 {
-    public CreateCampaignCommandValidator()
+    public IEnumerable<ValidationFailure> Validate(CreateCampaignCommand instance)
     {
-        RuleFor(x => x.Name)
-            .NotEmpty()
-            .WithMessage("Name is required");
+        if (string.IsNullOrEmpty(instance.Name))
+        {
+            yield return new(nameof(instance.Name), "Name is required");
+        }
 
-        RuleFor(x => x.DiscountType)
-            .IsInEnum()
-            .WithMessage("Invalid discount type");
+        if (!Enum.IsDefined(instance.DiscountType))
+        {
+            yield return new(nameof(instance.DiscountType), "Invalid discount type");
+        }
 
-        RuleFor(x => x.Value)
-            .GreaterThan(0)
-            .WithMessage("Value must be greater than zero");
+        if (instance.Value <= 0)
+        {
+            yield return new(nameof(instance.Value), "Value must be greater than zero");
+        }
 
-        RuleFor(x => x.EndsAt)
-            .GreaterThan(x => x.StartsAt)
-            .WithMessage("EndsAt must be after StartsAt");
+        if (instance.EndsAt <= instance.StartsAt)
+        {
+            yield return new(nameof(instance.EndsAt), "EndsAt must be after StartsAt");
+        }
 
-        RuleFor(x => x.ProductIds)
-            .NotEmpty()
-            .WithMessage("ProductIds should not be empty");
+        if (instance.ProductIds is null || instance.ProductIds.Count == 0)
+        {
+            yield return new(nameof(instance.ProductIds), "ProductIds should not be empty");
+        }
     }
 }

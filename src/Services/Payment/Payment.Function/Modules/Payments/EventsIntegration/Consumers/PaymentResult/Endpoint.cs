@@ -6,7 +6,7 @@
 // ApplyPaymentResultHandler since the two events differ only in outcome, not in processing shape.
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task PaymentAuthorizedConsumer(
         EventBridgeEvent<PaymentAuthorizedEvent> evt,
         [FromServices] IPaymentRepository paymentRepository,
@@ -19,7 +19,7 @@ public partial class Functions
             await consumer.ConsumeAsync(evt.Id, [DynamoPaymentRepository.ToTransactWriteItem(payment)]);
     }
 
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task PaymentDeclinedConsumer(
         EventBridgeEvent<PaymentDeclinedEvent> evt,
         [FromServices] IPaymentRepository paymentRepository,

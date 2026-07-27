@@ -1,4 +1,6 @@
-﻿namespace Payment.Function.Shared.Configuration;
+﻿using BuildingBlocks.Core.Validation;
+using Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
+namespace Payment.Function.Shared.Configuration;
 
 // Single DI composition for the whole service, shared by the [LambdaStartup] consumers, the
 // DynamoDB Streams publisher, and the dev data seeder.
@@ -10,14 +12,15 @@ public static class ServiceRegistration
         services.AddLogging();
 
         var assembly = typeof(ServiceRegistration).Assembly;
-        services
-            .AddMediatR(config =>
-            {
-                config.RegisterServicesFromAssembly(assembly);
-                config.AddOpenBehavior(typeof(ValidationBehavior<,>));
-                config.AddOpenBehavior(typeof(LoggingBehavior<,>));
-            })
-            .AddValidatorsFromAssembly(assembly);
+        // Mediator generates the dispatch table at compile time; AddMediator() is the
+        // generated registration, so no assembly is scanned at startup (ADR-0042 §7).
+        services.AddMediator(options => options.ServiceLifetime = ServiceLifetime.Scoped);
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
+
+        // Explicit, because there is no scanning left to discover them —
+        // the point of dropping FluentValidation (ADR-0042 §7).
+        services.AddScoped<IValidator<CreatePaymentCommand>, CreatePaymentCommandValidator>();
 
         // DynamoDB Local injects AWS_ENDPOINT_URL_DYNAMODB; the SDK resolves it on its own.
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());

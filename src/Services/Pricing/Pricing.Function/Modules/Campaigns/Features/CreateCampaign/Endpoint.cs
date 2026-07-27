@@ -1,5 +1,4 @@
-﻿using Mapster;
-using Pricing.Function.Modules.Campaigns.Features.CreateCampaign;
+﻿using Pricing.Function.Modules.Campaigns.Features.CreateCampaign;
 
 namespace Pricing.Function;
 
@@ -13,7 +12,7 @@ public record CreateCampaignResponse(Guid Id);
 // "campaigns" and "product-discounts", plus FluentValidation of the campaign period/products).
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task<CreateCampaignResponse> CreateCampaign(
         CreateCampaignRequest request,
         [FromServices] ISender sender)
@@ -27,6 +26,6 @@ public partial class Functions
             request.ProductIds);
 
         var result = await sender.Send(command, CancellationToken.None);
-        return result.Adapt<CreateCampaignResponse>();
+        return new CreateCampaignResponse(result.Id);
     }
 }

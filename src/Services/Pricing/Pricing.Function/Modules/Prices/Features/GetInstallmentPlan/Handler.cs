@@ -9,7 +9,7 @@ public class GetInstallmentPlanHandler(
     InstallmentOptions installmentOptions)
     : IQueryHandler<GetInstallmentPlanQuery, GetInstallmentPlanResult>
 {
-    public async Task<GetInstallmentPlanResult> Handle(
+    public async ValueTask<GetInstallmentPlanResult> Handle(
         GetInstallmentPlanQuery query, CancellationToken cancellationToken)
     {
         var price = await priceRepository.GetByProductIdAsync(query.ProductId, cancellationToken)

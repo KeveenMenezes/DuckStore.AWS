@@ -5,7 +5,7 @@
 // (ADR-0019). No feature-flag gate needed (unlike Ordering's OrderFulfillment flag).
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task PaymentStreamPublisher(
         DynamoDBEvent dynamoEvent,
         [FromServices] StreamRuleDispatcher<PaymentStreamImage> dispatcher)

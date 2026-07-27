@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using BuildingBlocks.Messaging.Serialization;
 
 namespace BuildingBlocks.Messaging.EventBridge;
 
@@ -10,10 +11,25 @@ public class EventBridgePublisher(
 {
     public Task PublishAsync<T>(T message, CancellationToken cancellationToken = default)
         where T : notnull =>
-        PublishRawAsync(typeof(T).Name, JsonSerializer.Serialize(message), cancellationToken);
+        PublishRawAsync(typeof(T).Name, Serialize(message, typeof(T)), cancellationToken);
 
     public Task PublishAsync(PublishInstruction instruction, CancellationToken cancellationToken = default) =>
-        PublishRawAsync(instruction.DetailType, JsonSerializer.Serialize(instruction.Payload), cancellationToken);
+        PublishRawAsync(
+            instruction.DetailType,
+            Serialize(instruction.Payload, instruction.Payload.GetType()),
+            cancellationToken);
+
+    // Source-generated contracts only: under Native AOT there is no reflection fallback, so an
+    // unregistered event would fail at invocation. Failing here names the type instead.
+    private static string Serialize(object value, Type type)
+    {
+        var typeInfo = MessagingSerializerContext.Default.GetTypeInfo(type)
+            ?? throw new InvalidOperationException(
+                $"No JSON contract for {type.Name}. Add [JsonSerializable(typeof({type.Name}))] "
+                + $"to {nameof(MessagingSerializerContext)}.");
+
+        return JsonSerializer.Serialize(value, typeInfo);
+    }
 
     // Fail fast when running inside a real Lambda runtime; best-effort everywhere else.
     // EventBridge__FailFast (bool) overrides the detection in either direction when set.

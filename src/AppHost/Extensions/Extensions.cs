@@ -20,6 +20,22 @@ public static class Extensions
     }
 
     /// <summary>
+    /// Builds the handler string Aspire's Lambda emulator resolves by reflection.
+    /// </summary>
+    /// <remarks>
+    /// Every *.Function project builds as `bootstrap` (ADR-0042 §2), so the assembly part is no
+    /// longer the project name. Spelling it out at each of the 24 call sites is what silently
+    /// broke eight of them during that migration: the emulator's wrapper fails inside
+    /// <c>LambdaBootstrap.InitializeAsync</c>, and the only visible symptom is a
+    /// <c>RuntimeApiClientException</c> from the test tool. Composing it here makes that
+    /// impossible to get wrong.
+    /// </remarks>
+    /// <param name="functionsNamespace">Namespace holding the generated partial class, e.g. <c>Catalog.Function</c>.</param>
+    /// <param name="method">The <c>[LambdaFunction]</c> method name, e.g. <c>ProductStreamPublisher</c>.</param>
+    public static string LambdaHandler(string functionsNamespace, string method) =>
+        $"bootstrap::{functionsNamespace}.Functions_{method}_Generated::{method}";
+
+    /// <summary>
     /// Region + dummy credentials for local dev: DynamoDB Local ignores the credentials, and the
     /// EventBridge client (the bus only exists on AWS) needs a region to be constructed — the
     /// publish is best-effort and fails silently outside AWS.

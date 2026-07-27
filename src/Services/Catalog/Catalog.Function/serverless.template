@@ -14,13 +14,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Catalog.Function::Catalog.Function.Functions_ProductStreamPublisher_Generated::ProductStreamPublisher"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "ProductStreamPublisher"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     },
     "CatalogFunctionFunctionsCategoryStreamPublisherGenerated": {
@@ -34,13 +36,15 @@
         "Policies": [
           "AWSLambdaBasicExecutionRole"
         ],
-        "PackageType": "Image",
-        "ImageUri": ".",
-        "ImageConfig": {
-          "Command": [
-            "Catalog.Function::Catalog.Function.Functions_CategoryStreamPublisher_Generated::CategoryStreamPublisher"
-          ]
-        }
+        "PackageType": "Zip",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "CategoryStreamPublisher"
+          }
+        },
+        "CodeUri": ".",
+        "Handler": "bootstrap",
+        "Runtime": "dotnet10"
       }
     }
   },

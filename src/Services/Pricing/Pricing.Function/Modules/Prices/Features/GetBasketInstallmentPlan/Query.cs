@@ -1,4 +1,6 @@
-﻿namespace Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
+﻿using BuildingBlocks.Core.Validation;
+
+namespace Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
 
 public record BasketInstallmentItem(Guid ProductId, int Quantity);
 
@@ -14,18 +16,29 @@ public record GetBasketInstallmentPlanResult(
     int MaxInstallmentsWithoutInterest,
     IReadOnlyList<InstallmentPlanEntryDto> InstallmentPlan);
 
-public class GetBasketInstallmentPlanQueryValidator : AbstractValidator<GetBasketInstallmentPlanQuery>
+public class GetBasketInstallmentPlanQueryValidator : IValidator<GetBasketInstallmentPlanQuery>
 {
-    public GetBasketInstallmentPlanQueryValidator()
+    public IEnumerable<ValidationFailure> Validate(GetBasketInstallmentPlanQuery instance)
     {
-        RuleFor(x => x.Items)
-            .NotEmpty()
-            .WithMessage("Items is required");
-
-        RuleForEach(x => x.Items).ChildRules(item =>
+        if (instance.Items is null || instance.Items.Count == 0)
         {
-            item.RuleFor(i => i.ProductId).NotEmpty().WithMessage("ProductId is required");
-            item.RuleFor(i => i.Quantity).GreaterThan(0).WithMessage("Quantity must be greater than zero");
-        });
+            yield return new(nameof(instance.Items), "Items is required");
+            yield break;
+        }
+
+        for (var i = 0; i < instance.Items.Count; i++)
+        {
+            var item = instance.Items[i];
+
+            if (item.ProductId == Guid.Empty)
+            {
+                yield return new($"{nameof(instance.Items)}[{i}].{nameof(item.ProductId)}", "ProductId is required");
+            }
+
+            if (item.Quantity <= 0)
+            {
+                yield return new($"{nameof(instance.Items)}[{i}].{nameof(item.Quantity)}", "Quantity must be greater than zero");
+            }
+        }
     }
 }

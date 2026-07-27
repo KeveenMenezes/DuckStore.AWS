@@ -5,7 +5,7 @@
 // product document that references it.
 public partial class Functions
 {
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task CategoryStreamPublisher(
         DynamoDBEvent dynamoEvent,
         [FromServices] StreamRuleDispatcher<CategoryStreamImage> dispatcher)

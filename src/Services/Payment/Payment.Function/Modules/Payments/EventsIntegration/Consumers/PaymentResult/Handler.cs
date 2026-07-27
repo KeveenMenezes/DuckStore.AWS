@@ -3,7 +3,7 @@
 public class ApplyPaymentResultHandler(IPaymentRepository paymentRepository)
     : ICommandHandler<ApplyPaymentResultCommand>
 {
-    public async Task<Unit> Handle(ApplyPaymentResultCommand command, CancellationToken cancellationToken)
+    public async ValueTask<Unit> Handle(ApplyPaymentResultCommand command, CancellationToken cancellationToken)
     {
         var payment = await ApplyResultAsync(paymentRepository, command, cancellationToken);
 

@@ -22,7 +22,7 @@ public partial class Functions
     // recomputes on the next price change or a manual ProductBackfill re-run (CDC-only philosophy,
     // ADR-0012/0025). If no provider is configured yet, the highlight fields are published as zero
     // rather than skipping the event, so the price itself still syncs.
-    [LambdaFunction(PackageType = LambdaPackageType.Image)]
+    [LambdaFunction]
     public async Task PriceStreamPublisher(
         DynamoDBEvent dynamoEvent,
         [FromServices] IEventPublisher eventPublisher,

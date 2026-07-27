@@ -1,4 +1,4 @@
-namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CatalogSync;
+﻿namespace CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CatalogSync;
 
 // Resolves the one ICatalogSyncStrategy that owns a given EventBridge detail-type and delegates
 // to it (ADR-0040). Backs CatalogSyncConsumer only — which strategies are actually reachable is
