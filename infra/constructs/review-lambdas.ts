@@ -48,7 +48,6 @@ export class ReviewLambdas extends Construct {
       this,
       'ReviewStreamPublisher',
       {
-        functionName: 'review-reviews-stream-publisher',
         // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
         tracing: lambda.Tracing.ACTIVE,
         architecture: DOTNET_ARCH,

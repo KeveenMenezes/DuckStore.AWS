@@ -49,7 +49,6 @@ export class CatalogLambdas extends Construct {
     //    Trigger: DynamoDB Streams on products
     //    IAM: DynamoEventSource grants stream read; grantPutEventsTo for EventBridge
     this.streamPublisher = new lambda.Function(this, 'StreamPublisher', {
-      functionName: 'catalog-products-stream-publisher',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
@@ -95,7 +94,6 @@ export class CatalogLambdas extends Construct {
     //    CatalogCategorySyncEvent so CatalogView can rewrite the denormalized
     //    category name on every product document that references it.
     this.categoryStreamPublisher = new lambda.Function(this, 'CategoryStreamPublisher', {
-      functionName: 'catalog-categories-stream-publisher',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
