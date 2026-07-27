@@ -53,10 +53,9 @@ jobs:
       - name: Deploy AppSync CDK stack
         working-directory: infra
         run: |
-          # --exclusively narrows aws:cdk:bundling-stacks to this stack. Without it the CLI
-          # sets it to ["**"] and every stack's assets bundle on every deploy, which means
-          # compiling all eight AOT packages here (ADR-0042 §8). Safe because the stacks share
-          # nothing through CloudFormation — they import by name.
+          # AppSync imports Lambda ARNs via CloudFormation exports from Basket, Pricing and
+          # ProductImages stacks — those must exist before this stack deploys. The --exclusively
+          # flag still narrows bundling to this stack only (ADR-0042 §8).
           npx cdk deploy DuckStoreAppSyncStack \
             --exclusively \
             --context spaBaseUrl=${{ vars.SPA_BASE_URL || 'http://localhost:3000' }} \
