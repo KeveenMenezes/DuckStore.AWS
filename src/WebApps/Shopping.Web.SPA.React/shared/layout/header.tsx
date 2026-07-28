@@ -44,7 +44,9 @@ function AuthSlot({ isLoading, user, loginWithCognito, signUpWithCognito }: Auth
         <LogIn className="h-4 w-4" />
         Sign in
       </Button>
-      <Button size="sm" className="hidden gap-1.5 sm:inline-flex" onClick={signUpWithCognito}>
+      {/* 480px, not `sm`: both buttons fit from ~470px up, so `sm` dropped Sign up while there was
+          still room. Below this only real phones remain, where it falls back to the hamburger. */}
+      <Button size="sm" className="hidden gap-1.5 min-[480px]:inline-flex" onClick={signUpWithCognito}>
         <UserPlus className="h-4 w-4" />
         Sign up
       </Button>
@@ -153,9 +155,10 @@ export function Header() {
                 <Trophy className="h-4 w-4 text-primary" />
                 <span className="text-sm font-semibold text-foreground">{score} pts</span>
               </div>
-              {/* Sign in is always in the header now; only Sign up needs the narrow-width fallback. */}
+              {/* Sign in is always in the header now; only Sign up needs the narrow-width fallback.
+                  The breakpoint must mirror the header button's exactly, or Sign up renders twice. */}
               {!isLoading && !user && (
-                <div className="flex gap-2 pt-2 sm:hidden">
+                <div className="flex gap-2 pt-2 min-[480px]:hidden">
                   <Button
                     size="sm"
                     className="flex-1 gap-1.5"
