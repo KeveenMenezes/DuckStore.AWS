@@ -34,7 +34,7 @@ function AuthSlot({ isLoading, user, loginWithCognito, signUpWithCognito }: Auth
   }
 
   return (
-    <div className="hidden items-center gap-1 sm:flex">
+    <div className="flex items-center gap-1">
       <Button
         variant="ghost"
         size="sm"
@@ -44,7 +44,7 @@ function AuthSlot({ isLoading, user, loginWithCognito, signUpWithCognito }: Auth
         <LogIn className="h-4 w-4" />
         Sign in
       </Button>
-      <Button size="sm" className="gap-1.5" onClick={signUpWithCognito}>
+      <Button size="sm" className="hidden gap-1.5 sm:inline-flex" onClick={signUpWithCognito}>
         <UserPlus className="h-4 w-4" />
         Sign up
       </Button>
@@ -153,17 +153,9 @@ export function Header() {
                 <Trophy className="h-4 w-4 text-primary" />
                 <span className="text-sm font-semibold text-foreground">{score} pts</span>
               </div>
+              {/* Sign in is always in the header now; only Sign up needs the narrow-width fallback. */}
               {!isLoading && !user && (
                 <div className="flex gap-2 pt-2 sm:hidden">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="flex-1 gap-1.5"
-                    onClick={() => loginWithCognito()}
-                  >
-                    <LogIn className="h-4 w-4" />
-                    Sign in
-                  </Button>
                   <Button
                     size="sm"
                     className="flex-1 gap-1.5"
