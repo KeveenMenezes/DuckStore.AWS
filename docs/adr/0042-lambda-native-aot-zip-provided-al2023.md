@@ -1,7 +1,7 @@
 # ADR-0042: .NET Lambdas Ship as Native AOT ZIPs on `provided.al2023`
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 This ADR records a packaging decision that was never written down: every .NET Lambda has shipped
 as a Docker container image since the serverless migration, by default rather than by choice. It

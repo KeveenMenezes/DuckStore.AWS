@@ -1,7 +1,7 @@
 # ADR-0016: Guest Shopping Carts — Unified `ownerId` Identity, API_KEY for Basket Operations, and TTL
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026. §2's authenticated-branch mechanism amended by [ADR-0041](./0041-bff-opaque-server-side-session-centralized-cognito-refresh.md).
 
 ---
 

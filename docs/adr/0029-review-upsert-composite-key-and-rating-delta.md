@@ -1,7 +1,7 @@
 # ADR-0029: Review Upsert — Composite Key and Rating-Delta Aggregation
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 **Partially superseded** by [ADR-0037](./0037-review-key-cognito-userid-not-client-username.md)
 (July 2026): §1's key-composition scheme, `${productId}#${base64(userName)}`, is replaced by

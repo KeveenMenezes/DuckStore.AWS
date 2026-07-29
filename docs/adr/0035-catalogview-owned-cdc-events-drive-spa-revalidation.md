@@ -1,7 +1,7 @@
 # ADR-0035: CatalogView-Owned CDC Events Drive SPA Cache Revalidation
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 Amends [ADR-0031](./0031-cdc-events-named-after-domain-occurrence-no-changetype-discriminator.md)
 §"Applies To" (the SPA revalidator entry) and the stale inline code sample in

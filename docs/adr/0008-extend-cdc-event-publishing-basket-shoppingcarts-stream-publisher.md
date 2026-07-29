@@ -1,7 +1,7 @@
 # ADR-0008: Extend CDC Integration Event Publishing to All Services — Basket ShoppingCarts Stream Publisher
 
 ## Status
-**Proposed** — June 2026
+**Accepted** — June 2026
 
 ---
 

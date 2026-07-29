@@ -1,7 +1,7 @@
 # ADR-0006: Adopt React/Next.js as the Primary SPA, Replacing Angular
 
 ## Status
-**Proposed** — June 2026
+**Accepted** — June 2026
 
 ---
 

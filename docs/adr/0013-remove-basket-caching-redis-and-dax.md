@@ -1,7 +1,7 @@
 # ADR-0013: Remove All Basket Caching — Redis Cache-Aside and DynamoDB DAX
 
 ## Status
-**Proposed** — June 2026
+**Accepted** — June 2026
 
 ---
 

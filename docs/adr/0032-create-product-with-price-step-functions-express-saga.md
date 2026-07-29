@@ -1,7 +1,7 @@
 # ADR-0032: Product Creation With Price as a Step Functions Express Saga Behind AppSync
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 ---
 

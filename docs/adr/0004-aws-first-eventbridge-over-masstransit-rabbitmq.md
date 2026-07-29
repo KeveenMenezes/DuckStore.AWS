@@ -1,7 +1,7 @@
 # ADR-0004: AWS-First Messaging — Replace MassTransit/RabbitMQ with Amazon EventBridge
 
 ## Status
-**Proposed** — June 2026
+**Accepted** — June 2026
 
 ---
 

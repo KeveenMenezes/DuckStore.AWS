@@ -1,7 +1,7 @@
 # ADR-0019: Module-Oriented Service Structure and Rule-Based Stream Publishers
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 ---
 

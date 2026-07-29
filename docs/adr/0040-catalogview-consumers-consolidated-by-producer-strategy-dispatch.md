@@ -1,7 +1,7 @@
 # ADR-0040: CatalogView Consumer Lambdas Consolidated by Producer Bounded Context via Strategy Dispatch
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 ---
 
