@@ -21,12 +21,12 @@ export function CheckoutSuccess({ orderId }: { orderId: string }) {
           <span className="font-mono text-lg font-bold text-primary">{orderId}</span>
         </CardContent>
       </Card>
-      <Link href={ROUTES.home}>
-        <Button className="gap-2">
+      <Button asChild className="gap-2">
+        <Link href={ROUTES.home}>
           <ArrowLeft className="h-4 w-4" />
           Back to Store
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     </div>
   )
 }

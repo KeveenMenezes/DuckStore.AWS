@@ -28,11 +28,11 @@ export default function CartPage() {
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
       <div className="mb-6 flex items-center gap-3">
-        <Link href={ROUTES.home}>
-          <Button variant="ghost" size="icon" aria-label="Back to store">
+        <Button asChild variant="ghost" size="icon" aria-label="Back to store">
+          <Link href={ROUTES.home}>
             <ArrowLeft className="h-5 w-5" />
-          </Button>
-        </Link>
+          </Link>
+        </Button>
         <h1 className="text-2xl font-bold text-foreground">
           Your Cart{totalItems > 0 && <span className="ml-2 text-muted-foreground text-lg font-normal">({totalItems} items)</span>}
         </h1>
@@ -46,9 +46,9 @@ export default function CartPage() {
           <p className="text-center text-lg text-muted-foreground">
             Your cart is empty. How about adding a duck?
           </p>
-          <Link href={ROUTES.home}>
-            <Button>Continue Shopping</Button>
-          </Link>
+          <Button asChild>
+            <Link href={ROUTES.home}>Continue Shopping</Link>
+          </Button>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
@@ -64,12 +64,12 @@ export default function CartPage() {
               ))}
             </div>
             <div className="mt-6">
-              <Link href={ROUTES.home}>
-                <Button variant="outline" className="gap-2">
+              <Button asChild variant="outline" className="gap-2">
+                <Link href={ROUTES.home}>
                   <ArrowLeft className="h-4 w-4" />
                   Continue Shopping
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             </div>
           </div>
 

@@ -31,24 +31,24 @@ export function OrdersView() {
         </div>
         <h2 className="text-xl font-semibold text-foreground">Sign in to view your orders</h2>
         <p className="text-center text-muted-foreground">You need to be signed in to access your orders.</p>
-        <Link href={ROUTES.home}>
-          <Button variant="outline" className="gap-2">
+        <Button asChild variant="outline" className="gap-2">
+          <Link href={ROUTES.home}>
             <ArrowLeft className="h-4 w-4" />
             Back to Store
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     )
   }
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 lg:px-8">
-      <Link href={ROUTES.home}>
-        <Button variant="ghost" className="mb-6 gap-2 text-muted-foreground">
+      <Button asChild variant="ghost" className="mb-6 gap-2 text-muted-foreground">
+        <Link href={ROUTES.home}>
           <ArrowLeft className="h-4 w-4" />
           Back to Store
-        </Button>
-      </Link>
+        </Link>
+      </Button>
 
       <h1 className="mb-8 text-3xl font-bold text-foreground">My Orders</h1>
 
@@ -81,12 +81,12 @@ export function OrdersView() {
           </div>
           <h2 className="text-lg font-semibold text-foreground">No orders yet</h2>
           <p className="text-center text-muted-foreground">You haven&apos;t made any purchases yet. How about taking a look at the store?</p>
-          <Link href={ROUTES.home}>
-            <Button className="gap-2">
+          <Button asChild className="gap-2">
+            <Link href={ROUTES.home}>
               <ArrowLeft className="h-4 w-4" />
               Go to Store
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       ) : (
         <div className="flex flex-col gap-4">

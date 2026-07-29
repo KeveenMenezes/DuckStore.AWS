@@ -45,11 +45,11 @@ export function CartDrawer() {
             </h2>
           </div>
           <div className="flex items-center gap-1">
-            <Link href={ROUTES.cart} onClick={() => setIsOpen(false)}>
-              <Button variant="outline" size="sm" className="text-xs">
+            <Button asChild variant="outline" size="sm" className="text-xs">
+              <Link href={ROUTES.cart} onClick={() => setIsOpen(false)}>
                 View Cart
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             <Button variant="ghost" size="icon" onClick={() => setIsOpen(false)} aria-label="Close cart">
               <X className="h-5 w-5" />
             </Button>

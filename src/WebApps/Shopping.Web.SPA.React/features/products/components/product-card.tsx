@@ -45,7 +45,11 @@ export function ProductCard({ product }: ProductCardProps) {
           <ProductPicture
             imageId={mainImageId(product.images)}
             alt={product.name}
-            sizes="(max-width: 768px) 50vw, 300px"
+            // Derived from the catalog grid in product-catalog.tsx (max-w-7xl, px-4 / lg:px-8,
+            // gap-6, 1 → sm:2 → lg:3 → xl:4 columns). The previous flat "50vw, 300px" understated
+            // the 3-column range, where a slot is 304–389px wide, so the browser picked the 320px
+            // variant for a box up to 389px and rendered it upscaled.
+            sizes="(max-width: 639px) calc(100vw - 32px), (max-width: 1023px) calc((100vw - 56px) / 2), (max-width: 1279px) calc((100vw - 112px) / 3), 286px"
             className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         </div>

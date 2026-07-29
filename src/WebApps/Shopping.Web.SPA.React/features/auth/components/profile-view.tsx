@@ -22,24 +22,24 @@ export function ProfileView() {
           <User className="h-8 w-8 text-muted-foreground" />
         </div>
         <h2 className="text-xl font-semibold text-foreground">Sign in to view your profile</h2>
-        <Link href={ROUTES.home}>
-          <Button variant="outline" className="gap-2">
+        <Button asChild variant="outline" className="gap-2">
+          <Link href={ROUTES.home}>
             <ArrowLeft className="h-4 w-4" />
             Back to Store
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </div>
     )
   }
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-8 lg:px-8">
-      <Link href={ROUTES.home}>
-        <Button variant="ghost" className="mb-6 gap-2 text-muted-foreground">
+      <Button asChild variant="ghost" className="mb-6 gap-2 text-muted-foreground">
+        <Link href={ROUTES.home}>
           <ArrowLeft className="h-4 w-4" />
           Back to Store
-        </Button>
-      </Link>
+        </Link>
+      </Button>
 
       <h1 className="mb-8 text-3xl font-bold text-foreground">My Profile</h1>
 

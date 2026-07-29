@@ -92,6 +92,69 @@ export default $config({
     // this is the only auth path it has.
     const webhookSecret = new sst.Secret("WebhookSecret");
 
+    // Security headers at the distribution, so they also cover what never reaches the server
+    // function: /_next/static/* is served straight from S3, so next.config.mjs's headers() can't
+    // reach it. Every header below is `override: false`, which makes CloudFront add it only when
+    // the origin didn't — the server function's own (identical) values keep winning for documents
+    // and route handlers, and this fills in for the static objects.
+    //
+    // CSP is deliberately not here: it is the one header whose value depends on the app (the image
+    // CDN origin), so next.config.mjs stays its single source of truth rather than having two
+    // definitions drift apart.
+    const securityHeadersPolicy = new aws.cloudfront.ResponseHeadersPolicy("SpaSecurityHeaders", {
+      name: `${environmentName}-duckstore-spa-security-headers`,
+      securityHeadersConfig: {
+        strictTransportSecurity: {
+          accessControlMaxAgeSec: 63072000,
+          includeSubdomains: true,
+          preload: true,
+          override: false,
+        },
+        contentTypeOptions: { override: false },
+        frameOptions: { frameOption: "DENY", override: false },
+        referrerPolicy: {
+          referrerPolicy: "strict-origin-when-cross-origin",
+          override: false,
+        },
+      },
+      // Non-production stages sit on public domains off the same hosted zone, so they would
+      // otherwise be crawlable and compete with production for the same content. The header covers
+      // what a <meta name="robots"> cannot: RSC payloads, JSON from route handlers, images.
+      ...(environmentName === "production"
+        ? {}
+        : {
+            customHeadersConfig: {
+              items: [
+                { header: "X-Robots-Tag", value: "noindex, nofollow", override: true },
+              ],
+            },
+          }),
+    });
+
+    // Extracted so the transform below stays a single reference — the Nextjs component nests
+    // transforms one level deeper than an inline closure can express readably.
+    // SST's Transform<T> is `(args, opts, name) => undefined` — returning `undefined` explicitly
+    // is what makes the signature assignable, since `void` is not.
+    const applySecurityHeaders = (
+      distributionArgs: aws.cloudfront.DistributionArgs,
+    ): undefined => {
+      distributionArgs.defaultCacheBehavior = $output(
+        distributionArgs.defaultCacheBehavior,
+      ).apply((behavior) => ({
+        ...behavior,
+        responseHeadersPolicyId: securityHeadersPolicy.id,
+      }));
+      distributionArgs.orderedCacheBehaviors = $output(
+        distributionArgs.orderedCacheBehaviors,
+      ).apply((behaviors) =>
+        (behaviors ?? []).map((behavior) => ({
+          ...behavior,
+          responseHeadersPolicyId: securityHeadersPolicy.id,
+        })),
+      );
+      return undefined;
+    };
+
     const nextjs = new sst.aws.Nextjs("Spa", {
       // SST defaults to downloading its own pinned OpenNext version
       // (currently 3.9.14) via `npx open-next@<version> build`, ignoring the
@@ -125,6 +188,17 @@ export default $config({
         WEBHOOK_SECRET: webhookSecret.value,
         NEXT_PUBLIC_SITE_URL: `https://${domainName}`,
         NEXT_PUBLIC_IMAGE_CDN_URL: imageCdnUrl,
+        // Read at build time by next.config.mjs (CSP img-src) and shared/lib/site.ts, which gates
+        // robots/sitemap on it — only `production` is allowed to be indexed.
+        NEXT_PUBLIC_ENVIRONMENT: environmentName,
+      },
+      // Attaches the policy above to every cache behavior the Nextjs component creates (server,
+      // image optimizer, and the static-asset behaviors).
+      transform: {
+        cdn: (cdnArgs) => {
+          cdnArgs.transform = { ...cdnArgs.transform, distribution: applySecurityHeaders };
+          return undefined;
+        },
       },
       // No OPEN_NEXT_BUILD_ID env var needed here, even though the bundled
       // tag-cache handler prefixes every DynamoDB key with it: OpenNext v4's

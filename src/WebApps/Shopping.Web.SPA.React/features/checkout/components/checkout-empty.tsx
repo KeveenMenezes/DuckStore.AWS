@@ -11,12 +11,12 @@ export function CheckoutEmpty() {
       </div>
       <h2 className="text-xl font-semibold text-foreground">Empty cart</h2>
       <p className="text-center text-muted-foreground">Add products to the cart before checking out.</p>
-      <Link href={ROUTES.home}>
-        <Button variant="outline" className="gap-2">
+      <Button asChild variant="outline" className="gap-2">
+        <Link href={ROUTES.home}>
           <ArrowLeft className="h-4 w-4" />
           Back to Store
-        </Button>
-      </Link>
+        </Link>
+      </Button>
     </div>
   )
 }
