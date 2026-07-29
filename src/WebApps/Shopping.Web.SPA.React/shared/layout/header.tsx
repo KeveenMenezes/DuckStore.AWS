@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { ROUTES } from "@/shared/constants/routes"
 import { useState } from "react"
 
+const NEUTRAL_HOVER = "hover:bg-transparent hover:text-foreground dark:hover:bg-transparent"
+
 interface AuthSlotProps {
   isLoading: boolean
   user: unknown
@@ -38,7 +40,7 @@ function AuthSlot({ isLoading, user, loginWithCognito, signUpWithCognito }: Auth
       <Button
         variant="ghost"
         size="sm"
-        className="gap-1.5 text-muted-foreground hover:text-foreground"
+        className={`gap-1.5 text-muted-foreground ${NEUTRAL_HOVER}`}
         onClick={() => loginWithCognito()}
       >
         <LogIn className="h-4 w-4" />
@@ -77,13 +79,13 @@ export function Header() {
           {/* `asChild` renders the Link as the button itself. Nesting a <button> inside an <a>
               instead is invalid HTML and announces as two overlapping controls to screen readers. */}
           <nav className="hidden items-center gap-1 md:flex">
-            <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+            <Button asChild variant="ghost" className={`gap-2 text-muted-foreground ${NEUTRAL_HOVER}`}>
               <Link href={ROUTES.home}>
                 <Store className="h-4 w-4" />
                 Store
               </Link>
             </Button>
-            <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+            <Button asChild variant="ghost" className={`gap-2 text-muted-foreground ${NEUTRAL_HOVER}`}>
               <Link href={ROUTES.challenges}>
                 <Code2 className="h-4 w-4" />
                 Challenges
@@ -103,12 +105,18 @@ export function Header() {
               size="icon"
               onClick={toggleTheme}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-              className="text-muted-foreground hover:text-foreground"
+              className={`text-muted-foreground ${NEUTRAL_HOVER}`}
             >
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
 
-            <Button asChild variant="ghost" size="icon" className="relative" aria-label="Open cart">
+            <Button
+              asChild
+              variant="ghost"
+              size="icon"
+              className={`relative text-muted-foreground ${NEUTRAL_HOVER}`}
+              aria-label="Open cart"
+            >
               <Link href={ROUTES.cart}>
                 <ShoppingCart className="h-5 w-5" />
                 {totalItems > 0 && (
@@ -129,7 +137,7 @@ export function Header() {
             <Button
               variant="ghost"
               size="icon"
-              className="md:hidden"
+              className={`text-muted-foreground md:hidden ${NEUTRAL_HOVER}`}
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Menu"
             >
@@ -141,13 +149,13 @@ export function Header() {
         {mobileMenuOpen && (
           <div className="border-t border-border bg-background px-4 py-3 md:hidden">
             <nav className="flex flex-col gap-1">
-              <Button asChild variant="ghost" className="w-full justify-start gap-2">
+              <Button asChild variant="ghost" className={`w-full justify-start gap-2 text-muted-foreground ${NEUTRAL_HOVER}`}>
                 <Link href={ROUTES.home} onClick={() => setMobileMenuOpen(false)}>
                   <Store className="h-4 w-4" />
                   Store
                 </Link>
               </Button>
-              <Button asChild variant="ghost" className="w-full justify-start gap-2">
+              <Button asChild variant="ghost" className={`w-full justify-start gap-2 text-muted-foreground ${NEUTRAL_HOVER}`}>
                 <Link href={ROUTES.challenges} onClick={() => setMobileMenuOpen(false)}>
                   <Code2 className="h-4 w-4" />
                   Challenges

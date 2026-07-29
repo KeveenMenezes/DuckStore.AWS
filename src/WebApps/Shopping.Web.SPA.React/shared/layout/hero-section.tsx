@@ -1,5 +1,8 @@
 import Image from "next/image"
 import Link from "next/link"
+// Static import, not a "/images/..." string: it is what lets Next generate the blur placeholder
+// below at build time. The URL it resolves to is the same either way.
+import duckHero from "@/public/images/duck-hero.jpg"
 import { ArrowRight, Code2, ShoppingBag } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ROUTES } from "@/shared/constants/routes"
@@ -61,7 +64,7 @@ export function HeroSection() {
         <div className="relative flex-1">
           <div className="relative mx-auto aspect-square max-w-md overflow-hidden rounded-2xl border border-border bg-card">
             <Image
-              src="/images/duck-hero.jpg"
+              src={duckHero}
               alt="Debug Duck - Rubber duck for debugging"
               fill
               sizes="(max-width: 1024px) 100vw, 448px"
@@ -72,6 +75,11 @@ export function HeroSection() {
               // browser's default Low priority for images, which is what the LCP element was
               // measured at. fetchPriority is what actually promotes it on the wire.
               fetchPriority="high"
+              // Unlike the catalog cards, this one is eager and sits on a solid `bg-card` square,
+              // so without a placeholder you watch an empty dark box become a duck. The inline
+              // base64 LQIP means the box is never empty. (The cards are lazy and transparent —
+              // they land after the page settles, where the swap doesn't register.)
+              placeholder="blur"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4 rounded-lg border border-border bg-card/90 p-3 backdrop-blur-sm">
