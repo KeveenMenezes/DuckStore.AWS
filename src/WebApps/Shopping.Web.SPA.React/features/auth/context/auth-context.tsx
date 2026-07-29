@@ -22,6 +22,59 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+type MeResponse = {
+  authenticated: boolean
+  user: { sub: string; email: string; username: string; name?: string } | null
+}
+
+/**
+ * How hard to try restoring the session, and how long to wait between tries.
+ *
+ * /api/auth/me answers 5xx for "couldn't determine" — Cognito was throttled or unreachable while
+ * renewing the tokens (lib/auth/session.ts). That failure is transient by construction and leaves
+ * the session record intact, so retrying recovers a user who is genuinely signed in and would
+ * otherwise be rendered as signed out until they happened to reload.
+ *
+ * Bounded and short on purpose: the header renders a skeleton until this settles, so every retry
+ * is paid in perceived page load. Three attempts spend at most ~0.9s waiting before giving up.
+ */
+const SESSION_RESTORE_ATTEMPTS = 3
+const SESSION_RESTORE_BACKOFF_MS = 300
+
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+
+/**
+ * Resolves the current session, retrying only the answer that carries no information.
+ * Returns null when there is definitively no session, or when the attempts ran out.
+ */
+async function restoreSession(isCancelled: () => boolean): Promise<MeResponse | null> {
+  for (let attempt = 1; attempt <= SESSION_RESTORE_ATTEMPTS; attempt++) {
+    if (isCancelled()) return null
+
+    try {
+      const res = await fetch('/api/auth/me')
+
+      // Only 5xx is worth retrying. A 2xx is already the answer — including `authenticated: false`,
+      // which is a fact about the user, not a failure — and a 4xx won't change on a second ask.
+      if (!res.ok) {
+        if (res.status < 500) return null
+        throw new Error(`/api/auth/me responded ${res.status}`)
+      }
+
+      return (await res.json()) as MeResponse
+    } catch (error) {
+      if (attempt === SESSION_RESTORE_ATTEMPTS) {
+        console.error('Failed to restore Cognito session from /api/auth/me', error)
+        return null
+      }
+
+      await delay(SESSION_RESTORE_BACKOFF_MS * attempt)
+    }
+  }
+
+  return null
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [orders, setOrders] = useState<Order[]>([])
@@ -45,24 +98,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [customerId])
 
-  // Restore the Cognito session on mount. /api/auth/me always responds 200:
-  // { authenticated, user }. "Not logged in" is a valid state (user: null), not an error.
+  // Restore the Cognito session on mount. "Not logged in" is a valid state (user: null), not an
+  // error; a transient failure to reach Cognito is retried rather than shown as signed out —
+  // see restoreSession above.
   useEffect(() => {
     let cancelled = false
-    fetch('/api/auth/me')
-      .then(r => r.json())
-      .then((me: { authenticated: boolean; user: { sub: string; email: string; username: string; name?: string } | null }) => {
-        if (cancelled || !me.authenticated || !me.user) return
 
+    void restoreSession(() => cancelled).then((me) => {
+      if (cancelled) return
+
+      if (me?.authenticated && me.user) {
         // Prefer the `name` claim (captured at sign-up) for the display name;
         // `username` is a Cognito UUID. Fall back to email so `name` is never
         // undefined downstream (user-dropdown, initials, etc.).
         setUser({ id: me.user.sub, name: me.user.name || me.user.email, email: me.user.email })
         setCustomerId(me.user.sub)
         void refreshOrders(me.user.sub)
-      })
-      .catch((error) => console.error('Failed to restore Cognito session from /api/auth/me', error))
-      .finally(() => { if (!cancelled) setIsLoading(false) })
+      }
+
+      setIsLoading(false)
+    })
 
     return () => { cancelled = true }
   }, [])

@@ -3,13 +3,7 @@ import { cookies } from 'next/headers'
 import { GUEST_COOKIE } from '@/lib/identity'
 import { MERGE_BASKET } from '@/api/mutations/order'
 import { createSession, SESSION_COOKIE, sessionCookieOptions } from '@/lib/auth/session'
-
-// Only same-origin relative paths are accepted (rejects "//host", "http://host", etc.)
-// to avoid turning the stored redirect into an open redirect.
-function sanitizeReturnTo(next: string | null | undefined): string | null {
-  if (!next || !/^\/(?!\/)/.test(next)) return null
-  return next
-}
+import { sanitizeReturnTo } from '@/lib/safe-redirect'
 
 /**
  * Merges the visitor's GUEST# cart into the just-authenticated USER# cart. Best-effort:

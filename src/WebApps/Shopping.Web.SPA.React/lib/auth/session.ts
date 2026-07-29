@@ -76,11 +76,21 @@ const newSessionId = () => randomBytes(32).toString('base64url')
  * static import of next/headers anywhere in that graph fails the build. Deferring the import in
  * auth-provider.ts alone is not enough; the bundler traces through it and still sees a static
  * next/headers import here.
+ *
+ * cookies() throws when there is no request to read — `next build`'s static generation pass. That
+ * is the one benign reason this module can fail, so it is absorbed here, at the line that knows
+ * why: no request means no session. Callers are then free to let every other failure propagate
+ * instead of blanket-catching and mistaking an outage for a signed-out user.
  */
 async function readSessionId(): Promise<string | undefined> {
   const { cookies } = await import('next/headers')
-  const store = await cookies()
-  return store.get(SESSION_COOKIE)?.value
+
+  try {
+    const store = await cookies()
+    return store.get(SESSION_COOKIE)?.value
+  } catch {
+    return undefined
+  }
 }
 
 type IdTokenClaims = { sub: string; email: string; name?: string }
@@ -120,21 +130,63 @@ function readIdTokenClaims(idToken: string): IdTokenClaims | null {
 }
 
 /**
+ * Thrown when the session could not be renewed for a reason that says nothing about whether it is
+ * still valid — a throttled or unreachable Cognito. Distinct from getSession() returning null,
+ * which means the session has genuinely ended.
+ *
+ * Callers must not treat this as "signed out": the record is intact and the next attempt is
+ * expected to succeed. Failing the request is the correct response; ending the session is not.
+ */
+export class SessionRefreshError extends Error {
+  constructor() {
+    super('Cognito could not renew the session; the session record is unchanged')
+    this.name = 'SessionRefreshError'
+  }
+}
+
+/**
  * Returns the record with unexpired tokens, refreshing first when they are within the skew window.
  * Returns null when the session can no longer be renewed, having deleted the dead record.
+ * Throws SessionRefreshError when the outcome is unknown — see below.
  *
  * Never writes a cookie — see getSession().
  */
 async function ensureFreshTokens(record: SessionRecord): Promise<SessionRecord | null> {
   if (record.AccessExpiresAt > nowEpoch() + REFRESH_SKEW_SECONDS) return record
 
-  const refreshed = await refreshAccessToken(record.RefreshToken)
+  const outcome = await refreshAccessToken(record.RefreshToken)
 
-  // Refresh token expired, revoked, or the user was disabled in Cognito — the session is over.
-  if (!refreshed) {
+  // Only Cognito actively rejecting the token ends the session. Deleting the record is
+  // unrecoverable — it signs the user out for the remaining days of a 30-day session — so it is
+  // reserved for the one signal that actually means the refresh token is dead. A throttled or
+  // unreachable Cognito is a failed request, not a failed session: every request refreshes at the
+  // same 1h boundary, so a burst of them is exactly when throttling is most likely, and treating
+  // that as sign-out is what made sessions die long before their 30 days.
+  if (outcome.status === 'invalid_grant') {
+    // Rotation makes even this signal ambiguous: it also means "another request rotated this token
+    // first and the grace period lapsed before we reached Cognito". Both readings arrive as
+    // invalid_grant, and only one of them is a dead session. Re-read before destroying anything —
+    // if the stored refresh token is no longer the one we just presented, the race is the
+    // explanation and the winner's tokens are the live ones, written moments ago. A wide grace
+    // period (infra/constructs/appsync-auth.ts) narrows this window; this closes it.
+    const current = await getSessionRecord(record.SessionId)
+    if (current && current.RefreshToken !== record.RefreshToken) return current
+
     await deleteSessionRecord(record.SessionId)
     return null
   }
+
+  // Renewal is attempted REFRESH_SKEW_SECONDS before the token actually expires, so a transient
+  // failure usually finds the current token still good for another minute. Serving it costs
+  // nothing and retries on the next request, which keeps a throttled Cognito invisible to the
+  // user instead of turning it into a failed page load. Only once the token is truly spent is
+  // there nothing left to serve.
+  if (outcome.status === 'transient') {
+    if (record.AccessExpiresAt > nowEpoch()) return record
+    throw new SessionRefreshError()
+  }
+
+  const refreshed = outcome.tokens
 
   // A refreshed token that identifies a different principal means something is badly wrong
   // (misrouted token, tampered record). Fail closed rather than silently swapping identities.
@@ -178,6 +230,16 @@ export const getSession = cache(async (): Promise<Session | null> => {
 
   const record = await getSessionRecord(sessionId)
   if (!record) return null
+
+  // The 30-day cap is enforced here rather than left to the table's TTL. DynamoDB deletes expired
+  // items on a best-effort schedule and keeps serving them to reads until it gets to them, so TTL
+  // alone lets a session outlive its absolute lifetime — and ensureFreshTokens() would happily
+  // keep renewing it, since it only ever looks at AccessExpiresAt. TTL stays as the reaper that
+  // keeps the table from growing; this is what makes the deadline real.
+  if (record.ExpiresAt <= nowEpoch()) {
+    await deleteSessionRecord(sessionId)
+    return null
+  }
 
   const fresh = await ensureFreshTokens(record)
   if (!fresh) return null

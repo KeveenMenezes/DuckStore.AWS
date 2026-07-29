@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { randomBytes, createHash } from 'node:crypto'
-
-// Only same-origin relative paths are accepted (rejects "//host", "http://host", etc.)
-// to avoid turning `next` into an open redirect.
-function sanitizeReturnTo(next: string | null): string | null {
-  if (!next || !/^\/(?!\/)/.test(next)) return null
-  return next
-}
+import { sanitizeReturnTo } from '@/lib/safe-redirect'
 
 /**
  * Initiates the Cognito Hosted UI PKCE authorization code flow.
@@ -38,8 +32,17 @@ export async function GET(req: NextRequest): Promise<Response> {
     `${process.env.COGNITO_HOSTED_UI_URL}/oauth2/authorize?${params}`,
   )
 
-  // Temporary cookies — expire in 5 minutes (enough for the login flow)
-  const cookieOpts = { httpOnly: true, sameSite: 'lax' as const, maxAge: 300, path: '/' }
+  // Temporary cookies — expire in 5 minutes (enough for the login flow). `secure` matters most on
+  // pkce_verifier: it is the secret binding this authorization code to this client, so an attacker
+  // holding both the code and the verifier can complete the exchange. The distribution sends no
+  // HSTS header, so without this flag a single plaintext request to the domain would carry it.
+  const cookieOpts = {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax' as const,
+    maxAge: 300,
+    path: '/',
+  }
   response.cookies.set('pkce_verifier', verifier, cookieOpts)
   response.cookies.set('pkce_state', state, cookieOpts)
   if (returnTo) response.cookies.set('post_login_redirect', returnTo, cookieOpts)

@@ -184,7 +184,15 @@ exports.handler = async (event) => {
       //
       // Deploy ordering matters: the SPA must already persist the rotated refresh token
       // (lib/cognito-refresh.ts) before this is enabled, or live sessions die when it lapses.
-      refreshTokenRotationGracePeriod: cdk.Duration.seconds(30),
+      //
+      // Pinned to the 60s maximum, not a tuned value. Rotation makes `invalid_grant` ambiguous:
+      // besides "this session is over" it also means "another request already rotated this token,
+      // and you missed the window". The SPA deletes the session record on invalid_grant, so a
+      // request that reads the record and then reaches Cognito after the window has lapsed would
+      // sign out a healthy user. Widening the window is what keeps that case out of reach — the
+      // renewals race because /api/auth/me and /api/graphql refresh in parallel on every page
+      // load, and a cold-started Lambda can put seconds between the read and the exchange.
+      refreshTokenRotationGracePeriod: cdk.Duration.seconds(60),
       preventUserExistenceErrors: true,
     });
     // CloudFormation must create the IdPs before the client references them.
