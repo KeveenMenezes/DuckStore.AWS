@@ -1,0 +1,172 @@
+@page "/campaigns"
+@attribute [Authorize]
+@using System.Globalization
+@inject CampaignAdminService Campaigns
+
+<PageTitle>Discounts — DuckStore Management</PageTitle>
+
+<div class="page-header">
+    <h1>Discounts</h1>
+    <a class="btn btn-primary" href="campaigns/new">New campaign</a>
+</div>
+
+@if (banner is not null)
+{
+    <div class="banner banner-success">@banner</div>
+}
+@if (error is not null)
+{
+    <div class="banner banner-error">@error</div>
+}
+
+@if (items is null)
+{
+    <p class="muted">Loading campaigns...</p>
+}
+else if (items.Count == 0)
+{
+    <p class="muted">No campaigns found.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Discount</th>
+                <th>Period</th>
+                <th>Products</th>
+                <th>Status</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var campaign in items)
+            {
+                <tr>
+                    <td>@campaign.Name</td>
+                    <td>@FormatDiscount(campaign)</td>
+                    <td>@FormatDate(campaign.StartsAt) – @FormatDate(campaign.EndsAt)</td>
+                    <td>@campaign.ProductIds.Count</td>
+                    <td>@DisplayStatus(campaign)</td>
+                    <td class="row-actions">
+                        @if (CanEnd(campaign))
+                        {
+                            <button class="btn btn-danger" @onclick="() => EndAsync(campaign)">End</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (nextToken is not null)
+    {
+        <button class="btn btn-secondary" disabled="@loadingMore" @onclick="LoadMoreAsync">
+            @(loadingMore ? "Loading..." : "Load more")
+        </button>
+    }
+}
+
+<ConfirmDialog @ref="confirmDialog" ConfirmLabel="End campaign" />
+
+@code {
+    private List<Campaign>? items;
+    private string? nextToken;
+    private string? banner;
+    private string? error;
+    private bool loadingMore;
+    private ConfirmDialog confirmDialog = default!;
+
+    [SupplyParameterFromQuery] public string? Saved { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        banner = Saved switch
+        {
+            "created" => "Campaign created",
+            _ => null,
+        };
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        error = null;
+        items = null;
+        try
+        {
+            var page = await Campaigns.GetCampaignsAsync();
+            items = page.Items;
+            nextToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            items = [];
+            error = $"Failed to load campaigns: {ex.Message}";
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        loadingMore = true;
+        try
+        {
+            var page = await Campaigns.GetCampaignsAsync(nextToken: nextToken);
+            items!.AddRange(page.Items);
+            nextToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load more campaigns: {ex.Message}";
+        }
+        finally
+        {
+            loadingMore = false;
+        }
+    }
+
+    private async Task EndAsync(Campaign campaign)
+    {
+        if (!await confirmDialog.ShowAsync($"End campaign \"{campaign.Name}\"? This cannot be undone."))
+            return;
+
+        try
+        {
+            await Campaigns.EndCampaignAsync(campaign.Id);
+            var index = items!.IndexOf(campaign);
+            items[index] = campaign with { Status = "Cancelled" };
+            banner = "Campaign ended";
+            error = null;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to end campaign: {ex.Message}";
+        }
+    }
+
+    private static string FormatDiscount(Campaign campaign) => campaign.DiscountType switch
+    {
+        "Percentage" => $"{campaign.Value:0.##}% off",
+        _ => $"{campaign.Value:C} off",
+    };
+
+    private static string FormatDate(string iso) =>
+        DateTime.Parse(iso, null, DateTimeStyles.RoundtripKind).ToLocalTime().ToString("d");
+
+    private static string DisplayStatus(Campaign campaign)
+    {
+        if (campaign.Status == "Cancelled") return "Cancelled";
+
+        var now = DateTime.UtcNow;
+        var startsAt = DateTime.Parse(campaign.StartsAt, null, DateTimeStyles.RoundtripKind);
+        var endsAt = DateTime.Parse(campaign.EndsAt, null, DateTimeStyles.RoundtripKind);
+
+        if (now > endsAt) return "Expired";
+        if (now < startsAt) return "Scheduled";
+        return "Active";
+    }
+
+    private static bool CanEnd(Campaign campaign) =>
+        campaign.Status == "Active" && DisplayStatus(campaign) != "Expired";
+}

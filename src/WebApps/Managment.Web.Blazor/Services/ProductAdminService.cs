@@ -157,6 +157,21 @@ public sealed class ProductAdminService(GraphQLClient gql)
         return categories;
     }
 
+    // Only used by the campaign product multi-select, which needs the full catalog to render
+    // checkboxes for — ProductList itself stays paginated.
+    public async Task<List<Product>> GetAllProductsAsync()
+    {
+        var products = new List<Product>();
+        string? nextToken = null;
+        do
+        {
+            var page = await GetProductsAsync(pageSize: 100, nextToken: nextToken);
+            products.AddRange(page.Items);
+            nextToken = page.NextToken;
+        } while (nextToken is not null);
+        return products;
+    }
+
     // Plain client for the presigned POSTs — S3 rejects requests carrying the AppSync
     // Authorization header, so the GraphQL client's HttpClient must not be reused here.
     private static readonly HttpClient S3Http = new();

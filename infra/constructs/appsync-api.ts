@@ -172,6 +172,9 @@ export class AppSyncApi extends Construct {
     // Pricing's gateway-costs table (ADR-0028) — setGatewayCost is now a direct UpdateItem
     // resolver (ADR-0009), no Lambda.
     const gatewayCostsTable = dynamodb.Table.fromTableName(this, 'GatewayCostsTable', 'gateway-costs');
+    // Pricing's campaigns table (ADR-0026) — listing is a plain Scan with no business logic
+    // (ADR-0009), unlike createCampaign/endCampaign which stay Lambda (TransactWriteItems fan-out).
+    const campaignsTable = dynamodb.Table.fromTableName(this, 'CampaignsTable', 'campaigns');
     // CatalogView (ADR-0030, supersedes ADR-0027) — product read/search is DynamoDB-backed again;
     // products/product are Direct resolvers, not Lambda. fromTableAttributes +
     // grantIndexPermissions is required (not fromTableName) so grantReadData below also covers
@@ -189,6 +192,7 @@ export class AppSyncApi extends Construct {
     const reviewsDs = api.addDynamoDbDataSource('ReviewsDS', reviewsTable);
     const userProfilesDs = api.addDynamoDbDataSource('UserProfilesDS', userProfilesTable);
     const gatewayCostsDs = api.addDynamoDbDataSource('GatewayCostsDS', gatewayCostsTable);
+    const campaignsDs = api.addDynamoDbDataSource('CampaignsDS', campaignsTable);
     const catalogViewProductsDs = api.addDynamoDbDataSource(
       'CatalogViewProductsDS',
       catalogViewProductsTable,
@@ -206,6 +210,7 @@ export class AppSyncApi extends Construct {
     reviewsTable.grantReadWriteData(reviewsDs);
     userProfilesTable.grantReadWriteData(userProfilesDs);
     gatewayCostsTable.grantReadWriteData(gatewayCostsDs);
+    campaignsTable.grantReadData(campaignsDs);
     catalogViewProductsTable.grantReadData(catalogViewProductsDs);
 
     // Lambda data sources — imported by function name (no CF coupling)
@@ -274,6 +279,9 @@ export class AppSyncApi extends Construct {
     // Admin-only queries (Cognito default + group check in resolver)
     this.resolver(orderingDs, 'OrdersResolver', 'Query', 'orders', 'orders');
     this.resolver(orderingDs, 'OrdersByNameResolver', 'Query', 'ordersByName', 'orders');
+    // Direct DynamoDB Scan (ADR-0009) — a plain listing with no business logic, unlike
+    // createCampaign/endCampaign which stay Lambda for their TransactWriteItems fan-out.
+    this.resolver(campaignsDs, 'CampaignsResolver', 'Query', 'campaigns', 'pricing');
 
     // User profile — Cognito-only. Both myProfile (lazy provisioning via if_not_exists) and
     // updateProfile are direct DynamoDB UpdateItem resolvers (ADR-0009/ADR-0017).

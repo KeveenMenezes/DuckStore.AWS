@@ -1,0 +1,52 @@
+@inject ProductAdminService Products
+
+@if (products is null)
+{
+    <p class="muted">Loading products...</p>
+}
+else if (products.Count == 0)
+{
+    <p class="muted">No products available.</p>
+}
+else
+{
+    <input type="search" placeholder="Filter products..." @bind="filter" @bind:event="oninput" style="margin-bottom: 0.5rem;" />
+    <div class="category-list">
+        @foreach (var product in Filtered)
+        {
+            <label class="category-item">
+                <input type="checkbox"
+                       checked="@Selected.Contains(product.Id)"
+                       @onchange="e => Toggle(product.Id, (bool)e.Value!)" />
+                @product.Name
+            </label>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<string> Selected { get; set; } = [];
+    [Parameter] public EventCallback<List<string>> SelectedChanged { get; set; }
+
+    private List<Product>? products;
+    private string filter = string.Empty;
+
+    private IEnumerable<Product> Filtered => products is null
+        ? []
+        : products.Where(p => p.Name.Contains(filter, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        products = await Products.GetAllProductsAsync();
+    }
+
+    private async Task Toggle(string productId, bool isChecked)
+    {
+        if (isChecked && !Selected.Contains(productId))
+            Selected.Add(productId);
+        else if (!isChecked)
+            Selected.Remove(productId);
+
+        await SelectedChanged.InvokeAsync(Selected);
+    }
+}

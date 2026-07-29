@@ -240,7 +240,7 @@ h1 {
     margin-bottom: 0.3rem;
 }
 
-.form-field input, .form-field textarea {
+.form-field input, .form-field textarea, .form-field select {
     width: 100%;
     padding: 0.45rem 0.7rem;
     border: 1px solid var(--border);

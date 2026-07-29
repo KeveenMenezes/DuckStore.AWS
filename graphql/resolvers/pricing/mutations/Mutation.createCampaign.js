@@ -31,5 +31,7 @@ export function response(ctx) {
     startsAt: ctx.args.startsAt,
     endsAt: ctx.args.endsAt,
     productIds: ctx.args.productIds,
+    // A freshly created campaign is always Active — Cancelled only happens via endCampaign.
+    status: 'Active',
   }
 }
