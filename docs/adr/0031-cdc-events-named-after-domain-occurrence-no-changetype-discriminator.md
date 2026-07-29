@@ -1,7 +1,7 @@
 # ADR-0031: CDC Integration Events Named After the Domain Occurrence, Never a Raw ChangeType Discriminator
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 ---
 

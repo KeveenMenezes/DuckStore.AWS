@@ -1,7 +1,7 @@
 # ADR-0003: Adoption of Zero Trust Security Model
 
 ## Status
-**Proposed** — February 2026  
+**Accepted** — June 2026  
 
 ---
 

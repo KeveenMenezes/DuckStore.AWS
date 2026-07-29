@@ -1,7 +1,7 @@
 # ADR-0015: SQS Dead-Letter Queues for CDC Publisher Lambdas and EventBridge Consumer Retry Policy
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 ---
 

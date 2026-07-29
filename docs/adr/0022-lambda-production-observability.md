@@ -1,7 +1,7 @@
 # ADR-0022: Production Observability for Lambda Functions — BuildingBlocks.ServiceDefaults.Lambda
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 ---
 

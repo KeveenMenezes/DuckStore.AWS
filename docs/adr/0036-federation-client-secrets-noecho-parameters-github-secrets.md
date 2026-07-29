@@ -1,7 +1,7 @@
 # ADR-0036: Federation Client Secrets as NoEcho Parameters from GitHub Secrets
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 ---
 

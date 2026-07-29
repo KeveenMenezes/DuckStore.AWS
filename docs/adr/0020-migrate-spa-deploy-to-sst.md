@@ -1,7 +1,7 @@
 # ADR-0020: Migrate the SPA Deploy Layer from Hand-Rolled CDK to SST
 
 ## Status
-**Proposed** — July 2026. Supersedes [ADR-0014](./0014-deploy-spa-via-opennext-hand-rolled-cdk.md).
+**Accepted** — July 2026. Supersedes [ADR-0014](./0014-deploy-spa-via-opennext-hand-rolled-cdk.md).
 
 ---
 

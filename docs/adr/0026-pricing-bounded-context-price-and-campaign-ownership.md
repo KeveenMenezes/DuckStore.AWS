@@ -1,7 +1,7 @@
 # ADR-0026: Pricing Bounded Context — Price and Campaign Ownership Move from Catalog/Basket
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026. Supersedes [ADR-0012](./0012-merge-discount-into-basket-coupon-as-in-process-entity.md) §1/§2 (`Coupon`/discount ownership moves to Pricing).
 
 ---
 

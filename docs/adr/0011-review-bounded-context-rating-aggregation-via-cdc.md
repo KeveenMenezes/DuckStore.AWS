@@ -1,7 +1,7 @@
 # ADR-0011: Review Bounded Context — Product Ratings Aggregated into Catalog via CDC
 
 ## Status
-**Proposed** — June 2026
+**Accepted** — June 2026
 
 **Superseded** — July 2026 — for §4 (rating aggregation living in Catalog's DynamoDB item) only,
 by [ADR-0027](./0027-catalogview-opensearch-product-search-and-rating-sync.md), which moves the

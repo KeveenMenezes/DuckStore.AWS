@@ -1,7 +1,7 @@
 # ADR-0034: Product Image Pipeline — Presigned POST Upload, S3→SQS Processing, and Immutable CloudFront Serving
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 Supersedes [ADR-0018](./0018-product-images-dedicated-s3-bucket-cloudfront-bypass-optimizer.md): the
 "dedicated bucket via CloudFront, bypassing the Next.js optimizer" decision is preserved and

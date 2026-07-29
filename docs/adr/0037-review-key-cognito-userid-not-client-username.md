@@ -1,7 +1,7 @@
 # ADR-0037: Review Composite Key — Cognito `sub` Instead of Client-Supplied `userName`
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026
 
 Supersedes [ADR-0029](./0029-review-upsert-composite-key-and-rating-delta.md) **on key composition
 only** (§1, "Composite key replaces the random GUID"). ADR-0029's upsert mechanics, sort-order

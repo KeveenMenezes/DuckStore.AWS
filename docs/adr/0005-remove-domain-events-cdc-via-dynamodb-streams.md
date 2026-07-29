@@ -1,7 +1,7 @@
 # ADR-0005: Remove In-Process Domain Events — Integration Events via DynamoDB Streams (CDC)
 
 ## Status
-**Proposed** — June 2026
+**Accepted** — June 2026
 
 ---
 
