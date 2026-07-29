@@ -15,26 +15,25 @@
  * fall back to the API key so public catalog queries keep working. Client
  * components never need this: they always go through the /api/graphql BFF
  * (app/api/graphql/appsync.ts), which resolves this same header server-side.
+ *
+ * Errors deliberately propagate. Falling back to the API key on failure would answer a
+ * user-scoped query with guest authority — the caller gets someone else's empty basket or order
+ * list and renders it as fact, which is indistinguishable from being signed out. Only build-time
+ * "there is no request" resolves to no session, and getSession() already handles that case, so
+ * anything reaching here is a real outage and is better surfaced than papered over. Public reads
+ * never take this path: they use getPublicAuthHeaders() below.
  */
 export async function getAuthHeaders(): Promise<Record<string, string> | undefined> {
   if (typeof window !== 'undefined') return undefined
   if (!process.env.APPSYNC_URL) return undefined
 
-  const apiKeyFallback = { 'x-api-key': process.env.APPSYNC_API_KEY! }
+  // Dynamic import keeps `next/headers` and the DynamoDB client out of the static import graph
+  // so bundlers don't reject this module when it's pulled into a Client Component's graph
+  // (api/index.ts is imported from both sides).
+  const { getSession } = await import('@/lib/auth/session')
+  const session = await getSession()
 
-  try {
-    // Dynamic import keeps `next/headers` and the DynamoDB client out of the static import graph
-    // so bundlers don't reject this module when it's pulled into a Client Component's graph
-    // (api/index.ts is imported from both sides).
-    const { getSession } = await import('@/lib/auth/session')
-    const session = await getSession()
-    return session ? { Authorization: `Bearer ${session.idToken}` } : apiKeyFallback
-  } catch {
-    // cookies() throws outside of a request context (e.g. during `next build`'s
-    // static generation pass) — fall back to the API key so public catalog
-    // queries still succeed at build time.
-    return apiKeyFallback
-  }
+  return session ? { Authorization: `Bearer ${session.idToken}` } : { 'x-api-key': process.env.APPSYNC_API_KEY! }
 }
 
 /**
