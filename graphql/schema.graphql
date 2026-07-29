@@ -102,6 +102,14 @@ type Campaign @aws_cognito_user_pools {
   startsAt: String!
   endsAt: String!
   productIds: [ID!]!
+  # "Active" or "Cancelled" — set by endCampaign; date-based expiry (now outside
+  # startsAt/endsAt) is a separate, client-computed state on top of this.
+  status: String!
+}
+
+type CampaignPage @aws_cognito_user_pools {
+  items: [Campaign!]!
+  nextToken: String
 }
 
 # One payment-gateway provider's operating costs (ADR-0028): a flat fee per transaction, a
@@ -391,6 +399,9 @@ type Query {
 
   # Direct DynamoDB resolver — Cognito required; uses ctx.identity.sub (resolver ignores client customerId)
   ordersByCustomer(customerId: ID!): OrderPage!
+
+  # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
+  campaigns(pageSize: Int, nextToken: String): CampaignPage! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito only (default auth); lazily provisions from token claims via
   # if_not_exists (ADR-0009, ADR-0017)

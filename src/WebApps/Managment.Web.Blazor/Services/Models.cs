@@ -77,3 +77,48 @@ public sealed class ProductImageFormModel
     public bool IsMain { get; set; }
     public string FileName { get; set; } = string.Empty;
 }
+
+// Read model — mirrors the Campaign type in graphql/schema.graphql. StartsAt/EndsAt are ISO 8601
+// strings (the wire format DynamoCampaignRepository writes with .ToString("o")).
+public sealed record Campaign(
+    string Id,
+    string Name,
+    string DiscountType,
+    double Value,
+    string StartsAt,
+    string EndsAt,
+    List<string> ProductIds,
+    string Status);
+
+public sealed record CampaignPage(List<Campaign> Items, string? NextToken);
+
+// Form model — exactly the writable fields of createCampaign. Validation mirrors the rules
+// enforced server-side by Campaign.Create/DiscountValue.Of (Pricing.Function), replicated here
+// only for immediate client-side feedback.
+public sealed class CampaignFormModel : IValidatableObject
+{
+    [Required, StringLength(200)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required]
+    public string DiscountType { get; set; } = "Fixed";
+
+    [Range(0.01, double.MaxValue, ErrorMessage = "Value must be greater than zero.")]
+    public double Value { get; set; }
+
+    public DateTime StartsAt { get; set; } = DateTime.Now;
+
+    public DateTime EndsAt { get; set; } = DateTime.Now.AddDays(7);
+
+    [MinLength(1, ErrorMessage = "Select at least one product.")]
+    public List<string> ProductIds { get; set; } = [];
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (EndsAt <= StartsAt)
+            yield return new ValidationResult("End date must be after the start date.", [nameof(EndsAt)]);
+
+        if (DiscountType == "Percentage" && Value > 100)
+            yield return new ValidationResult("Percentage discount cannot exceed 100.", [nameof(Value)]);
+    }
+}

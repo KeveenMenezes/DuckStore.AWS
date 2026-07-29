@@ -5,13 +5,15 @@
             <p>@message</p>
             <div class="dialog-actions">
                 <button class="btn btn-secondary" @onclick="() => Close(false)">Cancel</button>
-                <button class="btn btn-danger" @onclick="() => Close(true)">Delete</button>
+                <button class="btn btn-danger" @onclick="() => Close(true)">@ConfirmLabel</button>
             </div>
         </div>
     </div>
 }
 
 @code {
+    [Parameter] public string ConfirmLabel { get; set; } = "Delete";
+
     private bool visible;
     private string message = string.Empty;
     private TaskCompletionSource<bool>? pending;

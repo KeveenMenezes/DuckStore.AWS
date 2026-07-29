@@ -1,0 +1,86 @@
+@page "/campaigns/new"
+@attribute [Authorize]
+@inject CampaignAdminService Campaigns
+@inject NavigationManager Navigation
+
+<PageTitle>New campaign — DuckStore Management</PageTitle>
+
+<h1>New campaign</h1>
+
+@if (error is not null)
+{
+    <div class="banner banner-error">@error</div>
+}
+
+<EditForm Model="model" OnValidSubmit="CreateAsync">
+    <DataAnnotationsValidator />
+
+    <div class="form-field">
+        <label for="name">Name</label>
+        <InputText id="name" @bind-Value="model.Name" />
+        <ValidationMessage For="() => model.Name" />
+    </div>
+
+    <div class="form-field">
+        <label for="discountType">Discount type</label>
+        <select id="discountType" @bind="model.DiscountType">
+            <option value="Fixed">Fixed amount</option>
+            <option value="Percentage">Percentage</option>
+        </select>
+    </div>
+
+    <div class="form-field">
+        <label for="value">
+            @(model.DiscountType == "Percentage" ? "Percentage off" : "Amount off")
+        </label>
+        <InputNumber id="value" step="0.01" @bind-Value="model.Value" />
+        <ValidationMessage For="() => model.Value" />
+    </div>
+
+    <div class="form-field">
+        <label for="startsAt">Starts at</label>
+        <InputDate id="startsAt" Type="InputDateType.DateTimeLocal" @bind-Value="model.StartsAt" />
+        <ValidationMessage For="() => model.StartsAt" />
+    </div>
+
+    <div class="form-field">
+        <label for="endsAt">Ends at</label>
+        <InputDate id="endsAt" Type="InputDateType.DateTimeLocal" @bind-Value="model.EndsAt" />
+        <ValidationMessage For="() => model.EndsAt" />
+    </div>
+
+    <div class="form-field">
+        <label>Products</label>
+        <ProductMultiSelect @bind-Selected="model.ProductIds" />
+        <ValidationMessage For="() => model.ProductIds" />
+    </div>
+
+    <div class="form-actions">
+        <a class="btn btn-secondary" href="campaigns">Cancel</a>
+        <button class="btn btn-primary" type="submit" disabled="@busy">
+            @(busy ? "Saving..." : "Create")
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    private readonly CampaignFormModel model = new();
+    private bool busy;
+    private string? error;
+
+    private async Task CreateAsync()
+    {
+        busy = true;
+        error = null;
+        try
+        {
+            await Campaigns.CreateCampaignAsync(model);
+            Navigation.NavigateTo("campaigns?saved=created");
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to create campaign: {ex.Message}";
+            busy = false;
+        }
+    }
+}

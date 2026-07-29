@@ -383,6 +383,40 @@ const resolvers = {
       return { items, nextToken: nextTokenOut }
     },
 
+    // Direct DynamoDB Scan (ADR-0009) — mirrors the AppSync campaigns resolver. Local dev has no
+    // Cognito identity/group check (see orders/ordersByName above for the same limitation).
+    async campaigns(
+      _: unknown,
+      { pageSize = 10, nextToken }: { pageSize?: number; nextToken?: string },
+    ) {
+      const result = await dynamoDb.send(
+        new ScanCommand({
+          TableName: 'campaigns',
+          Limit: pageSize,
+          ...(nextToken
+            ? { ExclusiveStartKey: JSON.parse(Buffer.from(nextToken, 'base64').toString()) }
+            : {}),
+        }),
+      )
+      const items = (result.Items ?? []).map(raw => {
+        const item = unmarshall(raw)
+        return {
+          id: item.Id as string,
+          name: item.Name as string,
+          discountType: item.DiscountType as string,
+          value: Number(item.Value),
+          startsAt: item.StartsAt as string,
+          endsAt: item.EndsAt as string,
+          productIds: Array.isArray(item.ProductIds) ? (item.ProductIds as string[]) : [],
+          status: item.Status as string,
+        }
+      })
+      const nextTokenOut = result.LastEvaluatedKey
+        ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+        : null
+      return { items, nextToken: nextTokenOut }
+    },
+
     // Direct DynamoDB GSI1 query (ADR-0009) — mirrors the AppSync ordersByCustomer resolver.
     // Local dev has no Cognito identity, so it scopes by the client-supplied customerId.
     async ordersByCustomer(_: unknown, { customerId }: { customerId: string }) {
@@ -929,6 +963,8 @@ const resolvers = {
         startsAt: args.startsAt,
         endsAt: args.endsAt,
         productIds: args.productIds,
+        // A freshly created campaign is always Active — Cancelled only happens via endCampaign.
+        status: 'Active',
       }
     },
 
