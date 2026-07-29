@@ -43,12 +43,12 @@ export function CheckoutView() {
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 lg:px-8">
-      <Link href={ROUTES.home}>
-        <Button variant="ghost" className="mb-6 gap-2 text-muted-foreground">
+      <Button asChild variant="ghost" className="mb-6 gap-2 text-muted-foreground">
+        <Link href={ROUTES.home}>
           <ArrowLeft className="h-4 w-4" />
           Back to Store
-        </Button>
-      </Link>
+        </Link>
+      </Button>
 
       <h1 className="mb-8 text-3xl font-bold text-foreground">Checkout</h1>
 

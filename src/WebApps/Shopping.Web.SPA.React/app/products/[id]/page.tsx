@@ -16,6 +16,8 @@ import {
   getInstallmentPlan,
 } from "@/features/products/services/products.service"
 import { getReviewsByProduct } from "@/features/reviews/services/reviews.service"
+import { ProductJsonLd } from "@/features/products/components/product-json-ld"
+import { imageVariantUrl, mainImageId } from "@/shared/lib/image-url"
 import { ROUTES } from "@/shared/constants/routes"
 
 // ISR: product detail is the same for all users; invalidated per-product via
@@ -48,9 +50,34 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
     return null
   })
   if (!product) return { title: "Product not found - CodeDuck Store" }
+
+  const title = `${product.name} - CodeDuck Store`
+  // JPG, not the AVIF/WebP variants the page itself uses: the social crawlers that read these tags
+  // still don't decode either format.
+  const mainImage = mainImageId(product.images)
+  const socialImage = mainImage ? imageVariantUrl(mainImage, 1024, 'jpg') : undefined
+
   return {
-    title: `${product.name} - CodeDuck Store`,
+    title,
     description: product.description,
+    alternates: { canonical: ROUTES.product(id) },
+    openGraph: {
+      type: 'website',
+      title,
+      description: product.description,
+      url: ROUTES.product(id),
+      ...(socialImage
+        ? { images: [{ url: socialImage, width: 1024, height: 1024, alt: product.name }] }
+        : {}),
+    },
+    twitter: {
+      // Product variants are square (see product-json-ld.tsx), so the 2:1 large card would crop
+      // them — same reasoning as the root layout.
+      card: 'summary',
+      title,
+      description: product.description,
+      ...(socialImage ? { images: [socialImage] } : {}),
+    },
   }
 }
 
@@ -83,6 +110,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
+      <ProductJsonLd product={product} />
       <Link
         href={ROUTES.home}
         className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"

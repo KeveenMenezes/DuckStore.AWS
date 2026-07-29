@@ -24,22 +24,22 @@ export function HeroSection() {
             challenges. Learn, practice and have fun with CodeDuck.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
-            <Link href="#catalog">
-              <Button size="lg" className="gap-2">
+            <Button asChild size="lg" className="gap-2">
+              <Link href="#catalog">
                 <ShoppingBag className="h-4 w-4" />
                 View Catalog
-              </Button>
-            </Link>
+              </Link>
+            </Button>
             {/* Same destination as the header nav's Challenges link, already
                 prefetched by it whenever both are on screen — prefetch={false}
                 avoids firing a second, redundant prefetch on every home load. */}
-            <Link href={ROUTES.challenges} prefetch={false}>
-              <Button size="lg" variant="outline" className="gap-2">
+            <Button asChild size="lg" variant="outline" className="gap-2">
+              <Link href={ROUTES.challenges} prefetch={false}>
                 <Code2 className="h-4 w-4" />
                 Challenges
                 <ArrowRight className="h-4 w-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
           <div className="mt-8 flex items-center gap-6 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
@@ -68,7 +68,10 @@ export function HeroSection() {
               quality={75}
               className="object-cover"
               priority
-              loading="eager"
+              // `priority` alone only makes this eager + preloaded; it leaves the request at the
+              // browser's default Low priority for images, which is what the LCP element was
+              // measured at. fetchPriority is what actually promotes it on the wire.
+              fetchPriority="high"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background/60 to-transparent" />
             <div className="absolute bottom-4 left-4 right-4 rounded-lg border border-border bg-card/90 p-3 backdrop-blur-sm">

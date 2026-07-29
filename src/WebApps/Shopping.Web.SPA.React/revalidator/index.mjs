@@ -58,7 +58,9 @@ function tagsForEvent(event) {
 // products/{id} and reviews/{id} tags used by app/products/[id]/page.tsx and
 // the blanket "products" tag used by app/page.tsx.
 function pathsForTag(tag) {
-  if (tag === 'products') return ['/']
+  // /sitemap.xml enumerates the catalog under the same `products` tag (app/sitemap.ts), so it goes
+  // stale on exactly the same events as the home page.
+  if (tag === 'products') return ['/', '/sitemap.xml']
   const productMatch = /^products:(.+)$/.exec(tag)
   if (productMatch) return [`/products/${productMatch[1]}`]
   const reviewMatch = /^reviews:(.+)$/.exec(tag)
@@ -67,7 +69,11 @@ function pathsForTag(tag) {
 }
 
 function withRscVariants(paths) {
-  return paths.flatMap((path) => [path, `${path}?_rsc=*`])
+  // Only navigable routes are ever requested as an RSC payload; /sitemap.xml is a plain file, so
+  // pairing it with a ?_rsc=* wildcard would just spend an invalidation path that matches nothing.
+  return paths.flatMap((path) =>
+    path.includes('.') ? [path] : [path, `${path}?_rsc=*`],
+  )
 }
 
 async function callRevalidateWebhook(tags) {

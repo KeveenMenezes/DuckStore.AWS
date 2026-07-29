@@ -74,19 +74,21 @@ export function Header() {
             </span>
           </Link>
 
+          {/* `asChild` renders the Link as the button itself. Nesting a <button> inside an <a>
+              instead is invalid HTML and announces as two overlapping controls to screen readers. */}
           <nav className="hidden items-center gap-1 md:flex">
-            <Link href={ROUTES.home}>
-              <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+            <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+              <Link href={ROUTES.home}>
                 <Store className="h-4 w-4" />
                 Store
-              </Button>
-            </Link>
-            <Link href={ROUTES.challenges}>
-              <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+              </Link>
+            </Button>
+            <Button asChild variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground">
+              <Link href={ROUTES.challenges}>
                 <Code2 className="h-4 w-4" />
                 Challenges
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </nav>
 
           <div className="flex items-center gap-2">
@@ -106,16 +108,16 @@ export function Header() {
               {theme === "dark" ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
             </Button>
 
-            <Link href={ROUTES.cart}>
-              <Button variant="ghost" size="icon" className="relative" aria-label="Open cart">
+            <Button asChild variant="ghost" size="icon" className="relative" aria-label="Open cart">
+              <Link href={ROUTES.cart}>
                 <ShoppingCart className="h-5 w-5" />
                 {totalItems > 0 && (
                   <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
                     {totalItems}
                   </span>
                 )}
-              </Button>
-            </Link>
+              </Link>
+            </Button>
 
             <AuthSlot
               isLoading={isLoading}
@@ -139,18 +141,18 @@ export function Header() {
         {mobileMenuOpen && (
           <div className="border-t border-border bg-background px-4 py-3 md:hidden">
             <nav className="flex flex-col gap-1">
-              <Link href={ROUTES.home} onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start gap-2">
+              <Button asChild variant="ghost" className="w-full justify-start gap-2">
+                <Link href={ROUTES.home} onClick={() => setMobileMenuOpen(false)}>
                   <Store className="h-4 w-4" />
                   Store
-                </Button>
-              </Link>
-              <Link href={ROUTES.challenges} onClick={() => setMobileMenuOpen(false)}>
-                <Button variant="ghost" className="w-full justify-start gap-2">
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" className="w-full justify-start gap-2">
+                <Link href={ROUTES.challenges} onClick={() => setMobileMenuOpen(false)}>
                   <Code2 className="h-4 w-4" />
                   Challenges
-                </Button>
-              </Link>
+                </Link>
+              </Button>
               <div className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 sm:hidden">
                 <Trophy className="h-4 w-4 text-primary" />
                 <span className="text-sm font-semibold text-foreground">{score} pts</span>

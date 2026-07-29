@@ -35,8 +35,10 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([])
   const [isOpen, setIsOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  // Prevents syncing back to DB the items that were just loaded from DB
-  const skipNextSyncRef = useRef(false)
+  // Only a real user mutation may trigger a write. Gating on this (instead of suppressing the
+  // one sync that follows hydration) is what keeps a visitor who never touches the cart from
+  // writing an empty basket to DynamoDB on every single page load.
+  const dirtyRef = useRef(false)
   // Always-current snapshot of items — lets addItem read state without being in its dep array.
   const itemsRef = useRef(items)
   useEffect(() => { itemsRef.current = items }, [items])
@@ -49,8 +51,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
       try {
         const enriched = await getBasket()
         if (cancelled) return
-        if (enriched.length > 0) {
-          skipNextSyncRef.current = true
+        // A mutation that landed while this fetch was in flight is newer than what it returned,
+        // so local intent wins — overwriting it here would silently drop the user's item.
+        if (enriched.length > 0 && !dirtyRef.current) {
           setItems(enriched)
         }
       } catch (error) {
@@ -69,10 +72,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (isLoading) return
-    if (skipNextSyncRef.current) {
-      skipNextSyncRef.current = false
-      return
-    }
+    if (!dirtyRef.current) return
     const timer = setTimeout(() => {
       // ownerId is injected by the BFF; guests and users both persist through the same path.
       // Tolerates failure (e.g. local-simulated users) same as the hydrate effect above, but
@@ -91,6 +91,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
       clearTimeout(pendingSyncRef.current)
       pendingSyncRef.current = null
     }
+    // Nothing was mutated, so there is no pending write to rescue before the navigation.
+    if (!dirtyRef.current) return
     await syncCartToBasket(itemsRef.current).catch((error) => console.error('Failed to flush cart to basket', error))
   }, [])
 
@@ -99,6 +101,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     if (existing) {
       if (existing.quantity >= product.stock) return false
+      dirtyRef.current = true
       setItems((prev) =>
         prev.map((item) =>
           item.product.id === product.id
@@ -111,6 +114,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     if (product.stock <= 0) return false
 
+    dirtyRef.current = true
     setItems((prev) => [
       ...prev,
       {
@@ -122,6 +126,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const removeItem = useCallback((productId: string) => {
+    dirtyRef.current = true
     setItems((prev) => prev.filter((item) => item.product.id !== productId))
   }, [])
 
@@ -137,6 +142,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (!item) return prev
         if (quantity > (item.product.stock ?? Infinity)) return prev
         success = true
+        dirtyRef.current = true
         return prev.map((i) => (i.product.id === productId ? { ...i, quantity } : i))
       })
       return success
@@ -145,6 +151,8 @@ export function CartProvider({ children }: { children: ReactNode }) {
   )
 
   const clearCart = useCallback(() => {
+    // Emptying after checkout must reach DynamoDB, so this counts as a mutation.
+    dirtyRef.current = true
     setItems([])
   }, [])
 

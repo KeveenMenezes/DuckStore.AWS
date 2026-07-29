@@ -17,7 +17,8 @@ export function Providers({ children }: { children: ReactNode }) {
           <ScoreProvider>
             <div className="flex min-h-screen flex-col">
               <Header />
-              <main className="flex-1">
+              {/* Target of the skip link in app/layout.tsx. */}
+              <main id="main-content" className="flex-1">
                 {children}
               </main>
               <Footer />
