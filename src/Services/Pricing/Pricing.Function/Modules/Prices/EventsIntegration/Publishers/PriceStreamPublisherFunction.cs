@@ -1,7 +1,5 @@
-﻿using Amazon.Lambda.DynamoDBEvents;
+using Amazon.Lambda.DynamoDBEvents;
 using Pricing.Function.Modules.Prices.EventsIntegration.Publishers;
-using Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
-using Pricing.Function.Shared.Configuration;
 
 namespace Pricing.Function;
 
@@ -18,17 +16,15 @@ public partial class Functions
     // only disappears when the product itself is removed, and CatalogView deletes the whole
     // document via ProductDeletedEvent in that case (ADR-0031).
     //
-    // A gateway-cost-only or campaign-only change never reaches here — the payment badge only
-    // recomputes on the next price change or a manual ProductBackfill re-run (CDC-only philosophy,
-    // ADR-0012/0025). If no provider is configured yet, the highlight fields are published as zero
-    // rather than skipping the event, so the price itself still syncs.
+    // A campaign-only change no longer needs to wait for the next price write: it has its own
+    // trigger now, ProductDiscountStreamPublisher (ADR-0044). A gateway-cost-only change still
+    // does — the payment badge recomputes on the next price/campaign change or a manual
+    // ProductBackfill re-run.
     [LambdaFunction]
     public async Task PriceStreamPublisher(
         DynamoDBEvent dynamoEvent,
         [FromServices] IEventPublisher eventPublisher,
-        [FromServices] IGatewayCostRepository gatewayCostRepository,
-        [FromServices] ICampaignRepository campaignRepository,
-        [FromServices] InstallmentOptions installmentOptions)
+        [FromServices] PricingHighlights pricingHighlights)
     {
         foreach (var record in dynamoEvent.Records)
         {
@@ -36,29 +32,11 @@ public partial class Functions
                 continue;
 
             var price = PriceStreamImage.From(record.Dynamodb.NewImage);
-            if (price is null || string.IsNullOrEmpty(price.ProductId))
+            if (price is null || !Guid.TryParse(price.ProductId, out var productId))
                 continue;
 
-            var gatewayCost = await gatewayCostRepository.GetByProviderAsync(installmentOptions.ActiveProvider);
-
-            var breakdown = new PricingBreakdown(0m, 0m, 0, 0m, []);
-
-            if (gatewayCost is not null)
-            {
-                breakdown = InstallmentCalculator.Calculate(
-                    price.Cost, price.NominalPrice, gatewayCost, installmentOptions.MinMarginPercent,
-                    installmentOptions.ValueTiers);
-
-                var activeDiscount = await campaignRepository.GetActiveDiscountForProductAsync(
-                    Guid.Parse(price.ProductId));
-
-                if (activeDiscount is not null)
-                {
-                    var discount = DiscountValue.Of(activeDiscount.Type, activeDiscount.Amount);
-                    breakdown = InstallmentCalculator.ApplyDiscount(
-                        breakdown, price.NominalPrice, gatewayCost, discount, installmentOptions.ValueTiers);
-                }
-            }
+            var breakdown = await pricingHighlights.ComputeAsync(
+                productId, price.Cost, price.NominalPrice);
 
             await eventPublisher.PublishAsync(new PriceChangedEvent
             {

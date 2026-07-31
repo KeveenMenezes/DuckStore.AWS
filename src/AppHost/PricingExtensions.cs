@@ -91,6 +91,25 @@ public static class PricingExtensions
             .WithEnvironment("Installments__ValueTiers__1__MinAmount", "300")
             .WithEnvironment("Installments__ValueTiers__1__MaxInstallments", "10");
 
+        // CDC publisher: product-discounts INSERT/REMOVE → DynamoDB Stream → publish
+        // ProductDiscountChangedEvent so CatalogView refreshes the catalog price when a campaign
+        // starts, ends or expires. Campaigns never write to `prices`, so without this trigger the
+        // denormalized price would never reflect a campaign at all (ADR-0044).
+        builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
+                "pricing-product-discounts-stream-publisher",
+                lambdaHandler: LambdaHandler("Pricing.Function", "ProductDiscountStreamPublisher"))
+            .WaitForCompletion(pricingMigration)
+            .WithReference(dynamoDb)
+            .WithDynamoDBStreamsEventSource("product-discounts")
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
+            .WithEnvironment("Installments__ActiveProvider", "Simulated")
+            .WithEnvironment("Installments__MinMarginPercent", "5")
+            .WithEnvironment("Installments__ValueTiers__0__MinAmount", "150")
+            .WithEnvironment("Installments__ValueTiers__0__MaxInstallments", "6")
+            .WithEnvironment("Installments__ValueTiers__1__MinAmount", "300")
+            .WithEnvironment("Installments__ValueTiers__1__MaxInstallments", "10");
+
         return pricingMigration;
     }
 }

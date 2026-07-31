@@ -26,6 +26,7 @@ namespace BuildingBlocks.Messaging.Serialization;
 [JsonSerializable(typeof(PriceChangedEvent))]
 [JsonSerializable(typeof(ProductCreatedEvent))]
 [JsonSerializable(typeof(ProductDeletedEvent))]
+[JsonSerializable(typeof(ProductDiscountChangedEvent))]
 [JsonSerializable(typeof(ProductImageData))]
 [JsonSerializable(typeof(ProductSyncedEvent))]
 [JsonSerializable(typeof(ProductUpdatedEvent))]

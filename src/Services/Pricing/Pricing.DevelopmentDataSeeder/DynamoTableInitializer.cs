@@ -16,14 +16,23 @@ public static class DynamoTableInitializer
         // Streams on prices drive the PriceChanged CDC publisher (CatalogView price sync).
         await EnsureTableAsync(dynamoDb, DynamoPriceRepository.TableName, "ProductId", withStream: true);
         await EnsureTableAsync(dynamoDb, DynamoCampaignRepository.TableName, "Id");
-        await EnsureTableAsync(dynamoDb, DynamoCampaignRepository.ProductDiscountsTableName, "ProductId");
+        // Streams drive the ProductDiscountChanged CDC publisher so CatalogView refreshes the
+        // catalog price when a campaign starts or ends (ADR-0044). TTL is not simulated by
+        // DynamoDB Local, so a natural expiry only rolls back on real AWS.
+        await EnsureTableAsync(
+            dynamoDb, DynamoCampaignRepository.ProductDiscountsTableName, "ProductId",
+            withStream: true, streamViewType: StreamViewType.KEYS_ONLY);
         // No stream: gateway-cost changes alone never fan out to CatalogView (ADR-0028).
         await EnsureTableAsync(dynamoDb, DynamoGatewayCostRepository.TableName, "Provider");
         await EnsureTableAsync(dynamoDb, ProcessedIntegrationEvent.TableName, "PK");
     }
 
     private static async Task EnsureTableAsync(
-        IAmazonDynamoDB dynamoDb, string tableName, string hashKeyName, bool withStream = false)
+        IAmazonDynamoDB dynamoDb,
+        string tableName,
+        string hashKeyName,
+        bool withStream = false,
+        StreamViewType? streamViewType = null)
     {
         try
         {
@@ -37,7 +46,7 @@ public static class DynamoTableInitializer
                     ? new StreamSpecification
                     {
                         StreamEnabled = true,
-                        StreamViewType = StreamViewType.NEW_IMAGE
+                        StreamViewType = streamViewType ?? StreamViewType.NEW_IMAGE
                     }
                     : null
             });

@@ -25,9 +25,9 @@ export class CatalogViewStack extends cdk.Stack {
       value: lambdas.reviewSyncConsumer.functionArn,
       exportName: `${this.stackName}-ReviewSyncConsumerArn`,
     });
-    new cdk.CfnOutput(this, 'PriceSyncConsumerArn', {
-      value: lambdas.priceSyncConsumer.functionArn,
-      exportName: `${this.stackName}-PriceSyncConsumerArn`,
+    new cdk.CfnOutput(this, 'PricingSyncConsumerArn', {
+      value: lambdas.pricingSyncConsumer.functionArn,
+      exportName: `${this.stackName}-PricingSyncConsumerArn`,
     });
     new cdk.CfnOutput(this, 'ProductStreamPublisherArn', {
       value: lambdas.productStreamPublisher.functionArn,
