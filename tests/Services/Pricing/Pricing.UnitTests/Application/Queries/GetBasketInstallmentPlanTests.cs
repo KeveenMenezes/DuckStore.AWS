@@ -1,4 +1,7 @@
 ﻿using BuildingBlocks.Core.Validation;
+using Pricing.Function.Modules.Campaigns.Data;
+using Pricing.Function.Modules.Campaigns.Domain.Enums;
+using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
 using Pricing.Function.Modules.GatewayCosts.Data;
 using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
 using Pricing.Function.Modules.GatewayCosts.Domain.ValueObjects;
@@ -6,6 +9,7 @@ using Pricing.Function.Modules.Prices.Data;
 using Pricing.Function.Modules.Prices.Domain.Entities;
 using Pricing.Function.Modules.Prices.Domain.ValueObjects;
 using Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
+using Pricing.Function.Modules.Prices.Features.GetInstallmentPlan;
 using Pricing.Function.Shared.Configuration;
 using Pricing.Function.Shared.Exceptions;
 
@@ -16,6 +20,7 @@ public class GetBasketInstallmentPlanTests
     private readonly AutoMocker _autoMocker;
     private readonly Mock<IPriceRepository> _priceRepository;
     private readonly Mock<IGatewayCostRepository> _gatewayCostRepository;
+    private readonly Mock<ICampaignRepository> _campaignRepository;
     private readonly GetBasketInstallmentPlanQueryValidator _validator;
 
     public GetBasketInstallmentPlanTests()
@@ -23,6 +28,10 @@ public class GetBasketInstallmentPlanTests
         _autoMocker = new AutoMocker();
         _priceRepository = _autoMocker.GetMock<IPriceRepository>();
         _gatewayCostRepository = _autoMocker.GetMock<IGatewayCostRepository>();
+        _campaignRepository = _autoMocker.GetMock<ICampaignRepository>();
+        _campaignRepository
+            .Setup(r => r.GetActiveDiscountForProductAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ActiveDiscount?)null);
         _validator = new GetBasketInstallmentPlanQueryValidator();
     }
 
@@ -36,7 +45,7 @@ public class GetBasketInstallmentPlanTests
             new Dictionary<int, decimal> { [1] = 0m, [2] = 5m, [3] = 10m, [6] = 20m, [12] = 50m });
 
     private GetBasketInstallmentPlanHandler CreateHandler() =>
-        new(_priceRepository.Object, _gatewayCostRepository.Object,
+        new(_priceRepository.Object, _gatewayCostRepository.Object, _campaignRepository.Object,
             new InstallmentOptions { ActiveProvider = "Simulated", MinMarginPercent = 0m });
 
     [Fact]
@@ -101,6 +110,128 @@ public class GetBasketInstallmentPlanTests
 
         Assert.Equal(150m, result.TotalOriginalPrice);
         Assert.Equal(120m, result.Price);
+    }
+
+    // The bug this guards against: the cart used to ignore campaigns entirely, so the same product
+    // showed a discounted price on its own page and an undiscounted one in the cart total.
+    [Fact]
+    public async Task Handle_ShouldApplyActiveCampaignDiscount_MatchingTheSingleProductPlanExactly()
+    {
+        var productId = Guid.NewGuid();
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 200m, cost: 100m)]);
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+        _campaignRepository
+            .Setup(r => r.GetActiveDiscountForProductAsync(productId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ActiveDiscount(DiscountType.Percentage, 10m));
+
+        var result = await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 1)]),
+            CancellationToken.None);
+
+        // What the product page shows for the very same product, via the single-product path.
+        var singleProduct = InstallmentCalculator.CalculateWithOptionalDiscount(
+            cost: 100m, originalPrice: 200m, SimulatedGatewayCost(), minMarginPercent: 0m,
+            valueTiers: [], DiscountValue.Of(DiscountType.Percentage, 10m));
+
+        Assert.Equal(singleProduct.Price, result.Price);
+        Assert.Equal(90m, result.Price);            // price 100 - 10%
+        Assert.Equal(200m, result.TotalOriginalPrice); // sticker price is never discounted
+    }
+
+    [Fact]
+    public async Task Handle_ShouldDiscountOnlyTheDiscountedItemsShareOfTheCart()
+    {
+        // Two items of equal nominal value; only one is on campaign, so a 20% discount on half the
+        // cart must come out as 10% off the cart total — not 20%, and not nothing.
+        var discounted = Guid.NewGuid();
+        var fullPrice = Guid.NewGuid();
+
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                Price.Create(ProductId.Of(discounted), nominalPrice: 100m, cost: 50m),
+                Price.Create(ProductId.Of(fullPrice), nominalPrice: 100m, cost: 50m)
+            ]);
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+        _campaignRepository
+            .Setup(r => r.GetActiveDiscountForProductAsync(discounted, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ActiveDiscount(DiscountType.Percentage, 20m));
+
+        var result = await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery(
+                [new BasketInstallmentItem(discounted, 1), new BasketInstallmentItem(fullPrice, 1)]),
+            CancellationToken.None);
+
+        // Undiscounted cart price = totalCost = 100; half of it carries 20% off -> 100 - 10 = 90.
+        Assert.Equal(90m, result.Price);
+        Assert.Equal(200m, result.TotalOriginalPrice);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldApplyFixedDiscountPerUnit_WhenTheSameProductIsBoughtSeveralTimes()
+    {
+        var productId = Guid.NewGuid();
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 200m, cost: 100m)]);
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+        _campaignRepository
+            .Setup(r => r.GetActiveDiscountForProductAsync(productId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ActiveDiscount(DiscountType.Fixed, 5m));
+
+        var result = await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 3)]),
+            CancellationToken.None);
+
+        // Undiscounted cart price = totalCost = 300; R$5 off each of the 3 units -> 285.
+        Assert.Equal(285m, result.Price);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldLeaveCartUntouched_WhenNoItemHasAnActiveCampaign()
+    {
+        var productId = Guid.NewGuid();
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 200m, cost: 100m)]);
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+
+        var result = await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 1)]),
+            CancellationToken.None);
+
+        Assert.Equal(100m, result.Price);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldLookUpEachProductOnlyOnce_WhenTheSameProductRepeatsAcrossLines()
+    {
+        var productId = Guid.NewGuid();
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 100m, cost: 50m)]);
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+
+        await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery(
+                [new BasketInstallmentItem(productId, 1), new BasketInstallmentItem(productId, 2)]),
+            CancellationToken.None);
+
+        _campaignRepository.Verify(
+            r => r.GetActiveDiscountForProductAsync(productId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

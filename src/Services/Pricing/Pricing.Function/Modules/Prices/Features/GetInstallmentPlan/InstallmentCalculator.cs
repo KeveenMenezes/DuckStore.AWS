@@ -1,4 +1,5 @@
-﻿using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
+﻿using Pricing.Function.Modules.Campaigns.Domain.Services;
+using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
 using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
 using Pricing.Function.Modules.Prices.Domain.Entities;
 using Pricing.Function.Shared.Configuration;
@@ -51,17 +52,53 @@ public static class InstallmentCalculator
     // Treats the whole cart as one virtual transaction: sums Cost/NominalPrice across every item
     // (weighted by quantity) and runs the totals through Calculate. This is more correct than
     // summing already-computed per-item plans, since the gateway's flat fee is charged once per
-    // checkout, not once per item — see ADR-0028.
+    // checkout, not once per item — see ADR-0028. Each item may carry its own active campaign
+    // discount, merged into the cart price by ApplyCartDiscounts below.
     public static CartPricingBreakdown CalculateForCart(
-        IReadOnlyList<(Price Price, int Quantity)> items, GatewayCost gatewayCost, decimal minMarginPercent,
-        IReadOnlyList<ValueTier> valueTiers)
+        IReadOnlyList<(Price Price, int Quantity, DiscountValue? Discount)> items, GatewayCost gatewayCost,
+        decimal minMarginPercent, IReadOnlyList<ValueTier> valueTiers)
     {
         var totalCost = items.Sum(i => i.Price.Cost * i.Quantity);
         var totalOriginalPrice = items.Sum(i => i.Price.NominalPrice * i.Quantity);
 
         var breakdown = Calculate(totalCost, totalOriginalPrice, gatewayCost, minMarginPercent, valueTiers);
+        var discounted = ApplyCartDiscounts(breakdown, items, totalOriginalPrice, gatewayCost, valueTiers);
 
-        return new CartPricingBreakdown(totalOriginalPrice, breakdown);
+        return new CartPricingBreakdown(totalOriginalPrice, discounted);
+    }
+
+    // How much a discounted product may take off a cart billed as one transaction is a business
+    // policy, not part of this calculation — CartDiscountAllocation owns it (ADR-0043). This method
+    // only applies the resulting reduction and rebuilds the plan on top of it.
+    private static PricingBreakdown ApplyCartDiscounts(
+        PricingBreakdown breakdown,
+        IReadOnlyList<(Price Price, int Quantity, DiscountValue? Discount)> items,
+        decimal totalOriginalPrice,
+        GatewayCost gatewayCost,
+        IReadOnlyList<ValueTier> valueTiers)
+    {
+        var discountedLines = items
+            .Where(i => i.Discount is not null)
+            .Select(i => new DiscountedCartLine(i.Price.NominalPrice, i.Quantity, i.Discount!))
+            .ToList();
+
+        if (discountedLines.Count == 0)
+        {
+            return breakdown;
+        }
+
+        var reduction = CartDiscountAllocation.TotalReductionFrom(
+            breakdown.Price, totalOriginalPrice, discountedLines);
+
+        var discountedPrice = Round(Math.Max(0, breakdown.Price - reduction));
+
+        // totalOriginalPrice stays pre-discount on purpose — same rule ApplyDiscount follows: a
+        // campaign must never revoke an installment count the cart's real value already unlocked.
+        var (maxInstallmentsWithoutInterest, maxInstallmentValue, plan) =
+            BuildInstallmentPlan(discountedPrice, totalOriginalPrice, gatewayCost, valueTiers);
+
+        return new PricingBreakdown(
+            discountedPrice, breakdown.CashPrice, maxInstallmentsWithoutInterest, maxInstallmentValue, plan);
     }
 
     // Composes Calculate with an optional campaign discount as a single step, so callers never

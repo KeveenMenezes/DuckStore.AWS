@@ -99,6 +99,7 @@ export class PricingLambdas extends Construct {
     });
     pricesTable.grantReadData(this.getBasketInstallmentPlan);
     gatewayCostsTable.grantReadData(this.getBasketInstallmentPlan);
+    productDiscountsTable.grantReadData(this.getBasketInstallmentPlan);
 
     // 2. pricing-create-campaign  (AppSync Invoke — Mutation.createCampaign)
     //    Fans out a TransactWriteItems across campaigns + product-discounts (ADR-0026 §6).
