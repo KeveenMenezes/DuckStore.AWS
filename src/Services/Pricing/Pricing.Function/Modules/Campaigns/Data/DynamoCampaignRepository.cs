@@ -158,8 +158,19 @@ public class DynamoCampaignRepository(IAmazonDynamoDB dynamoDb) : ICampaignRepos
             ["DiscountType"] = new(campaign.Discount.Type.ToString()),
             ["Value"] = new AttributeValue { N = campaign.Discount.Amount.ToString(CultureInfo.InvariantCulture) },
             ["StartsAt"] = new(campaign.StartsAt.ToString("o")),
-            ["EndsAt"] = new(campaign.EndsAt.ToString("o"))
+            ["EndsAt"] = new(campaign.EndsAt.ToString("o")),
+            // DynamoDB TTL attribute (ADR-0044). Expiry stays a read-time check for correctness
+            // (ADR-0026 §7 — no scheduler), but the delete TTL performs also lands on this table's
+            // stream, which is what tells CatalogView to drop back to the undiscounted price. TTL
+            // is best-effort and can lag hours past EndsAt; readers are already immune, only the
+            // denormalized catalog copy waits.
+            ["ExpiresAt"] = new AttributeValue { N = ToUnixSeconds(campaign.EndsAt).ToString(CultureInfo.InvariantCulture) }
         };
+
+    private static long ToUnixSeconds(DateTime value) =>
+        new DateTimeOffset(value.Kind == DateTimeKind.Unspecified
+            ? DateTime.SpecifyKind(value, DateTimeKind.Utc)
+            : value.ToUniversalTime()).ToUnixTimeSeconds();
 
     private static Campaign MapCampaign(Dictionary<string, AttributeValue> item) =>
         Campaign.Load(

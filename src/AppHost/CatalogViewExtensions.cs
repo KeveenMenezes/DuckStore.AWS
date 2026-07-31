@@ -49,9 +49,9 @@ public static class CatalogViewExtensions
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
         builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
-                "catalogview-price-sync-consumer",
+                "catalogview-pricing-sync-consumer",
                 lambdaHandler:
-                LambdaHandler("CatalogView.Function", "PriceSyncConsumer"))
+                LambdaHandler("CatalogView.Function", "PricingSyncConsumer"))
             .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment()

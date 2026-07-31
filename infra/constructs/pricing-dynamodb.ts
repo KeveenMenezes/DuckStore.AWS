@@ -33,11 +33,20 @@ export class PricingDynamoDB extends Construct {
 
     // Denormalized read projection, PK=ProductId — per-product discount lookup is a plain
     // GetItem (ADR-0026); expiry is checked at read time against StartsAt/EndsAt.
+    //
+    // Streams + TTL exist for one reason (ADR-0044): a campaign write never touches `prices`, so
+    // without them nothing wakes the CDC path and CatalogView's denormalized price stays at its
+    // pre-campaign value forever. KEYS_ONLY is deliberate — the publisher re-reads the committed
+    // discount rather than trusting the stream image. TTL on ExpiresAt (= the campaign's EndsAt)
+    // turns a natural expiry into a REMOVE record on that same stream, so an expired campaign
+    // rolls the catalog price back with no scheduler (ADR-0026 §7 rejected one).
     this.productDiscountsTable = new dynamodb.Table(this, 'ProductDiscountsTable', {
       tableName: 'product-discounts',
       partitionKey: { name: 'ProductId', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+      stream: dynamodb.StreamViewType.KEYS_ONLY,
+      timeToLiveAttribute: 'ExpiresAt',
     });
 
     // One item per provider, PK=Provider. No stream — a gateway-cost-only change never fans out

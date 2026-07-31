@@ -134,6 +134,28 @@
         "Handler": "bootstrap",
         "Runtime": "dotnet10"
       }
+    },
+    "PricingFunctionFunctionsProductDiscountStreamPublisherGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "Runtime": "dotnet10",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "bootstrap",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "ProductDiscountStreamPublisher"
+          }
+        }
+      }
     }
   }
 }

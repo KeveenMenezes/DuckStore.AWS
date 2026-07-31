@@ -3,6 +3,13 @@
 ## Status
 **Accepted** — July 2026
 
+**Amended — July 2026 by [ADR-0044](./0044-campaign-cdc-product-discounts-stream-and-ttl.md).** §1's
+allowance for `PriceChangedEvent` was conditional on Pricing having a single occurrence.
+ADR-0044 added `ProductDiscountChangedEvent`, which is exactly the trigger this ADR's own Future
+Constraints name, so Pricing now has its own `IPricingSyncStrategy`/`PricingSyncDispatcher` pair and
+`catalogview-price-sync-consumer` became `catalogview-pricing-sync-consumer`. §1 is retained below as
+the record of why the 1:1 handler was correct while it held; every other section stands unchanged.
+
 ---
 
 ## Context
@@ -56,6 +63,12 @@ per-event write boundary explicit and testable in isolation:
 CatalogView) is unaffected — this ADR only concerns the CDC **consumers**.
 
 ### 1. `PriceChangedEvent` stays a plain 1:1 handler
+
+> **No longer in force — superseded by [ADR-0044](./0044-campaign-cdc-product-discounts-stream-and-ttl.md) §4.**
+> Pricing gained a second occurrence (`ProductDiscountChangedEvent`), so the condition this section
+> rests on no longer holds and it now has a strategy pair like Catalog and Review. The reasoning
+> below is retained because it remains the correct test for *when* a group of one is justified — it
+> was not wrong, its premise expired.
 
 Pricing is the only producer with a single occurrence relevant to CatalogView. Consolidating a
 group of one buys nothing and would misrepresent this ADR's own rule: grouping is justified by

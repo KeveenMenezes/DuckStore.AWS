@@ -28,7 +28,7 @@ export interface CatalogViewLambdasProps {
 export class CatalogViewLambdas extends Construct {
   public readonly catalogSyncConsumer: lambda.Function;
   public readonly reviewSyncConsumer: lambda.Function;
-  public readonly priceSyncConsumer: lambda.Function;
+  public readonly pricingSyncConsumer: lambda.Function;
   public readonly productStreamPublisher: lambda.Function;
 
   constructor(scope: Construct, id: string, props: CatalogViewLambdasProps) {
@@ -173,13 +173,16 @@ export class CatalogViewLambdas extends Construct {
       'Routes ReviewUpdatedEvent (source=duckstore) to catalogview-review-sync-consumer',
     );
 
-    // 3. catalogview-price-sync-consumer
-    //    Trigger: PriceChangedEvent (Pricing's CDC stream publisher, ADR-0026/ADR-0028). Pricing
-    //    is the only producer with a single occurrence relevant to CatalogView, so this stays a
-    //    plain 1:1 consumer (ADR-0040 §1) — partial merge of price + payment-highlight fields,
-    //    naturally idempotent (absolute values).
-    this.priceSyncConsumer = new lambda.Function(this, 'PriceSyncConsumer', {
-      functionName: 'catalogview-price-sync-consumer',
+    // 3. catalogview-pricing-sync-consumer
+    //    Trigger: every Pricing-sourced occurrence — PriceChangedEvent (the merchant repriced,
+    //    ADR-0026/ADR-0028) and ProductDiscountChangedEvent (a campaign started, ended or expired,
+    //    ADR-0044). One rule per detail-type, both targeting this one grouped Lambda, dispatched by
+    //    IPricingSyncStrategy (ADR-0040 §4). It was a plain 1:1 consumer while Pricing had a single
+    //    occurrence; the second one is exactly the trigger ADR-0040's Future Constraints name for
+    //    giving a producer its own strategy/dispatcher pair. Both merges are partial and naturally
+    //    idempotent (absolute values).
+    this.pricingSyncConsumer = new lambda.Function(this, 'PricingSyncConsumer', {
+      functionName: 'catalogview-pricing-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
       architecture: DOTNET_ARCH,
       runtime: DOTNET_RUNTIME,
@@ -188,19 +191,27 @@ export class CatalogViewLambdas extends Construct {
       code: catalogViewCode,
       timeout: cdk.Duration.seconds(30),
       memorySize: DOTNET_MEMORY_MB,
-      description: 'Consumes PriceChangedEvent and merges price/payment fields into catalogview-products',
+      description:
+        'Consumes PriceChangedEvent/ProductDiscountChangedEvent and merges price/payment fields into catalogview-products',
       environment: {
-        ANNOTATIONS_HANDLER: 'PriceSyncConsumer',
+        ANNOTATIONS_HANDLER: 'PricingSyncConsumer',
         EventBridge__BusName: eventBus.eventBusName,
       },
     });
-    catalogViewProductsTable.grantReadWriteData(this.priceSyncConsumer);
+    catalogViewProductsTable.grantReadWriteData(this.pricingSyncConsumer);
     ruleFor(
-      'PriceSync',
-      this.priceSyncConsumer,
-      'catalogview-price-sync-consumer-rule',
+      'PriceChanged',
+      this.pricingSyncConsumer,
+      'catalogview-price-changed-rule',
       'PriceChangedEvent',
-      'Routes PriceChangedEvent (source=duckstore) to catalogview-price-sync-consumer',
+      'Routes PriceChangedEvent (source=duckstore) to catalogview-pricing-sync-consumer',
+    );
+    ruleFor(
+      'ProductDiscountChanged',
+      this.pricingSyncConsumer,
+      'catalogview-product-discount-changed-rule',
+      'ProductDiscountChangedEvent',
+      'Routes ProductDiscountChangedEvent (source=duckstore) to catalogview-pricing-sync-consumer',
     );
 
     // 4. catalogview-products-stream-publisher (ADR-0035)

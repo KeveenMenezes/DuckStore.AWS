@@ -30,6 +30,7 @@ export class PricingLambdas extends Construct {
   public readonly endCampaign: lambda.Function;
   public readonly productDeletedConsumer: lambda.Function;
   public readonly priceStreamPublisher: lambda.Function;
+  public readonly productDiscountStreamPublisher: lambda.Function;
 
   constructor(scope: Construct, id: string, props: PricingLambdasProps) {
     super(scope, id);
@@ -229,6 +230,49 @@ export class PricingLambdas extends Construct {
     eventBus.grantPutEventsTo(this.priceStreamPublisher);
     gatewayCostsTable.grantReadData(this.priceStreamPublisher);
     productDiscountsTable.grantReadData(this.priceStreamPublisher);
+
+    // 6. pricing-product-discounts-stream-publisher
+    //    Trigger: DynamoDB Streams on product-discounts (KEYS_ONLY). CDC: publishes
+    //    ProductDiscountChangedEvent whenever a campaign starts (INSERT), is ended (REMOVE) or
+    //    expires via TTL (also REMOVE), carrying the recomputed payment highlights so CatalogView
+    //    refreshes the catalog price. Without this trigger a campaign never reaches the search
+    //    document at all, because campaigns never write to `prices` (ADR-0044).
+    this.productDiscountStreamPublisher = new lambda.Function(this, 'ProductDiscountStreamPublisher', {
+      functionName: 'pricing-product-discounts-stream-publisher',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: pricingCode,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: DOTNET_MEMORY_MB,
+      description:
+        'CDC: reads DynamoDB Streams on product-discounts and publishes ProductDiscountChangedEvent when a campaign starts, ends or expires',
+      environment: {
+        ANNOTATIONS_HANDLER: 'ProductDiscountStreamPublisher',
+        EventBridge__BusName: eventBus.eventBusName,
+        Installments__ActiveProvider: 'Simulated',
+        Installments__MinMarginPercent: '5',
+      },
+    });
+
+    this.productDiscountStreamPublisher.addEventSource(
+      new lambdaEventSources.DynamoEventSource(productDiscountsTable, {
+        startingPosition: lambda.StartingPosition.TRIM_HORIZON,
+        batchSize: 10,
+        bisectBatchOnError: true,
+        retryAttempts: 3,
+        onFailure: new lambdaEventSources.SqsDlq(dlq.queue),
+      }),
+    );
+
+    eventBus.grantPutEventsTo(this.productDiscountStreamPublisher);
+    // Reads the product's cost/nominal price to recompute, the gateway's fee table, and the
+    // discount row itself (absent on a REMOVE, which is what yields the undiscounted figures).
+    pricesTable.grantReadData(this.productDiscountStreamPublisher);
+    gatewayCostsTable.grantReadData(this.productDiscountStreamPublisher);
+    productDiscountsTable.grantReadData(this.productDiscountStreamPublisher);
 
     // Note: nominalPriceFor/setNominalPrice/setGatewayCost are AppSync direct DynamoDB
     // resolvers (ADR-0009), not Lambdas — see infra/constructs/appsync-api.ts.
