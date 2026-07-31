@@ -7,6 +7,7 @@ namespace Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
 public class GetBasketInstallmentPlanHandler(
     IPriceRepository priceRepository,
     IGatewayCostRepository gatewayCostRepository,
+    ICampaignRepository campaignRepository,
     InstallmentOptions installmentOptions)
     : IQueryHandler<GetBasketInstallmentPlanQuery, GetBasketInstallmentPlanResult>
 {
@@ -17,12 +18,14 @@ public class GetBasketInstallmentPlanHandler(
         var pricesByProductId = (await priceRepository.GetByProductIdsAsync(productIds, cancellationToken))
             .ToDictionary(price => price.Id.Value);
 
-        var prices = query.Items.Select(item =>
+        var discountsByProductId = await GetActiveDiscountsAsync(productIds, cancellationToken);
+
+        var items = query.Items.Select(item =>
         {
             var price = pricesByProductId.TryGetValue(item.ProductId, out var found)
                 ? found
                 : throw new PriceNotFoundException(item.ProductId);
-            return (Price: price, item.Quantity);
+            return (Price: price, item.Quantity, Discount: discountsByProductId.GetValueOrDefault(item.ProductId));
         }).ToList();
 
         var gatewayCost = await gatewayCostRepository.GetByProviderAsync(
@@ -30,7 +33,7 @@ public class GetBasketInstallmentPlanHandler(
             ?? throw new GatewayCostNotFoundException(installmentOptions.ActiveProvider);
 
         var cartPlan = InstallmentCalculator.CalculateForCart(
-            prices, gatewayCost, installmentOptions.MinMarginPercent, installmentOptions.ValueTiers);
+            items, gatewayCost, installmentOptions.MinMarginPercent, installmentOptions.ValueTiers);
 
         return new GetBasketInstallmentPlanResult(
             cartPlan.TotalOriginalPrice,
@@ -40,5 +43,24 @@ public class GetBasketInstallmentPlanHandler(
             cartPlan.Breakdown.InstallmentPlan
                 .Select(e => new InstallmentPlanEntryDto(e.Count, e.Value, e.TotalValue, e.HasInterest))
                 .ToList());
+    }
+
+    // Same per-product lookup GetInstallmentPlan does; there is no batch discount query, so the
+    // reads for a cart run in parallel instead of one after another. Deduplicated because the same
+    // product may appear on more than one basket line.
+    private async Task<Dictionary<Guid, DiscountValue>> GetActiveDiscountsAsync(
+        IEnumerable<Guid> productIds, CancellationToken cancellationToken)
+    {
+        var lookups = await Task.WhenAll(productIds.Distinct().Select(async productId =>
+        (
+            ProductId: productId,
+            Discount: await campaignRepository.GetActiveDiscountForProductAsync(productId, cancellationToken)
+        )));
+
+        return lookups
+            .Where(lookup => lookup.Discount is not null)
+            .ToDictionary(
+                lookup => lookup.ProductId,
+                lookup => DiscountValue.Of(lookup.Discount!.Type, lookup.Discount.Amount));
     }
 }
