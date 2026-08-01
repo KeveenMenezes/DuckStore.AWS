@@ -76,6 +76,9 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
         if (payment.DeclineReason is not null)
             item["DeclineReason"] = new AttributeValue(payment.DeclineReason);
 
+        if (payment.DiscountId is not null)
+            item["DiscountId"] = new AttributeValue(payment.DiscountId);
+
         return item;
     }
 
@@ -98,7 +101,8 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
             Enum.Parse<PaymentStatus>(item["Status"].S),
             item.TryGetValue("AuthorizationCode", out var authCode) ? authCode.S : null,
             item.TryGetValue("DeclineReason", out var declineReason) ? declineReason.S : null,
-            DateTime.Parse(item["CreatedAt"].S, null, DateTimeStyles.RoundtripKind));
+            DateTime.Parse(item["CreatedAt"].S, null, DateTimeStyles.RoundtripKind),
+            discountId: item.TryGetValue("DiscountId", out var discountId) ? discountId.S : null);
     }
 
     private static string OrderGsiPk(Guid orderId) => $"ORDER#{orderId}";

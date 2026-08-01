@@ -54,4 +54,18 @@ public class PaymentRequestedRuleTests
         Assert.Equal(payment.Id.Value, payload.PaymentId);
         Assert.Equal(payment.OrderId, payload.OrderId);
     }
+
+    [Fact]
+    public async Task BuildAsync_ShouldCarryTheDiscountId_WhenTheRehydratedPaymentHasOne()
+    {
+        var payment = PaymentDataTests.CreatePendingPayment(discountId: "discount-1");
+        _paymentRepository
+            .Setup(repo => repo.GetByIdAsync(payment.Id.Value, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(payment);
+
+        var instruction = await _rule.BuildAsync(Context("INSERT", id: payment.Id.Value));
+
+        var payload = Assert.IsType<PaymentRequestedEvent>(instruction.Payload);
+        Assert.Equal("discount-1", payload.DiscountId);
+    }
 }

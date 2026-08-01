@@ -28,7 +28,7 @@ Code is organized by feature slice, not by layer:
 features/
   auth/          components, context, hooks, services, types
   cart/          components, context, hooks, types
-  challenges/    components, context, data, hooks, services, types
+  challenges/    components, context, hooks, services, types
   checkout/      components, hooks, services, types
   products/      components, hooks, services, types
   reviews/       components, services, types
@@ -83,7 +83,7 @@ All state is React Context — no external store:
 - `ThemeProvider` → `AuthProvider` → `CartProvider` → `ScoreProvider` (nesting order in `shared/layout/providers.tsx`)
 - **Auth**: hybrid. `AuthProvider` first checks for a real Cognito session via `GET /api/auth/me`; if that returns nothing it falls back to the localStorage-only simulation (`features/auth/services/auth.service.ts`). `loginWithCognito()` kicks off the PKCE flow; `login`/`register` are the local-simulation path.
 - **Cart**: React state, hydrated on mount from the Basket Lambda (`GET_BASKET` GraphQL query — no identity argument; the BFF injects `ownerId`) and kept in sync continuously — every change is pushed back via a 300ms-debounced `syncCartToBasket` call (`features/cart/services/basket.service.ts`), not just at checkout. The client never computes or sends an identity (the old `localStorage` `guest-<uuid>` is gone — see ADR-0016); the httpOnly `guest_id` cookie plus BFF injection handle it. `features/checkout/services/checkout.service.ts` relies on the sync and no longer calls `storeBasket` itself before `checkoutBasket`.
-- **Score**: local-only state for the code challenges feature, no persistence/sync.
+- **Score**: hydrated from `myChallengeProgress` (ADR-0045 §10). `/challenges` fetches it server-side (SSR — see the route table) and seeds `ScoreProvider` via `hydrate()`; every other page (e.g. the header's score badge) falls back to `ScoreProvider`'s own client-side fetch on mount, same pattern as `CartProvider`. Signed-out visitors can view and try every challenge but `submitChallengeAnswer`/`revealChallengeHint` are Cognito-only, so scoring prompts a sign-in instead of calling the mutation.
 
 Each feature exposes a custom hook (`use-auth.ts`, `use-cart.ts`, etc.) that wraps `useContext` — always use the hook, never `useContext` directly.
 
@@ -100,7 +100,7 @@ Per the `rendering-strategy` skill: SSR for personalized data, SSG for content i
 | `/` | `app/page.tsx` | ISR (`revalidate=false`) | Fetches products/categories tagged `products` (generic, home-wide). Invalidated by the `revalidator` Lambda (`revalidator/index.mjs`, wired in `sst.config.ts`), which reacts to `ProductCreatedEvent`/`ProductUpdatedEvent`/`ProductDeletedEvent` off EventBridge (ADR-0031) and calls the SPA's own `POST /api/webhooks/revalidate` (HMAC-signed, server-to-server only) to trigger `revalidateTag()`. `ProductCatalog` (`"use client"`) only does client-side category filtering on the props it receives — no fetch of its own. |
 | `/products/[id]` | `app/products/[id]/page.tsx` | ISR (`revalidate=false`) | Tags `products:{id}` (product data/rating) and `reviews:{id}` (that product's reviews) — granular per-product, not the home page's generic `products` tag, so one product changing doesn't revalidate every other product's page. Both tags are invalidated exclusively by the `revalidator` Lambda reacting to `ProductCreatedEvent`/`ProductUpdatedEvent`/`ProductDeletedEvent`/`ReviewCreatedEvent`/`ReviewUpdatedEvent` off EventBridge and calling `POST /api/webhooks/revalidate` — there is deliberately no client-side trigger from `review-form.tsx` (see ADR-0020: a client-triggered call only covers reviews submitted through that one form, a silent blind spot for reviews created any other way). The reviewer sees their own new review instantly regardless, via local React state in `reviews-section.tsx`. |
 | `/checkout` | `app/checkout/page.tsx` | SSG (`revalidate=false`) | Server shell only; `CheckoutView` (`"use client"`) hydrates cart/auth client-side. |
-| `/challenges` | `app/challenges/page.tsx` | SSG (`revalidate=false`) | Challenge list is static data compiled into the bundle (`getChallenges()`, no runtime fetch); per-user score hydrates client-side via `ScoreProvider`. |
+| `/challenges` | `app/challenges/page.tsx` | SSR (`dynamic=force-dynamic`) | Progress is personalized (ADR-0045 §10), so this can't be pre-rendered. The Server Component fetches the public challenge list plus (if signed in) `myChallengeProgress` via `getSession()`, and passes both to `ChallengesView`, which seeds `ScoreProvider`. Signed-out visitors see and can try every challenge but are prompted to sign in before scoring. |
 | `/my-profile` | `app/my-profile/page.tsx` | SSG (`revalidate=false`) | Server shell only; `ProfileView` (`"use client"`) hydrates auth/user data client-side. |
 | `/my-orders` | `app/my-orders/page.tsx` | SSG (`revalidate=false`) | Server shell only; `OrdersView` (`"use client"`) hydrates auth/order data client-side. |
 | `/cart` | `app/cart/page.tsx` | CSR | Whole page is `"use client"` — reads `CartProvider` state directly, no server fetch. |

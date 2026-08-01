@@ -1,20 +1,36 @@
 "use client"
 
 import Image from "next/image"
-import { MessageCircle, AlertTriangle } from "lucide-react"
+import { MessageCircle, AlertTriangle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { HINT_PENALTY } from "@/features/challenges/constants"
 
 interface DuckMentorProps {
-  hints: string[]
+  /** How many hints exist in total for this challenge (never the text — ADR-0045 §2). */
+  hintCount: number
+  /** Hint text revealed so far, in order — grows one at a time via revealChallengeHint. */
+  revealedHints: string[]
   currentHints: number
   onRequestHint: () => void
+  isRequesting: boolean
+  error: string | null
   penalty: number
+  /** Signed-out visitors can view challenges but hints are Cognito-only (ADR-0045 §7). */
+  disabled: boolean
 }
 
-export function DuckMentor({ hints, currentHints, onRequestHint, penalty }: DuckMentorProps) {
-  const hasMoreHints = currentHints < hints.length
+export function DuckMentor({
+  hintCount,
+  revealedHints,
+  currentHints,
+  onRequestHint,
+  isRequesting,
+  error,
+  penalty,
+  disabled,
+}: DuckMentorProps) {
+  const hasMoreHints = currentHints < hintCount
 
   return (
     <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
@@ -41,7 +57,7 @@ export function DuckMentor({ hints, currentHints, onRequestHint, penalty }: Duck
             </p>
           ) : (
             <div className="mt-2 flex flex-col gap-2">
-              {hints.slice(0, currentHints).map((hint, index) => (
+              {revealedHints.map((hint, index) => (
                 <div
                   key={index}
                   className={cn(
@@ -60,15 +76,22 @@ export function DuckMentor({ hints, currentHints, onRequestHint, penalty }: Duck
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {hasMoreHints ? (
+            {disabled ? (
+              <span className="text-xs text-muted-foreground">Sign in to ask the duck for hints.</span>
+            ) : hasMoreHints ? (
               <Button
                 variant="outline"
                 size="sm"
                 className="gap-1.5 border-primary/30 text-primary hover:bg-primary/10"
                 onClick={onRequestHint}
+                disabled={isRequesting}
               >
-                <MessageCircle className="h-3.5 w-3.5" />
-                Ask the duck for a hint ({currentHints}/{hints.length})
+                {isRequesting ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <MessageCircle className="h-3.5 w-3.5" />
+                )}
+                Ask the duck for a hint ({currentHints}/{hintCount})
               </Button>
             ) : currentHints > 0 ? (
               <span className="text-xs text-muted-foreground">
@@ -82,6 +105,7 @@ export function DuckMentor({ hints, currentHints, onRequestHint, penalty }: Duck
               </span>
             )}
           </div>
+          {error && <p className="mt-2 text-xs text-destructive">{error}</p>}
         </div>
       </div>
     </div>

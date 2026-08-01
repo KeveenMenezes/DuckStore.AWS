@@ -10,7 +10,13 @@ public class Payment : Aggregate<PaymentId>
     public string? AuthorizationCode { get; private set; }
     public string? DeclineReason { get; private set; }
 
-    public static Payment Create(PaymentId id, Guid orderId, Guid customerId, decimal amount, CardDetails card)
+    // Opaque pass-through from BasketCheckoutEvent, carried into PaymentRequestedEvent so
+    // PaymentGateway can forward it to PaymentAuthorizedEvent (ADR-0046 §6) — Payment never
+    // validates or interprets it. Null when no coupon was applied at checkout.
+    public string? DiscountId { get; private set; }
+
+    public static Payment Create(
+        PaymentId id, Guid orderId, Guid customerId, decimal amount, CardDetails card, string? discountId = null)
     {
         return new Payment
         {
@@ -20,6 +26,7 @@ public class Payment : Aggregate<PaymentId>
             Amount = amount,
             Card = card,
             Status = PaymentStatus.Pending,
+            DiscountId = discountId,
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -64,7 +71,8 @@ public class Payment : Aggregate<PaymentId>
         string? authorizationCode,
         string? declineReason,
         DateTime? createdAt = null,
-        DateTime? lastModified = null)
+        DateTime? lastModified = null,
+        string? discountId = null)
     {
         return new Payment
         {
@@ -77,7 +85,8 @@ public class Payment : Aggregate<PaymentId>
             AuthorizationCode = authorizationCode,
             DeclineReason = declineReason,
             CreatedAt = createdAt,
-            LastModified = lastModified
+            LastModified = lastModified,
+            DiscountId = discountId
         };
     }
 }

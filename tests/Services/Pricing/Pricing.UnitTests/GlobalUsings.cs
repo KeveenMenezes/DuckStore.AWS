@@ -2,6 +2,9 @@
 global using Pricing.Function.Modules.Campaigns.Domain.Entities;
 global using Pricing.Function.Modules.Campaigns.Domain.Enums;
 global using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
+global using Pricing.Function.Modules.CustomerDiscounts.Data;
+global using Pricing.Function.Modules.CustomerDiscounts.Domain.Entities;
+global using Pricing.Function.Modules.CustomerDiscounts.Domain.Enums;
 global using Pricing.Function.Modules.Prices.Data;
 global using Pricing.Function.Modules.Prices.Domain.Entities;
 global using Pricing.Function.Modules.Prices.Domain.ValueObjects;

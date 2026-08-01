@@ -1,6 +1,9 @@
 import type { Difficulty, Language } from "@/features/challenges/types/challenge.types"
 
-/** Point penalty applied per hint revealed on a challenge. */
+// Display-only estimate for the "potential points" shown before a submission — mirrors
+// Question.HintPenalty in Challenges.Function, but the real penalty is whatever the server
+// actually applies and returns in SubmitAnswerResult.pointsEarned (ADR-0045 §10). Never used to
+// compute the score itself.
 export const HINT_PENALTY = 25
 
 /** All supported languages, in display order. */

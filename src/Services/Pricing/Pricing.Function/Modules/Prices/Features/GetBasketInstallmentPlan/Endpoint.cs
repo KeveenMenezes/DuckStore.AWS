@@ -4,7 +4,8 @@ namespace Pricing.Function;
 
 public record BasketInstallmentItemRequest(Guid ProductId, int Quantity);
 
-public record GetBasketInstallmentPlanRequest(IReadOnlyList<BasketInstallmentItemRequest> Items);
+public record GetBasketInstallmentPlanRequest(
+    IReadOnlyList<BasketInstallmentItemRequest> Items, string? OwnerId = null, string? DiscountId = null);
 
 public record BasketInstallmentPlanEntryResponse(int Count, decimal Value, decimal TotalValue, bool HasInterest);
 
@@ -25,7 +26,9 @@ public partial class Functions
         [FromServices] ISender sender)
     {
         var query = new GetBasketInstallmentPlanQuery(
-            [.. request.Items.Select(i => new BasketInstallmentItem(i.ProductId, i.Quantity))]);
+            [.. request.Items.Select(i => new BasketInstallmentItem(i.ProductId, i.Quantity))],
+            request.OwnerId,
+            request.DiscountId);
         var result = await sender.Send(query, CancellationToken.None);
         return new GetBasketInstallmentPlanResponse(
             result.TotalOriginalPrice,

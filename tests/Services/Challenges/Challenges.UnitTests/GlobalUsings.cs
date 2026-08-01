@@ -1,0 +1,9 @@
+﻿global using Challenges.Function.Modules.Progress.Data;
+global using Challenges.Function.Modules.Progress.Domain.Entities;
+global using Challenges.Function.Modules.Progress.Domain.ValueObjects;
+global using Challenges.Function.Modules.Questions.Data;
+global using Challenges.Function.Modules.Questions.Domain;
+global using Challenges.Function.Modules.Questions.Domain.Entities;
+global using Challenges.Function.Modules.Questions.Domain.Enums;
+global using Challenges.Function.Modules.Questions.Domain.ValueObjects;
+global using Challenges.Function.Shared.Exceptions;

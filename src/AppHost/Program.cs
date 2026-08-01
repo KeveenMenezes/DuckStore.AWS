@@ -2,6 +2,7 @@
 using AppHost.Basket;
 using AppHost.Catalog;
 using AppHost.CatalogView;
+using AppHost.Challenges;
 using AppHost.Extensions;
 using AppHost.Observability;
 using AppHost.Ordering;
@@ -43,6 +44,8 @@ var reviewSeeder = builder.AddReviewServices(dynamoDb);
 var catalogSeeder = builder.AddCatalogLambdas(dynamoDb);
 
 builder.AddCatalogViewLambdas(dynamoDb, catalogSeeder, reviewSeeder, pricingSeeder);
+
+builder.AddChallengesServices(dynamoDb);
 
 // Apps
 builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")

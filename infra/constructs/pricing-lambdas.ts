@@ -13,6 +13,7 @@ import {
   DOTNET_RUNTIME,
   dotnetLambdaCode,
 } from './dotnet-lambda-code';
+import { REWARD_CURRENCY_PER_UNIT, REWARD_EXPIRY_DAYS, REWARD_POINTS_PER_UNIT } from './reward-config';
 
 
 export interface PricingLambdasProps {
@@ -21,6 +22,7 @@ export interface PricingLambdasProps {
   readonly productDiscountsTable: dynamodb.Table;
   readonly gatewayCostsTable: dynamodb.Table;
   readonly processedEventsTable: dynamodb.Table;
+  readonly customerDiscountsTable: dynamodb.Table;
 }
 
 export class PricingLambdas extends Construct {
@@ -31,11 +33,16 @@ export class PricingLambdas extends Construct {
   public readonly productDeletedConsumer: lambda.Function;
   public readonly priceStreamPublisher: lambda.Function;
   public readonly productDiscountStreamPublisher: lambda.Function;
+  public readonly pointsRedeemedConsumer: lambda.Function;
+  public readonly paymentAuthorizedConsumer: lambda.Function;
 
   constructor(scope: Construct, id: string, props: PricingLambdasProps) {
     super(scope, id);
 
-    const { pricesTable, campaignsTable, productDiscountsTable, gatewayCostsTable, processedEventsTable } = props;
+    const {
+      pricesTable, campaignsTable, productDiscountsTable, gatewayCostsTable, processedEventsTable,
+      customerDiscountsTable,
+    } = props;
 
     // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
@@ -101,6 +108,9 @@ export class PricingLambdas extends Construct {
     pricesTable.grantReadData(this.getBasketInstallmentPlan);
     gatewayCostsTable.grantReadData(this.getBasketInstallmentPlan);
     productDiscountsTable.grantReadData(this.getBasketInstallmentPlan);
+    // Read-only: the coupon is validated and priced here, but burned by
+    // pricing-payment-authorized-consumer alone (ADR-0046 §5/§6).
+    customerDiscountsTable.grantReadData(this.getBasketInstallmentPlan);
 
     // 2. pricing-create-campaign  (AppSync Invoke — Mutation.createCampaign)
     //    Fans out a TransactWriteItems across campaigns + product-discounts (ADR-0026 §6).
@@ -185,6 +195,98 @@ export class PricingLambdas extends Construct {
     });
     productDeletedRule.addTarget(
       new targets.LambdaFunction(this.productDeletedConsumer, {
+        deadLetterQueue: dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
+    );
+
+    // 4b. pricing-points-redeemed-consumer
+    //    Trigger: EventBridge rule (PointsRedeemedEvent, source=duckstore). Mints a
+    //    customer-discounts row — Amount is computed here from Rewards config and nowhere else
+    //    (ADR-0046 §1, §4). Idempotent via pricing-processed-events, same shape as
+    //    pricing-product-deleted-consumer.
+    this.pointsRedeemedConsumer = new lambda.Function(this, 'PointsRedeemedConsumer', {
+      functionName: 'pricing-points-redeemed-consumer',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: pricingCode,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: DOTNET_MEMORY_MB,
+      description: 'Consumes PointsRedeemedEvent and mints a customer-discounts row',
+      environment: {
+        ANNOTATIONS_HANDLER: 'PointsRedeemedConsumer',
+        Rewards__PointsPerUnit: REWARD_POINTS_PER_UNIT.toString(),
+        Rewards__CurrencyPerUnit: REWARD_CURRENCY_PER_UNIT.toString(),
+        Rewards__ExpiryDays: REWARD_EXPIRY_DAYS.toString(),
+      },
+    });
+    customerDiscountsTable.grantWriteData(this.pointsRedeemedConsumer);
+    processedEventsTable.grantWriteData(this.pointsRedeemedConsumer);
+
+    const pointsRedeemedRule = new events.Rule(this, 'PointsRedeemedRule', {
+      eventBus,
+      ruleName: 'pricing-points-redeemed-consumer-rule',
+      description: 'Routes PointsRedeemedEvent (source=duckstore) to pricing-points-redeemed-consumer',
+      eventPattern: {
+        source: ['duckstore'],
+        detailType: ['PointsRedeemedEvent'],
+      },
+    });
+    this.pointsRedeemedConsumer.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(dlq.queue),
+      retryAttempts: 2,
+    });
+    pointsRedeemedRule.addTarget(
+      new targets.LambdaFunction(this.pointsRedeemedConsumer, {
+        deadLetterQueue: dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
+    );
+
+    // 4c. pricing-payment-authorized-consumer
+    //    Trigger: EventBridge rule (PaymentAuthorizedEvent, source=duckstore — the same event
+    //    ordering-payment-authorized-consumer reacts to; distinct functionName so the two rules
+    //    don't collide). Burns (Issued -> Consumed) the customer discount used at checkout, if any
+    //    (ADR-0046 §6). Nothing subscribes to PaymentDeclinedEvent — a decline leaves the discount
+    //    Issued and reusable. Idempotent via pricing-processed-events; the shared idempotent
+    //    consumer's ConditionalCheckFailed catch-all also covers the double-spend case as a silent
+    //    no-op.
+    this.paymentAuthorizedConsumer = new lambda.Function(this, 'PaymentAuthorizedConsumer', {
+      functionName: 'pricing-payment-authorized-consumer',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: pricingCode,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: DOTNET_MEMORY_MB,
+      description: 'Burns the customer discount used at checkout when its payment is authorized',
+      environment: { ANNOTATIONS_HANDLER: 'PaymentAuthorizedConsumer' },
+    });
+    customerDiscountsTable.grantWriteData(this.paymentAuthorizedConsumer);
+    processedEventsTable.grantWriteData(this.paymentAuthorizedConsumer);
+
+    const paymentAuthorizedRule = new events.Rule(this, 'PricingPaymentAuthorizedRule', {
+      eventBus,
+      ruleName: 'pricing-payment-authorized-consumer-rule',
+      description: 'Routes PaymentAuthorizedEvent (source=duckstore) to pricing-payment-authorized-consumer',
+      eventPattern: {
+        source: ['duckstore'],
+        detailType: ['PaymentAuthorizedEvent'],
+      },
+    });
+    this.paymentAuthorizedConsumer.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(dlq.queue),
+      retryAttempts: 2,
+    });
+    paymentAuthorizedRule.addTarget(
+      new targets.LambdaFunction(this.paymentAuthorizedConsumer, {
         deadLetterQueue: dlq.queue,
         retryAttempts: 3,
         maxEventAge: cdk.Duration.hours(2),
