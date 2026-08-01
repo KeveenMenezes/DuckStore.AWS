@@ -48,7 +48,9 @@ export function response(ctx) {
     byLanguage,
     attempts: attemptItems.map(item => ({
       questionId: item.SK.slice(8),
-      isCorrect: Boolean(item.IsCorrect),
+      // Boolean(...) isn't in the AppSync JS runtime's supported primitives (no Boolean section
+      // in its docs, unlike Object/String/Number/Math/Array) — strict equality is the safe coercion.
+      isCorrect: item.IsCorrect === true,
       selectedOption: item.SelectedOption ?? 0,
       hintsRevealed: item.HintsRevealed ?? 0,
       pointsEarned: item.PointsEarned ?? 0,
