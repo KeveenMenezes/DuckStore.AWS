@@ -19,16 +19,22 @@ export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
 
   const items = ctx.result.items ?? []
-  const profile = items.find(item => item.SK === 'PROFILE')
+  // Array.prototype.find isn't in the AppSync JS runtime's allow-listed array methods (only
+  // map/filter/forEach/reduce accept a function argument, per Query.products.js) — filter()[0]
+  // is the supported equivalent.
+  const profileItems = items.filter(item => item.SK === 'PROFILE')
+  const profile = profileItems.length > 0 ? profileItems[0] : null
   // An ATTEMPT row with no IsCorrect yet is a hint-only placeholder (a hint was revealed before
   // the question was answered, ADR-0045 §6) — not a completed attempt.
   const attemptItems = items.filter(item => item.SK && item.SK.startsWith('ATTEMPT#') && item.IsCorrect !== undefined)
 
   const byLanguage = {}
   if (profile) {
-    for (const key of Object.keys(profile)) {
+    // No for...of here — the AppSync JS runtime rejects classic loop constructs the same way it
+    // rejects for(;;)/while; Object.keys().forEach() stays within the allow-listed array methods.
+    Object.keys(profile).forEach(key => {
       if (key.startsWith('Lang#')) byLanguage[key.slice(5)] = profile[key]
-    }
+    })
   }
 
   return {
