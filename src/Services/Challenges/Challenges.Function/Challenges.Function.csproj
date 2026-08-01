@@ -1,0 +1,65 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <!--
+      Executable, not Library: the function ships as a ZIP on the provided.al2023 custom
+      runtime (ADR-0042), so Amazon.Lambda.Annotations generates a Program.Main that
+      dispatches on the ANNOTATIONS_HANDLER environment variable. provided.al2023 executes
+      a file literally named `bootstrap`, which is what AssemblyName produces.
+    -->
+    <OutputType>Exe</OutputType>
+    <AssemblyName>bootstrap</AssemblyName>
+    <RootNamespace>Challenges.Function</RootNamespace>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
+    <AWSProjectType>Lambda</AWSProjectType>
+    <!-- This property makes the build directory similar to a publish directory and helps the AWS .NET Lambda Mock Test Tool find project dependencies. -->
+    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <!--
+      PublishAot/RuntimeIdentifier are NOT set here: that would make every *.UnitTests project
+      referencing this one fail with NETSDK1151. They are passed by the publish command instead
+      (infra/constructs/dotnet-lambda-code.ts), which is the only place a deployable artifact is
+      produced. IsAotCompatible surfaces the trim/AOT analyzers at ordinary build time, so an
+      incompatibility is a warning here rather than a runtime failure on Lambda.
+    -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <!--
+      Speed, not Size: these are latency-sensitive Lambdas (ADR-0042 §8).
+    -->
+    <OptimizationPreference>Speed</OptimizationPreference>
+    <!-- Every reflection-driven dependency is gone (Mediator source-generates dispatch,
+         validators are hand-written, JSON is source-generated), so trimming is safe. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Amazon.Lambda.Core" />
+    <PackageReference Include="Amazon.Lambda.DynamoDBEvents" />
+    <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" />
+    <PackageReference Include="Amazon.Lambda.Annotations" />
+    <!-- Hosts the generated Main's bootstrap loop against the custom runtime API. -->
+    <PackageReference Include="Amazon.Lambda.RuntimeSupport" />
+    <!--
+      Declared explicitly because the package no longer rides on the managed runtime's
+      shared framework: dropping FrameworkReference Microsoft.AspNetCore.App is what keeps a
+      self-contained ZIP from carrying all of ASP.NET Core (ADR-0042 §3).
+    -->
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <!-- Source-generated dispatch; the generator must run in every project that declares
+         handlers, which is why SourceGenerator is referenced per service (ADR-0042 §7). -->
+    <PackageReference Include="Mediator.Abstractions" />
+    <PackageReference Include="Mediator.SourceGenerator">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="AWSSDK.DynamoDBv2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.ServiceDefaults.Lambda\BuildingBlocks.ServiceDefaults.Lambda.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Core\BuildingBlocks.Core.csproj" />
+    <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.Messaging\BuildingBlocks.Messaging.csproj" />
+  </ItemGroup>
+</Project>

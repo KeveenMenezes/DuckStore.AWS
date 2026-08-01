@@ -118,6 +118,25 @@ async function invokeLambda<T>(functionName: string, payload: unknown): Promise<
 // converted here. Keep in sync with Ordering.Function.Modules.Orders.Domain.Enums.PaymentMethod.
 const PAYMENT_METHOD_TO_INT: Record<string, number> = { Debit: 1, Credit: 2, Cash: 3 }
 
+// Challenges.Function stores Difficulty as the C# enum's PascalCase name (Question.cs
+// .ToString()); the GraphQL enum is uppercase (ADR-0045 §2). Keep in sync with
+// Challenges.Function.Modules.Questions.Domain.Enums.Difficulty.
+const DIFFICULTY_TO_STORED: Record<string, string> = { EASY: 'Easy', MEDIUM: 'Medium', HARD: 'Hard' }
+
+function mapChallenge(item: Record<string, unknown>) {
+  return {
+    id: item.QuestionId as string,
+    title: item.Title as string,
+    description: item.Description as string,
+    code: item.Code as string,
+    options: Array.isArray(item.Options) ? (item.Options as string[]) : [],
+    difficulty: ((item.Difficulty as string) ?? '').toUpperCase(),
+    language: item.Language as string,
+    points: Number(item.Points ?? 0),
+    hintCount: Number(item.HintCount ?? 0),
+  }
+}
+
 function mapOrder(item: Record<string, unknown>) {
   const addr = (item.ShippingAddress ?? {}) as Record<string, string>
   const pay = (item.Payment ?? {}) as Record<string, unknown>
@@ -474,10 +493,12 @@ const resolvers = {
     },
 
     // Sums cost/originalPrice across every cart item, then runs the whole cart through the same
-    // cost-floor calculation as a single checkout transaction (ADR-0009).
+    // cost-floor calculation as a single checkout transaction (ADR-0009). discountId is optional
+    // and Cognito-only (ADR-0046 §5) — same owner used for basket/challenges stands in locally.
     async basketInstallmentPlan(
       _: unknown,
-      { items }: { items: Array<{ productId: string; quantity: number }> },
+      { items, discountId }: { items: Array<{ productId: string; quantity: number }>; discountId?: string | null },
+      context: LocalContext,
     ) {
       const body = await invokeLambda<{
         TotalOriginalPrice: number
@@ -487,6 +508,7 @@ const resolvers = {
         InstallmentPlan: { Count: number; Value: number; TotalValue: number; HasInterest: boolean }[]
       }>('pricing-get-basket-installment-plan', {
         Items: items.map(i => ({ ProductId: i.productId, Quantity: i.quantity })),
+        ...(discountId ? { OwnerId: context.owner.ownerId, DiscountId: discountId } : {}),
       })
       return {
         totalOriginalPrice: body.TotalOriginalPrice,
@@ -572,6 +594,148 @@ const resolvers = {
         country: (item.Country as string) ?? null,
       }
     },
+
+    // Mirrors the AppSync direct resolver (ADR-0045 §2/§8): GSI1 is sparse (only the PUBLIC item
+    // carries GSI1PK/GSI1SK), so the ANSWER item can never leak through either path. Both branches
+    // go through that index — Scanning it instead of the base table keeps `limit` honest, since
+    // DynamoDB caps items read before filtering and each question is two base-table items.
+    async challenges(
+      _: unknown,
+      { language, difficulty, pageSize, nextToken }:
+        { language?: string; difficulty?: string; pageSize?: number; nextToken?: string },
+    ) {
+      const limit = pageSize ?? 20
+      const storedDifficulty = difficulty ? DIFFICULTY_TO_STORED[difficulty] : undefined
+
+      const result = language
+        ? await dynamoDb.send(
+            new QueryCommand({
+              TableName: 'challenges',
+              IndexName: 'GSI1',
+              KeyConditionExpression: storedDifficulty
+                ? 'GSI1PK = :pk AND begins_with(GSI1SK, :difficultyPrefix)'
+                : 'GSI1PK = :pk',
+              ExpressionAttributeValues: storedDifficulty
+                ? { ':pk': { S: language }, ':difficultyPrefix': { S: `${storedDifficulty}#` } }
+                : { ':pk': { S: language } },
+              Limit: limit,
+              ...(nextToken
+                ? { ExclusiveStartKey: JSON.parse(Buffer.from(nextToken, 'base64').toString()) }
+                : {}),
+            }),
+          )
+        : await dynamoDb.send(
+            new ScanCommand({
+              TableName: 'challenges',
+              IndexName: 'GSI1',
+              ...(storedDifficulty
+                ? {
+                    FilterExpression: 'Difficulty = :difficulty',
+                    ExpressionAttributeValues: { ':difficulty': { S: storedDifficulty } },
+                  }
+                : {}),
+              Limit: limit,
+              ...(nextToken
+                ? { ExclusiveStartKey: JSON.parse(Buffer.from(nextToken, 'base64').toString()) }
+                : {}),
+            }),
+          )
+
+      const items = (result.Items ?? []).map(raw => mapChallenge(unmarshall(raw)))
+      const nextTokenOut = result.LastEvaluatedKey
+        ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+        : null
+
+      return { items, nextToken: nextTokenOut }
+    },
+
+    async challenge(_: unknown, { id }: { id: string }) {
+      const result = await dynamoDb.send(
+        new GetItemCommand({
+          TableName: 'challenges',
+          Key: { QuestionId: { S: id }, SK: { S: 'PUBLIC' } },
+        }),
+      )
+      if (!result.Item) return null
+      return mapChallenge(unmarshall(result.Item))
+    },
+
+    // Cognito-only in prod; guests play but don't score (ADR-0045 §7). Locally there is no
+    // Cognito, so the same BFF-resolved owner used for basket/reviews stands in for the identity.
+    async myChallengeProgress(_: unknown, __: unknown, context: LocalContext) {
+      const result = await dynamoDb.send(
+        new QueryCommand({
+          TableName: 'challenge-progress',
+          KeyConditionExpression: 'OwnerId = :ownerId',
+          ExpressionAttributeValues: { ':ownerId': { S: context.owner.ownerId } },
+        }),
+      )
+
+      const items = (result.Items ?? []).map(raw => unmarshall(raw))
+      const profile = items.find(item => item.SK === 'PROFILE')
+      const attemptItems = items.filter(
+        item => typeof item.SK === 'string' && item.SK.startsWith('ATTEMPT#') && item.IsCorrect !== undefined,
+      )
+
+      const byLanguage: Record<string, number> = {}
+      if (profile) {
+        for (const key of Object.keys(profile)) {
+          if (key.startsWith('Lang#')) byLanguage[key.slice(5)] = Number(profile[key])
+        }
+      }
+
+      return {
+        score: Number(profile?.Score ?? 0),
+        completed: Number(profile?.Completed ?? 0),
+        correctCount: Number(profile?.CorrectCount ?? 0),
+        wrongCount: Number(profile?.WrongCount ?? 0),
+        hintsUsed: Number(profile?.HintsUsed ?? 0),
+        currentStreak: Number(profile?.CurrentStreak ?? 0),
+        lastAnsweredAt: (profile?.LastAnsweredAt as string) ?? null,
+        byLanguage,
+        attempts: attemptItems.map(item => ({
+          questionId: (item.SK as string).slice(8),
+          isCorrect: Boolean(item.IsCorrect),
+          selectedOption: Number(item.SelectedOption ?? 0),
+          hintsRevealed: Number(item.HintsRevealed ?? 0),
+          pointsEarned: Number(item.PointsEarned ?? 0),
+          answeredAt: (item.AnsweredAt as string) ?? null,
+        })),
+      }
+    },
+
+    // Cognito-only in prod; locally the BFF-resolved owner stands in for the identity, same as
+    // myChallengeProgress. Expiry is checked here (not left to the table's TTL), same rule the
+    // NONE/direct resolvers apply in prod (ADR-0046 §4).
+    async myRewards(_: unknown, __: unknown, context: LocalContext) {
+      const result = await dynamoDb.send(
+        new QueryCommand({
+          TableName: 'customer-discounts',
+          KeyConditionExpression: 'OwnerId = :ownerId',
+          ExpressionAttributeValues: { ':ownerId': { S: context.owner.ownerId } },
+        }),
+      )
+
+      const now = Math.floor(Date.now() / 1000)
+      return (result.Items ?? [])
+        .map(raw => unmarshall(raw))
+        .filter(item => item.Status === 'Issued' && Number(item.ExpiresAt) > now)
+        .map(item => ({
+          id: item.DiscountId as string,
+          amount: Number(item.Amount),
+          status: item.Status as string,
+          expiresAt: new Date(Number(item.ExpiresAt) * 1000).toISOString(),
+          sourceRedemptionId: item.SourceRedemptionId as string,
+        }))
+    },
+
+    // Mirrors the constants baked into the rewardConversion NONE resolver in prod
+    // (infra/constructs/reward-config.ts) and pricing-points-redeemed-consumer's Rewards__* env
+    // vars (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
+    // to read them from (ADR-0046 §8).
+    async rewardConversion() {
+      return { pointsPerUnit: 100, currencyPerUnit: 10, expiryDays: 90 }
+    },
   },
 
   Mutation: {
@@ -623,6 +787,9 @@ const resolvers = {
           OwnerId: ownerId,
           CustomerId: customerIdFromOwner(ownerId),
           TotalPrice: input.totalPrice,
+          // Opaque pass-through, chosen beforehand via basketInstallmentPlan(discountId:) — never
+          // interpreted here (ADR-0046 §6).
+          DiscountId: input.discountId ?? null,
           ShippingAddress: {
             FirstName: input.firstName,
             LastName: input.lastName,
@@ -1033,6 +1200,70 @@ const resolvers = {
         }),
       )
       return { id, userName }
+    },
+
+    // Cognito-only in prod (ADR-0045 §3): grading happens server-side, so this still goes through
+    // the Challenges Lambda even locally rather than being reimplemented against DynamoDB here —
+    // the whole point of ADR-0045 is that only that Lambda ever reads the ANSWER item.
+    async submitChallengeAnswer(
+      _: unknown,
+      { challengeId, selectedOption }: { challengeId: string; selectedOption: number },
+      context: LocalContext,
+    ) {
+      const body = await invokeLambda<{
+        IsCorrect: boolean
+        PointsEarned: number
+        NewScore: number
+        Explanation: string
+        SelectedOption: number
+      }>('challenges-submit-answer', {
+        OwnerId: context.owner.ownerId,
+        ChallengeId: challengeId,
+        SelectedOption: selectedOption,
+      })
+      return {
+        isCorrect: body.IsCorrect,
+        pointsEarned: body.PointsEarned,
+        newScore: body.NewScore,
+        explanation: body.Explanation,
+        // Echoed from the stored attempt, which on a re-submission is the *first* answer, not the
+        // one just sent (ADR-0045 §4).
+        selectedOption: body.SelectedOption,
+      }
+    },
+
+    async revealChallengeHint(
+      _: unknown,
+      { challengeId }: { challengeId: string },
+      context: LocalContext,
+    ) {
+      const body = await invokeLambda<{ Hint: string; HintsRevealed: number; PenaltyApplied: number }>(
+        'challenges-reveal-hint',
+        { OwnerId: context.owner.ownerId, ChallengeId: challengeId },
+      )
+      return {
+        hint: body.Hint,
+        hintsRevealed: body.HintsRevealed,
+        penaltyApplied: body.PenaltyApplied,
+      }
+    },
+
+    // Cognito-only in prod (ADR-0046 §2): the balance debit is a conditional TransactWriteItems,
+    // so this goes through the Challenges Lambda even locally rather than being reimplemented
+    // against DynamoDB here. No currency amount ever appears — Pricing converts asynchronously.
+    async redeemChallengePoints(
+      _: unknown,
+      { points }: { points: number },
+      context: LocalContext,
+    ) {
+      const body = await invokeLambda<{ RedemptionId: string; NewBalance: number }>(
+        'challenges-redeem-points',
+        { OwnerId: context.owner.ownerId, Points: points },
+      )
+      return {
+        redemptionId: body.RedemptionId,
+        newBalance: body.NewBalance,
+      }
     },
   },
 }

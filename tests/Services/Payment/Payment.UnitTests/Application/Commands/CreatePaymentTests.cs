@@ -42,6 +42,23 @@ public class CreatePaymentTests
     }
 
     [Fact]
+    public async Task Handle_ShouldCarryTheDiscountId_ThroughToTheCreatedPayment()
+    {
+        var command = ValidCommand() with { DiscountId = "discount-1" };
+        Payment.Function.Modules.Payments.Domain.Entities.Payment? captured = null;
+        _paymentRepository
+            .Setup(repo => repo.AddAsync(
+                It.IsAny<Payment.Function.Modules.Payments.Domain.Entities.Payment>(), It.IsAny<CancellationToken>()))
+            .Callback<Payment.Function.Modules.Payments.Domain.Entities.Payment, CancellationToken>(
+                (p, _) => captured = p)
+            .Returns(Task.CompletedTask);
+
+        await _handler.Handle(command, CancellationToken.None);
+
+        Assert.Equal("discount-1", captured?.DiscountId);
+    }
+
+    [Fact]
     public void Validator_ShouldNotError_WhenCommandIsValid()
     {
         var result = _validator.Validate(ValidCommand()).ToList();

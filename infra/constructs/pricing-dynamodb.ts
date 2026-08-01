@@ -8,6 +8,7 @@ export class PricingDynamoDB extends Construct {
   public readonly productDiscountsTable: dynamodb.Table;
   public readonly gatewayCostsTable: dynamodb.Table;
   public readonly processedEventsTable: dynamodb.Table;
+  public readonly customerDiscountsTable: dynamodb.Table;
 
   constructor(scope: Construct, id: string) {
     super(scope, id);
@@ -59,12 +60,26 @@ export class PricingDynamoDB extends Construct {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // Idempotency inbox for the ProductDeleted consumer.
+    // Idempotency inbox for the ProductDeleted and PointsRedeemed consumers.
     this.processedEventsTable = new dynamodb.Table(this, 'ProcessedEventsTable', {
       tableName: 'pricing-processed-events',
       partitionKey: { name: 'PK', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // Customer-scoped reward, minted from a Challenges points redemption (ADR-0046 §4) — PK
+    // OwnerId, SK DiscountId, distinct from the product-scoped campaign discount above. No
+    // stream: myRewards and GetBasketInstallmentPlan both read this table directly. TTL on
+    // ExpiresAt only clears dead rows eventually; expiry is checked at read time and is
+    // authoritative (ADR-0044 precedent).
+    this.customerDiscountsTable = new dynamodb.Table(this, 'CustomerDiscountsTable', {
+      tableName: 'customer-discounts',
+      partitionKey: { name: 'OwnerId', type: dynamodb.AttributeType.STRING },
+      sortKey: { name: 'DiscountId', type: dynamodb.AttributeType.STRING },
+      billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      timeToLiveAttribute: 'ExpiresAt',
     });
   }
 }

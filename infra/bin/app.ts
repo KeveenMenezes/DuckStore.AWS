@@ -8,6 +8,7 @@ import { PricingStack } from '../stacks/pricing-stack';
 import { ReviewStack } from '../stacks/review-stack';
 import { CatalogViewStack } from '../stacks/catalogview-stack';
 import { UserStack } from '../stacks/user-stack';
+import { ChallengesStack } from '../stacks/challenges-stack';
 import { AppSyncStack } from '../stacks/appsync-stack';
 import { ManagementStack } from '../stacks/management-stack';
 import { ProductImagesStack } from '../stacks/product-images-stack';
@@ -105,6 +106,12 @@ new UserStack(app, 'DuckStoreUserStack', {
   env,
   description:
     'DuckStore User service — DynamoDB table (user-profiles) and the lazy-provisioning GetProfile Lambda',
+});
+
+new ChallengesStack(app, 'DuckStoreChallengesStack', {
+  env,
+  description:
+    'DuckStore Challenges service — DynamoDB tables (challenges + GSI1, challenge-progress) and Lambda functions (ADR-0045)',
 });
 
 // The processor/presign Lambdas are Docker-bundled NodejsFunctions (sharp has no esbuild-safe

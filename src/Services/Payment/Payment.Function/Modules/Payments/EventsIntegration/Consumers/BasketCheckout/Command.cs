@@ -9,7 +9,8 @@ public record CreatePaymentCommand(
     string CardNumber,
     string Expiration,
     string Cvv,
-    PaymentMethod PaymentMethod)
+    PaymentMethod PaymentMethod,
+    string? DiscountId = null)
     : ICommand<CreatePaymentResult>;
 
 public record CreatePaymentResult(Guid Id);

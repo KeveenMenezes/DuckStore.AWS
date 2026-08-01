@@ -1,6 +1,7 @@
 ﻿using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
 using Pricing.Function.Modules.Campaigns.Data;
+using Pricing.Function.Modules.CustomerDiscounts.Data;
 using Pricing.Function.Modules.GatewayCosts.Data;
 using Pricing.Function.Modules.Prices.Data;
 using Pricing.Function.Shared.Data;
@@ -25,6 +26,10 @@ public static class DynamoTableInitializer
         // No stream: gateway-cost changes alone never fan out to CatalogView (ADR-0028).
         await EnsureTableAsync(dynamoDb, DynamoGatewayCostRepository.TableName, "Provider");
         await EnsureTableAsync(dynamoDb, ProcessedIntegrationEvent.TableName, "PK");
+        // No stream: myRewards/GetBasketInstallmentPlan both read this table directly, and the
+        // CDC-out side (if a discount ever needs to fan out) doesn't exist yet (ADR-0046 §4).
+        await EnsureTableAsync(
+            dynamoDb, DynamoCustomerDiscountRepository.TableName, "OwnerId", rangeKeyName: "DiscountId");
     }
 
     private static async Task EnsureTableAsync(
@@ -32,15 +37,28 @@ public static class DynamoTableInitializer
         string tableName,
         string hashKeyName,
         bool withStream = false,
-        StreamViewType? streamViewType = null)
+        StreamViewType? streamViewType = null,
+        string? rangeKeyName = null)
     {
         try
         {
             await dynamoDb.CreateTableAsync(new CreateTableRequest
             {
                 TableName = tableName,
-                AttributeDefinitions = [new AttributeDefinition(hashKeyName, ScalarAttributeType.S)],
-                KeySchema = [new KeySchemaElement(hashKeyName, KeyType.HASH)],
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(hashKeyName, ScalarAttributeType.S),
+                    .. rangeKeyName is null
+                        ? Array.Empty<AttributeDefinition>()
+                        : [new AttributeDefinition(rangeKeyName, ScalarAttributeType.S)]
+                ],
+                KeySchema =
+                [
+                    new KeySchemaElement(hashKeyName, KeyType.HASH),
+                    .. rangeKeyName is null
+                        ? Array.Empty<KeySchemaElement>()
+                        : [new KeySchemaElement(rangeKeyName, KeyType.RANGE)]
+                ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
                 StreamSpecification = withStream
                     ? new StreamSpecification
