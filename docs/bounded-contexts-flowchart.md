@@ -195,3 +195,76 @@ Serviço em Go que persiste notificações de eventos de negócio (atualmente: p
 4. Remove a mensagem da fila após processamento bem-sucedido.
 
 **Resultado de negócio:** Histórico de notificações auditável, resistente a reentregas da fila. Base para futuros canais de notificação ao cliente (e-mail, push, SMS).
+
+---
+
+## 6. Challenges (Desafios de Código)
+
+Corrige exercícios de código submetidos pelo jogador e mantém a pontuação (ADR-0045). O gabarito (resposta correta, explicação, dicas) nunca sai do serviço — só o veredito, os pontos e o texto de uma dica por vez chegam ao cliente. Pontos ganhos podem ser trocados por um cupom no Pricing, via CDC (ADR-0046).
+
+### SubmitAnswer
+**Gatilho:** Jogador seleciona uma opção e confirma (GraphQL `submitChallengeAnswer` → Lambda `challenges-submit-answer`).  
+**Fluxo:**
+1. Carrega a questão pelo repositório, que lê o item `ANSWER` (nunca exposto por nenhuma leitura pública) junto do item `PUBLIC`.
+2. `Question.Grade` compara a opção enviada com a resposta correta e calcula os pontos, descontando a penalidade por dica já registrada.
+3. Um único `TransactWriteItems` grava o item `ATTEMPT#<questionId>` (condicional a `attribute_not_exists(IsCorrect)` — nunca `attribute_not_exists(SK)`, porque uma dica pode já ter criado a linha) e soma o delta ao item `PROFILE` (Score, Completed, CorrectCount/WrongCount, streak, contador por linguagem).
+4. Essa mesma escrita aciona o DynamoDB Stream de `challenge-progress`, capturado por `ChallengesProgressStreamPublisher` (abaixo) — a publicação do evento nunca acontece inline no handler.
+
+**Resultado de negócio:** Uma resposta pontua exatamente uma vez, mesmo em reenvio duplicado — a condicional do banco é a única guarda. O jogador nunca recebe o índice da opção correta, certo ou errado; só a explicação em prosa.
+
+---
+
+### RevealHint
+**Gatilho:** Jogador pede uma dica antes de responder (GraphQL `revealChallengeHint` → Lambda `challenges-reveal-hint`).  
+**Fluxo:**
+1. `UpdateItem` condicional em `ATTEMPT#<questionId>`: soma 1 a `HintsRevealed`, só se a questão ainda não foi respondida e o número de dicas já reveladas for menor que o total da questão.
+2. Só depois de essa escrita ser confirmada é que o texto da dica é lido e devolvido ao cliente.
+
+**Papel no negócio:** A ordem — grava a penalidade, só depois devolve o texto — existe porque o texto da dica não pode ser "des-visto": se o cliente falhasse depois de ler o texto mas antes de a penalidade ser gravada, o jogador ficaria com a dica de graça. Gravar primeiro fecha essa janela.
+
+---
+
+### RedeemPoints
+**Gatilho:** Jogador troca pontos acumulados por um cupom (GraphQL `redeemChallengePoints` → Lambda `challenges-redeem-points`).  
+**Fluxo:**
+1. Um único `TransactWriteItems` debita o saldo (`ADD Score :negativo`, condicional a `Score >= :pontos` — a única guarda do saldo, aplicada pelo banco) e grava a linha `REDEMPTION#<id>` no mesmo item `PROFILE`.
+2. A escrita da linha `REDEMPTION#` aciona o stream de `challenge-progress`; `ChallengesProgressStreamPublisher` publica `PointsRedeemedEvent { OwnerId, RedemptionId, Points }` — sem nenhum valor em moeda (ADR-0046 §1).
+3. No Pricing, `pricing-points-redeemed-consumer` (ver seção 7) converte a quantidade de pontos em um cupom, de forma assíncrona.
+
+**Resultado de negócio:** O débito é durável no instante em que a mutation retorna, mesmo que o cupom ainda não exista — o jogador vê o novo saldo na hora, o cupom aparece pouco depois. Um resgate acima do saldo falha sem debitar nada; dois resgates concorrentes nunca deixam o saldo negativo.
+
+---
+
+### ChallengesProgressStreamPublisher *(CDC — ADR-0005/0045 §9)*
+**Gatilho:** Qualquer escrita (INSERT/MODIFY) na tabela `challenge-progress` via DynamoDB Streams.  
+**Fluxo:**
+1. Um dispatcher por regras (ADR-0019) decide o que publicar, sem um `switch` no meio do handler: a transição de `IsCorrect` de nulo para um valor → `ChallengeAnsweredEvent`; um INSERT de linha `REDEMPTION#` → `PointsRedeemedEvent`.
+2. A atualização do item `PROFILE` (soma de KPIs) não casa com nenhuma regra e não publica nada — do contrário uma única resposta geraria dois eventos.
+
+**Papel no negócio:** É o único ponto onde o Challenges fala com o resto do sistema — nem `SubmitAnswer` nem `RedeemPoints` publicam evento diretamente. Isso é o que torna a pontuação e o resgate operações puramente locais ao Challenges, auditáveis e replicáveis via o stream.
+
+---
+
+## 7. Pricing (Precificação e Recompensas)
+
+> Esta seção ainda cobre só o fluxo de resgate de pontos com o Challenges (ADR-0046). As demais ações do contexto (campanhas, cálculo de parcelamento) não estão documentadas aqui — ver escopo da CH-16.
+
+Pricing é quem decide quanto um ponto vale em dinheiro e quem emite/consome o cupom resultante — o Challenges nunca sabe disso (ADR-0046 §1).
+
+### PointsRedeemedConsumer
+**Gatilho:** Evento `PointsRedeemedEvent` publicado pelo contexto de Challenges no EventBridge (seção 6).  
+**Fluxo:**
+1. Converte a quantidade de pontos em um valor em moeda usando a taxa fixa da configuração do Pricing (`RewardOptions` — v1 é uma constante, não um catálogo de tiers).
+2. Um único `TransactWriteItems` grava o cupom na tabela `customer-discounts` (`Status = Issued`, `ExpiresAt`) e registra o evento como processado em `pricing-processed-events` (mesmo padrão de idempotência dos demais consumers).
+
+**Resultado de negócio:** O cupom aparece de forma assíncrona depois do resgate — o Challenges já debitou os pontos antes disso, então nada é perdido se essa mensagem demorar ou for reprocessada; reprocessar nunca emite um segundo cupom.
+
+---
+
+### PaymentAuthorizedConsumer *(pricing-payment-authorized-consumer)*
+**Gatilho:** Evento `PaymentAuthorizedEvent`, publicado pelo PaymentGateway e já consumido também pelo Ordering (seção 3) — nenhum evento novo é criado para este fluxo.  
+**Fluxo:**
+1. Se o pagamento não usou cupom (`DiscountId` nulo), não faz nada.
+2. Caso contrário, um `UpdateItem` condicional (`Status = Issued`) muda o cupom para `Consumed`, registrado junto do evento processado na mesma transação.
+
+**Resultado de negócio:** O cupom só é queimado quando o pagamento é de fato autorizado — um pagamento recusado deixa o cupom `Issued` e reutilizável, porque a recusa não deve custar o cupom do cliente. A condicional também fecha a janela de gasto duplo: uma segunda autorização tentando queimar o mesmo cupom simplesmente não encontra `Status = Issued` e não faz nada.

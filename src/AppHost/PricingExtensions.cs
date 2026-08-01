@@ -72,6 +72,31 @@ public static class PricingExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
+        builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
+                "pricing-points-redeemed-consumer",
+                lambdaHandler:
+                LambdaHandler("Pricing.Function", "PointsRedeemedConsumer"))
+            .WaitForCompletion(pricingMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
+            .WithEnvironment("Rewards__PointsPerUnit", "100")
+            .WithEnvironment("Rewards__CurrencyPerUnit", "10")
+            .WithEnvironment("Rewards__ExpiryDays", "90");
+
+        // Consumes PaymentAuthorizedEvent (published by PaymentGateway.Function — same event
+        // Ordering's own consumer reacts to) and burns the customer discount used at checkout, if
+        // any (ADR-0046 §6). Nothing reacts to PaymentDeclinedEvent — a declined payment leaves the
+        // discount Issued and reusable.
+        builder.AddAWSLambdaFunction<Projects.Pricing_Function>(
+                "pricing-payment-authorized-consumer",
+                lambdaHandler:
+                LambdaHandler("Pricing.Function", "PaymentAuthorizedConsumer"))
+            .WaitForCompletion(pricingMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+
         // CDC publisher: prices INSERT/MODIFY → DynamoDB Stream → publish a single PriceChangedEvent
         // (nominal price + payment badge) to EventBridge so CatalogView syncs both in one merge
         // (ADR-0026/0027/0028). Needs the same installment settings as pricing-get-installment-plan

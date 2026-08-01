@@ -8,6 +8,7 @@ public class GetBasketInstallmentPlanHandler(
     IPriceRepository priceRepository,
     IGatewayCostRepository gatewayCostRepository,
     ICampaignRepository campaignRepository,
+    ICustomerDiscountRepository customerDiscountRepository,
     InstallmentOptions installmentOptions)
     : IQueryHandler<GetBasketInstallmentPlanQuery, GetBasketInstallmentPlanResult>
 {
@@ -32,8 +33,11 @@ public class GetBasketInstallmentPlanHandler(
                 installmentOptions.ActiveProvider, cancellationToken)
             ?? throw new GatewayCostNotFoundException(installmentOptions.ActiveProvider);
 
+        var customerDiscountAmount = await ResolveCustomerDiscountAsync(query, cancellationToken);
+
         var cartPlan = InstallmentCalculator.CalculateForCart(
-            items, gatewayCost, installmentOptions.MinMarginPercent, installmentOptions.ValueTiers);
+            items, gatewayCost, installmentOptions.MinMarginPercent, installmentOptions.ValueTiers,
+            customerDiscountAmount);
 
         return new GetBasketInstallmentPlanResult(
             cartPlan.TotalOriginalPrice,
@@ -43,6 +47,29 @@ public class GetBasketInstallmentPlanHandler(
             cartPlan.Breakdown.InstallmentPlan
                 .Select(e => new InstallmentPlanEntryDto(e.Count, e.Value, e.TotalValue, e.HasInterest))
                 .ToList());
+    }
+
+    // Null for the common no-coupon case. Validates owner match, Status=Issued and not expired in
+    // one call (CustomerDiscount.IsRedeemableBy) — the same undifferentiated rejection either way,
+    // so a caller can't learn from the error whether a discountId belongs to someone else, is
+    // already spent, or never existed (ADR-0046 §5).
+    private async Task<decimal?> ResolveCustomerDiscountAsync(
+        GetBasketInstallmentPlanQuery query, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(query.DiscountId))
+        {
+            return null;
+        }
+
+        var discount = await customerDiscountRepository.GetAsync(
+            query.OwnerId!, query.DiscountId, cancellationToken);
+
+        if (discount is null || !discount.IsRedeemableBy(query.OwnerId!, DateTime.UtcNow))
+        {
+            throw new CustomerDiscountNotRedeemableException(query.DiscountId);
+        }
+
+        return discount.Amount;
     }
 
     // Same per-product lookup GetInstallmentPlan does; there is no batch discount query, so the

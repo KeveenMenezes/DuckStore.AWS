@@ -23,5 +23,6 @@ public class CreatePaymentHandler(IPaymentRepository paymentRepository)
                 command.CardNumber,
                 command.Expiration,
                 command.Cvv,
-                command.PaymentMethod));
+                command.PaymentMethod),
+            discountId: command.DiscountId);
 }

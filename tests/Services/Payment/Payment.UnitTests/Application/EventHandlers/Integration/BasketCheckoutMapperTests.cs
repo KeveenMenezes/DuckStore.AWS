@@ -14,4 +14,17 @@ public class BasketCheckoutMapperTests
         Assert.Equal(basketCheckoutEvent.Payment.CardNumber, command.CardNumber);
         Assert.Equal(basketCheckoutEvent.TotalPrice, command.Amount);
     }
+
+    [Fact]
+    public void ToCreatePaymentCommand_ShouldCarryTheDiscountId_WhenACouponWasApplied()
+    {
+        var basketCheckoutEvent = BasketCheckoutEventDataTests.CreateValidBasketCheckoutEvent() with
+        {
+            DiscountId = "discount-1"
+        };
+
+        var command = BasketCheckoutMapper.ToCreatePaymentCommand(basketCheckoutEvent);
+
+        Assert.Equal("discount-1", command.DiscountId);
+    }
 }

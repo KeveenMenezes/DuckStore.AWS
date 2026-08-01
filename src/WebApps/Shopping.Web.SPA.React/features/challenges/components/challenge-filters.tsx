@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ALL_LANGUAGES, DIFFICULTY_FILTERS, languageLabels } from "@/features/challenges/constants"
 import { countByLanguage } from "@/features/challenges/services/challenges.service"
-import type { Language } from "@/features/challenges/types/challenge.types"
+import type { Challenge, Language } from "@/features/challenges/types/challenge.types"
 
 interface ChallengeFiltersProps {
+  /** Loaded challenge list — counts are derived from it, not a static import. */
+  challenges: Challenge[]
   selectedLanguage: Language | "all"
   onLanguageChange: (language: Language | "all") => void
   selectedDifficulty: string
@@ -14,6 +16,7 @@ interface ChallengeFiltersProps {
 }
 
 export function ChallengeFilters({
+  challenges,
   selectedLanguage,
   onLanguageChange,
   selectedDifficulty,
@@ -40,7 +43,7 @@ export function ChallengeFilters({
             >
               {languageLabels[lang]}
               <Badge variant="secondary" className="ml-1 text-xs">
-                {countByLanguage(lang)}
+                {countByLanguage(lang, challenges)}
               </Badge>
             </Button>
           ))}

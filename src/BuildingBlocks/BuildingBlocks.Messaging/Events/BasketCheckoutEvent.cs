@@ -11,6 +11,11 @@ public record BasketCheckoutEvent : IntegrationEvent
     // aggregates key off the same value instead of each minting their own.
     public Guid OrderId { get; set; }
 
+    // Opaque pass-through, chosen by the customer in the cart and carried verbatim to Payment
+    // (ADR-0046 §6) — Basket never validates, interprets or computes anything about it, the same
+    // way it never interprets TotalPrice or the card fields below. Null when no coupon was applied.
+    public string? DiscountId { get; set; }
+
     public BasketCheckoutAddress ShippingAddress { get; set; } = new();
     public BasketCheckoutPayment Payment { get; set; } = new();
     public List<BasketCheckoutItem> Items { get; set; } = [];

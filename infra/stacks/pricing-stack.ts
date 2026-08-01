@@ -15,6 +15,7 @@ export class PricingStack extends cdk.Stack {
       productDiscountsTable: dynamoDB.productDiscountsTable,
       gatewayCostsTable: dynamoDB.gatewayCostsTable,
       processedEventsTable: dynamoDB.processedEventsTable,
+      customerDiscountsTable: dynamoDB.customerDiscountsTable,
     });
 
     new cdk.CfnOutput(this, 'PricesTableName', {
@@ -36,6 +37,18 @@ export class PricingStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'GatewayCostsTableName', {
       value: dynamoDB.gatewayCostsTable.tableName,
       exportName: `${this.stackName}-GatewayCostsTable`,
+    });
+    new cdk.CfnOutput(this, 'CustomerDiscountsTableName', {
+      value: dynamoDB.customerDiscountsTable.tableName,
+      exportName: `${this.stackName}-CustomerDiscountsTable`,
+    });
+    new cdk.CfnOutput(this, 'PointsRedeemedConsumerArn', {
+      value: lambdas.pointsRedeemedConsumer.functionArn,
+      exportName: `${this.stackName}-PointsRedeemedConsumerArn`,
+    });
+    new cdk.CfnOutput(this, 'PaymentAuthorizedConsumerArn', {
+      value: lambdas.paymentAuthorizedConsumer.functionArn,
+      exportName: `${this.stackName}-PaymentAuthorizedConsumerArn`,
     });
   }
 }

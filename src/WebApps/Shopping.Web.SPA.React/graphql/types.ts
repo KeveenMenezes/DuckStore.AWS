@@ -232,3 +232,81 @@ export interface UpdateProfileInput {
   zipCode?: string | null
   country?: string | null
 }
+
+// Challenges (ADR-0045). GqlChallenge deliberately carries no answer key — the correct option's
+// index, the explanation and the hint texts never travel over this type; hintCount says how many
+// hints exist, not their text.
+export type GqlChallengeDifficulty = "EASY" | "MEDIUM" | "HARD"
+
+export interface GqlChallenge {
+  id: string
+  title: string
+  description: string
+  code: string
+  options: string[]
+  difficulty: GqlChallengeDifficulty
+  language: string
+  points: number
+  hintCount: number
+}
+
+export interface GqlChallengePage {
+  items: GqlChallenge[]
+  nextToken: string | null
+}
+
+export interface GqlChallengeAttempt {
+  questionId: string
+  isCorrect: boolean
+  selectedOption: number
+  hintsRevealed: number
+  pointsEarned: number
+  answeredAt: string
+}
+
+export interface GqlChallengeProgress {
+  score: number
+  completed: number
+  correctCount: number
+  wrongCount: number
+  hintsUsed: number
+  currentStreak: number
+  lastAnsweredAt: string | null
+  byLanguage: Record<string, number>
+  attempts: GqlChallengeAttempt[]
+}
+
+export interface GqlSubmitChallengeAnswerResult {
+  isCorrect: boolean
+  pointsEarned: number
+  newScore: number
+  explanation: string
+  selectedOption: number
+}
+
+export interface GqlRevealChallengeHintResult {
+  hint: string
+  hintsRevealed: number
+  penaltyApplied: number
+}
+
+export interface GqlRedeemChallengePointsResult {
+  redemptionId: string
+  newBalance: number
+}
+
+// A customer-scoped reward minted from a Challenges points redemption (ADR-0046 §4) — distinct
+// from a campaign discount, which is product-scoped.
+export interface GqlCustomerDiscount {
+  id: string
+  amount: number
+  status: string
+  expiresAt: string
+  sourceRedemptionId: string
+}
+
+export interface GqlRewardConversion {
+  pointsPerUnit: number
+  currencyPerUnit: number
+  expiryDays: number
+}

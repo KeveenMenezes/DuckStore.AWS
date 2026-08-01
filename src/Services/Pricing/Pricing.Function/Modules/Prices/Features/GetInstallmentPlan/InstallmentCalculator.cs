@@ -56,7 +56,7 @@ public static class InstallmentCalculator
     // discount, merged into the cart price by ApplyCartDiscounts below.
     public static CartPricingBreakdown CalculateForCart(
         IReadOnlyList<(Price Price, int Quantity, DiscountValue? Discount)> items, GatewayCost gatewayCost,
-        decimal minMarginPercent, IReadOnlyList<ValueTier> valueTiers)
+        decimal minMarginPercent, IReadOnlyList<ValueTier> valueTiers, decimal? customerDiscountAmount = null)
     {
         var totalCost = items.Sum(i => i.Price.Cost * i.Quantity);
         var totalOriginalPrice = items.Sum(i => i.Price.NominalPrice * i.Quantity);
@@ -64,7 +64,40 @@ public static class InstallmentCalculator
         var breakdown = Calculate(totalCost, totalOriginalPrice, gatewayCost, minMarginPercent, valueTiers);
         var discounted = ApplyCartDiscounts(breakdown, items, totalOriginalPrice, gatewayCost, valueTiers);
 
+        // Customer discount is cart-level and applied strictly after campaign allocation, on the
+        // resulting total — never before, never per-line (ADR-0046 §5). Applying it earlier would
+        // feed CartDiscountAllocation a reduced figure and break its single-unit-cart property.
+        if (customerDiscountAmount is > 0)
+        {
+            discounted = ApplyCustomerDiscount(
+                discounted, totalOriginalPrice, customerDiscountAmount.Value, gatewayCost, valueTiers);
+        }
+
         return new CartPricingBreakdown(totalOriginalPrice, discounted);
+    }
+
+    // Subtracted from the cart's resulting price, floored at zero (ADR-0046 §5) — never allocated
+    // per line, unlike the campaign reduction above. totalOriginalPrice stays the pre-discount
+    // ceiling for the same reason ApplyCartDiscounts keeps it: neither discount may revoke an
+    // installment count the cart's real value already unlocked.
+    //
+    // Unlike ApplyDiscount/ApplyCartDiscounts, this one *does* move cashPrice. A campaign discount
+    // is a markdown on the sticker price, which cashPrice (cost-floor-derived) never tracked; a
+    // customer discount is a fixed currency coupon the customer paid points for, and it has to be
+    // worth the same however they pay. Leaving cashPrice alone would both hide the reward from
+    // anyone paying à vista and let cashPrice exceed price.
+    private static PricingBreakdown ApplyCustomerDiscount(
+        PricingBreakdown breakdown, decimal totalOriginalPrice, decimal customerDiscountAmount,
+        GatewayCost gatewayCost, IReadOnlyList<ValueTier> valueTiers)
+    {
+        var discountedPrice = Round(Math.Max(0, breakdown.Price - customerDiscountAmount));
+        var discountedCashPrice = Round(Math.Max(0, breakdown.CashPrice - customerDiscountAmount));
+
+        var (maxInstallmentsWithoutInterest, maxInstallmentValue, plan) =
+            BuildInstallmentPlan(discountedPrice, totalOriginalPrice, gatewayCost, valueTiers);
+
+        return new PricingBreakdown(
+            discountedPrice, discountedCashPrice, maxInstallmentsWithoutInterest, maxInstallmentValue, plan);
     }
 
     // How much a discounted product may take off a cart billed as one transaction is a business
