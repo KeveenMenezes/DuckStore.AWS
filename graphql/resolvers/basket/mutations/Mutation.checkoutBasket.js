@@ -9,6 +9,8 @@ export function request(ctx) {
         OwnerId: `USER#${ctx.identity.sub}`,  // Cognito-only mutation — derive owner from the token
         CustomerId: ctx.identity.sub,  // always from Cognito — never trust client value
         TotalPrice: input.totalPrice,
+        // Opaque pass-through — never interpreted here (ADR-0046 §6).
+        DiscountId: input.discountId ?? null,
         ShippingAddress: {
           FirstName: input.firstName,
           LastName: input.lastName,

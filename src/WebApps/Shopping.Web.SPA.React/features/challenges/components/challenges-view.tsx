@@ -1,17 +1,22 @@
 "use client"
 
+import { useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Code2 } from "lucide-react"
 import { useChallenges } from "@/features/challenges/hooks/use-challenges"
 import { useScore } from "@/features/challenges/hooks/use-score"
+import { useAuth } from "@/features/auth/hooks/use-auth"
 import { ChallengeStats } from "@/features/challenges/components/challenge-stats"
 import { ChallengeFilters } from "@/features/challenges/components/challenge-filters"
 import { ChallengeCard } from "@/features/challenges/components/challenge-card"
-import type { Challenge } from "@/features/challenges/types/challenge.types"
+import type { Challenge, ChallengeProgress } from "@/features/challenges/types/challenge.types"
 
 interface ChallengesViewProps {
-  /** Server-fetched challenge list (ISR), seeded into the filter hook. */
+  /** Server-fetched challenge list, seeded into the filter hook. */
   initialChallenges: Challenge[]
+  /** Server-fetched progress (ADR-0045 §10 — personalized, so this page is SSR); null for a
+   * signed-out visitor. */
+  initialProgress: ChallengeProgress | null
 }
 
 /**
@@ -19,8 +24,9 @@ interface ChallengesViewProps {
  * filters and challenge cards, hydrating per-user score state on top of the
  * server-rendered challenge catalog.
  */
-export function ChallengesView({ initialChallenges }: ChallengesViewProps) {
-  const { score, completedChallenges } = useScore()
+export function ChallengesView({ initialChallenges, initialProgress }: ChallengesViewProps) {
+  const { user } = useAuth()
+  const { score, completedChallenges, hydrate } = useScore()
   const {
     selectedLanguage,
     setSelectedLanguage,
@@ -31,6 +37,10 @@ export function ChallengesView({ initialChallenges }: ChallengesViewProps) {
     totalPossiblePoints,
     resetFilters,
   } = useChallenges(initialChallenges)
+
+  useEffect(() => {
+    if (initialProgress) hydrate(initialProgress)
+  }, [initialProgress, hydrate])
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-8 lg:px-8">
@@ -46,9 +56,15 @@ export function ChallengesView({ initialChallenges }: ChallengesViewProps) {
         <p className="mt-2 text-muted-foreground">
           Find the bug, fix the code and earn points. Use the Duck Mentor whenever you need help!
         </p>
+        {!user && (
+          <p className="mt-2 text-sm text-primary">
+            You can try every challenge as a guest — sign in to save your score and earn points.
+          </p>
+        )}
       </div>
 
       <ChallengeFilters
+        challenges={initialChallenges}
         selectedLanguage={selectedLanguage}
         onLanguageChange={setSelectedLanguage}
         selectedDifficulty={selectedDifficulty}

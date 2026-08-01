@@ -13,6 +13,22 @@ public class PaymentTests
     }
 
     [Fact]
+    public void Create_ShouldCarryTheDiscountId_WhenACouponWasApplied()
+    {
+        var payment = PaymentDataTests.CreatePendingPayment(discountId: "discount-1");
+
+        Assert.Equal("discount-1", payment.DiscountId);
+    }
+
+    [Fact]
+    public void Create_ShouldLeaveDiscountIdNull_WhenNoCouponWasApplied()
+    {
+        var payment = PaymentDataTests.CreatePendingPayment();
+
+        Assert.Null(payment.DiscountId);
+    }
+
+    [Fact]
     public void ApplyPaymentResult_ShouldTransitionToAuthorized_WhenPendingAndAuthorized()
     {
         var payment = PaymentDataTests.CreatePendingPayment();

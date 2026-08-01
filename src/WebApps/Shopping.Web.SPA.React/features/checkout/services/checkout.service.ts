@@ -15,16 +15,22 @@ const PAYMENT_METHOD_CODE: Record<CheckoutFormData["paymentMethod"], number> = {
 /**
  * Fetch the unified, cart-level installment plan (sums cost/originalPrice across every item,
  * then runs the whole cart through InstallmentCalculator as a single checkout transaction).
- * Public/cookie-free — the caller supplies the items directly, same trust model as
- * installmentPlanFor.
+ * Public/cookie-free by default — same trust model as installmentPlanFor. Passing a discountId
+ * switches to the authenticated client: applying a customer discount is Cognito-only (ADR-0046
+ * §5), and the resolver rejects a discountId sent without ctx.identity.
  */
 export async function getBasketInstallmentPlan(
   items: CartItem[],
+  discountId?: string,
 ): Promise<GqlBasketInstallmentPlan | null> {
   if (items.length === 0) return null
-  const data = await gqlPublic<{ basketInstallmentPlan: GqlBasketInstallmentPlan | null }>(
+  const client = discountId ? gql : gqlPublic
+  const data = await client<{ basketInstallmentPlan: GqlBasketInstallmentPlan | null }>(
     GET_BASKET_INSTALLMENT_PLAN,
-    { items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })) },
+    {
+      items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
+      discountId: discountId ?? null,
+    },
   )
   return data.basketInstallmentPlan
 }
@@ -38,6 +44,7 @@ export async function getBasketInstallmentPlan(
 export async function submitCheckout(
   formData: CheckoutFormData,
   totalPrice: number,
+  discountId?: string,
 ): Promise<string> {
   const nameParts = formData.name.trim().split(" ")
   const firstName = nameParts[0] ?? "Guest"
@@ -52,6 +59,9 @@ export async function submitCheckout(
   const data = await gql<{ checkoutBasket: GqlCheckoutResult }>(CHECKOUT_BASKET, {
     input: {
       totalPrice,
+      // Opaque pass-through, chosen beforehand via basketInstallmentPlan(discountId:) — never
+      // interpreted here (ADR-0046 §6).
+      discountId: discountId ?? null,
       firstName,
       lastName,
       emailAddress: formData.email,

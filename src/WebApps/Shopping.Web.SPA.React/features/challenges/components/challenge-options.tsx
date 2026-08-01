@@ -6,17 +6,18 @@ import { cn } from "@/lib/utils"
 interface ChallengeOptionsProps {
   options: string[]
   selectedAnswer: number | null
-  correctAnswer: number
   submitted: boolean
   isCompleted: boolean
   isCorrect: boolean
   onSelect: (index: number) => void
 }
 
+// No prop for the correct option's index — the server never reveals it, even when the
+// submission was wrong (ADR-0045 §2, §10). Only the caller's own selection can be marked
+// right/wrong; the explanation text (ChallengeResult) is where the fix is described in prose.
 export function ChallengeOptions({
   options,
   selectedAnswer,
-  correctAnswer,
   submitted,
   isCompleted,
   isCorrect,
@@ -28,10 +29,10 @@ export function ChallengeOptions({
       {options.map((option, index) => {
         let optionClass = "border-border bg-secondary/50 hover:bg-secondary hover:border-primary/30"
         if (submitted) {
-          if (index === correctAnswer) {
-            optionClass = "border-accent bg-accent/10"
-          } else if (index === selectedAnswer && !isCorrect) {
-            optionClass = "border-destructive bg-destructive/10"
+          if (index === selectedAnswer) {
+            optionClass = isCorrect
+              ? "border-accent bg-accent/10"
+              : "border-destructive bg-destructive/10"
           } else {
             optionClass = "border-border bg-secondary/30 opacity-50"
           }
@@ -61,11 +62,12 @@ export function ChallengeOptions({
               {String.fromCharCode(65 + index)}
             </span>
             <span className="text-foreground">{option}</span>
-            {submitted && index === correctAnswer && (
-              <CheckCircle2 className="ml-auto h-5 w-5 flex-shrink-0 text-accent" />
-            )}
-            {submitted && index === selectedAnswer && !isCorrect && (
-              <XCircle className="ml-auto h-5 w-5 flex-shrink-0 text-destructive" />
+            {submitted && index === selectedAnswer && (
+              isCorrect ? (
+                <CheckCircle2 className="ml-auto h-5 w-5 flex-shrink-0 text-accent" />
+              ) : (
+                <XCircle className="ml-auto h-5 w-5 flex-shrink-0 text-destructive" />
+              )
             )}
           </button>
         )

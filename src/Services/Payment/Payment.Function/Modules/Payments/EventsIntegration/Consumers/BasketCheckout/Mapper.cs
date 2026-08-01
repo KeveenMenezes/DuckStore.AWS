@@ -10,5 +10,6 @@ public static class BasketCheckoutMapper
             CardNumber: message.Payment.CardNumber,
             Expiration: message.Payment.Expiration,
             Cvv: message.Payment.Cvv,
-            PaymentMethod: (PaymentMethod)message.Payment.PaymentMethod);
+            PaymentMethod: (PaymentMethod)message.Payment.PaymentMethod,
+            DiscountId: message.DiscountId);
 }

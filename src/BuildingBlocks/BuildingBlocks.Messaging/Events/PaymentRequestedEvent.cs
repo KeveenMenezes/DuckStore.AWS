@@ -11,4 +11,8 @@ public record PaymentRequestedEvent : IntegrationEvent
     public string Expiration { get; init; } = default!;
     public string Cvv { get; init; } = default!;
     public int PaymentMethod { get; init; }
+
+    // Carried through from BasketCheckoutEvent so PaymentGateway can pass it on to
+    // PaymentAuthorizedEvent (ADR-0046 §6) — PaymentGateway never reads it itself.
+    public string? DiscountId { get; init; }
 }

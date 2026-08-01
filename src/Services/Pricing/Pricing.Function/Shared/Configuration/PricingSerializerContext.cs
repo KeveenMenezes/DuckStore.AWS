@@ -18,6 +18,8 @@ namespace Pricing.Function.Shared.Configuration;
 [JsonSerializable(typeof(EndCampaignRequest))]
 [JsonSerializable(typeof(EndCampaignResponse))]
 [JsonSerializable(typeof(EventBridgeEvent<ProductDeletedEvent>))]
+[JsonSerializable(typeof(EventBridgeEvent<PointsRedeemedEvent>))]
+[JsonSerializable(typeof(EventBridgeEvent<PaymentAuthorizedEvent>))]
 [JsonSerializable(typeof(GetBasketInstallmentPlanRequest))]
 [JsonSerializable(typeof(GetBasketInstallmentPlanResponse))]
 [JsonSerializable(typeof(GetInstallmentPlanRequest))]
