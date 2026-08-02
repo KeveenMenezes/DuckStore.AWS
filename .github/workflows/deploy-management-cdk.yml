@@ -16,7 +16,7 @@ env:
   AWS_REGION: us-east-1
   NODE_VERSION: '24'
   DOTNET_VERSION: '10.0.x'
-  MANAGEMENT_URL: https://dev-management-duckstore.keveenmenezes.com
+  MANAGEMENT_URL: https://management-duckstore.dev.keveenmenezes.com
 
 jobs:
   deploy:

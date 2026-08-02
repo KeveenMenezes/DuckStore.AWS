@@ -44,11 +44,15 @@ export default $config({
     const { join } = await import("path");
 
     const environmentName = $app.stage;
-    const hostedZoneDomainName = "keveenmenezes.com";
-    const domainName = `${environmentName}-duckstore.${hostedZoneDomainName}`;
+    // Delegated subdomain zone of keveenmenezes.com — the zone encodes the environment, so
+    // the labels below don't repeat it. Must stay in lockstep with infra/bin/app.ts, which
+    // derives the same domain for the Cognito callback allowlist (this file can't read CDK
+    // context, so the string is duplicated deliberately).
+    const hostedZoneDomainName = "dev.keveenmenezes.com";
+    const domainName = `duckstore.${hostedZoneDomainName}`;
     // Image CDN (ADR-0034) — same deterministic-domain trick as the SPA/admin, so the
     // URL is known without reading the DuckStoreProductImagesStack outputs.
-    const imageCdnUrl = `https://${environmentName}-img-duckstore.${hostedZoneDomainName}`;
+    const imageCdnUrl = `https://img-duckstore.${hostedZoneDomainName}`;
 
     // The AppSync/Cognito stack stays on CDK — these are its CloudFormation
     // exports (infra/stacks/appsync-stack.ts), read directly instead of via

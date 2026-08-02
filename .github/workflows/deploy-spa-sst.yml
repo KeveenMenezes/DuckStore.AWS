@@ -15,7 +15,7 @@ env:
   AWS_REGION: us-east-1
   NODE_VERSION: '24'
   STAGE: dev
-  SPA_URL: https://dev-duckstore.keveenmenezes.com
+  SPA_URL: https://duckstore.dev.keveenmenezes.com
 
 jobs:
   deploy:
