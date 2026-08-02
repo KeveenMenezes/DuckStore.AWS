@@ -1,7 +1,8 @@
 # ADR-0043: Cart Discount Allocation — Per-Product Campaigns Against a Single-Transaction Cart
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026. Implemented: `GetBasketInstallmentPlanHandler` injects `ICampaignRepository`
+and applies the allocation rule below.
 
 This ADR does not supersede an existing record. It closes a gap left open between
 [ADR-0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md) (campaigns discount

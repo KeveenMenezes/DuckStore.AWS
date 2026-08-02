@@ -2,7 +2,12 @@
 
 ## Status
 
-**Accepted** — February 2026
+**Obsolete** — August 2026. Companion to [ADR-0001](./0001-elasticsearch-integration-guideline.md),
+obsolete for the same reason: written for the pre-serverless classic stack, and describes ILM
+policies, search indices, and per-environment (dev/staging/production) retention that were never
+built in the current codebase. Elasticsearch today is a local-only, Aspire-provisioned log sink with
+no lifecycle management and no production deployment — see [ADR-0022](./0022-lambda-production-observability.md).
+Kept for historical context; not to be used as current guidance (ADR-0000 forbids deleting ADRs).
 
 ## Context
 

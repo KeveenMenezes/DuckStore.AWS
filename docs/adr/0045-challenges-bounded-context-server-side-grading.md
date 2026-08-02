@@ -1,7 +1,8 @@
 # ADR-0045: Challenges Bounded Context — Server-Side Grading and Answer-Key Isolation
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026. Implemented: `Challenges.Function` (`src/Services/Challenges`), wired into
+the AppHost and its own CDK stack.
 
 Introduces a new bounded context. Companion to
 [ADR-0046](./0046-challenge-points-redeem-into-pricing-customer-discount.md), which turns the points

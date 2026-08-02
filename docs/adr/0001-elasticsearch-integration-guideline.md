@@ -2,7 +2,15 @@
 
 ## Status
 
-**Accepted** — February 2026
+**Obsolete** — August 2026. Written before the AWS serverless migration, for the classic stack
+(`Basket.API`, `Ordering.API`, `Discount.Grpc`, `YarpApiGateway`) that no longer exists. Elasticsearch
+is not used for search in the current codebase — no service registers `ElasticsearchClient`, and
+product/catalog search moved to AppSync direct DynamoDB resolvers ([ADR-0007](./0007-appsync-graphql-with-direct-dynamodb-resolvers.md)),
+then to CatalogView's own DynamoDB-backed read model ([ADR-0027](./0027-catalogview-opensearch-product-search-and-rating-sync.md),
+[ADR-0030](./0030-catalogview-dynamodb-drop-opensearch.md)). Elasticsearch's only remaining role is a
+local-only, Aspire-provisioned Kibana/Serilog sink for logs — see [ADR-0022](./0022-lambda-production-observability.md),
+which explicitly excludes Elasticsearch from the Lambda/production observability path. Kept for
+historical context; not to be used as current guidance (ADR-0000 forbids deleting ADRs).
 
 ## Context
 
