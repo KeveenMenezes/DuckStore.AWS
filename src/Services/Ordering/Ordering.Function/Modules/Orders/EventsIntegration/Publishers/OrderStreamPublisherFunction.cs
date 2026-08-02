@@ -15,14 +15,13 @@ public partial class Functions
         if (!bool.TryParse(configuration["FeatureManagement:OrderFullfilment"], out var enabled) || !enabled)
             return;
 
-        foreach (var record in dynamoEvent.Records)
-        {
-            var context = new StreamContext<OrderStreamImage>(
+        var contexts = dynamoEvent.Records
+            .Select(record => new StreamContext<OrderStreamImage>(
                 record.EventName,
                 OrderStreamImage.From(record.Dynamodb.OldImage),
-                OrderStreamImage.From(record.Dynamodb.NewImage));
+                OrderStreamImage.From(record.Dynamodb.NewImage)))
+            .ToList();
 
-            await dispatcher.DispatchAsync(context);
-        }
+        await dispatcher.DispatchAsync(contexts);
     }
 }

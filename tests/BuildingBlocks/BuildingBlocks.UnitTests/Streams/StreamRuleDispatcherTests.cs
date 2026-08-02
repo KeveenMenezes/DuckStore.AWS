@@ -7,8 +7,8 @@ public class StreamRuleDispatcherTests
 {
     public sealed record AnyImage(string Value);
 
-    private static StreamContext<AnyImage> AnyContext() =>
-        new("INSERT", null, new AnyImage("new"));
+    private static StreamContext<AnyImage> AnyContext(string value = "new") =>
+        new("INSERT", null, new AnyImage(value));
 
     [Fact]
     public async Task DispatchAsync_PublishesInstruction_WhenSingleRuleMatches()
@@ -21,8 +21,10 @@ public class StreamRuleDispatcherTests
         await dispatcher.DispatchAsync(AnyContext());
 
         publisher.Verify(
-            p => p.PublishAsync(
-                It.Is<PublishInstruction>(i => i.DetailType == "matched"), It.IsAny<CancellationToken>()),
+            p => p.PublishManyAsync(
+                It.Is<IReadOnlyList<PublishInstruction>>(
+                    instructions => instructions.Count == 1 && instructions[0].DetailType == "matched"),
+                It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -37,7 +39,7 @@ public class StreamRuleDispatcherTests
         await dispatcher.DispatchAsync(AnyContext());
 
         publisher.Verify(
-            p => p.PublishAsync(It.IsAny<PublishInstruction>(), It.IsAny<CancellationToken>()),
+            p => p.PublishManyAsync(It.IsAny<IReadOnlyList<PublishInstruction>>(), It.IsAny<CancellationToken>()),
             Times.Never);
         rule.Verify(
             r => r.BuildAsync(It.IsAny<StreamContext<AnyImage>>(), It.IsAny<CancellationToken>()),
@@ -57,13 +59,30 @@ public class StreamRuleDispatcherTests
         await dispatcher.DispatchAsync(AnyContext());
 
         publisher.Verify(
-            p => p.PublishAsync(
-                It.Is<PublishInstruction>(i => i.DetailType == "matched"), It.IsAny<CancellationToken>()),
+            p => p.PublishManyAsync(
+                It.Is<IReadOnlyList<PublishInstruction>>(
+                    instructions => instructions.Count == 1 && instructions[0].DetailType == "matched"),
+                It.IsAny<CancellationToken>()),
             Times.Once);
+    }
+
+    // The point of dispatching the whole batch rather than a record at a time: a Streams invocation
+    // carrying several records costs one publish call, not one per record.
+    [Fact]
+    public async Task DispatchAsync_PublishesEveryMatchedInstructionInOneCall_WhenGivenAWholeBatch()
+    {
+        var publisher = new Mock<IEventPublisher>();
+        var rule = RuleReturning(match: true, new PublishInstruction("matched", new object()));
+
+        var dispatcher = new StreamRuleDispatcher<AnyImage>([rule.Object], publisher.Object);
+
+        await dispatcher.DispatchAsync([AnyContext("a"), AnyContext("b"), AnyContext("c")]);
+
         publisher.Verify(
-            p => p.PublishAsync(
-                It.Is<PublishInstruction>(i => i.DetailType == "skipped"), It.IsAny<CancellationToken>()),
-            Times.Never);
+            p => p.PublishManyAsync(
+                It.Is<IReadOnlyList<PublishInstruction>>(instructions => instructions.Count == 3),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -80,7 +99,7 @@ public class StreamRuleDispatcherTests
         await Assert.ThrowsAsync<InvalidOperationException>(() => dispatcher.DispatchAsync(AnyContext()));
 
         publisher.Verify(
-            p => p.PublishAsync(It.IsAny<PublishInstruction>(), It.IsAny<CancellationToken>()),
+            p => p.PublishManyAsync(It.IsAny<IReadOnlyList<PublishInstruction>>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 

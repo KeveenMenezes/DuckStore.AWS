@@ -11,14 +11,13 @@ public partial class Functions
         DynamoDBEvent dynamoEvent,
         [FromServices] StreamRuleDispatcher<ProgressStreamImage> dispatcher)
     {
-        foreach (var record in dynamoEvent.Records)
-        {
-            var context = new StreamContext<ProgressStreamImage>(
+        var contexts = dynamoEvent.Records
+            .Select(record => new StreamContext<ProgressStreamImage>(
                 record.EventName,
                 ProgressStreamImage.From(record.Dynamodb.OldImage),
-                ProgressStreamImage.From(record.Dynamodb.NewImage));
+                ProgressStreamImage.From(record.Dynamodb.NewImage)))
+            .ToList();
 
-            await dispatcher.DispatchAsync(context);
-        }
+        await dispatcher.DispatchAsync(contexts);
     }
 }

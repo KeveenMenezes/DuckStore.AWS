@@ -16,24 +16,36 @@ public class GetBasketInstallmentPlanHandler(
         GetBasketInstallmentPlanQuery query, CancellationToken cancellationToken)
     {
         var productIds = query.Items.Select(item => item.ProductId).ToList();
-        var pricesByProductId = (await priceRepository.GetByProductIdsAsync(productIds, cancellationToken))
-            .ToDictionary(price => price.Id.Value);
 
-        var discountsByProductId = await GetActiveDiscountsAsync(productIds, cancellationToken);
+        // Four independent reads (prices, campaign discounts, gateway cost, customer coupon): none
+        // feeds another's key, so they go out together instead of costing four sequential round
+        // trips on a query the customer waits through synchronously.
+        var pricesTask = priceRepository.GetByProductIdsAsync(productIds, cancellationToken);
+        var discountsTask = campaignRepository.GetActiveDiscountsForProductsAsync(productIds, cancellationToken);
+        var gatewayCostTask = gatewayCostRepository.GetByProviderAsync(
+            installmentOptions.ActiveProvider, cancellationToken);
+        var customerDiscountTask = ResolveCustomerDiscountAsync(query, cancellationToken);
+
+        await Task.WhenAll(pricesTask, discountsTask, gatewayCostTask, customerDiscountTask);
+
+        var pricesByProductId = (await pricesTask).ToDictionary(price => price.Id.Value);
+        var discountsByProductId = await discountsTask;
 
         var items = query.Items.Select(item =>
         {
             var price = pricesByProductId.TryGetValue(item.ProductId, out var found)
                 ? found
                 : throw new PriceNotFoundException(item.ProductId);
-            return (Price: price, item.Quantity, Discount: discountsByProductId.GetValueOrDefault(item.ProductId));
+            var discount = discountsByProductId.TryGetValue(item.ProductId, out var active)
+                ? DiscountValue.Of(active.Type, active.Amount)
+                : null;
+            return (Price: price, item.Quantity, Discount: discount);
         }).ToList();
 
-        var gatewayCost = await gatewayCostRepository.GetByProviderAsync(
-                installmentOptions.ActiveProvider, cancellationToken)
+        var gatewayCost = await gatewayCostTask
             ?? throw new GatewayCostNotFoundException(installmentOptions.ActiveProvider);
 
-        var customerDiscountAmount = await ResolveCustomerDiscountAsync(query, cancellationToken);
+        var customerDiscountAmount = await customerDiscountTask;
 
         var cartPlan = InstallmentCalculator.CalculateForCart(
             items, gatewayCost, installmentOptions.MinMarginPercent, installmentOptions.ValueTiers,
@@ -70,24 +82,5 @@ public class GetBasketInstallmentPlanHandler(
         }
 
         return discount.Amount;
-    }
-
-    // Same per-product lookup GetInstallmentPlan does; there is no batch discount query, so the
-    // reads for a cart run in parallel instead of one after another. Deduplicated because the same
-    // product may appear on more than one basket line.
-    private async Task<Dictionary<Guid, DiscountValue>> GetActiveDiscountsAsync(
-        IEnumerable<Guid> productIds, CancellationToken cancellationToken)
-    {
-        var lookups = await Task.WhenAll(productIds.Distinct().Select(async productId =>
-        (
-            ProductId: productId,
-            Discount: await campaignRepository.GetActiveDiscountForProductAsync(productId, cancellationToken)
-        )));
-
-        return lookups
-            .Where(lookup => lookup.Discount is not null)
-            .ToDictionary(
-                lookup => lookup.ProductId,
-                lookup => DiscountValue.Of(lookup.Discount!.Type, lookup.Discount.Amount));
     }
 }

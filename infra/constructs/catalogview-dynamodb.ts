@@ -22,11 +22,18 @@ export class CatalogViewDynamoDB extends Construct {
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
     });
 
-    // GSI1PK is a constant ("PRODUCT") so every item lives in one partition, sorted by
+    // GSI1PK is a constant ("PRODUCT") so every item shares one partition key value, sorted by
     // AverageRating — lets the unfiltered/rating-only browse path (Query.products.js with no
     // free-text `query`) use a Query instead of a full-table Scan. Free-text `query` still
     // requires a Scan (DynamoDB has no substring search) — that limitation is accepted, same as
     // ADR-0030's tradeoff for this table.
+    //
+    // The single partition key value is deliberate and quantified in ADR-0047 — read it before
+    // "fixing" it: sharding GSI1PK provably cannot raise this query's read ceiling (the fan-out
+    // consumes exactly the capacity the shards add) and multiplies read cost by the shard count.
+    // Two constraints from that ADR are enforced here: GSI1SK must stay non-monotonic, and this
+    // table must never gain an LSI — either one disables the split-for-heat behaviour the current
+    // ceiling depends on.
     this.catalogViewProductsTable.addGlobalSecondaryIndex({
       indexName: 'GSI1',
       partitionKey: { name: 'GSI1PK', type: dynamodb.AttributeType.STRING },

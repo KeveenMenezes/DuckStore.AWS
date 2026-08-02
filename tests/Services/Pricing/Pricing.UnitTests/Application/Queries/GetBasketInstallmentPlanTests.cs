@@ -34,11 +34,19 @@ public class GetBasketInstallmentPlanTests
         _gatewayCostRepository = _autoMocker.GetMock<IGatewayCostRepository>();
         _campaignRepository = _autoMocker.GetMock<ICampaignRepository>();
         _customerDiscountRepository = _autoMocker.GetMock<ICustomerDiscountRepository>();
-        _campaignRepository
-            .Setup(r => r.GetActiveDiscountForProductAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ActiveDiscount?)null);
+        NoActiveCampaigns();
         _validator = new GetBasketInstallmentPlanQueryValidator();
     }
+
+    // The cart resolves every product's campaign in one batch read, so a test states the campaigns
+    // in force as a map rather than per-product setups.
+    private void ActiveCampaigns(Dictionary<Guid, ActiveDiscount> discountsByProductId) =>
+        _campaignRepository
+            .Setup(r => r.GetActiveDiscountsForProductsAsync(
+                It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(discountsByProductId);
+
+    private void NoActiveCampaigns() => ActiveCampaigns([]);
 
     // Zero flat fee / zero 1x rate / zero merchant margin so Price == Cost for every item, keeping
     // the numbers clean and the math easy to verify by hand.
@@ -130,9 +138,10 @@ public class GetBasketInstallmentPlanTests
         _gatewayCostRepository
             .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
             .ReturnsAsync(SimulatedGatewayCost());
-        _campaignRepository
-            .Setup(r => r.GetActiveDiscountForProductAsync(productId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ActiveDiscount(DiscountType.Percentage, 10m));
+        ActiveCampaigns(new Dictionary<Guid, ActiveDiscount>
+        {
+            [productId] = new(DiscountType.Percentage, 10m)
+        });
 
         var result = await CreateHandler().Handle(
             new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 1)]),
@@ -166,9 +175,10 @@ public class GetBasketInstallmentPlanTests
         _gatewayCostRepository
             .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
             .ReturnsAsync(SimulatedGatewayCost());
-        _campaignRepository
-            .Setup(r => r.GetActiveDiscountForProductAsync(discounted, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ActiveDiscount(DiscountType.Percentage, 20m));
+        ActiveCampaigns(new Dictionary<Guid, ActiveDiscount>
+        {
+            [discounted] = new(DiscountType.Percentage, 20m)
+        });
 
         var result = await CreateHandler().Handle(
             new GetBasketInstallmentPlanQuery(
@@ -190,9 +200,10 @@ public class GetBasketInstallmentPlanTests
         _gatewayCostRepository
             .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
             .ReturnsAsync(SimulatedGatewayCost());
-        _campaignRepository
-            .Setup(r => r.GetActiveDiscountForProductAsync(productId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ActiveDiscount(DiscountType.Fixed, 5m));
+        ActiveCampaigns(new Dictionary<Guid, ActiveDiscount>
+        {
+            [productId] = new(DiscountType.Fixed, 5m)
+        });
 
         var result = await CreateHandler().Handle(
             new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 3)]),
@@ -220,8 +231,10 @@ public class GetBasketInstallmentPlanTests
         Assert.Equal(100m, result.Price);
     }
 
+    // However many lines the cart has, campaigns cost one read for the whole basket — the
+    // per-product lookup this replaced turned a 20-line cart into 20 round trips.
     [Fact]
-    public async Task Handle_ShouldLookUpEachProductOnlyOnce_WhenTheSameProductRepeatsAcrossLines()
+    public async Task Handle_ShouldResolveEveryCampaignInASingleBatchRead()
     {
         var productId = Guid.NewGuid();
         _priceRepository
@@ -237,7 +250,9 @@ public class GetBasketInstallmentPlanTests
             CancellationToken.None);
 
         _campaignRepository.Verify(
-            r => r.GetActiveDiscountForProductAsync(productId, It.IsAny<CancellationToken>()), Times.Once);
+            r => r.GetActiveDiscountsForProductsAsync(
+                It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -292,9 +307,10 @@ public class GetBasketInstallmentPlanTests
         _gatewayCostRepository
             .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
             .ReturnsAsync(SimulatedGatewayCost());
-        _campaignRepository
-            .Setup(r => r.GetActiveDiscountForProductAsync(discounted, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ActiveDiscount(DiscountType.Percentage, 20m));
+        ActiveCampaigns(new Dictionary<Guid, ActiveDiscount>
+        {
+            [discounted] = new(DiscountType.Percentage, 20m)
+        });
         _customerDiscountRepository
             .Setup(r => r.GetAsync("USER#alice", "discount-1", It.IsAny<CancellationToken>()))
             .ReturnsAsync(CustomerDiscount.Load(

@@ -10,14 +10,13 @@ public partial class Functions
         DynamoDBEvent dynamoEvent,
         [FromServices] StreamRuleDispatcher<PaymentStreamImage> dispatcher)
     {
-        foreach (var record in dynamoEvent.Records)
-        {
-            var context = new StreamContext<PaymentStreamImage>(
+        var contexts = dynamoEvent.Records
+            .Select(record => new StreamContext<PaymentStreamImage>(
                 record.EventName,
                 PaymentStreamImage.From(record.Dynamodb.OldImage),
-                PaymentStreamImage.From(record.Dynamodb.NewImage));
+                PaymentStreamImage.From(record.Dynamodb.NewImage)))
+            .ToList();
 
-            await dispatcher.DispatchAsync(context);
-        }
+        await dispatcher.DispatchAsync(contexts);
     }
 }

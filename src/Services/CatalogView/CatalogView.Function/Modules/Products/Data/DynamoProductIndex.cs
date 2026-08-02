@@ -13,6 +13,12 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
 
     // GSI1PK is a constant ("PRODUCT"), GSI1SK = AverageRating — lets the unfiltered/rating-only
     // browse path Query instead of Scan (see infra/constructs/catalogview-dynamodb.ts).
+    //
+    // GSI1SK must stay a bounded, non-monotonic value (ADR-0047 §4). A rating moves both
+    // directions within [0, 5], which is what keeps DynamoDB's split-for-heat able to spread this
+    // single partition key across partitions; swapping it for a timestamp or any ever-increasing
+    // ordinal would hard-cap the whole catalog's index writes at 1,000 WCU and push back pressure
+    // onto the base table. A second ordering needs its own index, not this one.
     public const string Gsi1Name = "GSI1";
     private const string Gsi1PartitionValue = "PRODUCT";
 
@@ -102,8 +108,18 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
                 },
                 cancellationToken);
 
-            foreach (var item in scanResponse.Items ?? [])
-                await RenameCategoryOnItemAsync(item, categoryId, name, cancellationToken);
+            // Rewrites within a page run concurrently — they touch different items and nothing
+            // downstream depends on their order. Chunked rather than one big Task.WhenAll over the
+            // page: a 1MB Scan page can hold hundreds of small products, and firing every update at
+            // once buys nothing once the SDK's connection pool is saturated, while making a
+            // throttling storm easier to trigger.
+            const int maxConcurrentUpdates = 25;
+
+            foreach (var chunk in (scanResponse.Items ?? []).Chunk(maxConcurrentUpdates))
+            {
+                await Task.WhenAll(
+                    chunk.Select(item => RenameCategoryOnItemAsync(item, categoryId, name, cancellationToken)));
+            }
 
             lastKey = scanResponse.LastEvaluatedKey is { Count: > 0 } ? scanResponse.LastEvaluatedKey : null;
         } while (lastKey is not null);

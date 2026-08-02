@@ -3,6 +3,14 @@ import { util } from '@aws-appsync/utils'
 // AppSync direct DynamoDB resolver — Cognito only; a single Query on OwnerId returns PROFILE and
 // every ATTEMPT row in one round trip (ADR-0045 §4/§5). OwnerId always comes from the token —
 // guests play but never score (ADR-0045 §7), so there is no client-supplied identity to trust.
+//
+// Deliberately unpaginated, and that is the ceiling on this field: a Query returns at most 1MB and
+// a direct resolver cannot follow LastEvaluatedKey, so a player whose partition outgrows 1MB would
+// silently lose the tail of their attempts. Attempt rows are tiny (~150 bytes), which puts the
+// ceiling in the thousands of answered questions — well past the size of the question bank. If the
+// bank ever approaches it, this field is the escalation ADR-0009 describes: move to a Lambda
+// resolver that pages, or add a paginated `attempts` field. Do not "fix" it by adding a `limit`
+// here — that truncates sooner, and silently.
 export function request(ctx) {
   if (!ctx.identity || !ctx.identity.sub) util.unauthorized()
 
