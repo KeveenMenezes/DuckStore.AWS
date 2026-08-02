@@ -38,15 +38,6 @@ const spaDomainUrl = `https://duckstore.${hostedZoneDomainName}`;
 const managementDomainName = `management-duckstore.${hostedZoneDomainName}`;
 const managementDomainUrl = `https://${managementDomainName}`;
 
-// TEMPORARY — DNS migration to the dev.keveenmenezes.com zone. The previously deployed
-// SPA/admin keep serving the old apex-zone domains until their own deploys land, and their
-// redirect_uri is baked in at build time (NEXT_PUBLIC_SITE_URL). Registering both the old
-// and new callback URLs for one deploy makes the cutover gapless for auth regardless of
-// which deploy workflow finishes first. DELETE this block and its two usages below once the
-// migration is verified end-to-end.
-const legacySpaDomainUrl = 'https://dev-duckstore.keveenmenezes.com';
-const legacyManagementDomainUrl = 'https://dev-management-duckstore.keveenmenezes.com';
-
 // Project-wide tags — cascade to every resource in every stack (buckets, tables,
 // Lambdas, ...). This is how DuckStore resources are identified across the AWS
 // account (S3 console filter, Cost Explorer cost allocation, IAM conditions),
@@ -139,11 +130,9 @@ if (app.node.tryGetContext('deployProductImages') === 'true') {
     imageDomainName: `img-duckstore.${hostedZoneDomainName}`,
     hostedZoneDomainName,
     // Browser presigned-POST uploads come from the Blazor management app (dev server + deployed).
-    // legacyManagementDomainUrl: temporary DNS-migration bridge, see its declaration above.
-    uploadOrigins: ['https://localhost:7300', managementDomainUrl, legacyManagementDomainUrl],
+    uploadOrigins: ['https://localhost:7300', managementDomainUrl],
     // Browser GETs of product images come from the Next.js SPA (dev server + deployed).
-    // legacySpaDomainUrl: temporary DNS-migration bridge, see its declaration above.
-    imageViewerOrigins: ['http://localhost:3000', spaDomainUrl, legacySpaDomainUrl],
+    imageViewerOrigins: ['http://localhost:3000', spaDomainUrl],
     description:
       'DuckStore product image pipeline (ADR-0034) — originals/processed buckets, SQS + sharp processor, presign Lambda, image CDN',
   });
@@ -153,12 +142,10 @@ new AppSyncStack(app, 'DuckStoreAppSyncStack', {
   env,
   // Allow both the local dev server and the deployed CloudFront domain so the
   // same app client works in dev (pnpm dev) and prod without a redirect_mismatch.
-  // legacySpaDomainUrl: temporary DNS-migration bridge, see its declaration above.
-  spaBaseUrls: ['http://localhost:3000', spaDomainUrl, legacySpaDomainUrl],
+  spaBaseUrls: ['http://localhost:3000', spaDomainUrl],
   // Blazor dev server (fixed port in launchSettings.json) + the deployed static site.
   // Cognito allows https localhost callback URLs.
-  // legacyManagementDomainUrl: temporary DNS-migration bridge, see its declaration above.
-  managementBaseUrls: ['https://localhost:7300', managementDomainUrl, legacyManagementDomainUrl],
+  managementBaseUrls: ['https://localhost:7300', managementDomainUrl],
   // Social federation. Client IDs are public → committed in cdk.json context.
   // Client secrets enter as NoEcho CloudFormation parameters declared in
   // AppSyncStack, passed by the deploy workflow from GitHub Environment secrets
