@@ -13,12 +13,18 @@ public class SubmitAnswerHandler(
         var ownerId = OwnerId.Of(command.OwnerId);
         var questionId = QuestionId.Of(command.ChallengeId);
 
-        var question = await questionRepository.GetForGradingAsync(questionId, cancellationToken)
-            ?? throw new QuestionNotFoundException(command.ChallengeId);
-
+        // Two different tables, neither keyed off the other's result — grading needs both, so they
+        // are read together rather than one after the other (this Lambda is AppSync-synchronous:
+        // the player waits through every round trip it makes).
+        var questionTask = questionRepository.GetForGradingAsync(questionId, cancellationToken);
         // hintsRevealed always comes from the stored attempt, never from the client (ADR-0045 §3).
-        var hintsRevealed = await progressRepository.GetHintsRevealedAsync(ownerId, questionId, cancellationToken);
-        var attemptResult = question.Grade(command.SelectedOption, hintsRevealed);
+        var hintsRevealedTask = progressRepository.GetHintsRevealedAsync(ownerId, questionId, cancellationToken);
+
+        await Task.WhenAll(questionTask, hintsRevealedTask);
+
+        var question = await questionTask
+            ?? throw new QuestionNotFoundException(command.ChallengeId);
+        var attemptResult = question.Grade(command.SelectedOption, await hintsRevealedTask);
 
         var delta = PlayerProgress.CreateEmpty(ownerId);
         delta.Apply(attemptResult, question.Language.Value);

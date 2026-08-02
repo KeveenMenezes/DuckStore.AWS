@@ -27,16 +27,16 @@ public static class ChallengesInitialData
             print(reverse_list([1, 2, 3, 4, 5]))
             """,
             [
-                "Replace lst[i] with lst[len(lst) - 1 - i]",
                 "Replace range(len(lst)) with range(len(lst) - 1, -1, -1)",
                 "Add reversed_lst.reverse() before the return",
+                "Replace lst[i] with lst[len(lst) - 1 - i]",
                 "Change append to insert(0, lst[i])"
             ],
             Language.Of("python"),
             Difficulty.Easy,
             100,
             AnswerKey.Of(
-                0,
+                2,
                 "The bug is in the index used to access the elements. By using lst[i], it copies in the same order. The fix is to use lst[len(lst) - 1 - i] to access from the end to the beginning, effectively reversing the list.",
                 [
                     "Notice the order in which the elements are being accessed...",
@@ -58,8 +58,8 @@ public static class ChallengesInitialData
             // Result: 3, 3, 3
             """,
             [
-                "Replace var with let",
                 "Add i = 0 inside the setTimeout",
+                "Replace var with let",
                 "Replace setTimeout with setInterval",
                 "Remove the anonymous function"
             ],
@@ -67,7 +67,7 @@ public static class ChallengesInitialData
             Difficulty.Medium,
             200,
             AnswerKey.Of(
-                0,
+                1,
                 "The classic closure problem with var! The var variable is function-scoped, not block-scoped. When the setTimeout callbacks run, the loop has already finished and i is 3. Replacing var with let creates a block scope for each iteration, preserving the correct value of i.",
                 [
                     "Think about when the setTimeout actually runs the callback...",
@@ -93,16 +93,16 @@ public static class ChallengesInitialData
             const name = getProperty(user, "name");
             """,
             [
-                "Type key as keyof T instead of string",
                 "Add as any after obj[key]",
                 "Replace interface with type",
-                "Remove the generic T"
+                "Remove the generic T",
+                "Type key as keyof T instead of string"
             ],
             Language.Of("typescript"),
             Difficulty.Medium,
             200,
             AnswerKey.Of(
-                0,
+                3,
                 "TypeScript cannot guarantee that the string passed as key actually exists in T. The solution is to use keyof T to constrain the key parameter to only the valid keys of the object, making the code type-safe.",
                 [
                     "TypeScript needs to know that the key exists in the object...",
@@ -169,16 +169,16 @@ public static class ChallengesInitialData
             }
             """,
             [
-                "Initialize _users = new List<string>() at the declaration",
                 "Add a null check before _users.Add()",
                 "Replace List<string> with string[]",
+                "Initialize _users = new List<string>() at the declaration",
                 "Add static to the _users field"
             ],
             Language.Of("csharp"),
             Difficulty.Medium,
             200,
             AnswerKey.Of(
-                0,
+                2,
                 "The _users field was declared but never initialized, so its default value is null. Trying to call .Add() on null causes a NullReferenceException. The solution is to initialize the list at the declaration: private List<string> _users = new List<string>();",
                 [
                     "What is the default value of a reference field in C#?",
@@ -210,8 +210,8 @@ public static class ChallengesInitialData
             }
             """,
             [
-                "Replace int with long long in result and the return type",
                 "Add unsigned before int",
+                "Replace int with long long in result and the return type",
                 "Use double instead of int",
                 "Add an overflow check in the loop"
             ],
@@ -219,7 +219,7 @@ public static class ChallengesInitialData
             Difficulty.Hard,
             300,
             AnswerKey.Of(
-                0,
+                1,
                 "The int type in C++ is typically 32 bits, with a maximum value of ~2.1 billion. The factorial of 20 is ~2.4 quintillion, far beyond that limit. Using long long (64 bits), the maximum value is ~9.2 quintillion, enough for factorial(20).",
                 [
                     "What is the maximum value an int can store in C++?",
@@ -242,16 +242,16 @@ public static class ChallengesInitialData
             -- Missing GROUP BY! Incorrect result.
             """,
             [
-                "Add GROUP BY u.name at the end of the query",
                 "Replace SUM with COUNT",
                 "Add DISTINCT before u.name",
-                "Replace WHERE with HAVING"
+                "Replace WHERE with HAVING",
+                "Add GROUP BY u.name at the end of the query"
             ],
             Language.Of("sql"),
             Difficulty.Medium,
             200,
             AnswerKey.Of(
-                0,
+                3,
                 "When we use aggregate functions like SUM() together with non-aggregated columns, we need GROUP BY to indicate how to group the results. Without GROUP BY, the database tries to aggregate everything into a single row or returns an error, depending on the DBMS.",
                 [
                     "Aggregate functions like SUM() need to know HOW to group...",
@@ -311,16 +311,16 @@ public static class ChallengesInitialData
             }
             """,
             [
-                "Replace forEach with for...of or use Promise.all with map",
                 "Add await before userIds.forEach",
                 "Replace const users with let users",
+                "Replace forEach with for...of or use Promise.all with map",
                 "Move the console.log inside the forEach"
             ],
             Language.Of("javascript"),
             Difficulty.Hard,
             300,
             AnswerKey.Of(
-                0,
+                2,
                 "forEach does not wait for async callbacks! It fires off all the Promises but doesn't await any of them. The console.log runs before any fetch finishes. The solution is to use for...of (sequential) or Promise.all(userIds.map(...)) (parallel) to ensure all the Promises are resolved.",
                 [
                     "Does forEach know how to handle async functions?",

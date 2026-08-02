@@ -1,7 +1,8 @@
 # ADR-0044: Campaign Changes Reach CatalogView via a `product-discounts` Stream and TTL
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026. Implemented: `ProductDiscountStreamPublisherFunction` publishes
+`ProductDiscountChangedEvent` off the `product-discounts` stream.
 
 Amends [ADR-0040](./0040-catalogview-consumers-consolidated-by-producer-strategy-dispatch.md) §1, whose
 "`PriceChangedEvent` stays a plain 1:1 handler" rests on Pricing having a single occurrence. This ADR

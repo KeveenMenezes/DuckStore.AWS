@@ -5,6 +5,11 @@ import { util } from "@aws-appsync/utils";
 // converted here. Keep in sync with Ordering.Function.Modules.Orders.Domain.Enums.PaymentMethod.
 const PAYMENT_METHOD_TO_INT = { Debit: 1, Credit: 2, Cash: 3 };
 
+// Admin-only search by order name. `contains` has no index to lean on, so this Scans: `limit`
+// bounds the items DynamoDB *reads* and the filter runs after, so a page comes back with at most
+// pageSize matches and usually fewer. A short page with a non-null nextToken is normal — the
+// admin UI has to keep following nextToken until it is null rather than stopping at the first
+// short page.
 export function request(ctx) {
   const groups = ctx.identity?.groups ?? [];
   if (!groups.includes("Admin")) util.unauthorized();

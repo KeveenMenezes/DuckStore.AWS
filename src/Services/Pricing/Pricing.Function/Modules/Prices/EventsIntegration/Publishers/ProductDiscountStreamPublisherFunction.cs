@@ -24,6 +24,10 @@ public partial class Functions
         [FromServices] IPriceRepository priceRepository,
         [FromServices] PricingHighlights pricingHighlights)
     {
+        // Collected, then published in one batched call at the end — PutEvents takes 10 entries and
+        // this trigger's batchSize is 10, so a full batch costs one API call instead of ten.
+        var instructions = new List<PublishInstruction>();
+
         foreach (var record in dynamoEvent.Records)
         {
             if (record.Dynamodb?.Keys is not { } keys ||
@@ -41,15 +45,20 @@ public partial class Functions
 
             var breakdown = await pricingHighlights.ComputeAsync(productId, price.Cost, price.NominalPrice);
 
-            await eventPublisher.PublishAsync(new ProductDiscountChangedEvent
-            {
-                ProductId = productId.ToString(),
-                OriginalPrice = price.NominalPrice,
-                Price = breakdown.Price,
-                CashPrice = breakdown.CashPrice,
-                MaxInstallmentsWithoutInterest = breakdown.MaxInstallmentsWithoutInterest,
-                MaxInstallmentValue = breakdown.MaxInstallmentValue
-            });
+            instructions.Add(new PublishInstruction(
+                nameof(ProductDiscountChangedEvent),
+                new ProductDiscountChangedEvent
+                {
+                    ProductId = productId.ToString(),
+                    OriginalPrice = price.NominalPrice,
+                    Price = breakdown.Price,
+                    CashPrice = breakdown.CashPrice,
+                    MaxInstallmentsWithoutInterest = breakdown.MaxInstallmentsWithoutInterest,
+                    MaxInstallmentValue = breakdown.MaxInstallmentValue
+                }));
         }
+
+        if (instructions.Count > 0)
+            await eventPublisher.PublishManyAsync(instructions);
     }
 }

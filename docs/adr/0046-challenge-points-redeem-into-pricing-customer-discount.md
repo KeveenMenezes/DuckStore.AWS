@@ -1,7 +1,7 @@
 # ADR-0046: Challenge Points Redeem into a Pricing Customer Discount via CDC
 
 ## Status
-**Proposed** — July 2026
+**Accepted** — July 2026. Implemented alongside [ADR-0045](./0045-challenges-bounded-context-server-side-grading.md).
 
 Extends [ADR-0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md) with a second
 discount shape (customer-scoped) without reopening its ownership ruling. Depends on

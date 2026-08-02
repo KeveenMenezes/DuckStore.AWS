@@ -6,6 +6,12 @@ import { util } from "@aws-appsync/utils";
 export function request(ctx) {
   const { query, minRating, maxRating, sortBy, pageSize, nextToken } = ctx.args;
 
+  // Free-text search has no index to lean on (DynamoDB has no substring match), so it Scans —
+  // ADR-0030's accepted trade-off. What that costs the caller: `limit` bounds the items DynamoDB
+  // *reads*, and the filter is applied after, so a page comes back with at most pageSize items
+  // and usually far fewer — a page returning 2 items (or none) with a non-null nextToken is
+  // normal here, not the end of the results. Clients must keep following nextToken until it is
+  // null instead of treating a short page as the last one.
   if (query) {
     return {
       operation: "Scan",

@@ -114,12 +114,58 @@ public class DynamoCampaignRepository(IAmazonDynamoDB dynamoDb) : ICampaignRepos
             },
             cancellationToken);
 
-        if (response.Item is not { Count: > 0 } item)
+        return response.Item is { Count: > 0 } item ? MapActiveDiscount(item, DateTime.UtcNow) : null;
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, ActiveDiscount>> GetActiveDiscountsForProductsAsync(
+        IEnumerable<Guid> productIds, CancellationToken cancellationToken = default)
+    {
+        var keys = productIds.Distinct()
+            .Select(id => new Dictionary<string, AttributeValue> { ["ProductId"] = new(id.ToString()) })
+            .ToList();
+
+        if (keys.Count == 0)
+            return new Dictionary<Guid, ActiveDiscount>();
+
+        // BatchGetItem caps at 100 keys per call, and can return UnprocessedKeys under throttling —
+        // retry those rather than silently reporting a product as undiscounted (which would quote
+        // the customer a higher price than the product page shows).
+        const int batchSize = 100;
+        var items = new List<Dictionary<string, AttributeValue>>();
+
+        foreach (var chunk in keys.Chunk(batchSize))
         {
-            return null;
+            var requestItems = new Dictionary<string, KeysAndAttributes>
+            {
+                [ProductDiscountsTableName] = new() { Keys = [.. chunk] }
+            };
+
+            while (requestItems.Count > 0)
+            {
+                var response = await dynamoDb.BatchGetItemAsync(
+                    new BatchGetItemRequest { RequestItems = requestItems }, cancellationToken);
+
+                if (response.Responses.TryGetValue(ProductDiscountsTableName, out var batch))
+                    items.AddRange(batch);
+
+                requestItems = response.UnprocessedKeys is { Count: > 0 } ? response.UnprocessedKeys : [];
+            }
         }
 
+        // One `now` for the whole basket: two lines of the same cart must not disagree about
+        // whether a campaign that expires mid-read is still in force.
         var now = DateTime.UtcNow;
+
+        return items
+            .Select(item => (ProductId: Guid.Parse(item["ProductId"].S), Discount: MapActiveDiscount(item, now)))
+            .Where(entry => entry.Discount is not null)
+            .ToDictionary(entry => entry.ProductId, entry => entry.Discount!);
+    }
+
+    // Expiry is a read-time check against StartsAt/EndsAt (ADR-0026 §7, no scheduler): a row that
+    // exists but is outside its window reads exactly like no row at all.
+    private static ActiveDiscount? MapActiveDiscount(Dictionary<string, AttributeValue> item, DateTime now)
+    {
         var startsAt = DateTime.Parse(item["StartsAt"].S, null, DateTimeStyles.RoundtripKind);
         var endsAt = DateTime.Parse(item["EndsAt"].S, null, DateTimeStyles.RoundtripKind);
 

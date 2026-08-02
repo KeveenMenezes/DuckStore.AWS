@@ -495,3 +495,10 @@ src/WebApps/Shopping.Web.SPA.React/tsconfig.tsbuildinfo
 
 # Personal study guides (not part of the product documentation)
 docs/guias-pessoais/
+
+# Local dev TLS certs/keys (mkcert, dotnet dev-certs) — never commit private keys
+*.pem
+*.key
+
+# Obsidian vault config (personal notes tooling, not project documentation)
+.obsidian/
