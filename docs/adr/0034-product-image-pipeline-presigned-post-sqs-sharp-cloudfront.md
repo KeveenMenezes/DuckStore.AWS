@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/product-images
+---
+
 # ADR-0034: Product Image Pipeline — Presigned POST Upload, S3→SQS Processing, and Immutable CloudFront Serving
 
 ## Status

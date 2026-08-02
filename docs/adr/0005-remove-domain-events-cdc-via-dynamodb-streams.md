@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0005: Remove In-Process Domain Events — Integration Events via DynamoDB Streams (CDC)
 
 ## Status

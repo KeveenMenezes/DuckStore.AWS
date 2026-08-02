@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/catalogview
+---
+
 # ADR-0030: CatalogView Goes DynamoDB-Backed — Drop OpenSearch
 
 ## Status

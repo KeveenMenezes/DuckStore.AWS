@@ -1,3 +1,10 @@
+---
+tags:
+  - status/accepted
+  - domain/challenges
+  - domain/pricing
+---
+
 # ADR-0046: Challenge Points Redeem into a Pricing Customer Discount via CDC
 
 ## Status

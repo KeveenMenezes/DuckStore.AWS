@@ -1,3 +1,9 @@
+---
+tags:
+  - status/obsolete
+  - domain/cross-cutting
+---
+
 # ADR-0002: Elasticsearch Index Lifecycle Management (ILM)
 
 ## Status

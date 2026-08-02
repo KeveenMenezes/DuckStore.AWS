@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/basket
+---
+
 # ADR-0008: Extend CDC Integration Event Publishing to All Services — Basket ShoppingCarts Stream Publisher
 
 ## Status

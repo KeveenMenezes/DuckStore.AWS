@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/pricing
+---
+
 # ADR-0028: Gateway Cost Table and Payment Highlights — Installment/À Vista Pricing via CDC
 
 ## Status

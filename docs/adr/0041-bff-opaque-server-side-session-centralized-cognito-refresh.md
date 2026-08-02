@@ -1,3 +1,10 @@
+---
+tags:
+  - status/accepted
+  - domain/spa
+  - domain/user
+---
+
 # ADR-0041: BFF-Owned Opaque Server-Side Sessions — Centralized Cognito Token Refresh
 
 ## Status

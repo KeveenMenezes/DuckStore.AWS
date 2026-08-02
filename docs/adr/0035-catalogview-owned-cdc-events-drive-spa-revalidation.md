@@ -1,3 +1,10 @@
+---
+tags:
+  - status/accepted
+  - domain/catalogview
+  - domain/spa
+---
+
 # ADR-0035: CatalogView-Owned CDC Events Drive SPA Cache Revalidation
 
 ## Status

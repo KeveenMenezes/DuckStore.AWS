@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/pricing
+---
+
 # ADR-0026: Pricing Bounded Context — Price and Campaign Ownership Move from Catalog/Basket
 
 ## Status

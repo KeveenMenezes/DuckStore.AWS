@@ -1,3 +1,9 @@
+---
+tags:
+  - status/superseded
+  - domain/product-images
+---
+
 # ADR-0018: Serve Product Catalog Images from a Dedicated S3 Bucket via CloudFront, Bypassing the Next.js Image Optimizer
 
 ## Status

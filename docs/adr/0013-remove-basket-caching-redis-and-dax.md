@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/basket
+---
+
 # ADR-0013: Remove All Basket Caching — Redis Cache-Aside and DynamoDB DAX
 
 ## Status

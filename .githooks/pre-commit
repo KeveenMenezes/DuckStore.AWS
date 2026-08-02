@@ -10,7 +10,7 @@ fi
 
 # Formata os arquivos estão formatados corretamente
 echo "Verificando formatação dos arquivos modificados..."
-dotnet format DuckStore.sln --include $files
+dotnet format DuckStore.slnx --include $files
 
 git add $files
 

@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/review
+---
+
 # ADR-0037: Review Composite Key — Cognito `sub` Instead of Client-Supplied `userName`
 
 ## Status

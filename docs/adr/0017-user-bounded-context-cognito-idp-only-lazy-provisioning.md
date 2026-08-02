@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/user
+---
+
 # ADR-0017: User Bounded Context — Cognito as IdP-Only, Profile Data Owned by the User Service, Lazy Provisioning
 
 ## Status

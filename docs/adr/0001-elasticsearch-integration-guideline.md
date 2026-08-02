@@ -1,3 +1,9 @@
+---
+tags:
+  - status/obsolete
+  - domain/cross-cutting
+---
+
 # ADR-0001: Elasticsearch Integration Guideline
 
 ## Status

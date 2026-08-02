@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/challenges
+---
+
 # ADR-0045: Challenges Bounded Context — Server-Side Grading and Answer-Key Isolation
 
 ## Status

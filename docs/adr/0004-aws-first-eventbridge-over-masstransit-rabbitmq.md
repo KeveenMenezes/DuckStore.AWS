@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0004: AWS-First Messaging — Replace MassTransit/RabbitMQ with Amazon EventBridge
 
 ## Status

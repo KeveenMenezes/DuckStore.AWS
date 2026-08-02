@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0021: Fail-Fast EventBridge Publishing on AWS — Best-Effort Only in Local Dev
 
 ## Status

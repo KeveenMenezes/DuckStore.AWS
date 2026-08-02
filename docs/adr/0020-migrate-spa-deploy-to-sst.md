@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/spa
+---
+
 # ADR-0020: Migrate the SPA Deploy Layer from Hand-Rolled CDK to SST
 
 ## Status

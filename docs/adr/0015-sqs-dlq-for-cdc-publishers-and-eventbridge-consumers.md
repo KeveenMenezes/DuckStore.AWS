@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0015: SQS Dead-Letter Queues for CDC Publisher Lambdas and EventBridge Consumer Retry Policy
 
 ## Status

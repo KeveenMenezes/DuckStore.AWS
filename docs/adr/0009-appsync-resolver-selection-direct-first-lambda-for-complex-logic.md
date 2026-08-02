@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/appsync
+---
+
 # ADR-0009: AppSync Resolver Selection — Direct DynamoDB Resolvers as Default, Lambda Restricted to Complex Logic
 
 ## Status

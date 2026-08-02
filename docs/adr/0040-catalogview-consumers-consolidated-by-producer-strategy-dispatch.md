@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/catalogview
+---
+
 # ADR-0040: CatalogView Consumer Lambdas Consolidated by Producer Bounded Context via Strategy Dispatch
 
 ## Status

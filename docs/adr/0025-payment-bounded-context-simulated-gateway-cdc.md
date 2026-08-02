@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/payment
+---
+
 # ADR-0025: Payment Bounded Context — Simulated Gateway via Fully Async EventBridge/CDC
 
 ## Status

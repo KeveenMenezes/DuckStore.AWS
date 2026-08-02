@@ -5,6 +5,21 @@
 root = true
 [*]
 indent_style = space
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+
+# Markdown relies on trailing spaces for hard line breaks
+[*.md]
+trim_trailing_whitespace = false
+
+# TypeScript/JavaScript/JSON/YAML (SPA, ProductImages, infra CDK, GraphQL resolvers)
+[*.{ts,tsx,js,jsx,json,yml,yaml}]
+indent_size = 2
+
+# Go (Notification service) — gofmt is non-negotiable about tabs
+[*.go]
+indent_style = tab
 
 # XML project files
 [*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
@@ -73,7 +88,6 @@ dotnet_diagnostic.CS8618.severity = silent
 # C# Coding Conventions       #
 ###############################
 [*.cs]
-[*.cs]
 # var preferences
 csharp_style_var_for_built_in_types = true:silent
 csharp_style_var_when_type_is_apparent = true:silent
@@ -131,12 +145,11 @@ csharp_space_between_method_call_empty_parameter_list_parentheses = false
 # Wrapping preferences
 csharp_preserve_single_line_statements = true
 csharp_preserve_single_line_blocks = true
+# IDE0058: Expression value is never used
+csharp_style_unused_value_expression_statement_preference = unused_local_variable
 ###############################
 # VB Coding Conventions       #
 ###############################
-
-# IDE0058: Expression value is never used
-csharp_style_unused_value_expression_statement_preference = unused_local_variable
 
 [*.vb]
 # Modifier preferences

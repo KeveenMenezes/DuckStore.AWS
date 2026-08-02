@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/basket
+---
+
 # ADR-0016: Guest Shopping Carts — Unified `ownerId` Identity, API_KEY for Basket Operations, and TTL
 
 ## Status

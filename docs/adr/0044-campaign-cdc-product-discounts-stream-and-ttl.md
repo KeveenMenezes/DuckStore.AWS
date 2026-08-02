@@ -1,3 +1,10 @@
+---
+tags:
+  - status/accepted
+  - domain/pricing
+  - domain/catalogview
+---
+
 # ADR-0044: Campaign Changes Reach CatalogView via a `product-discounts` Stream and TTL
 
 ## Status

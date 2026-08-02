@@ -1,3 +1,9 @@
+---
+tags:
+  - status/superseded
+  - domain/spa
+---
+
 # ADR-0014: Deploy the React SPA to AWS via OpenNext, Hand-Rolled CDK
 
 ## Status
