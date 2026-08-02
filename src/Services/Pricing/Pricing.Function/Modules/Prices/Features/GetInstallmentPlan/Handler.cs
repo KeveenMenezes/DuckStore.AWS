@@ -12,15 +12,24 @@ public class GetInstallmentPlanHandler(
     public async ValueTask<GetInstallmentPlanResult> Handle(
         GetInstallmentPlanQuery query, CancellationToken cancellationToken)
     {
-        var price = await priceRepository.GetByProductIdAsync(query.ProductId, cancellationToken)
+        // Three independent reads keyed off the same product id — none of them needs another's
+        // result, so they overlap instead of stacking three round trips onto a query the product
+        // page waits through synchronously.
+        var priceTask = priceRepository.GetByProductIdAsync(query.ProductId, cancellationToken);
+        var gatewayCostTask = gatewayCostRepository.GetByProviderAsync(
+            installmentOptions.ActiveProvider, cancellationToken);
+        var activeDiscountTask = campaignRepository.GetActiveDiscountForProductAsync(
+            query.ProductId, cancellationToken);
+
+        await Task.WhenAll(priceTask, gatewayCostTask, activeDiscountTask);
+
+        var price = await priceTask
             ?? throw new PriceNotFoundException(query.ProductId);
 
-        var gatewayCost = await gatewayCostRepository.GetByProviderAsync(
-                installmentOptions.ActiveProvider, cancellationToken)
+        var gatewayCost = await gatewayCostTask
             ?? throw new GatewayCostNotFoundException(installmentOptions.ActiveProvider);
 
-        var activeDiscount = await campaignRepository.GetActiveDiscountForProductAsync(
-            query.ProductId, cancellationToken);
+        var activeDiscount = await activeDiscountTask;
         var discount = activeDiscount is null ? null : DiscountValue.Of(activeDiscount.Type, activeDiscount.Amount);
 
         var breakdown = InstallmentCalculator.CalculateWithOptionalDiscount(

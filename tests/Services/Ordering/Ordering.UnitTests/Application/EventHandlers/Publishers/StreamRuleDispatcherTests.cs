@@ -22,13 +22,11 @@ public class StreamRuleDispatcherTests
         await dispatcher.DispatchAsync(AnyContext());
 
         publisher.Verify(
-            p => p.PublishAsync(
-                It.Is<PublishInstruction>(i => i.DetailType == "matched"), It.IsAny<CancellationToken>()),
+            p => p.PublishManyAsync(
+                It.Is<IReadOnlyList<PublishInstruction>>(
+                    instructions => instructions.Count == 1 && instructions[0].DetailType == "matched"),
+                It.IsAny<CancellationToken>()),
             Times.Once);
-        publisher.Verify(
-            p => p.PublishAsync(
-                It.Is<PublishInstruction>(i => i.DetailType == "skipped"), It.IsAny<CancellationToken>()),
-            Times.Never);
 
         // A rule that does not Match is never asked to build an instruction.
         notMatching.Verify(

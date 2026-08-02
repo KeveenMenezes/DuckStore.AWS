@@ -73,4 +73,64 @@ public class PricingHighlightsTests
         Assert.Equal(0m, breakdown.CashPrice);
         Assert.Empty(breakdown.InstallmentPlan);
     }
+
+    // One instance serves one Streams batch (Scoped, one scope per invocation), and every record in
+    // it asks for the same active provider — so the gateway cost is read once, not once per record.
+    [Fact]
+    public async Task ComputeAsync_ShouldReadTheGatewayCostOnce_AcrossEveryRecordOfABatch()
+    {
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+        var sut = CreateSut();
+
+        await sut.ComputeAsync(Guid.NewGuid(), cost: 100m, nominalPrice: 200m);
+        await sut.ComputeAsync(Guid.NewGuid(), cost: 50m, nominalPrice: 80m);
+        await sut.ComputeAsync(Guid.NewGuid(), cost: 10m, nominalPrice: 20m);
+
+        _gatewayCostRepository.Verify(
+            r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // "No provider configured" has to be cached like any other answer, or the miss path re-reads on
+    // every record — the exact cost this memoization exists to remove.
+    [Fact]
+    public async Task ComputeAsync_ShouldReadOnce_AcrossABatch_EvenWhenNoProviderIsConfigured()
+    {
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((GatewayCost?)null);
+        var sut = CreateSut();
+
+        await sut.ComputeAsync(Guid.NewGuid(), cost: 100m, nominalPrice: 200m);
+        await sut.ComputeAsync(Guid.NewGuid(), cost: 50m, nominalPrice: 80m);
+
+        _gatewayCostRepository.Verify(
+            r => r.GetByProviderAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    // The per-product discount is not cached: two records in the same batch are two different
+    // products, and reusing one product's campaign for another would publish a wrong price.
+    [Fact]
+    public async Task ComputeAsync_ShouldReadTheDiscount_ForEveryProductInTheBatch()
+    {
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+        _campaignRepository
+            .Setup(r => r.GetActiveDiscountForProductAsync(first, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ActiveDiscount(DiscountType.Percentage, 10m));
+        _campaignRepository
+            .Setup(r => r.GetActiveDiscountForProductAsync(second, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ActiveDiscount?)null);
+        var sut = CreateSut();
+
+        var discounted = await sut.ComputeAsync(first, cost: 100m, nominalPrice: 200m);
+        var undiscounted = await sut.ComputeAsync(second, cost: 100m, nominalPrice: 200m);
+
+        Assert.Equal(90m, discounted.Price);
+        Assert.Equal(100m, undiscounted.Price);
+    }
 }
