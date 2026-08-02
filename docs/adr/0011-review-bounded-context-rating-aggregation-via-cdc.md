@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/review
+---
+
 # ADR-0011: Review Bounded Context — Product Ratings Aggregated into Catalog via CDC
 
 ## Status

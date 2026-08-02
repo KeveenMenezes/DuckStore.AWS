@@ -1,3 +1,10 @@
+---
+tags:
+  - status/accepted
+  - domain/spa
+  - domain/cross-cutting
+---
+
 # ADR-0023: Decommission the YARP Gateway and Complete the Angular SPA Removal
 
 ## Status

@@ -1,3 +1,9 @@
+---
+tags:
+  - status/superseded
+  - domain/catalogview
+---
+
 # ADR-0027: CatalogView — Product Search and Rating Aggregation via Amazon OpenSearch
 
 ## Status

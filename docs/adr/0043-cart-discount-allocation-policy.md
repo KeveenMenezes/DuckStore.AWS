@@ -1,3 +1,10 @@
+---
+tags:
+  - status/accepted
+  - domain/basket
+  - domain/pricing
+---
+
 # ADR-0043: Cart Discount Allocation — Per-Product Campaigns Against a Single-Transaction Cart
 
 ## Status

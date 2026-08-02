@@ -19,6 +19,22 @@ Antes de começar, certifique-se de:
 - Ter o [Git](https://git-scm.com/) instalado em sua máquina.
 - Ler e seguir o [Código de Conduta](./CODE_OF_CONDUCT.md) do projeto.
 
+## Configurando o Ambiente Local
+
+```bash
+# Build da solution inteira
+dotnet build DuckStore.slnx
+
+# Rodar tudo localmente (Aspire orquestra as Lambdas, DynamoDB Local, o emulador de
+# Lambda, Elasticsearch/Kibana e as aplicações web)
+dotnet run --project src/AppHost/AppHost.csproj
+
+# Rodar todos os testes .NET
+dotnet test
+```
+
+Os git hooks ficam em `.githooks/` (configurados via `core.hooksPath`). O hook de pre-commit já roda `dotnet format` nos arquivos `.cs` staged e os re-adiciona automaticamente — não é necessário rodar `dotnet format` manualmente antes de commitar, e o hook não deve ser ignorado com `--no-verify`.
+
 ## Reportando Problemas
 
 Se você encontrar um problema, crie uma nova issue fornecendo as seguintes informações:

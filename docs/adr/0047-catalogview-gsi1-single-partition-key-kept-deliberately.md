@@ -1,3 +1,9 @@
+---
+tags:
+  - status/proposed
+  - domain/catalogview
+---
+
 # ADR-0047: CatalogView's GSI1 Keeps a Single Partition Key Value — Deliberately
 
 ## Status

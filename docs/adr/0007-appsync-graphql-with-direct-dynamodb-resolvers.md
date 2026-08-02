@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/appsync
+---
+
 # ADR-0007: AWS AppSync (GraphQL) as the Client-Facing API — Direct DynamoDB Resolvers for Reads, Lambda for Business Logic
 
 ## Status

@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/appsync
+---
+
 # ADR-0033: GraphQL Contract and AppSync Resolvers Owned at the Monorepo Root, Not Inside the SPA
 
 ## Status

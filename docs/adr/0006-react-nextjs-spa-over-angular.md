@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/spa
+---
+
 # ADR-0006: Adopt React/Next.js as the Primary SPA, Replacing Angular
 
 ## Status

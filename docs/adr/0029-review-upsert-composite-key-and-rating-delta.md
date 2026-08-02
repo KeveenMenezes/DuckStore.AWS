@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/review
+---
+
 # ADR-0029: Review Upsert — Composite Key and Rating-Delta Aggregation
 
 ## Status

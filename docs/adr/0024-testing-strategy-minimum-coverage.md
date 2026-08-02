@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0024: Testing Strategy and Minimum Coverage Standard
 
 ## Status

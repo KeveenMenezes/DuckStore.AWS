@@ -1,3 +1,9 @@
+---
+tags:
+  - status/superseded
+  - domain/basket
+---
+
 # ADR-0012: Merge Discount into Basket — Coupon as an In-Process Entity of the ShoppingCart Aggregate
 
 ## Status

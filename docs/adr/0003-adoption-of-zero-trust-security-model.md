@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0003: Adoption of Zero Trust Security Model
 
 ## Status

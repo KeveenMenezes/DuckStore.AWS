@@ -1,3 +1,10 @@
+---
+tags:
+  - status/accepted
+  - domain/ordering
+  - domain/payment
+---
+
 # ADR-0038: Order Stops Persisting Card Data — Payment Sources It Directly from BasketCheckoutEvent
 
 ## Status

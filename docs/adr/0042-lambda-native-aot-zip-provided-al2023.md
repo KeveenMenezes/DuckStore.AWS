@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0042: .NET Lambdas Ship as Native AOT ZIPs on `provided.al2023`
 
 ## Status

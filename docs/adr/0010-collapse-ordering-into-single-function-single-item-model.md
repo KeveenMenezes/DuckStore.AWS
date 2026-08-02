@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/ordering
+---
+
 # ADR-0010: Collapse Ordering into a Single Function Project with a Single-Item DynamoDB Model
 
 ## Status

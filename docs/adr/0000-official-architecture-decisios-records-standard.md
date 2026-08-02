@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0000: Official Architecture Decision Records (ADR) Standard
 
 ## Status

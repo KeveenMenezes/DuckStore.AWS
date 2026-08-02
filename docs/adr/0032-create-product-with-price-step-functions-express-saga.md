@@ -1,3 +1,11 @@
+---
+tags:
+  - status/accepted
+  - domain/catalog
+  - domain/pricing
+  - domain/appsync
+---
+
 # ADR-0032: Product Creation With Price as a Step Functions Express Saga Behind AppSync
 
 ## Status

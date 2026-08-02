@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0022: Production Observability for Lambda Functions — BuildingBlocks.ServiceDefaults.Lambda
 
 ## Status

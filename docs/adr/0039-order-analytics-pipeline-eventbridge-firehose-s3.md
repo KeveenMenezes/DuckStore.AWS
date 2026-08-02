@@ -1,3 +1,9 @@
+---
+tags:
+  - status/proposed
+  - domain/ordering
+---
+
 # ADR-0039: Order Analytics Pipeline via EventBridge, Kinesis Data Firehose, and an S3 Data Lake
 
 ## Status

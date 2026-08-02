@@ -1,3 +1,9 @@
+---
+tags:
+  - status/accepted
+  - domain/cross-cutting
+---
+
 # ADR-0036: Federation Client Secrets as NoEcho Parameters from GitHub Secrets
 
 ## Status
