@@ -1,7 +1,17 @@
 import type { OpenNextConfig } from '@opennextjs/aws/types/open-next'
 
 const config: OpenNextConfig = {
-  default: {},
+  // Enables Lambda response streaming (SST wires the Function URL to
+  // invokeMode=RESPONSE_STREAM off this). Without it, OpenNext buffers the
+  // whole SSR response server-side, so a route's loading.tsx Suspense
+  // fallback (e.g. app/challenges/loading.tsx) can never flush early — the
+  // browser sees nothing until the entire page, including all data fetches,
+  // is done.
+  default: {
+    override: {
+      wrapper: "aws-lambda-streaming",
+    },
+  },
   // The image optimizer runs sharp. OpenNext's DEFAULT install (sharp@0.32.6)
   // is broken for cross-builds from a Mac: 0.32.x uses prebuild-install, which
   // reads `npm_config_platform`, but OpenNext only passes `--os` — so it always
