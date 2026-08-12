@@ -84,17 +84,18 @@ flowchart LR
 
 | Service | Responsibility |
 |---|---|
-| **Basket** | Shopping cart (guest + authenticated owners), checkout initiation. Zero discount logic. |
-| **Catalog** | Product and category management. |
-| **CatalogView** | Read-model/search, fed by CDC from Catalog, Review, and Pricing. |
-| **Ordering** | Order lifecycle (`Pending` → `Completed`/`Cancelled`), one DynamoDB item per order. |
-| **Payment** | Simulated payment authorization, orchestrates `PaymentGateway`. |
+| **[Basket](./src/Services/Basket/README.md)** | Shopping cart (guest + authenticated owners), checkout initiation. Zero discount logic. |
+| **[Catalog](./src/Services/Catalog/README.md)** | Product and category management. |
+| **[CatalogView](./src/Services/CatalogView/README.md)** | Read-model/search, fed by CDC from Catalog, Review, and Pricing. |
+| **[Challenges](./src/Services/Challenges/README.md)** | Server-side code-challenge grading, progression, and point redemption. |
+| **[Ordering](./src/Services/Ordering/README.md)** | Order lifecycle (`Pending` → `Completed`/`Cancelled`), one DynamoDB item per order. |
+| **[Payment](./src/Services/Payment/README.md)** | Simulated payment authorization, orchestrates `PaymentGateway`. |
 | **PaymentGateway** | Simulated external payment processor. |
-| **Pricing** | Product pricing, promotional campaigns, installment plans, gateway-cost tracking. |
-| **Review** | Product reviews/ratings. |
-| **User** | User profile, backed by Cognito as the identity provider. |
+| **[Pricing](./src/Services/Pricing/README.md)** | Product pricing, promotional campaigns, installment plans, gateway-cost tracking. |
+| **[Review](./src/Services/Review/README.md)** | Product reviews/ratings. |
+| **[User](./src/Services/User/README.md)** | User profile, backed by Cognito as the identity provider. |
 | **ProductImages** | TypeScript/Node — presigned S3 uploads, Sharp-based resize pipeline, CloudFront delivery. |
-| **Notification** | Go — consumes domain events, writes notifications to DynamoDB. |
+| **[Notification](./src/Services/Notification/README.md)** | Go — consumes domain events, writes notifications to DynamoDB. |
 
 Every `.NET` service ships as a **Native AOT, self-contained ZIP** on the `provided.al2023` custom
 runtime (arm64) — no container images, no managed .NET Lambda runtime (`net10.0` predates one).
