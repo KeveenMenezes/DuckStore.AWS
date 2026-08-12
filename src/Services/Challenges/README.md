@@ -7,7 +7,7 @@ because they need transactions and domain invariants; everything read-only resol
 
 ![Challenges architecture](../../../docs/diagrams/challenges.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **Challenges**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **Challenges**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities
 

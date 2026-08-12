@@ -7,7 +7,7 @@ Go — and the only context **not deployed by the CDK app**.
 
 ![Notification architecture](../../../docs/diagrams/notification.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **Notification**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **Notification**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## ⚠️ Not deployed by `cdk deploy`
 

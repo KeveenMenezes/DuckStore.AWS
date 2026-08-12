@@ -7,7 +7,7 @@ owns the payment record, and **PaymentGateway**, the simulated external processo
 
 ![Payment architecture](../../../docs/diagrams/payment.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **Payment**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **Payment**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities
 

@@ -7,7 +7,7 @@ created by an event and transitioned by another.
 
 ![Ordering architecture](../../../docs/diagrams/ordering.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **Ordering**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **Ordering**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities
 

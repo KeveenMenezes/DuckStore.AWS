@@ -7,7 +7,7 @@ does not — see [Reads live elsewhere](#reads-live-elsewhere).
 
 ![Catalog architecture](../../../docs/diagrams/catalog.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **Catalog**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **Catalog**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities
 

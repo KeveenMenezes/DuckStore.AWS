@@ -1,19 +1,21 @@
 ---
 name: architecture-diagrams
-description: Use when working with DuckStore's architecture diagrams or the per-bounded-context READMEs — e.g. "update the diagram for X", "the Pricing page is out of date", "add a page for the new service", "regenerate the READMEs", "check the diagrams still match the code". Covers docs/duckstore-backend-improved.drawio, the SVG export, the READMEs under src/Services/*/, and the validator that catches drift.
+description: Use when working with DuckStore's architecture diagrams or the per-bounded-context READMEs — e.g. "update the diagram for X", "the Pricing page is out of date", "add a page for the new service", "regenerate the READMEs", "check the diagrams still match the code". Covers docs/duckstore-process-flow.drawio, the SVG export, the READMEs under src/Services/*/, and the validator that catches drift.
 ---
 
 # DuckStore architecture diagrams
 
-`docs/duckstore-backend-improved.drawio` is the single source for every architecture picture in the
-repo. One page per bounded context, plus **Main** (system overview) and **Front end**. Each page is
+`docs/duckstore-process-flow.drawio` is the single source for every architecture picture in the
+repo. One page per bounded context, plus **Main** (system overview), **Request flow** (the
+client → AppSync → DynamoDB → Streams → EventBridge shape every context follows), **Business
+process** (the purchase journey as cross-functional lanes) and **Front end**. Each page is
 exported to a dark-theme SVG in `docs/diagrams/` and embedded in that context's README under
 `src/Services/<Name>/README.md`.
 
 ## The two scripts — run these instead of rewriting them
 
 ```bash
-./scripts/export-diagrams.sh          # .drawio -> docs/diagrams/*.svg (all 12 pages)
+./scripts/export-diagrams.sh          # .drawio -> docs/diagrams/*.svg (all 14 pages)
 python3 scripts/validate-diagrams.py  # checks the diagrams against infra/ and graphql/
 python3 scripts/validate-diagrams.py --page Pricing --only content
 ```
@@ -73,7 +75,7 @@ edges lost their endpoints, and the **entire Main page was deleted**. Therefore:
 
 1. Copy the file to a scratch backup before any scripted edit.
 2. Tell the user to close or reload draw.io before and after.
-3. If a page vanishes, `docs/.$duckstore-backend-improved.drawio.bkp` is the editor's own backup —
+3. If a page vanishes, `docs/.$duckstore-process-flow.drawio.bkp` is the editor's own backup —
    splice the missing `<diagram>` back in rather than restoring the whole file, so other pages keep
    any legitimate edits.
 4. After editing, diff geometry against the backup and confirm only what you intended moved.
@@ -102,7 +104,7 @@ already in `Catalog.Function/`).
 
 ## Architecture
 ![<Context> architecture](../../../docs/diagrams/<page>.svg)
-<sub>Source: docs/duckstore-backend-improved.drawio, page **<Page>**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: docs/duckstore-process-flow.drawio, page **<Page>**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities      — including what it deliberately does NOT do
 ## Data                  — table | key | stream | notes

@@ -7,7 +7,7 @@ demand. The smallest context in the system — **no Lambda, no stream, no DLQ, n
 
 ![User architecture](../../../docs/diagrams/user.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **User**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **User**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities
 
