@@ -502,3 +502,12 @@ docs/guias-pessoais/
 
 # Obsidian vault config (personal notes tooling, not project documentation)
 .obsidian/
+
+# Merge/rebase leftovers (e.g. AGENTS.md~origin_development)
+*~origin_*
+*.orig
+*.rej
+
+# draw.io editor lock files (.$diagram.drawio.bkp)
+.$*.drawio.bkp
+.$*.drawio.dtmp

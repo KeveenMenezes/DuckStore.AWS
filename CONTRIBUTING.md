@@ -37,6 +37,9 @@ Os git hooks ficam em `.githooks/` (configurados via `core.hooksPath`). O hook d
 
 ## Reportando Problemas
 
+> **Vulnerabilidades de segurança não devem ser reportadas via issue pública.**
+> Siga o processo descrito em [SECURITY.md](./SECURITY.md).
+
 Se você encontrar um problema, crie uma nova issue fornecendo as seguintes informações:
 
 1. **Descrição clara do problema**.
@@ -83,7 +86,6 @@ Se você encontrar um problema, crie uma nova issue fornecendo as seguintes info
 
 Se tiver dúvidas, entre em contato por meio de:
 
-- [Issues](https://github.com/KeveenMenezes/DuckStore/issues)
-- [Discussions](https://github.com/KeveenMenezes/DuckStore/discussions)
+- [Issues](https://github.com/KeveenMenezes/DuckStore.AWS/issues)
 
 Agradecemos por suas contribuições e por ajudar a melhorar o DuckStore!
