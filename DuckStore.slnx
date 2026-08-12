@@ -35,7 +35,10 @@
     <Project Path="src/Services/CatalogView/CatalogView.Function/CatalogView.Function.csproj" />
     <Project Path="src/Services/CatalogView/CatalogView.DevelopmentDataSeeder/CatalogView.DevelopmentDataSeeder.csproj" />
   </Folder>
-  <Folder Name="/src/Services/Challenges/" />
+  <Folder Name="/src/Services/Challenges/">
+    <Project Path="src/Services/Challenges/Challenges.Function/Challenges.Function.csproj" />
+    <Project Path="src/Services/Challenges/Challenges.DevelopmentDataSeeder/Challenges.DevelopmentDataSeeder.csproj" />
+  </Folder>
   <Folder Name="/src/Services/Payment/">
     <Project Path="src/Services/Payment/Payment.Function/Payment.Function.csproj" />
     <Project Path="src/Services/Payment/Payment.DevelopmentDataSeeder/Payment.DevelopmentDataSeeder.csproj" />
@@ -75,7 +78,9 @@
   <Folder Name="/tests/Services/Pricing/">
     <Project Path="tests/Services/Pricing/Pricing.UnitTests/Pricing.UnitTests.csproj" />
   </Folder>
-  <Folder Name="/tests/Services/Challenges/" />
+  <Folder Name="/tests/Services/Challenges/">
+    <Project Path="tests/Services/Challenges/Challenges.UnitTests/Challenges.UnitTests.csproj" />
+  </Folder>
   <Folder Name="/tests/Services/CatalogView/">
     <Project Path="tests/Services/CatalogView/CatalogView.UnitTests/CatalogView.UnitTests.csproj" />
   </Folder>

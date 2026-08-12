@@ -4,7 +4,30 @@ DuckStore is a **serverless-first AWS** .NET microservices e-commerce sample, bu
 advanced, production-shaped architecture: Vertical Slice Architecture, CQRS, event-driven
 integration via Change Data Capture, and a fully serverless AWS runtime. It's a learning/reference
 project, not production software — every non-trivial decision is recorded as an
-[Architecture Decision Record](./docs/adr) (40+ and counting) rather than left implicit in code.
+[Architecture Decision Record](./docs/adr) (47+ and counting) rather than left implicit in code.
+
+**Live demo → [duckstore.dev.keveenmenezes.com](https://duckstore.dev.keveenmenezes.com)** —
+*CodeDuck Store*, a rubber-duck shop with interactive code challenges.
+
+[![.NET](https://img.shields.io/badge/.NET-10.0-512BD4)](https://dotnet.microsoft.com/)
+[![AWS](https://img.shields.io/badge/AWS-Lambda%20%C2%B7%20DynamoDB%20%C2%B7%20EventBridge%20%C2%B7%20AppSync-FF9900)](https://aws.amazon.com/)
+[![Next.js](https://img.shields.io/badge/Next.js-SPA%20%2B%20BFF-000000)](https://nextjs.org/)
+[![.NET Aspire](https://img.shields.io/badge/.NET%20Aspire-local%20orchestration-8A2BE2)](https://learn.microsoft.com/dotnet/aspire/)
+
+---
+
+## 📑 Table of contents
+
+- [Concept](#-concept)
+- [Screenshots](#-screenshots)
+- [Architecture](#-architecture)
+- [Bounded contexts](#-bounded-contexts)
+- [Front end](#-front-end)
+- [Technologies Used](#-technologies-used)
+- [Getting Started](#-getting-started)
+- [Tips & Tools](#-tips--tools)
+- [Documentation](#-documentation)
+- [Contact](#-contact)
 
 ---
 
@@ -12,38 +35,61 @@ project, not production software — every non-trivial decision is recorded as a
 
 An e-commerce sample that lets users browse a catalog, manage a shopping cart, and complete a
 checkout end-to-end — with real asynchronous order/payment processing behind it, not a mocked
-happy path.
-
-#### 🖼️ Design Inspirations
-
-![Concept image](./docs/img/layout_concepts_v1.jpeg)
-![Concept image](./docs/img/layout_concepts_v2.jpeg)
-![Concept image](./docs/img/layout_concepts_v3.jpeg)
+happy path. On top of the store sits a gamified layer: server-graded code challenges whose points
+are redeemed as a real discount at checkout.
 
 #### 🔄 Business Flow
 
-```mermaid
-flowchart TD
-    A[Access storefront] --> B{Signed in?}
-    B -- No --> C[Sign up / Log in via Cognito Hosted UI]
-    C --> D[Browse products]
-    B -- Yes --> D
-    D --> E[Add to cart]
-    E --> F[Start checkout]
-    F --> G[Enter shipping address + choose payment / installments]
-    G --> H[Checkout basket]
-    H --> I[Order created]
-    I --> J[Payment authorized or declined]
-    J --> K[Order completed or cancelled]
-```
+[![Business process flow](./docs/diagrams/business-process-flow.svg)](./docs/diagrams/business-process-flow.svg)
 
-Each arrow after **Checkout basket** is a CDC integration event on the shared EventBridge bus
-(`BasketCheckout` → `OrderCreated` → `PaymentAuthorized`/`PaymentDeclined`), not a synchronous
-call — see [Architecture](#-architecture) below.
+<sub>Click to open full size. Source: [`docs/business-process-flow.drawio`](./docs/business-process-flow.drawio). Regenerate with `./scripts/export-diagrams.sh docs/business-process-flow.drawio`.</sub>
+
+A cross-functional model of the purchase journey: each lane is a business capability, each column a
+stage of the process. Box colour carries the load-bearing rule — **white means the customer is
+waiting for that step, green means it runs on its own after they have already been answered.**
+
+That split is the whole architecture in one picture. The moment the purchase is confirmed, the cart
+becomes an order and the shop answers immediately; taking the payment happens afterwards, with the
+order sitting as `Pending` until the card provider replies. Every green step is reached by a CDC
+integration event on the shared EventBridge bus (`BasketCheckout` → `OrderCreated` →
+`PaymentAuthorized`/`PaymentDeclined`), never by a synchronous call — see
+[Architecture](#-architecture) below.
+
+---
+
+## 📸 Screenshots
+
+Captured from the live environment at
+[duckstore.dev.keveenmenezes.com](https://duckstore.dev.keveenmenezes.com).
+
+| Storefront | Duck catalog |
+|---|---|
+| [![Home](./docs/img/screenshots/home.png)](https://duckstore.dev.keveenmenezes.com) | [![Catalog](./docs/img/screenshots/catalog-grid.png)](https://duckstore.dev.keveenmenezes.com/#catalog) |
+| Hero and entry points, rendered by the Next.js SPA through its own BFF. | Product grid with category facets. Ratings come from **Review** and price/discount from **Pricing**, but the page reads a single denormalized item from **CatalogView**. |
+
+| Product detail | Code challenges |
+|---|---|
+| [![Product detail](./docs/img/screenshots/product-detail.png)](https://duckstore.dev.keveenmenezes.com) | [![Challenges](./docs/img/screenshots/challenges.png)](https://duckstore.dev.keveenmenezes.com/challenges) |
+| Price, installment plan, stock and the aggregated rating histogram — one read, no fan-out across services. | Server-side graded challenges: the answer key is structurally unreachable from the public read path, and points redeem into a customer-scoped Pricing discount. |
+
+<details>
+<summary><strong>Cart</strong> — guest baskets work without signing in</summary>
+
+![Cart](./docs/img/screenshots/cart.png)
+
+Carts are identified by a server-resolved `OwnerId` — `USER#<cognito-sub>` when authenticated,
+`GUEST#<guestId>` otherwise (TTL-expirable in DynamoDB). See
+[ADR-0016](./docs/adr/0016-guest-basket-owner-id-identity-api-key-and-ttl.md).
+
+</details>
 
 ---
 
 ## 📐 Architecture
+
+![DuckStore architecture](./docs/diagrams/main.svg)
+
+<sub>Source: [`docs/duckstore-backend-improved.drawio`](./docs/duckstore-backend-improved.drawio), page **Main**. Regenerate with [`./scripts/export-diagrams.sh`](./scripts/export-diagrams.sh).</sub>
 
 Compute is **AWS Lambda**, one function per use case. Persistence is **DynamoDB** — no ORM, no
 `SaveChanges`/change-tracker pipeline, repositories talk to `IAmazonDynamoDB` directly.
@@ -80,26 +126,72 @@ flowchart LR
     Consumers --> DDB
 ```
 
-### Services
-
-| Service | Responsibility |
-|---|---|
-| **[Basket](./src/Services/Basket/README.md)** | Shopping cart (guest + authenticated owners), checkout initiation. Zero discount logic. |
-| **[Catalog](./src/Services/Catalog/README.md)** | Product and category management. |
-| **[CatalogView](./src/Services/CatalogView/README.md)** | Read-model/search, fed by CDC from Catalog, Review, and Pricing. |
-| **[Challenges](./src/Services/Challenges/README.md)** | Server-side code-challenge grading, progression, and point redemption. |
-| **[Ordering](./src/Services/Ordering/README.md)** | Order lifecycle (`Pending` → `Completed`/`Cancelled`), one DynamoDB item per order. |
-| **[Payment](./src/Services/Payment/README.md)** | Simulated payment authorization, orchestrates `PaymentGateway`. |
-| **PaymentGateway** | Simulated external payment processor. |
-| **[Pricing](./src/Services/Pricing/README.md)** | Product pricing, promotional campaigns, installment plans, gateway-cost tracking. |
-| **[Review](./src/Services/Review/README.md)** | Product reviews/ratings. |
-| **[User](./src/Services/User/README.md)** | User profile, backed by Cognito as the identity provider. |
-| **ProductImages** | TypeScript/Node — presigned S3 uploads, Sharp-based resize pipeline, CloudFront delivery. |
-| **[Notification](./src/Services/Notification/README.md)** | Go — consumes domain events, writes notifications to DynamoDB. |
-
 Every `.NET` service ships as a **Native AOT, self-contained ZIP** on the `provided.al2023` custom
 runtime (arm64) — no container images, no managed .NET Lambda runtime (`net10.0` predates one).
 See [ADR-0042](./docs/adr/0042-lambda-native-aot-zip-provided-al2023.md).
+
+CDC naming is the contract: `<service>-<resource>-stream-publisher` for CDC-out,
+`<service>-<resource>-consumer` / `-sync-consumer` for CDC-in. Every publisher and consumer has an
+SQS dead-letter queue with an alarm
+([ADR-0015](./docs/adr/0015-sqs-dlq-for-cdc-publishers-and-eventbridge-consumers.md)).
+
+---
+
+## 🧩 Bounded contexts
+
+Each context owns its tables, its Lambdas and its events. Every README below covers the same
+ground: architecture diagram, responsibilities, data model, AppSync surface, integration events and
+failure handling.
+
+| Context | Responsibility | Docs |
+|---|---|---|
+| **Catalog** | Product and category management — the write model. | [README](./src/Services/Catalog/README.md) · [diagram](./docs/diagrams/catalog.svg) |
+| **CatalogView** | Read-model/search, fed by CDC from Catalog, Review, and Pricing. | [README](./src/Services/CatalogView/README.md) · [diagram](./docs/diagrams/catalogview.svg) |
+| **Basket** | Shopping cart (guest + authenticated owners), checkout initiation. Zero discount logic. | [README](./src/Services/Basket/README.md) · [diagram](./docs/diagrams/basket.svg) |
+| **Ordering** | Order lifecycle (`Pending` → `Completed`/`Cancelled`), one DynamoDB item per order. | [README](./src/Services/Ordering/README.md) · [diagram](./docs/diagrams/ordering.svg) |
+| **Payment** | Simulated payment authorization, orchestrates `PaymentGateway`. | [README](./src/Services/Payment/README.md) · [diagram](./docs/diagrams/payment.svg) |
+| **Pricing** | Product pricing, promotional campaigns, installment plans, gateway-cost tracking. | [README](./src/Services/Pricing/README.md) · [diagram](./docs/diagrams/pricing.svg) |
+| **Review** | Product reviews/ratings, aggregated downstream via CDC. | [README](./src/Services/Review/README.md) · [diagram](./docs/diagrams/review.svg) |
+| **Challenges** | Server-side code-challenge grading, progression, and point redemption. | [README](./src/Services/Challenges/README.md) · [diagram](./docs/diagrams/challenges.svg) |
+| **User** | User profile, backed by Cognito as the identity provider. | [README](./src/Services/User/README.md) · [diagram](./docs/diagrams/user.svg) |
+| **Notification** | Go — consumes events, writes notifications to DynamoDB. | [README](./src/Services/Notification/README.md) · [diagram](./docs/diagrams/notification.svg) |
+
+Two supporting services have no bounded context of their own:
+
+- **PaymentGateway** (`src/Services/PaymentGateway`) — the simulated external payment processor,
+  invoked synchronously by Payment.
+- **ProductImages** (`src/Services/ProductImages`) — TypeScript/Node: presigned S3 uploads, a
+  Sharp-based resize pipeline, CloudFront delivery, and an orphan-image sweeper.
+
+### Shared code (`src/BuildingBlocks`)
+
+| Package | Contents |
+|---|---|
+| `BuildingBlocks.Core` | `ICommand`/`IQuery` + handler interfaces, DDD base types, shared exception types |
+| `BuildingBlocks.Messaging` | `IntegrationEvent` and the EventBridge publisher |
+| `BuildingBlocks.ServiceDefaults` | Service discovery, resilience, health checks, OpenTelemetry, Serilog, MediatR behaviors |
+| `BuildingBlocks.ServiceDefaults.Lambda` | The Lambda-shaped subset: structured logging + OTLP tracing ([ADR-0022](./docs/adr/0022-lambda-production-observability.md)) |
+
+---
+
+## 🖥️ Front end
+
+![Front-end architecture](./docs/diagrams/front-end.svg)
+
+- **[`Shopping.Web.SPA.React`](./src/WebApps/Shopping.Web.SPA.React)** — the customer-facing
+  storefront (Next.js), fronting AppSync through its own BFF: Cognito tokens live server-side in a
+  `duckstore-sessions` table and the browser only ever sees an opaque `__Host-sid` cookie
+  ([ADR-0041](./docs/adr/0041-bff-opaque-server-side-session-centralized-cognito-refresh.md)).
+  Deployed with SST/OpenNext ([ADR-0020](./docs/adr/0020-migrate-spa-deploy-to-sst.md)).
+- **[`Managment.Web.Blazor`](./src/WebApps/Managment.Web.Blazor)** — Blazor WebAssembly admin app
+  (product CRUD), calling AppSync directly, with no BFF. It's the client for the
+  `createProductWithPrice` saga.
+
+The GraphQL contract is owned at the repository root
+([ADR-0033](./docs/adr/0033-graphql-contract-owned-at-monorepo-root.md)):
+[`graphql/schema.graphql`](./graphql/schema.graphql) plus the JS resolvers under
+[`graphql/resolvers/`](./graphql/resolvers), wired into the API by
+[`infra/constructs/appsync-api.ts`](./infra/constructs/appsync-api.ts).
 
 ---
 
@@ -128,6 +220,24 @@ See [ADR-0042](./docs/adr/0042-lambda-native-aot-zip-provided-al2023.md).
 ---
 
 ## 🚀 Getting Started
+
+### Repository layout
+
+```
+src/
+  AppHost/                    .NET Aspire composition root (local orchestration only)
+  BuildingBlocks/             Shared cross-cutting code
+  Services/<Context>/         One folder per bounded context (+ its README)
+  WebApps/                    React SPA (storefront) and Blazor WASM (admin)
+infra/                        AWS CDK v2 app — one stack per service
+graphql/                      schema.graphql + AppSync JS resolvers
+docs/
+  adr/                        Architecture Decision Records
+  diagrams/                   Exported SVGs (main + one per bounded context)
+  duckstore-backend-improved.drawio
+tests/                        xUnit unit tests per service + functional tests
+scripts/                      Diagram export & validation helpers
+```
 
 ### Prerequisites
 
@@ -194,11 +304,32 @@ cd infra && npx cdk synth <StackName>   # e.g. OrderingStack
 
 Every cross-cutting architectural decision — from the serverless migration itself to session
 management, CDC event naming, and Lambda packaging — is recorded under [`docs/adr/`](./docs/adr),
-numbered sequentially and never deleted, even when superseded. Start with
-[ADR-0004](./docs/adr/0004-aws-first-eventbridge-over-masstransit-rabbitmq.md) (why EventBridge,
-not RabbitMQ/MassTransit), [ADR-0005](./docs/adr/0005-remove-domain-events-cdc-via-dynamodb-streams.md)
-(CDC via DynamoDB Streams), and [ADR-0019](./docs/adr/0019-module-oriented-service-structure-and-rule-based-stream-publishers.md)
-(the module structure every service follows) for the foundations.
+numbered sequentially and never deleted, even when superseded. The
+[ADR index](./docs/adr/README.md) lists them all; start with the foundations:
+
+| ADR | Decision |
+|---|---|
+| [0004](./docs/adr/0004-aws-first-eventbridge-over-masstransit-rabbitmq.md) | EventBridge replaces MassTransit/RabbitMQ |
+| [0005](./docs/adr/0005-remove-domain-events-cdc-via-dynamodb-streams.md) | No in-process domain events — integration events come from DynamoDB Streams (CDC) |
+| [0007](./docs/adr/0007-appsync-graphql-with-direct-dynamodb-resolvers.md) · [0009](./docs/adr/0009-appsync-resolver-selection-direct-first-lambda-for-complex-logic.md) | AppSync with direct DynamoDB resolvers; Lambda only as an escalation |
+| [0019](./docs/adr/0019-module-oriented-service-structure-and-rule-based-stream-publishers.md) | Module-oriented service structure + rule-based stream publishers |
+| [0026](./docs/adr/0026-pricing-bounded-context-price-and-campaign-ownership.md) | Pricing owns price and campaigns; Basket owns none of it |
+| [0027](./docs/adr/0027-catalogview-opensearch-product-search-and-rating-sync.md) · [0030](./docs/adr/0030-catalogview-dynamodb-drop-opensearch.md) | CatalogView as the read side, on DynamoDB |
+
+> The codebase is mid-evolution — it was migrated from PostgreSQL/Marten, EF Core, RabbitMQ, gRPC
+> and Carter. If something looks like it *should* be there and isn't, an ADR probably explains why
+> it was removed.
+
+Diagrams are authored in
+[`docs/duckstore-backend-improved.drawio`](./docs/duckstore-backend-improved.drawio) (one page per
+context) and [`docs/business-process-flow.drawio`](./docs/business-process-flow.drawio) (the
+purchase journey), exported to `docs/diagrams/*.svg` with
+[`scripts/export-diagrams.sh`](./scripts/export-diagrams.sh) and checked against the code by
+[`scripts/validate-diagrams.py`](./scripts/validate-diagrams.py). The SVGs are generated artefacts —
+re-export after editing the `.drawio`, since a stale diagram is worse than none.
+
+See also: [Contributing guide](./CONTRIBUTING.md) · [Code of conduct](./CODE_OF_CONDUCT.md) ·
+[Security policy](./SECURITY.md) · [First-time AWS account setup](./docs/one-time-account-setup.md)
 
 ---
 
