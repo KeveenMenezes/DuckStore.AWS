@@ -6,7 +6,7 @@ Owns product reviews and ratings. CDC-out only — this context consumes no even
 
 ![Review architecture](../../../docs/diagrams/review.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **Review**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **Review**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities
 

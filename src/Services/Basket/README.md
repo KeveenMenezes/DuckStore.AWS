@@ -7,7 +7,7 @@ for discounts.
 
 ![Basket architecture](../../../docs/diagrams/basket.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **Basket**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **Basket**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities
 

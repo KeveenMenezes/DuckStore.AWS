@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate docs/duckstore-backend-improved.drawio against the code that it claims to describe.
+"""Validate docs/duckstore-process-flow.drawio against the code that it claims to describe.
 
 The diagrams drift silently: an ADR gets implemented in infra/ and nobody reopens the .drawio, so a
 page keeps showing a Lambda name that was renamed or a rule that no longer exists. Everything here
@@ -24,7 +24,7 @@ import xml.etree.ElementTree as ET
 from collections import Counter, defaultdict
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-DRAWIO = os.path.join(ROOT, 'docs', 'duckstore-backend-improved.drawio')
+DRAWIO = os.path.join(ROOT, 'docs', 'duckstore-process-flow.drawio')
 
 # House style, derived from what the majority of pages already do.
 FONT_ROLE = {'page title': {20, 26}, 'legend': {12, 13}, 'AWS Cloud label': {13, 15},
@@ -38,6 +38,10 @@ EVENTS = ['CatalogViewProductSynced', 'CatalogViewProductDeleted', 'CatalogCateg
           'PaymentDeclined', 'PaymentRequested', 'PriceChanged', 'OrderCreated',
           'ChallengeAnswered', 'PointsRedeemed']
 NOT_INTEGRATION_EVENTS = {'SQSEvent', 'DynamoDBEvent', 'S3Event'}
+# Cross-functional business-flow pages: no AWS resources, their own palette, and a canvas far wider
+# than the printable page on purpose. The AWS house style below does not apply to them - only the
+# content checks (real names, Event suffix, no Portuguese) do.
+BUSINESS_PAGES = {'Business process'}
 BARE_EVENT = re.compile(r'\b(' + '|'.join(EVENTS) + r')\b(?!Event)')
 
 fails: list[str] = []
@@ -169,7 +173,7 @@ def check_structure(page, cells, model, infra):
     checks += 1
 
     boxes = {c.get('id'): geo(c) for c in cells if geo(c)}
-    if boxes:
+    if boxes and page not in BUSINESS_PAGES:
         pw, ph = int(model.get('pageWidth')), int(model.get('pageHeight'))
         x2 = max(g[0] + g[2] for g in boxes.values())
         y2 = max(g[1] + g[3] for g in boxes.values())
@@ -259,6 +263,8 @@ def check_consistency(pages):
     chrome = set()
     for page, cells, model in pages:
         chrome.add((model.get('background'), model.get('pageScale')))
+        if page in BUSINESS_PAGES:
+            continue
 
         used, legend = set(), []
         for c in cells:

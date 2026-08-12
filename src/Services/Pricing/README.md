@@ -8,7 +8,7 @@ six tables.
 
 ![Pricing architecture](../../../docs/diagrams/pricing.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **Pricing**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **Pricing**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities
 

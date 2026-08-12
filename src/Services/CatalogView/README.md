@@ -7,7 +7,7 @@ from Catalog, Review and Pricing, and owns no write API of its own.
 
 ![CatalogView architecture](../../../docs/diagrams/catalogview.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](../../../docs/duckstore-backend-improved.drawio), page **CatalogView**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](../../../docs/duckstore-process-flow.drawio), page **CatalogView**. Regenerate with `./scripts/export-diagrams.sh`.</sub>
 
 ## Responsibilities
 

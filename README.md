@@ -40,9 +40,9 @@ are redeemed as a real discount at checkout.
 
 #### 🔄 Business Flow
 
-[![Business process flow](./docs/diagrams/business-process-flow.svg)](./docs/diagrams/business-process-flow.svg)
+[![Business process flow](./docs/diagrams/business-process.svg)](./docs/diagrams/business-process.svg)
 
-<sub>Click to open full size. Source: [`docs/business-process-flow.drawio`](./docs/business-process-flow.drawio). Regenerate with `./scripts/export-diagrams.sh docs/business-process-flow.drawio`.</sub>
+<sub>Click to open full size. Source: [`docs/duckstore-process-flow.drawio`](./docs/duckstore-process-flow.drawio), page **Business process**. Regenerate with [`./scripts/export-diagrams.sh`](./scripts/export-diagrams.sh).</sub>
 
 A cross-functional model of the purchase journey: each lane is a business capability, each column a
 stage of the process. Box colour carries the load-bearing rule — **white means the customer is
@@ -89,7 +89,7 @@ Carts are identified by a server-resolved `OwnerId` — `USER#<cognito-sub>` whe
 
 ![DuckStore architecture](./docs/diagrams/main.svg)
 
-<sub>Source: [`docs/duckstore-backend-improved.drawio`](./docs/duckstore-backend-improved.drawio), page **Main**. Regenerate with [`./scripts/export-diagrams.sh`](./scripts/export-diagrams.sh).</sub>
+<sub>Source: [`docs/duckstore-process-flow.drawio`](./docs/duckstore-process-flow.drawio), page **Main**. Regenerate with [`./scripts/export-diagrams.sh`](./scripts/export-diagrams.sh).</sub>
 
 Compute is **AWS Lambda**, one function per use case. Persistence is **DynamoDB** — no ORM, no
 `SaveChanges`/change-tracker pipeline, repositories talk to `IAmazonDynamoDB` directly.
@@ -104,27 +104,9 @@ API gateway. Most fields resolve straight to DynamoDB (APPSYNC_JS, no Lambda in 
 Lambda resolvers are an explicit escalation for fields with real business logic; one saga
 (`createProductWithPrice`) runs through a Step Functions Express workflow with compensation.
 
-```mermaid
-flowchart LR
-    subgraph Clients
-        SPA["React / Next.js SPA<br/>(+ Next.js BFF)"]
-        Admin["Blazor WASM<br/>Management app"]
-    end
+![Request flow](./docs/diagrams/request-flow.svg)
 
-    SPA -- GraphQL --> AppSync[("AWS AppSync<br/>GraphQL API")]
-    Admin -- GraphQL --> AppSync
-
-    AppSync -- direct resolver --> DDB[("DynamoDB<br/>one or more tables per service")]
-    AppSync -- Lambda resolver --> Lambdas["Service Lambdas<br/>(Basket, Catalog, Ordering, Payment, Pricing, Review, User...)"]
-    AppSync -- saga --> StepFn["Step Functions Express<br/>createProductWithPrice"]
-
-    Lambdas --> DDB
-    StepFn --> DDB
-    DDB -- DynamoDB Streams --> Publishers["Stream-publisher Lambdas"]
-    Publishers --> EventBridge{{"Amazon EventBridge<br/>shared bus"}}
-    EventBridge --> Consumers["Consumer Lambdas"]
-    Consumers --> DDB
-```
+<sub>Source: [`docs/duckstore-process-flow.drawio`](./docs/duckstore-process-flow.drawio), page **Request flow**. Regenerate with [`./scripts/export-diagrams.sh`](./scripts/export-diagrams.sh).</sub>
 
 Every `.NET` service ships as a **Native AOT, self-contained ZIP** on the `provided.al2023` custom
 runtime (arm64) — no container images, no managed .NET Lambda runtime (`net10.0` predates one).
@@ -234,7 +216,7 @@ graphql/                      schema.graphql + AppSync JS resolvers
 docs/
   adr/                        Architecture Decision Records
   diagrams/                   Exported SVGs (main + one per bounded context)
-  duckstore-backend-improved.drawio
+  duckstore-process-flow.drawio
 tests/                        xUnit unit tests per service + functional tests
 scripts/                      Diagram export & validation helpers
 ```
@@ -321,9 +303,9 @@ numbered sequentially and never deleted, even when superseded. The
 > it was removed.
 
 Diagrams are authored in
-[`docs/duckstore-backend-improved.drawio`](./docs/duckstore-backend-improved.drawio) (one page per
-context) and [`docs/business-process-flow.drawio`](./docs/business-process-flow.drawio) (the
-purchase journey), exported to `docs/diagrams/*.svg` with
+[`docs/duckstore-process-flow.drawio`](./docs/duckstore-process-flow.drawio) — one page per bounded
+context, plus the system overview, the request flow and the purchase journey — exported to
+`docs/diagrams/*.svg` with
 [`scripts/export-diagrams.sh`](./scripts/export-diagrams.sh) and checked against the code by
 [`scripts/validate-diagrams.py`](./scripts/validate-diagrams.py). The SVGs are generated artefacts —
 re-export after editing the `.drawio`, since a stale diagram is worse than none.
