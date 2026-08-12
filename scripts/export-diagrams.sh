@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 #
-# Exports every page of docs/duckstore-backend-improved.drawio to a dark-theme SVG in docs/diagrams/.
-# The per-bounded-context READMEs embed these directly.
+# Exports every page of a .drawio to a dark-theme SVG in docs/diagrams/, one file per page named
+# after the page. Defaults to docs/duckstore-backend-improved.drawio, which the per-bounded-context
+# READMEs embed directly; pass another source to export it instead, e.g.
+#   ./scripts/export-diagrams.sh docs/business-process-flow.drawio
 #
 # The dark background is baked into each file on purpose. draw.io exports with a transparent
 # background, which would leave light theme text on a light page — unreadable wherever the README is
@@ -14,7 +16,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-SRC="$REPO_ROOT/docs/duckstore-backend-improved.drawio"
+SRC="${1:-$REPO_ROOT/docs/duckstore-backend-improved.drawio}"
 OUT="$REPO_ROOT/docs/diagrams"
 DRAWIO_BIN="${DRAWIO_BIN:-/Applications/draw.io.app/Contents/MacOS/draw.io}"
 CANVAS="#121212"   # draw.io's own dark canvas
