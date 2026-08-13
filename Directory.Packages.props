@@ -22,7 +22,7 @@
     <PackageVersion Include="AWSSDK.Lambda" Version="4.0.18" />
     <PackageVersion Include="AWSSDK.SQS" Version="4.0.3.7" />
     <PackageVersion Include="Aspire.Elastic.Clients.Elasticsearch" Version="13.3.0" />
-    <PackageVersion Include="Aspire.Hosting.AWS" Version="13.3.1" />
+    <PackageVersion Include="Aspire.Hosting.AWS" Version="13.6.0" />
     <PackageVersion Include="Aspire.Hosting.NodeJs" Version="9.5.2" />
     <PackageVersion Include="Aspire.Hosting.Testing" Version="13.1.2" />
     <PackageVersion Include="Aspire.Hosting.Elasticsearch" Version="13.3.0" />
