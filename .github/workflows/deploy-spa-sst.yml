@@ -46,10 +46,15 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # A different role from the CDK workflows' AWS_DEPLOY_ROLE_ARN, on purpose. SST has
+      # no equivalent of CDK's bootstrap roles — it creates the Lambdas, buckets, CDN and
+      # tables with these credentials directly — so this role has to be broad. Keeping it
+      # separate is what stops the twelve CDK workflows from inheriting that breadth.
+      # See docs/one-time-account-setup.md §2.
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v6
         with:
-          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.AWS_SPA_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
 
       # `sst.config.ts` reads AppSync's URL/API key at deploy time via
