@@ -9,6 +9,7 @@ import {
   UpdateItemCommand,
   DeleteItemCommand,
   ConditionalCheckFailedException,
+  type AttributeValue,
 } from '@aws-sdk/client-dynamodb'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
 import { unmarshall } from '@aws-sdk/util-dynamodb'
@@ -191,7 +192,7 @@ const resolvers = {
       },
     ) {
       const expressionNames: Record<string, string> = {}
-      const expressionValues: Record<string, unknown> = {}
+      const expressionValues: Record<string, AttributeValue> = {}
       const clauses: string[] = []
 
       if (args.query) {

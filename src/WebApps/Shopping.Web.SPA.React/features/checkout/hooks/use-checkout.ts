@@ -52,6 +52,7 @@ export function useCheckout() {
   useEffect(() => {
     let cancelled = false
     if (items.length === 0) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setInstallmentPlan(null)
       setIsLoadingInstallmentPlan(false)
       return
@@ -82,6 +83,7 @@ export function useCheckout() {
   useEffect(() => {
     if (!user) return
     let cancelled = false
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsLoadingProfile(true)
     getMyProfile()
       .then((p) => {
