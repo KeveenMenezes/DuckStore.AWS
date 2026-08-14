@@ -139,3 +139,70 @@ updates:
           - "github/*"
     ignore:
       - dependency-name: "martincostello*"
+
+  # ─── npm/pnpm packages: SPA ──────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/src/WebApps/Shopping.Web.SPA.React"
+    schedule:
+      interval: "daily"
+      time: "05:00"
+      timezone: "America/Sao_Paulo"
+    rebase-strategy: auto
+    commit-message:
+      prefix: "deps(spa)"
+    labels:
+      - "dependencies"
+      - "npm"
+    groups:
+      next-framework:
+        patterns:
+          - "next"
+          - "@opennextjs/*"
+          - "react"
+          - "react-dom"
+          - "sst"
+      all-other-dependencies:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "next"
+          - "@opennextjs/*"
+          - "react"
+          - "react-dom"
+          - "sst"
+
+  # ─── npm packages: infra (CDK) ───────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/infra"
+    schedule:
+      interval: "daily"
+      time: "05:00"
+      timezone: "America/Sao_Paulo"
+    rebase-strategy: auto
+    commit-message:
+      prefix: "deps(infra)"
+    labels:
+      - "dependencies"
+      - "npm"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
+
+  # ─── npm packages: ProductImages service ─────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/src/Services/ProductImages"
+    schedule:
+      interval: "daily"
+      time: "05:00"
+      timezone: "America/Sao_Paulo"
+    rebase-strategy: auto
+    commit-message:
+      prefix: "deps(product-images)"
+    labels:
+      - "dependencies"
+      - "npm"
+    groups:
+      all-dependencies:
+        patterns:
+          - "*"
