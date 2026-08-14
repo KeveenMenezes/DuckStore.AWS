@@ -174,6 +174,8 @@ built from, and its floor is genuinely higher than the CDK role's:
       "Resource": [
         "arn:aws:s3:::sst-asset-*",
         "arn:aws:s3:::sst-asset-*/*",
+        "arn:aws:s3:::sst-state-*",
+        "arn:aws:s3:::sst-state-*/*",
         "arn:aws:s3:::duckstore-spa-*",
         "arn:aws:s3:::duckstore-spa-*/*"
       ]
@@ -246,6 +248,13 @@ a role, attach `AdministratorAccess`, hand it to a Lambda, invoke it. Denying th
 identities themselves (`cdk-hnb659fds-*`, `GitHubActions*`) closes the shortest version
 of that path — the CDK's `cfn-exec-role` is the admin role sitting right there — and
 denying the user/group/provider surface closes the rest.
+
+`SstStateAndAssets` needs both `sst-asset-*` and `sst-state-*`, not just the former: the
+`/sst/bootstrap` SSM parameter (read by `SstBootstrapAndSecrets`) names two separate
+buckets — `asset` for published Lambda code and `state` for SST's own Pulumi-backed state,
+including `sst secret set` output. Scoping to `sst-asset-*` alone passes the CDK-style
+asset-publish steps but fails `sst secret set` with an opaque "Could not get secrets",
+since that command reads/writes the state bucket, not the asset one.
 
 Residual risk worth stating plainly rather than pretending away: this role can still
 create a Lambda execution role with broad permissions, and `s3:*`/`dynamodb:*` are
