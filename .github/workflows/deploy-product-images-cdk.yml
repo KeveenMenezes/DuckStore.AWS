@@ -57,7 +57,7 @@ jobs:
       # x86_64, so the arm64 bundling image needs QEMU emulation registered or the build
       # fails with "exec format error".
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
+        uses: docker/setup-qemu-action@v4
         with:
           platforms: arm64
 
