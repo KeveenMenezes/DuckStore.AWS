@@ -104,6 +104,18 @@ Carts are identified by a server-resolved `OwnerId` — `USER#<cognito-sub>` whe
 
 </details>
 
+<details>
+<summary><strong>Product management</strong> — the Blazor admin app</summary>
+
+![Product management](./docs/img/screenshots/management-products.png)
+
+The `Managment.Web.Blazor` admin app calls AppSync GraphQL directly (no BFF), gated by Cognito
+sign-in. Product create/edit runs through the `createProductWithPrice` saga
+([ADR-0032](./docs/adr/0032-create-product-with-price-step-functions-express-saga.md)) so the product and
+its price are written with compensation on failure.
+
+</details>
+
 ---
 
 ## 🎯 Design principles
