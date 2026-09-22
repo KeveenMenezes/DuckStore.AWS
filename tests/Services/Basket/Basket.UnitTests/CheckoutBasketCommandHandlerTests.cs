@@ -1,6 +1,7 @@
 ﻿using BuildingBlocks.Core.Validation;
 #pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
 #pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
+#pragma warning disable CS8601 // Possible null reference assignment.
 #pragma warning disable CS8620 // Argument cannot be used for parameter due to differences in the nullability of reference types.
 
 using Basket.Function.Modules.ShoppingCarts.Data;
@@ -33,7 +34,8 @@ public class CheckoutBasketCommandHandlerTests
         var basketCheckoutDto = new BasketCheckoutDto
         {
             OwnerId = "USER#testuser",
-            TotalPrice = 100.0m
+            TotalPrice = 100.0m,
+            ShippingAddress = ValidShippingAddress()
         };
 
         var basket = ShoppingCart.Create(
@@ -71,7 +73,8 @@ public class CheckoutBasketCommandHandlerTests
         var basketCheckoutDto = new BasketCheckoutDto
         {
             OwnerId = "USER#testuser",
-            TotalPrice = 100.0m
+            TotalPrice = 100.0m,
+            ShippingAddress = ValidShippingAddress()
         };
 
         _basketRepositoryMock
@@ -103,15 +106,15 @@ public class CheckoutBasketCommandHandlerTests
         var command = new CheckoutBasketCommand(new BasketCheckoutDto
         {
             OwnerId = "USER#testuser",
-            TotalPrice = 100.0m
+            TotalPrice = 100.0m,
+            ShippingAddress = ValidShippingAddress()
         });
 
         // Act
         var result = _validator.Validate(command).ToList();
 
         // Assert
-        Assert.DoesNotContain(result, f => f.PropertyName == "BasketCheckoutDto");
-        Assert.DoesNotContain(result, f => f.PropertyName == "OwnerId");
+        Assert.Empty(result);
     }
 
     [Fact]
@@ -126,4 +129,65 @@ public class CheckoutBasketCommandHandlerTests
         // Assert
         Assert.Contains(result, f => f.PropertyName == "BasketCheckoutDto" && f.ErrorMessage == "BasketCheckoutDto can't be null");
     }
+
+    // Ordering's Address.Of rejects a blank AddressLine/EmailAddress. That rejection lands in
+    // ordering-dlq long after the cart is gone, so the validator has to catch it here instead.
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Validator_ShouldHaveError_WhenAddressLineIsBlank(string? addressLine)
+    {
+        // Arrange
+        var shippingAddress = ValidShippingAddress();
+        shippingAddress.AddressLine = addressLine;
+
+        var command = new CheckoutBasketCommand(new BasketCheckoutDto
+        {
+            OwnerId = "USER#testuser",
+            TotalPrice = 100.0m,
+            ShippingAddress = shippingAddress
+        });
+
+        // Act
+        var result = _validator.Validate(command).ToList();
+
+        // Assert
+        Assert.Contains(result, f => f.PropertyName == "AddressLine" && f.ErrorMessage == "AddressLine is required");
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData(null)]
+    public void Validator_ShouldHaveError_WhenEmailAddressIsBlank(string? emailAddress)
+    {
+        // Arrange
+        var shippingAddress = ValidShippingAddress();
+        shippingAddress.EmailAddress = emailAddress;
+
+        var command = new CheckoutBasketCommand(new BasketCheckoutDto
+        {
+            OwnerId = "USER#testuser",
+            TotalPrice = 100.0m,
+            ShippingAddress = shippingAddress
+        });
+
+        // Act
+        var result = _validator.Validate(command).ToList();
+
+        // Assert
+        Assert.Contains(result, f => f.PropertyName == "EmailAddress" && f.ErrorMessage == "EmailAddress is required");
+    }
+
+    private static BasketCheckoutAddressDto ValidShippingAddress() => new()
+    {
+        FirstName = "Test",
+        LastName = "User",
+        EmailAddress = "test@duckstore.dev",
+        AddressLine = "221B Baker Street",
+        Country = "US",
+        State = "London",
+        ZipCode = "00000"
+    };
 }
