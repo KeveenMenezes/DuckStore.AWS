@@ -92,7 +92,10 @@ export function validateCheckoutForm(data: CheckoutFormData): CheckoutFieldError
   const errors: CheckoutFieldErrors = {}
   if (!data.name.trim()) errors.name = "Name is required"
   if (!data.email.trim() || !data.email.includes("@")) errors.email = "Invalid email"
-  // Address is optional (users can complete it later in /my-profile).
+  // Required: Ordering's Address value object rejects a blank AddressLine, and that rejection
+  // only happens after EventBridge has already delivered the checkout — too late to tell the
+  // customer. Basket's CheckoutBasketCommandValidator enforces the same rule server-side.
+  if (!data.address.trim()) errors.address = "Address is required"
   if (!data.city.trim()) errors.city = "City is required"
   // Cash needs no card at all — payment confirmation is a separate, later step.
   if (data.paymentMethod === "card") {

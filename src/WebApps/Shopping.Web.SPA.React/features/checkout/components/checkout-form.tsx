@@ -85,7 +85,7 @@ export function CheckoutForm({
           />
           <FormField
             id="address"
-            label="Address (optional)"
+            label="Address"
             placeholder="Street, number, complement"
             value={formData.address}
             error={errors.address}
