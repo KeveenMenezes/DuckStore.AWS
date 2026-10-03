@@ -1,0 +1,16 @@
+<div class="empty-state">
+    <div class="empty-state-icon"><Icon Name="@IconName" Size="22" /></div>
+    <p class="empty-state-title">@Title</p>
+    @if (Description is not null)
+    {
+        <p class="empty-state-text">@Description</p>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+    [Parameter] public string? Description { get; set; }
+    [Parameter] public string IconName { get; set; } = "inbox";
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}

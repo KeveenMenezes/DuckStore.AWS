@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" width="160" height="160">
-  <rect width="160" height="160" fill="#e5e7eb"/>
-  <path d="M48 104l24-32 18 24 12-14 20 22H48z" fill="#9ca3af"/>
-  <circle cx="60" cy="60" r="10" fill="#9ca3af"/>
+  <!-- Transparent background: the host element's surface color shows through in light and dark themes. -->
+  <path d="M52 104l22-29 16 21 11-13 18 21H52z" fill="#98a2b3" fill-opacity="0.7"/>
+  <circle cx="64" cy="64" r="9" fill="#98a2b3" fill-opacity="0.7"/>
 </svg>
