@@ -17,6 +17,9 @@ env:
   NODE_VERSION: '24'
   DOTNET_VERSION: '10.0.x'
   MANAGEMENT_URL: https://management-duckstore.dev.keveenmenezes.com
+  # Same deterministic image CDN domain the SPA uses (sst.config.ts) — ProductImagesStack
+  # serves processed variants there (ADR-0034).
+  IMAGE_CDN_URL: https://img-duckstore.dev.keveenmenezes.com
 
 jobs:
   deploy:
@@ -82,7 +85,8 @@ jobs:
               "Enabled": true,
               "Authority": "https://cognito-idp.${AWS_REGION}.amazonaws.com/${MANAGEMENT_USER_POOL_ID}",
               "ClientId": "${MANAGEMENT_CLIENT_ID}"
-            }
+            },
+            "ImageCdn": { "BaseUrl": "${IMAGE_CDN_URL}" }
           }
           EOF
 

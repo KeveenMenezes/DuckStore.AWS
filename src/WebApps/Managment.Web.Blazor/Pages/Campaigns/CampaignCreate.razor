@@ -5,65 +5,89 @@
 
 <PageTitle>New campaign — DuckStore Management</PageTitle>
 
-<h1>New campaign</h1>
+<PageHeader Title="New campaign" Subtitle="Discount one or more products for a fixed period."
+            BackHref="campaigns" BackLabel="Discounts" />
 
-@if (error is not null)
-{
-    <div class="banner banner-error">@error</div>
-}
+<Banner @bind-Message="error" Kind="error" />
 
-<EditForm Model="model" OnValidSubmit="CreateAsync">
+<EditForm Model="model" OnValidSubmit="CreateAsync" class="form-layout">
     <DataAnnotationsValidator />
 
-    <div class="form-field">
-        <label for="name">Name</label>
-        <InputText id="name" @bind-Value="model.Name" />
-        <ValidationMessage For="() => model.Name" />
-    </div>
+    <div class="form-grid">
+        <div class="form-col">
+            <section class="card">
+                <header class="card-header"><h2>Campaign</h2></header>
+                <div class="card-body">
+                    <div class="form-field">
+                        <label for="name">Name</label>
+                        <InputText id="name" @bind-Value="model.Name" placeholder="e.g. Black Friday" />
+                        <ValidationMessage For="() => model.Name" />
+                    </div>
 
-    <div class="form-field">
-        <label for="discountType">Discount type</label>
-        <select id="discountType" @bind="model.DiscountType">
-            <option value="Fixed">Fixed amount</option>
-            <option value="Percentage">Percentage</option>
-        </select>
-    </div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label for="discountType">Discount type</label>
+                            <select id="discountType" @bind="model.DiscountType">
+                                <option value="Fixed">Fixed amount</option>
+                                <option value="Percentage">Percentage</option>
+                            </select>
+                        </div>
 
-    <div class="form-field">
-        <label for="value">
-            @(model.DiscountType == "Percentage" ? "Percentage off" : "Amount off")
-        </label>
-        <InputNumber id="value" step="0.01" @bind-Value="model.Value" />
-        <ValidationMessage For="() => model.Value" />
-    </div>
+                        <div class="form-field">
+                            <label for="value">
+                                @(model.DiscountType == "Percentage" ? "Percentage off" : "Amount off")
+                            </label>
+                            <div class="input-affix">
+                                <span class="affix">@(model.DiscountType == "Percentage" ? "%" : CurrencySymbol)</span>
+                                <InputNumber id="value" step="0.01" @bind-Value="model.Value" />
+                            </div>
+                            <ValidationMessage For="() => model.Value" />
+                        </div>
+                    </div>
 
-    <div class="form-field">
-        <label for="startsAt">Starts at</label>
-        <InputDate id="startsAt" Type="InputDateType.DateTimeLocal" @bind-Value="model.StartsAt" />
-        <ValidationMessage For="() => model.StartsAt" />
-    </div>
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label for="startsAt">Starts at</label>
+                            <InputDate id="startsAt" Type="InputDateType.DateTimeLocal" @bind-Value="model.StartsAt" />
+                            <ValidationMessage For="() => model.StartsAt" />
+                        </div>
 
-    <div class="form-field">
-        <label for="endsAt">Ends at</label>
-        <InputDate id="endsAt" Type="InputDateType.DateTimeLocal" @bind-Value="model.EndsAt" />
-        <ValidationMessage For="() => model.EndsAt" />
-    </div>
+                        <div class="form-field">
+                            <label for="endsAt">Ends at</label>
+                            <InputDate id="endsAt" Type="InputDateType.DateTimeLocal" @bind-Value="model.EndsAt" />
+                            <ValidationMessage For="() => model.EndsAt" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
 
-    <div class="form-field">
-        <label>Products</label>
-        <ProductMultiSelect @bind-Selected="model.ProductIds" />
-        <ValidationMessage For="() => model.ProductIds" />
+        <div class="form-col">
+            <section class="card">
+                <header class="card-header">
+                    <h2>Products</h2>
+                    <span class="card-header-meta">@model.ProductIds.Count selected</span>
+                </header>
+                <div class="card-body">
+                    <ProductMultiSelect @bind-Selected="model.ProductIds" />
+                    <ValidationMessage For="() => model.ProductIds" />
+                </div>
+            </section>
+        </div>
     </div>
 
     <div class="form-actions">
         <a class="btn btn-secondary" href="campaigns">Cancel</a>
         <button class="btn btn-primary" type="submit" disabled="@busy">
-            @(busy ? "Saving..." : "Create")
+            @(busy ? "Saving..." : "Create campaign")
         </button>
     </div>
 </EditForm>
 
 @code {
+    private static readonly string CurrencySymbol =
+        System.Globalization.CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
     private readonly CampaignFormModel model = new();
     private bool busy;
     private string? error;
