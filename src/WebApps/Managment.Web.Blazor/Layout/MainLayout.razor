@@ -1,15 +1,32 @@
 @inherits LayoutComponentBase
+@inject NavigationManager Navigation
 
 <div class="app-shell">
     <aside class="sidebar">
-        <div class="sidebar-brand">🦆 DuckStore Management</div>
+        <a class="sidebar-brand" href="products">
+            <span class="brand-mark">🦆</span>
+            <span class="brand-text">
+                <span class="brand-name">DuckStore</span>
+                <span class="brand-sub">Back office</span>
+            </span>
+        </a>
         <nav class="sidebar-nav">
-            <NavLink class="nav-item" href="products">Products</NavLink>
-            <NavLink class="nav-item" href="campaigns">Discounts</NavLink>
+            <span class="nav-section">Catalog</span>
+            <NavLink class="nav-item" href="products">
+                <Icon Name="box" /> <span>Products</span>
+            </NavLink>
+            <span class="nav-section">Pricing</span>
+            <NavLink class="nav-item" href="campaigns">
+                <Icon Name="percent" /> <span>Discounts</span>
+            </NavLink>
         </nav>
+        <div class="sidebar-footer">
+            <span class="env-pill">@EnvironmentLabel</span>
+        </div>
     </aside>
     <div class="main-area">
         <header class="topbar">
+            <span class="topbar-title">Management console</span>
             <LoginDisplay />
         </header>
         <main class="content">
@@ -17,3 +34,16 @@
         </main>
     </div>
 </div>
+
+@code {
+    // The hosted zone encodes the environment (dev.keveenmenezes.com) — see infra/bin/app.ts.
+    private string EnvironmentLabel
+    {
+        get
+        {
+            var host = new Uri(Navigation.BaseUri).Host;
+            if (host is "localhost" or "127.0.0.1") return "Local";
+            return host.Contains(".dev.", StringComparison.OrdinalIgnoreCase) ? "Development" : "Production";
+        }
+    }
+}
