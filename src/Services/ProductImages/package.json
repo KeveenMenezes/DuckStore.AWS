@@ -8,17 +8,17 @@
     "sweep": "tsx scripts/sweep-orphan-images.ts"
   },
   "dependencies": {
-    "@aws-sdk/client-dynamodb": "^3.1136.0",
-    "@aws-sdk/client-s3": "^3.1136.0",
-    "@aws-sdk/s3-presigned-post": "^3.1136.0",
-    "sharp": "^0.35.4",
+    "@aws-sdk/client-dynamodb": "^3.1145.0",
+    "@aws-sdk/client-s3": "^3.1145.0",
+    "@aws-sdk/s3-presigned-post": "^3.1145.0",
+    "sharp": "^0.35.5",
     "ulid": "^3.0.2"
   },
   "devDependencies": {
-    "@types/aws-lambda": "^8.10.163",
-    "@types/node": "^26.6.2",
+    "@types/aws-lambda": "^8.10.164",
+    "@types/node": "^26.6.4",
     "esbuild": "^0.28.2",
     "tsx": "^4.23.15",
-    "typescript": "~5.9.3"
+    "typescript": "~7.0.2"
   }
 }
