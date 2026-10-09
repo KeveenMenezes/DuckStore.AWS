@@ -36,7 +36,7 @@
   - Verificar: `pnpm lint && pnpm build`; manual: logado vê o saldo, visitante não, e responder certo atualiza o badge.
   - Arquivos: `features/points/{services,hooks,components,types}/*`, componente de header. Dependências: T5.
 
-- [ ] **T7: Página `/my-points` (histórico)** (S)
+- [x] **T7: Página `/my-points` (histórico)** (S)
   - Aceite: tabela com data, motivo ("Desafio", "Avaliação", "Resgate") e valor com sinal; paginação; visitante é redirecionado ao login; link a partir de `my-profile`.
   - Verificar: `pnpm build`; manual com 2 desafios respondidos.
   - Arquivos: `app/my-points/page.tsx`, `features/points/components/points-history-table.tsx`, link em `app/my-profile`. Dependências: T6.
