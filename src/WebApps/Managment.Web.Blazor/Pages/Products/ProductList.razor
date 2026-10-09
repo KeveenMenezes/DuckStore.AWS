@@ -7,77 +7,124 @@
 
 <PageTitle>Products — DuckStore Management</PageTitle>
 
-<div class="page-header">
-    <h1>Products</h1>
-    <a class="btn btn-primary" href="products/new">New product</a>
-</div>
+<PageHeader Title="Products" Subtitle="Manage the catalog, stock, media and nominal prices.">
+    <Actions>
+        <a class="btn btn-primary" href="products/new"><Icon Name="plus" /> New product</a>
+    </Actions>
+</PageHeader>
 
-@if (banner is not null)
-{
-    <div class="banner banner-success">
-        @banner — the catalog list is synced asynchronously and may take a few seconds to update.
-    </div>
-}
-@if (error is not null)
-{
-    <div class="banner banner-error">@error</div>
-}
+<Banner @bind-Message="banner" />
+<Banner @bind-Message="error" Kind="error" />
 
-<form class="search-bar" @onsubmit="SearchAsync">
-    <input type="search" placeholder="Search products..." @bind="search" @bind:event="oninput" />
-    <button class="btn btn-secondary" type="submit">Search</button>
-</form>
+<section class="card">
+    <form class="toolbar" @onsubmit="SearchAsync">
+        <div class="search-field">
+            <Icon Name="search" />
+            <input type="search" placeholder="Search by product name..." aria-label="Search products"
+                   @bind="search" @bind:event="oninput" />
+        </div>
+        <button class="btn btn-secondary" type="submit">Search</button>
+        @if (items is { Count: > 0 })
+        {
+            <span class="toolbar-meta">@items.Count @(items.Count == 1 ? "product" : "products")@(nextToken is not null ? "+" : "")</span>
+        }
+    </form>
 
-@if (items is null)
-{
-    <p class="muted">Loading products...</p>
-}
-else if (items.Count == 0)
-{
-    <p class="muted">No products found.</p>
-}
-else
-{
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Name</th>
-                <th>Stock</th>
-                <th>Price</th>
-                <th>Rating</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var product in items)
-            {
-                <tr>
-                    <td>
-                        <img class="thumb" src="@Cdn.ThumbOrPlaceholder(product.Images)" alt="@product.Name"
-                             onerror="this.onerror=null;this.src='@ImageCdn.Placeholder'" />
-                    </td>
-                    <td>@product.Name</td>
-                    <td>@product.Stock</td>
-                    <td>@((nominalPrices.GetValueOrDefault(product.Id) ?? product.Price).ToString("C"))</td>
-                    <td>@product.AverageRating.ToString("0.0") (@product.RatingCount)</td>
-                    <td class="row-actions">
-                        <a class="btn btn-secondary" href="products/@product.Id/edit">Edit</a>
-                        <button class="btn btn-secondary" @onclick="() => priceDialog.Show(product)">Pricing details</button>
-                        <button class="btn btn-danger" @onclick="() => DeleteAsync(product)">Delete</button>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
-    @if (nextToken is not null)
+    @if (items is null)
     {
-        <button class="btn btn-secondary" disabled="@loadingMore" @onclick="LoadMoreAsync">
-            @(loadingMore ? "Loading..." : "Load more")
-        </button>
+        <div class="table-wrap">
+            <table class="data-table">
+                <tbody>
+                    @for (var i = 0; i < 6; i++)
+                    {
+                        <tr class="skeleton-row">
+                            <td><div class="cell-product"><span class="skeleton skeleton-thumb"></span><span class="skeleton skeleton-line"></span></div></td>
+                            <td><span class="skeleton skeleton-line short"></span></td>
+                            <td><span class="skeleton skeleton-line short"></span></td>
+                            <td><span class="skeleton skeleton-line short"></span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
     }
-}
+    else if (items.Count == 0)
+    {
+        <EmptyState Title="No products found"
+                    Description="@EmptyDescription"
+                    IconName="box" />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Stock</th>
+                        <th class="num">Price</th>
+                        <th>Rating</th>
+                        <th class="col-actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var product in items)
+                    {
+                        <tr>
+                            <td>
+                                <a class="cell-product" href="products/@product.Id/edit">
+                                    <img class="thumb" src="@Cdn.ThumbOrPlaceholder(product.Images)" alt="" loading="lazy"
+                                         onerror="this.onerror=null;this.src='@ImageCdn.Placeholder'" />
+                                    <span class="cell-product-text">
+                                        <span class="cell-product-name">@product.Name</span>
+                                        <span class="cell-product-id">@ShortId(product.Id)</span>
+                                    </span>
+                                </a>
+                            </td>
+                            <td><span class="badge @StockBadge(product.Stock)">@StockLabel(product.Stock)</span></td>
+                            <td class="num">@((nominalPrices.GetValueOrDefault(product.Id) ?? product.Price).ToString("C"))</td>
+                            <td>
+                                @if (product.RatingCount == 0)
+                                {
+                                    <span class="muted">No reviews</span>
+                                }
+                                else
+                                {
+                                    <span class="rating">
+                                        <Icon Name="star" Size="14" Class="rating-star" />
+                                        @product.AverageRating.ToString("0.0")
+                                        <span class="muted">(@product.RatingCount)</span>
+                                    </span>
+                                }
+                            </td>
+                            <td class="col-actions">
+                                <div class="row-actions">
+                                    <a class="btn btn-ghost btn-icon" href="products/@product.Id/edit"
+                                       title="Edit" aria-label="Edit @product.Name"><Icon Name="edit" /></a>
+                                    <button class="btn btn-ghost btn-icon" title="Pricing details"
+                                            aria-label="Pricing details for @product.Name"
+                                            @onclick="() => priceDialog.Show(product)"><Icon Name="tag" /></button>
+                                    <button class="btn btn-ghost btn-icon btn-ghost-danger" title="Delete"
+                                            aria-label="Delete @product.Name"
+                                            @onclick="() => DeleteAsync(product)"><Icon Name="trash" /></button>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (nextToken is not null)
+        {
+            <div class="card-footer">
+                <button class="btn btn-secondary" disabled="@loadingMore" @onclick="LoadMoreAsync">
+                    @(loadingMore ? "Loading..." : "Load more")
+                </button>
+            </div>
+        }
+    }
+</section>
 
 <ConfirmDialog @ref="confirmDialog" />
 <PriceDetailsDialog @ref="priceDialog" />
@@ -99,8 +146,8 @@ else
     {
         banner = Saved switch
         {
-            "created" => "Product created",
-            "updated" => "Product updated",
+            "created" => "Product created — the catalog list syncs asynchronously and may take a few seconds to update.",
+            "updated" => "Product updated — the catalog list syncs asynchronously and may take a few seconds to update.",
             _ => null,
         };
         await LoadAsync();
@@ -166,4 +213,19 @@ else
             error = $"Failed to delete product: {ex.Message}";
         }
     }
+
+    private string EmptyDescription => string.IsNullOrWhiteSpace(search)
+        ? "Create your first product to get started."
+        : $"Nothing matches “{search}”. Try a different search term.";
+
+    private static string ShortId(string id) => id.Length > 8 ? $"#{id[..8]}" : $"#{id}";
+
+    private static string StockBadge(int stock) => stock switch
+    {
+        0 => "badge-danger",
+        <= 5 => "badge-warning",
+        _ => "badge-neutral",
+    };
+
+    private static string StockLabel(int stock) => stock == 0 ? "Out of stock" : $"{stock} in stock";
 }

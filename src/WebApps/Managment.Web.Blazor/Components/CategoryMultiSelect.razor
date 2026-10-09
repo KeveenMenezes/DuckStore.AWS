@@ -10,10 +10,10 @@ else if (categories.Count == 0)
 }
 else
 {
-    <div class="category-list">
+    <div class="chip-list">
         @foreach (var category in categories)
         {
-            <label class="category-item">
+            <label class="chip @(Selected.Contains(category.Id) ? "is-selected" : null)">
                 <input type="checkbox"
                        checked="@Selected.Contains(category.Id)"
                        @onchange="e => Toggle(category.Id, (bool)e.Value!)" />
