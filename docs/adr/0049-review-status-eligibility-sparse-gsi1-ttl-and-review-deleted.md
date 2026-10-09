@@ -1,6 +1,6 @@
 ---
 tags:
-  - status/proposed
+  - status/accepted
   - domain/review
   - domain/ordering
   - domain/catalogview
@@ -9,9 +9,9 @@ tags:
 # ADR-0049: Review Status — Purchase Eligibility, Sparse GSI1, TTL on Delete and `ReviewDeleted`
 
 ## Status
-**Proposed** — October 2026
+**Accepted** — October 2026
 
-Amends, on acceptance:
+Amends:
 
 - [ADR-0011](./0011-review-bounded-context-rating-aggregation-via-cdc.md) §1–§3 — a `reviews` row
   is no longer always a public review: it carries a `Status`, only `Published` rows are in GSI1, the
@@ -19,7 +19,8 @@ Amends, on acceptance:
 - [ADR-0029](./0029-review-upsert-composite-key-and-rating-delta.md) §3–§4 — `createReview` stops
   being an upsert that can create a row (it now requires an existing row and becomes an
   `UpdateItem`), and the publisher rules fire on **status transitions** instead of on
-  `INSERT`/`MODIFY`. Adds `ReviewDeletedEvent`.
+  `INSERT`/`MODIFY`. Adds `ReviewDeletedEvent`. §7 (ISR revalidation) also subscribes the
+  revalidator to `ReviewDeletedEvent` (§8 below).
 
 Specified by [SPEC-review-eligibility.md](../../SPEC-review-eligibility.md).
 
@@ -37,8 +38,10 @@ Constraints from existing ADRs:
 - **Context ownership** — Ordering knows who bought what; Review owns `reviews`. Review MUST NOT read
   the `ordering` table, and Ordering MUST NOT write `reviews`. The fact "order completed" has to
   reach Review as an integration event via CDC (ADR-0005, ADR-0019).
-- **Resolver selection** (ADR-0009) — every new field starts Direct; the eligibility check is a
-  same-table read (does my row exist?), which fits the pipeline shape ADR-0029 §6 already ruled Direct.
+- **Resolver selection** (ADR-0009) — every new field starts Direct. ADR-0029 §6 keeps a
+  read-then-write pipeline Direct only while the write does not branch on a business condition
+  found in the read, so the purchase gate MUST NOT be a resolver branch: it has to be a DynamoDB
+  write condition on the caller's own row (§4).
 - **Rating aggregation** (ADR-0029/ADR-0030) — CatalogView keeps `RatingCount`/`RatingSum`/
   `RatingDistribution` by deltas. Anything that is not a public review must never reach those deltas,
   and removing a public review must subtract it exactly once.
@@ -119,11 +122,14 @@ technique as the Challenges answer-key sparse GSI, ADR-0045). Writers MUST maint
 |---|---|---|
 | `myReview(productId: ID!): Review` | `GetItem` on `productId#sub` | `null` when no row; returns the row with its `status` |
 | `createReview(input)` | pipeline `checkExisting` → `upsert` (ADR-0029) | `checkExisting` calls `util.unauthorized()` when the row doesn't exist. `upsert` becomes `UpdateItem`: `SET Status = Published, Rating, Comment, UserName, UpdatedAt, GSI1PK, GSI1SK, CreatedAt` (preserved), `REMOVE ExpiresAt`, condition `attribute_exists(Id)` |
-| `deleteReview(productId: ID!): Review!` | `UpdateItem` | `SET Status = Deleted, ExpiresAt = now + 5d (epoch seconds) REMOVE GSI1PK, GSI1SK`, condition `Status = Published OR attribute_not_exists(Status)` |
+| `deleteReview(productId: ID!): Review!` | `UpdateItem` | `SET Status = Deleted, ExpiresAt = now + 5d (epoch seconds) REMOVE GSI1PK, GSI1SK`, condition `attribute_exists(Id) AND (Status = Published OR attribute_not_exists(Status))` — without `attribute_exists(Id)`, a missing row satisfies `attribute_not_exists(Status)` and `UpdateItem` would create a phantom `Deleted` row |
 
-The owner always comes from `ctx.identity.sub`, never from input (ADR-0037). `createReview` MUST NOT
-create a row that doesn't exist — the `attribute_exists(Id)` condition backs up the pipeline check
-against a TTL deletion between the two functions.
+The owner always comes from `ctx.identity.sub`, never from input (ADR-0037). The purchase gate is
+the `attribute_exists(Id)` **write condition** on `upsert`: `createReview` MUST NOT create a row
+that doesn't exist. `checkExisting`'s `util.unauthorized()` on a missing row is only an early exit
+(it also reads `CreatedAt` forward, the ADR-0029 §6 shape); a TTL deletion between the two functions
+still fails the condition, and both paths answer `Unauthorized`. A failed `deleteReview` condition
+answers "No published review to delete".
 
 ### 5. Publisher rules by status transition
 
@@ -194,6 +200,13 @@ sequenceDiagram
     Note over R: TTL expiry → REMOVE → no event
 ```
 
+### 8. ISR revalidation on delete (amends ADR-0029 §7)
+
+The SPA's `revalidator` Lambda (`revalidator/index.mjs`, rule in `sst.config.ts`) adds
+`ReviewDeletedEvent` to `ReviewCreatedEvent`/`ReviewUpdatedEvent`, mapping it to the same
+`reviews:{productId}` tag — otherwise a deleted review stays on the cached `/products/[id]` page
+until the next unrelated revalidation. The TTL `REMOVE` publishes nothing, so it triggers nothing.
+
 ---
 
 ## Applies To
@@ -205,7 +218,7 @@ sequenceDiagram
 - `infra/constructs/review-lambdas.ts` — consumer, EventBridge rule, DLQ.
 - `src/Services/CatalogView/CatalogView.Function` — `ReviewDeleteStrategy`; `infra/constructs/catalogview-lambdas.ts`.
 - `graphql/schema.graphql`, `graphql/resolvers/reviews/**`, `infra/constructs/appsync-api.ts`.
-- `src/WebApps/Shopping.Web.SPA.React` — `features/reviews/**`, `app/api/graphql/local.ts`.
+- `src/WebApps/Shopping.Web.SPA.React` — `features/reviews/**`, `app/api/graphql/local.ts`, `revalidator/index.mjs`, `sst.config.ts`.
 
 ---
 
@@ -238,7 +251,8 @@ sequenceDiagram
 - Every row of §5 is a unit test on the publisher rules; the consumer's per-item condition and the
   CatalogView floor are unit-tested.
 - The local dev GraphQL backend (`local.ts`) creates the `Eligible` rows synchronously in the local
-  checkout, so the flow is exercisable without EventBridge.
+  checkout, so the flow is exercisable without EventBridge. Locally that happens before payment, so
+  a declined order still becomes eligible there — an accepted dev-only divergence.
 
 ### Future Constraints
 

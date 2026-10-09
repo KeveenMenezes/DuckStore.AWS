@@ -16,7 +16,7 @@ client-supplied and unverified. Everything else below (upsert mechanics, sort-or
 pipeline-resolver shape, rule-based Streams publisher, CatalogView rating-delta aggregation)
 remains in effect and is unaffected.
 
-**Amendment proposed** — October 2026: [ADR-0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md) amends §3 (`createReview` requires an existing row and its `upsert` function becomes an `UpdateItem` that sets `Status = Published`) and §4 (rules fire on status transitions, not `INSERT`/`MODIFY`; new `ReviewDeletedEvent`; the TTL `REMOVE` publishes nothing).
+**Amended** — October 2026: [ADR-0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md) amends §3 (`createReview` requires an existing row and its `upsert` function becomes an `UpdateItem` that sets `Status = Published`) and §4 (rules fire on status transitions, not `INSERT`/`MODIFY`; new `ReviewDeletedEvent`; the TTL `REMOVE` publishes nothing).
 
 Fulfills [ADR-0011](./0011-review-bounded-context-rating-aggregation-via-cdc.md)'s own anticipated
 "Future Constraint": *"Edits/deletions of reviews... would require the consumer to handle

@@ -1,6 +1,6 @@
 ---
 tags:
-  - status/proposed
+  - status/accepted
   - domain/challenges
   - domain/pricing
   - domain/payment
@@ -10,9 +10,9 @@ tags:
 # ADR-0048: Points Transactions Ledger and In-Cart Points Redemption
 
 ## Status
-**Proposed** — October 2026
+**Accepted** — October 2026
 
-Amends, on acceptance:
+Amends:
 
 | ADR | What changes | What stands |
 |---|---|---|

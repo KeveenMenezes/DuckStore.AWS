@@ -19,7 +19,7 @@ unchanged — ADR-0027 consumes the same `ReviewCreatedEvent` this ADR defines.
 deltas) is fulfilled by [ADR-0029](./0029-review-upsert-composite-key-and-rating-delta.md), which
 also changes the `reviews` table's `Id` from a random GUID to a deterministic composite key.
 
-**Amendment proposed** — October 2026: [ADR-0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md) amends §1–§3: a `reviews` row carries a `Status` (`Eligible`/`Published`/`Deleted`), only `Published` rows are in GSI1 (sparse), the table gains TTL on `ExpiresAt`, `ReviewCreatedEvent` fires on the transition to `Published` (not on `INSERT`), and Review gains its first inbound consumer (`OrderCompletedEvent`).
+**Amended** — October 2026: [ADR-0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md) amends §1–§3: a `reviews` row carries a `Status` (`Eligible`/`Published`/`Deleted`), only `Published` rows are in GSI1 (sparse), the table gains TTL on `ExpiresAt`, `ReviewCreatedEvent` fires on the transition to `Published` (not on `INSERT`), and Review gains its first inbound consumer (`OrderCompletedEvent`).
 
 ---
 

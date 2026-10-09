@@ -28,7 +28,7 @@ export class ReviewLambdas extends Construct {
 
     const { reviewsTable } = props;
 
-    // EventBridge bus — created by CatalogStack; imported here by name (ADR-0004).
+    // EventBridge bus — owned by FoundationStack; imported here by name (ADR-0004).
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
 
     // Shared dead-letter queue for async Review processing; a non-empty queue
@@ -44,9 +44,11 @@ export class ReviewLambdas extends Construct {
 
     // review-reviews-stream-publisher
     //   Trigger: DynamoDB Streams on reviews (NEW_AND_OLD_IMAGES, CDC — ADR-0005/ADR-0008)
-    //   Rule-based dispatcher (ADR-0019): INSERT → ReviewCreatedEvent, MODIFY →
-    //   ReviewUpdatedEvent (old + new rating), consumed by CatalogView to keep the
-    //   product's AverageRating/RatingCount aggregate (ADR-0029/ADR-0030).
+    //   Rule-based dispatcher (ADR-0019) keyed on the Status transition (ADR-0049 §6):
+    //   → Published emits ReviewCreatedEvent, Published → Published ReviewUpdatedEvent
+    //   (old + new rating), Published → Deleted ReviewDeletedEvent; Eligible rows and the
+    //   TTL REMOVE publish nothing. CatalogView consumes all three to keep the product's
+    //   AverageRating/RatingCount aggregate (ADR-0029/ADR-0030).
     this.reviewStreamPublisher = new lambda.Function(
       this,
       'ReviewStreamPublisher',
@@ -62,7 +64,7 @@ export class ReviewLambdas extends Construct {
         timeout: cdk.Duration.seconds(30),
         memorySize: DOTNET_MEMORY_MB,
         description:
-          'CDC: reads DynamoDB Streams on reviews and publishes ReviewCreated/ReviewUpdated to EventBridge',
+          'CDC: reads DynamoDB Streams on reviews and publishes ReviewCreated/ReviewUpdated/ReviewDeleted to EventBridge',
         environment: {
           ANNOTATIONS_HANDLER: 'ReviewStreamPublisher',
           EventBridge__BusName: eventBus.eventBusName,
