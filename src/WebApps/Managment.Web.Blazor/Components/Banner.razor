@@ -1,0 +1,20 @@
+@if (Message is not null)
+{
+    <div class="banner banner-@Kind" role="@(Kind == "error" ? "alert" : "status")">
+        <Icon Name="@(Kind == "error" ? "alert" : "check")" Size="16" />
+        <span class="banner-text">@Message</span>
+        <button type="button" class="banner-dismiss" aria-label="Dismiss" @onclick="DismissAsync">
+            <Icon Name="x" Size="14" />
+        </button>
+    </div>
+}
+
+@code {
+    [Parameter] public string? Message { get; set; }
+    [Parameter] public EventCallback<string?> MessageChanged { get; set; }
+
+    /// <summary>"success" or "error".</summary>
+    [Parameter] public string Kind { get; set; } = "success";
+
+    private Task DismissAsync() => MessageChanged.InvokeAsync(null);
+}

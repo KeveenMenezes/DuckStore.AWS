@@ -9,16 +9,17 @@ allowBuilds:
 # minimum-release-age policy. Pinned to a mutually-compatible, already-aged pair
 # instead of disabling the age policy itself.
 overrides:
-  '@smithy/core': 3.26.0
-  '@smithy/hash-node': 4.4.2
-  '@aws-sdk/types': 3.973.13
-  '@aws-sdk/core': 3.974.23
-  '@smithy/types': 4.15.0
-  '@aws-sdk/signature-v4-multi-region': 3.996.35
+  '@smithy/core': 3.35.0
+  '@smithy/hash-node': 4.5.2
+  '@aws-sdk/types': 3.974.6
+  '@aws-sdk/core': 3.978.1
+  '@smithy/types': 4.19.0
+  '@aws-sdk/signature-v4-multi-region': 3.996.47
   # Security fixes for transitive deps with open Dependabot alerts (GHSA advisories,
   # fixed versions per `gh api repos/.../dependabot/alerts`).
   postcss: 8.5.23
   lodash: 4.18.0
   brace-expansion: 2.1.2
-  js-yaml: 4.3.1
-  sharp: 0.35.0
+  js-yaml: 4.3.2
+  sharp: 0.35.4
+  'browserslist@<4.28.7': 4.28.7
