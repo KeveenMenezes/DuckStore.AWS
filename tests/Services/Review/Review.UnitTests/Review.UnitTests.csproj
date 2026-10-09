@@ -19,6 +19,8 @@
     </PackageReference>
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Moq" />
+    <PackageReference Include="Moq.AutoMock" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
   </ItemGroup>
 
@@ -28,6 +30,8 @@
 
   <ItemGroup>
     <Using Include="Xunit" />
+    <Using Include="Moq" />
+    <Using Include="Moq.AutoMock" />
   </ItemGroup>
 
 </Project>

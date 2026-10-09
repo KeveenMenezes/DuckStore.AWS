@@ -1,6 +1,7 @@
 ﻿using System.Text.Json.Serialization;
 using Amazon.Lambda.DynamoDBEvents;
 using BuildingBlocks.Messaging.EventBridge;
+using BuildingBlocks.Messaging.Events;
 
 namespace Review.Function.Shared.Configuration;
 
@@ -13,6 +14,7 @@ namespace Review.Function.Shared.Configuration;
 /// here is therefore a runtime error, not a compile error (ADR-0042 §7).
 /// </remarks>
 [JsonSerializable(typeof(DynamoDBEvent))]
+[JsonSerializable(typeof(EventBridgeEvent<OrderCompletedEvent>))]
 public partial class ReviewSerializerContext : JsonSerializerContext
 {
 }

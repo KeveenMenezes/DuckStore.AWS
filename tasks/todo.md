@@ -83,7 +83,7 @@
   - Verificar: testes do `EffectiveStatus`; `cdk synth ReviewStack`.
   - Arquivos: `Domain/Enums/ReviewStatus.cs`, `Data/ReviewSchema.cs`, `Publishers/ReviewStreamImage.cs`, `Review.DevelopmentDataSeeder/DynamoTableInitializer.cs`, `infra/constructs/review-dynamodb.ts`. Dependências: T10.
 
-- [ ] **T13: Consumer `review-order-completed-consumer`** (M)
+- [x] **T13: Consumer `review-order-completed-consumer`** (M)
   - Aceite: um `PutItem` por produto com `Status = Eligible`, sem atributos GSI1, condição `attribute_not_exists(Id)`; `ConditionalCheckFailed` é no-op; registrado no AppHost.
   - Verificar: testes (N produtos = N puts; condição presente; falha condicional não propaga).
   - Arquivos: `Consumers/OrderCompleted/{Endpoint,Handler,Mapper}.cs`, `src/AppHost/ReviewExtensions.cs`, teste. Dependências: T11, T12. Usar `cdc-integration-scaffold`.
