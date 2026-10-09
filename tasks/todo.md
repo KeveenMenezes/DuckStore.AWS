@@ -56,7 +56,7 @@
   - Verificar: `cdk synth AppSyncStack`; teste unitário; no AWS dev, chamar como Admin e como Seller.
   - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/challenges/mutations/Mutation.updateChallengePoints.js`, `infra/constructs/appsync-api.ts`, teste em `Challenges.UnitTests`. Dependências: nenhuma.
 
-- [ ] **T9: Página "Desafios" no Blazor** (M)
+- [x] **T9: Página "Desafios" no Blazor** (M)
   - Aceite: lista título, linguagem, dificuldade e pontos; edição inline com validação > 0; mostra o erro do servidor; item no menu.
   - Verificar: `dotnet build`; manual no AWS dev: ajustar, ver o valor novo na loja, responder e ganhar o valor novo; tentativa antiga mantém o crédito original.
   - Arquivos: `Pages/Challenges/ChallengeList.razor`, `Services/ChallengeAdminService.cs`, `Services/Models.cs`, `Layout/NavMenu.razor` (ou equivalente), `Program.cs` (registro do serviço). Dependências: T8.
