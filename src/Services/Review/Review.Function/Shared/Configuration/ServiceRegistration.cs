@@ -13,6 +13,7 @@ public static class ServiceRegistration
 
         services.AddScoped<IStreamRule<ReviewStreamImage>, ReviewCreatedRule>();
         services.AddScoped<IStreamRule<ReviewStreamImage>, ReviewUpdatedRule>();
+        services.AddScoped<IStreamRule<ReviewStreamImage>, ReviewDeletedRule>();
         services.AddScoped<StreamRuleDispatcher<ReviewStreamImage>>();
 
         // DynamoDB Local injects AWS_ENDPOINT_URL_DYNAMODB; the SDK resolves it on its own.

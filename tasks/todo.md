@@ -93,7 +93,7 @@
   - Verificar: `cdk synth ReviewStack && cdk diff ReviewStack`.
   - Arquivos: `infra/constructs/review-lambdas.ts`. Dependências: T13.
 
-- [ ] **T15: Regras da Review por transição + `ReviewDeletedEvent` + `UserId`** (M)
+- [x] **T15: Regras da Review por transição + `ReviewDeletedEvent` + `UserId`** (M)
   - Aceite: todas as linhas da tabela §5 do spec (INSERT `Eligible` = nada; →`Published` = Created; `Published→Published` = Updated; →`Deleted` = Deleted; REMOVE = nada; legado = `Published`); o `ReviewCreatedEvent` ganha `UserId`.
   - Verificar: um teste por linha da tabela.
   - Arquivos: `Rules/ReviewCreatedRule.cs`, `Rules/ReviewUpdatedRule.cs`, `Rules/ReviewDeletedRule.cs`, `BuildingBlocks.Messaging/Events/{ReviewCreatedEvent,ReviewDeletedEvent}.cs` (+ serializer context), testes. Dependências: T12.
