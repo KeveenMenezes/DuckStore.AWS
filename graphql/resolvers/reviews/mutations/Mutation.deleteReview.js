@@ -42,7 +42,13 @@ export function request(ctx) {
 
 // UpdateItem returns the item as it is after the update, mapped like Query.myReview.js.
 export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type)
+  if (ctx.error) {
+    // Same message as local.ts, instead of DynamoDB's raw "The conditional request failed".
+    if (ctx.error.type === 'DynamoDB:ConditionalCheckFailedException') {
+      util.error('No published review to delete', ctx.error.type)
+    }
+    util.error(ctx.error.message, ctx.error.type)
+  }
 
   const item = ctx.result
   return {

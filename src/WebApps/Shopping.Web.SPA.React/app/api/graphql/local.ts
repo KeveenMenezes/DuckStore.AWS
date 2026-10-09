@@ -192,8 +192,8 @@ function mapReview(item: Record<string, unknown>) {
 }
 
 // AppSync's util.unauthorized() message, so the SPA sees the same error locally.
-function unauthorized(field: string) {
-  return createGraphQLError(`Not Authorized to access ${field} on type Mutation`, {
+function unauthorized(field: string, type: 'Query' | 'Mutation' = 'Mutation') {
+  return createGraphQLError(`Not Authorized to access ${field} on type ${type}`, {
     extensions: { errorType: 'Unauthorized' },
   })
 }
@@ -773,14 +773,16 @@ const resolvers = {
     },
 
     // Mirrors Query.myPointsHistory.js (ADR-0048 §1): LSI1 Query, newest first, paginated. Cognito
-    // only in prod; locally the BFF-resolved owner stands in for the identity, same as
-    // myChallengeProgress. Keep the page-size clamp and the createdAt trimming in sync with the
-    // resolver.
+    // only in prod; locally the BFF-resolved owner stands in for the identity, so a visitor is
+    // rejected the way AppSync rejects a call without a user-pool token. Keep the page-size clamp
+    // and the createdAt trimming in sync with the resolver.
     async myPointsHistory(
       _: unknown,
       { pageSize, nextToken }: { pageSize?: number; nextToken?: string },
       context: LocalContext,
     ) {
+      if (context.owner.ownerId.startsWith('GUEST#')) throw unauthorized('myPointsHistory', 'Query')
+
       const result = await dynamoDb.send(
         new QueryCommand({
           TableName: 'points-transactions',

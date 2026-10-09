@@ -47,6 +47,10 @@ export function request(ctx) {
 }
 
 export function response(ctx) {
-  if (ctx.error) util.error(ctx.error.message, ctx.error.type)
+  if (ctx.error) {
+    // The row vanished after function 1 read it: same answer as function 1's own gate (local.ts too).
+    if (ctx.error.type === 'DynamoDB:ConditionalCheckFailedException') util.unauthorized()
+    util.error(ctx.error.message, ctx.error.type)
+  }
   return { id: ctx.stash.id, userName: ctx.identity.claims.name }
 }
