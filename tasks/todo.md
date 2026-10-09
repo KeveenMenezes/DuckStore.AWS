@@ -11,7 +11,7 @@
   - Verificar: `adr-guardian` sobre a ADR, sem conflito com ADR aceita.
   - Arquivos: `docs/adr/0048-*.md`, `docs/adr/README.md`. Dependências: nenhuma.
 
-- [ ] **T2: Tabela `points-transactions`** (M)
+- [x] **T2: Tabela `points-transactions`** (M) — feito; o AppHost não precisou mudar (a stream source entra na T29); `RemovalPolicy.DESTROY`, igual às outras tabelas do Challenges
   - Aceite: a tabela tem PK `OwnerId`, SK `TransactionId`, LSI1 (`OwnerId` + `CreatedAt`), GSI1 esparso `OrderId` e stream `NEW_AND_OLD_IMAGES`, sem TTL; é criada pelo seeder local e pelo CDK; os nomes só existem em `PointsTransactionsSchema`.
   - Verificar: o Aspire sobe e a tabela aparece no DynamoDB Local (`aws dynamodb describe-table --endpoint-url http://localhost:8000`); `cdk synth ChallengesStack`.
   - Arquivos: `Modules/Progress/Data/PointsTransactionsSchema.cs`, `Challenges.DevelopmentDataSeeder/DynamoTableInitializer.cs`, `infra/constructs/challenges-dynamodb.ts`, `src/AppHost/ChallengesExtensions.cs` (se for preciso). Dependências: T1.
