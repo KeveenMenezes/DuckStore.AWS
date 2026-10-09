@@ -88,7 +88,7 @@
   - Verificar: testes (N produtos = N puts; condição presente; falha condicional não propaga).
   - Arquivos: `Consumers/OrderCompleted/{Endpoint,Handler,Mapper}.cs`, `src/AppHost/ReviewExtensions.cs`, teste. Dependências: T11, T12. Usar `cdc-integration-scaffold`.
 
-- [ ] **T14: CDK do consumer `OrderCompleted`** (S)
+- [x] **T14: CDK do consumer `OrderCompleted`** (S)
   - Aceite: regra EventBridge `detail-type = OrderCompletedEvent` no `duckstore-event-bus`, DLQ, alarme no `duckstore-alerts`, grant de escrita em `reviews`, `functionName` fixo.
   - Verificar: `cdk synth ReviewStack && cdk diff ReviewStack`.
   - Arquivos: `infra/constructs/review-lambdas.ts`. Dependências: T13.
