@@ -152,4 +152,21 @@ public class DynamoQuestionRepositoryTests
         Assert.Equal("Because of the index.", question.Explanation);
         Assert.Equal("hint 1", question.Hint(1));
     }
+
+    [Fact]
+    public async Task GetForGradingAsync_ShouldGradeWithThePointsCurrentlyStoredOnThePublicItem()
+    {
+        // challenge-points-admin: an admin edit (updateChallengePoints) rewrites Points on the
+        // PUBLIC item only. Grading reads it fresh on every answer, so the new value applies from
+        // the next answer on, with no recalculation of earlier attempts.
+        var edited = PublicItem();
+        edited["Points"] = new AttributeValue { N = "250" };
+        SetupQuery(edited, AnswerItem());
+
+        var question = await _repository.GetForGradingAsync(QuestionId.Of("py-001"));
+
+        Assert.Equal(250, question!.Grade(selectedOption: 0, hintsRevealed: 0).PointsEarned);
+        Assert.Equal(
+            250 - Question.HintPenalty, question.Grade(selectedOption: 0, hintsRevealed: 1).PointsEarned);
+    }
 }

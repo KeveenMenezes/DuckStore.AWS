@@ -242,6 +242,8 @@ export class AppSyncApi extends Construct {
     campaignsTable.grantReadData(campaignsDs);
     catalogViewProductsTable.grantReadData(catalogViewProductsDs);
     challengesTable.grantReadData(challengesDs);
+    // Write needed for updateChallengePoints only — scoped to UpdateItem, not full read/write.
+    challengesTable.grant(challengesDs, 'dynamodb:UpdateItem');
     challengeProgressTable.grantReadData(challengeProgressDs);
     customerDiscountsTable.grantReadData(customerDiscountsDs);
     pointsTransactionsTable.grantReadData(pointsTransactionsDs);
@@ -416,5 +418,9 @@ export class AppSyncApi extends Construct {
     this.resolver(
       redeemChallengePointsDs, 'RedeemChallengePointsResolver', 'Mutation', 'redeemChallengePoints', 'challenges',
     );
+
+    // Admin-only direct DynamoDB UpdateItem on the PUBLIC item (ADR-0009) — no Lambda: one item,
+    // one attribute, invariant local to the resolver.
+    this.resolver(challengesDs, 'UpdateChallengePointsResolver', 'Mutation', 'updateChallengePoints', 'challenges');
   }
 }

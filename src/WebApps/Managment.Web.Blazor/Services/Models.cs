@@ -122,3 +122,33 @@ public sealed class CampaignFormModel : IValidatableObject
             yield return new ValidationResult("Percentage discount cannot exceed 100.", [nameof(Value)]);
     }
 }
+
+// Read model — the admin-relevant subset of the Challenge type in graphql/schema.graphql.
+// Difficulty is the upper-case enum name (EASY/MEDIUM/HARD). The answer key is never fetched.
+public sealed record ChallengeSummary(
+    string Id,
+    string Title,
+    string Language,
+    string Difficulty,
+    int Points);
+
+public sealed record ChallengePage(List<ChallengeSummary> Items, string? NextToken);
+
+// Mirrors the server rule in Mutation.updateChallengePoints (points is a positive integer),
+// replicated here only for immediate feedback; the resolver stays the source of truth.
+public static class ChallengePointsInput
+{
+    public static bool TryParse(string? text, out int points, out string? error)
+    {
+        points = 0;
+        if (!int.TryParse(text, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out points)
+            || points <= 0)
+        {
+            error = "Points must be a whole number greater than zero.";
+            return false;
+        }
+
+        error = null;
+        return true;
+    }
+}

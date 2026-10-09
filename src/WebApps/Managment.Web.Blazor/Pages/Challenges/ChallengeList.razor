@@ -1,0 +1,170 @@
+@page "/challenges"
+@attribute [Authorize]
+@inject ChallengeAdminService Challenges
+
+<PageTitle>Challenges — DuckStore Management</PageTitle>
+
+<div class="page-header">
+    <h1>Challenges</h1>
+</div>
+
+<p class="muted">A new point value applies to future answers only. Past attempts and credits are not recalculated.</p>
+
+@if (banner is not null)
+{
+    <div class="banner banner-success">@banner</div>
+}
+@if (error is not null)
+{
+    <div class="banner banner-error">@error</div>
+}
+
+@if (items is null)
+{
+    <p class="muted">Loading challenges...</p>
+}
+else if (items.Count == 0)
+{
+    <p class="muted">No challenges found.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Title</th>
+                <th>Language</th>
+                <th>Difficulty</th>
+                <th>Points</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var challenge in items)
+            {
+                <tr>
+                    <td>@challenge.Title</td>
+                    <td>@challenge.Language</td>
+                    <td>@challenge.Difficulty</td>
+                    @if (editingId == challenge.Id)
+                    {
+                        <td>
+                            <input type="number" min="1" step="1" class="inline-input" aria-label="Points for @challenge.Title"
+                                   @bind="editText" @bind:event="oninput" disabled="@saving" />
+                            @if (editError is not null)
+                            {
+                                <div class="validation-message">@editError</div>
+                            }
+                        </td>
+                        <td class="row-actions">
+                            <button class="btn btn-primary" disabled="@saving" @onclick="() => SaveAsync(challenge)">
+                                @(saving ? "Saving..." : "Save")
+                            </button>
+                            <button class="btn btn-secondary" disabled="@saving" @onclick="CancelEdit">Cancel</button>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>@challenge.Points</td>
+                        <td class="row-actions">
+                            <button class="btn btn-secondary" disabled="@saving" @onclick="() => StartEdit(challenge)">Edit</button>
+                        </td>
+                    }
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (nextToken is not null)
+    {
+        <button class="btn btn-secondary" disabled="@loadingMore" @onclick="LoadMoreAsync">
+            @(loadingMore ? "Loading..." : "Load more")
+        </button>
+    }
+}
+
+@code {
+    private List<ChallengeSummary>? items;
+    private string? nextToken;
+    private string? banner;
+    private string? error;
+    private bool loadingMore;
+
+    private string? editingId;
+    private string? editText;
+    private string? editError;
+    private bool saving;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var page = await Challenges.GetChallengesAsync();
+            items = page.Items;
+            nextToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            items = [];
+            error = $"Failed to load challenges: {ex.Message}";
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        loadingMore = true;
+        try
+        {
+            var page = await Challenges.GetChallengesAsync(nextToken: nextToken);
+            items!.AddRange(page.Items);
+            nextToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load more challenges: {ex.Message}";
+        }
+        finally
+        {
+            loadingMore = false;
+        }
+    }
+
+    private void StartEdit(ChallengeSummary challenge)
+    {
+        editingId = challenge.Id;
+        editText = challenge.Points.ToString();
+        editError = null;
+        banner = null;
+        error = null;
+    }
+
+    private void CancelEdit()
+    {
+        editingId = null;
+        editError = null;
+    }
+
+    private async Task SaveAsync(ChallengeSummary challenge)
+    {
+        if (!ChallengePointsInput.TryParse(editText, out var points, out editError))
+            return;
+
+        saving = true;
+        try
+        {
+            var stored = await Challenges.UpdatePointsAsync(challenge.Id, points);
+            items![items.IndexOf(challenge)] = challenge with { Points = stored };
+            banner = $"Points updated for \"{challenge.Title}\"";
+            editingId = null;
+        }
+        catch (Exception ex)
+        {
+            // Server message shown as-is (Unauthorized, NOT_FOUND, BadRequest); edit stays open to retry.
+            editError = ex.Message;
+        }
+        finally
+        {
+            saving = false;
+        }
+    }
+}
