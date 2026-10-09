@@ -113,7 +113,7 @@
   - Verificar: no Aspire, comprar e avaliar funciona; avaliar sem comprar falha.
   - Arquivos: `app/api/graphql/local.ts`. Dependências: T17.
 
-- [ ] **T19: SPA, avaliação no detalhe do produto** (M)
+- [x] **T19: SPA, avaliação no detalhe do produto** (M)
   - Aceite: os 4 estados (sem login / `null` / `Eligible` ou `Deleted` / `Published` com Editar e Excluir com confirmação); formulário em modo edição; a lista e a média são atualizadas após publicar, editar ou excluir.
   - Verificar: `pnpm lint && pnpm build`; roteiro manual dos critérios 1, 2, 4, 5 e 6.
   - Arquivos: `features/reviews/services/*`, `components/reviews-section.tsx`, `components/review-form.tsx`, `components/my-review-card.tsx` (novo). Dependências: T18.

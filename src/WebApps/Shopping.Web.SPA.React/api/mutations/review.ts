@@ -3,3 +3,9 @@ export const CREATE_REVIEW = `
     createReview(input: $input) { id userName }
   }
 `
+
+export const DELETE_REVIEW = `
+  mutation DeleteReview($productId: ID!) {
+    deleteReview(productId: $productId) { id status }
+  }
+`
