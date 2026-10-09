@@ -51,7 +51,7 @@
 
 ## Fase 2 — `challenge-points-admin` ([spec](../SPEC-challenge-points-admin.md)), paralelizável
 
-- [ ] **T8: Mutation `updateChallengePoints`** (S)
+- [x] **T8: Mutation `updateChallengePoints`** (S)
   - Aceite: resolver direto `UpdateItem` só no item `PUBLIC`, com condição `attribute_exists`; só o grupo `Admin` (Seller, cliente e API key recebem Unauthorized); `points` inteiro > 0; teste de `Question.Grade` provando que o crédito usa o `Points` carregado.
   - Verificar: `cdk synth AppSyncStack`; teste unitário; no AWS dev, chamar como Admin e como Seller.
   - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/challenges/mutations/Mutation.updateChallengePoints.js`, `infra/constructs/appsync-api.ts`, teste em `Challenges.UnitTests`. Dependências: nenhuma.

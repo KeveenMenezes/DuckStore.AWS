@@ -617,4 +617,9 @@ type Mutation {
   # (ADR-0046 §2) — an invariant that belongs in the domain, not a resolver script. Spends points
   # only; what they convert to is decided later, asynchronously, in Pricing (ADR-0046 §1, §4).
   redeemChallengePoints(points: Int!): RedeemChallengePointsResult!
+
+  # Direct DynamoDB resolver — Cognito required; Admin group only (Seller excluded). Edits Points
+  # on the PUBLIC item only, so the new value applies to future answers; past attempts and the
+  # points ledger are untouched (ADR-0009, ADR-0045 §2).
+  updateChallengePoints(id: ID!, points: Int!): Challenge! @aws_cognito_user_pools
 }
