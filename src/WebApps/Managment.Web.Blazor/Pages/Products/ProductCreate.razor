@@ -5,12 +5,10 @@
 
 <PageTitle>New product — DuckStore Management</PageTitle>
 
-<h1>New product</h1>
+<PageHeader Title="New product" Subtitle="Images upload while you fill in the rest of the form."
+            BackHref="products" BackLabel="Products" />
 
-@if (error is not null)
-{
-    <div class="banner banner-error">@error</div>
-}
+<Banner @bind-Message="error" Kind="error" />
 
 <ProductForm Model="model" OnValidSubmit="CreateAsync" SubmitLabel="Create" Busy="busy" />
 

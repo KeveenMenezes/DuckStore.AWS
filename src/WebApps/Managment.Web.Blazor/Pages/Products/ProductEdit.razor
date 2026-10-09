@@ -2,26 +2,35 @@
 @attribute [Authorize]
 @inject ProductAdminService Products
 @inject NavigationManager Navigation
+@inject ImageCdn Cdn
 
 <PageTitle>Edit product — DuckStore Management</PageTitle>
 
-<h1>Edit product</h1>
+<PageHeader Title="@(productName ?? "Edit product")" Subtitle="@(productName is null ? null : "Editing product")" BackHref="products" BackLabel="Products">
+    <Leading>
+        @if (thumbUrl is not null)
+        {
+            <img class="thumb thumb-lg" src="@thumbUrl" alt=""
+                 onerror="this.onerror=null;this.src='@ImageCdn.Placeholder'" />
+        }
+    </Leading>
+</PageHeader>
 
-@if (error is not null)
-{
-    <div class="banner banner-error">@error</div>
-}
+<Banner @bind-Message="error" Kind="error" />
 
 @if (notFound)
 {
-    <p class="muted">
-        Product not found. If it was just created, the catalog view may still be syncing —
-        try again in a few seconds.
-    </p>
+    <section class="card">
+        <EmptyState Title="Product not found" IconName="box"
+                    Description="If it was just created, the catalog view may still be syncing — try again in a few seconds." />
+    </section>
 }
 else if (model is null)
 {
-    <p class="muted">Loading product...</p>
+    @if (error is null)
+    {
+        <p class="muted">Loading product...</p>
+    }
 }
 else
 {
@@ -32,6 +41,8 @@ else
     [Parameter] public string Id { get; set; } = string.Empty;
 
     private ProductFormModel? model;
+    private string? productName;
+    private string? thumbUrl;
     private bool busy;
     private bool notFound;
     private string? error;
@@ -50,6 +61,9 @@ else
             // Cost only exists on Pricing's record (the product's price field is a
             // denormalized copy in CatalogView), so fetch the source of truth for both.
             var price = await Products.GetNominalPriceAsync(Id);
+
+            productName = product.Name;
+            thumbUrl = Cdn.ThumbOrPlaceholder(product.Images);
 
             model = new ProductFormModel
             {

@@ -10,11 +10,15 @@ else if (products.Count == 0)
 }
 else
 {
-    <input type="search" placeholder="Filter products..." @bind="filter" @bind:event="oninput" style="margin-bottom: 0.5rem;" />
-    <div class="category-list">
+    <div class="search-field search-field-block">
+        <Icon Name="search" />
+        <input type="search" placeholder="Filter products..." aria-label="Filter products"
+               @bind="filter" @bind:event="oninput" />
+    </div>
+    <div class="chip-list">
         @foreach (var product in Filtered)
         {
-            <label class="category-item">
+            <label class="chip @(Selected.Contains(product.Id) ? "is-selected" : null)">
                 <input type="checkbox"
                        checked="@Selected.Contains(product.Id)"
                        @onchange="e => Toggle(product.Id, (bool)e.Value!)" />

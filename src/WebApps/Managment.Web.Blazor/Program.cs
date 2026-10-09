@@ -53,6 +53,13 @@ else
 builder.Services.AddScoped<ProductAdminService>();
 builder.Services.AddScoped<CampaignAdminService>();
 // Image CDN base for building product image URLs from imageIds (ADR-0034).
-builder.Services.AddSingleton(new ImageCdn(builder.Configuration["ImageCdn:BaseUrl"] ?? string.Empty));
+var imageCdnBaseUrl = builder.Configuration["ImageCdn:BaseUrl"];
+if (string.IsNullOrWhiteSpace(imageCdnBaseUrl))
+{
+    // Without it every image URL is relative to this site and 404s into the placeholder —
+    // surface that in the browser console instead of failing silently.
+    Console.Error.WriteLine("ImageCdn:BaseUrl is not configured — product images will not load.");
+}
+builder.Services.AddSingleton(new ImageCdn(imageCdnBaseUrl ?? string.Empty));
 
 await builder.Build().RunAsync();
