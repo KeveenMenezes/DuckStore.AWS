@@ -137,7 +137,7 @@ src/WebApps/Shopping.Web.SPA.React/features/points/**
 src/WebApps/Shopping.Web.SPA.React/app/my-points/page.tsx
 src/WebApps/Shopping.Web.SPA.React/app/api/graphql/local.ts
 tests/Services/Challenges/Challenges.UnitTests/...   espelha a estrutura de src
-docs/adr/0048-points-transactions-ledger-and-cart-redemption.md   (ver Limites)
+docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md   (ver Limites)
 ```
 
 ## Estilo de código
