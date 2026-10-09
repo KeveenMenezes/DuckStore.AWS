@@ -10,6 +10,8 @@ tags:
 ## Status
 **Accepted** — July 2026. Implemented alongside [ADR-0045](./0045-challenges-bounded-context-server-side-grading.md).
 
+**Amendment proposed** — October 2026: [ADR-0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) replaces §2–§8, the Flow and the Future Constraints with in-cart redemption. §1 rows 1–2, the CDC principle and §5's application order stand; §1 row 3 changes (Pricing persists no discount; Challenges tracks the redemption lifecycle in points). This ADR stays Accepted until ADR-0048 is accepted.
+
 Extends [ADR-0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md) with a second
 discount shape (customer-scoped) without reopening its ownership ruling. Depends on
 [ADR-0045](./0045-challenges-bounded-context-server-side-grading.md), which produces the points this

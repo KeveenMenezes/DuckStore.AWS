@@ -9,6 +9,8 @@ tags:
 ## Status
 **Accepted** — July 2026
 
+**Amendment proposed** — October 2026: [ADR-0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) §6 amends §1/§3 — Payment also publishes `PaymentDeclinedEvent` for `InsufficientPoints`, and `PaymentRequestedRule` also matches MODIFY `AwaitingPoints → Pending`.
+
 ---
 
 ## Context

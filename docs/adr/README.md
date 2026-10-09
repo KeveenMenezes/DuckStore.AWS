@@ -55,6 +55,7 @@ decision without opening every file.
 | [0045](./0045-challenges-bounded-context-server-side-grading.md) | Challenges Bounded Context — Server-Side Grading and Answer-Key Isolation | Accepted |
 | [0046](./0046-challenge-points-redeem-into-pricing-customer-discount.md) | Challenge Points Redeem into a Pricing Customer Discount via CDC | Accepted |
 | [0047](./0047-catalogview-gsi1-single-partition-key-kept-deliberately.md) | CatalogView's GSI1 Keeps a Single Partition Key Value — Deliberately | Proposed |
+| [0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) | Points Transactions Ledger and In-Cart Points Redemption | Proposed |
 
 ## Superseded chains
 
