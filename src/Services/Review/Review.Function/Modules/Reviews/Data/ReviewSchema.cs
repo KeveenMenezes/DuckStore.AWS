@@ -35,6 +35,15 @@ public static class ReviewSchema
 
     // Rows written before ADR-0049 have no Status and are already in GSI1, so they are treated as
     // Published — this is what keeps legacy reviews working with no migration.
-    public static ReviewStatus EffectiveStatus(string? status) =>
-        string.IsNullOrEmpty(status) ? ReviewStatus.Published : Enum.Parse<ReviewStatus>(status);
+    // Any other value throws: matching names only, because Enum.Parse alone also accepts numeric
+    // strings ("7" would become a value no publisher rule matches, silently dropping the event).
+    public static ReviewStatus EffectiveStatus(string? status)
+    {
+        if (string.IsNullOrEmpty(status))
+            return ReviewStatus.Published;
+
+        return Array.IndexOf(Enum.GetNames<ReviewStatus>(), status) >= 0
+            ? Enum.Parse<ReviewStatus>(status)
+            : throw new InvalidOperationException($"Unknown review Status \"{status}\".");
+    }
 }

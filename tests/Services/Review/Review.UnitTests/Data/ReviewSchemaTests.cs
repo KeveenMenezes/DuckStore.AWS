@@ -29,7 +29,18 @@ public class ReviewSchemaTests
     public void EffectiveStatus_ParsesStoredStatus(string status, ReviewStatus expected) =>
         Assert.Equal(expected, ReviewSchema.EffectiveStatus(status));
 
-    [Fact]
-    public void EffectiveStatus_UnknownStatus_Throws() =>
-        Assert.Throws<ArgumentException>(() => ReviewSchema.EffectiveStatus("Archived"));
+    // Enum.Parse would silently accept a numeric string ("7" → an undefined value no rule matches,
+    // "1" → Published), so an unexpected Status must fail loudly: the stream source's bisect +
+    // retries then park that one record in the DLQ (alarmed) instead of dropping its event.
+    [Theory]
+    [InlineData("Archived")]
+    [InlineData("published")]
+    [InlineData("1")]
+    [InlineData("7")]
+    public void EffectiveStatus_UnknownStatus_ThrowsNamingTheValue(string status)
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => ReviewSchema.EffectiveStatus(status));
+
+        Assert.Contains($"\"{status}\"", ex.Message);
+    }
 }

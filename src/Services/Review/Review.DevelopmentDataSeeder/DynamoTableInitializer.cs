@@ -65,24 +65,27 @@ public static class DynamoTableInitializer
 
     // Deleted reviews carry ExpiresAt (epoch seconds); TTL removes the row 5 days after the
     // delete (ADR-0049 §7). The TTL REMOVE reaches the stream but publishes nothing.
+    // Checked first instead of catching the "already enabled" error, so any other failure
+    // (wrong table, wrong attribute) still stops the seeder.
     private static async Task EnableExpiresAtTtlAsync(IAmazonDynamoDB dynamoDb)
     {
-        try
+        var current = await dynamoDb.DescribeTimeToLiveAsync(new DescribeTimeToLiveRequest
         {
-            await dynamoDb.UpdateTimeToLiveAsync(new UpdateTimeToLiveRequest
+            TableName = ReviewSchema.TableName
+        });
+
+        if (current.TimeToLiveDescription?.TimeToLiveStatus == TimeToLiveStatus.ENABLED)
+            return;
+
+        await dynamoDb.UpdateTimeToLiveAsync(new UpdateTimeToLiveRequest
+        {
+            TableName = ReviewSchema.TableName,
+            TimeToLiveSpecification = new TimeToLiveSpecification
             {
-                TableName = ReviewSchema.TableName,
-                TimeToLiveSpecification = new TimeToLiveSpecification
-                {
-                    Enabled = true,
-                    AttributeName = ReviewSchema.ExpiresAtAttribute
-                }
-            });
-        }
-        catch (AmazonDynamoDBException)
-        {
-            // TTL already enabled on ExpiresAt — idempotent.
-        }
+                Enabled = true,
+                AttributeName = ReviewSchema.ExpiresAtAttribute
+            }
+        });
     }
 
     private static async Task WaitUntilTableIsActiveAsync(IAmazonDynamoDB dynamoDb, string tableName)
