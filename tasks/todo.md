@@ -108,7 +108,7 @@
   - Verificar: `cdk synth AppSyncStack`; no AWS dev: `createReview` sem compra = Unauthorized.
   - Arquivos: `graphql/schema.graphql`, `Query.myReview.js`, `Mutation.deleteReview.js`, `Mutation.createReview.{checkExisting,upsert}.js`, `infra/constructs/appsync-api.ts`. Dependências: T12. Usar `appsync-resolver-scaffold`.
 
-- [ ] **T18: `local.ts` para reviews com status** (S)
+- [x] **T18: `local.ts` para reviews com status** (S)
   - Aceite: `myReview`, `deleteReview` e `createReview` com a exigência de linha; o checkout local cria as linhas `Eligible` dos produtos do pedido.
   - Verificar: no Aspire, comprar e avaliar funciona; avaliar sem comprar falha.
   - Arquivos: `app/api/graphql/local.ts`. Dependências: T17.
