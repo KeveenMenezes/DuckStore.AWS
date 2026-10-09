@@ -23,7 +23,14 @@ export function RatingHistogram({ ratingDistribution, ratingCount, className }: 
               <span className="tabular-nums">{star}</span>
               <Star className="h-3 w-3 fill-muted-foreground/40 text-muted-foreground/40" />
             </span>
-            <Progress value={percentage} className="h-2 flex-1" />
+            {/* The star label and count sit in sibling elements, which a screen reader never
+                associates with the bar itself — without its own name the bar is announced as a
+                bare "progressbar". The label repeats both so each row stands alone. */}
+            <Progress
+              value={percentage}
+              className="h-2 flex-1"
+              aria-label={`${star} ${star === 1 ? "star" : "stars"}: ${count} of ${ratingCount} reviews`}
+            />
             <span className="w-8 shrink-0 text-right text-sm text-muted-foreground">{count}</span>
           </div>
         )
