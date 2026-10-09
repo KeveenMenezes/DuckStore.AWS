@@ -1,89 +1,145 @@
 @inject ProductAdminService Products
 @inject ImageCdn Cdn
 
-<EditForm Model="Model" OnValidSubmit="OnValidSubmit">
+<EditForm Model="Model" OnValidSubmit="OnValidSubmit" class="form-layout">
     <DataAnnotationsValidator />
 
-    <div class="form-field">
-        <label for="name">Name</label>
-        <InputText id="name" @bind-Value="Model.Name" />
-        <ValidationMessage For="() => Model.Name" />
-    </div>
+    <div class="form-grid">
+        <div class="form-col">
+            <section class="card">
+                <header class="card-header"><h2>General</h2></header>
+                <div class="card-body">
+                    <div class="form-field">
+                        <label for="name">Name</label>
+                        <InputText id="name" @bind-Value="Model.Name" placeholder="e.g. Senior Data Manager" />
+                        <ValidationMessage For="() => Model.Name" />
+                    </div>
 
-    <div class="form-field">
-        <label for="description">Description</label>
-        <InputTextArea id="description" rows="4" @bind-Value="Model.Description" />
-        <ValidationMessage For="() => Model.Description" />
-    </div>
+                    <div class="form-field">
+                        <label for="description">Description</label>
+                        <InputTextArea id="description" rows="6" @bind-Value="Model.Description" />
+                        <span class="field-hint">@Model.Description.Length / 2000</span>
+                        <ValidationMessage For="() => Model.Description" />
+                    </div>
+                </div>
+            </section>
 
-    <div class="form-field">
-        <label>Images</label>
-        <InputFile OnChange="OnFilesSelectedAsync" multiple
-                   accept="image/jpeg,image/png,image/webp,image/avif" disabled="@uploading" />
-        @if (uploading)
-        {
-            <p class="muted">Uploading @uploadingCount image(s)...</p>
-        }
-        @if (uploadError is not null)
-        {
-            <div class="validation-message">@uploadError</div>
-        }
-        @if (Model.Images.Count > 0)
-        {
-            <ul class="image-upload-list">
-                @foreach (var (image, index) in Model.Images.Select((img, i) => (img, i)))
-                {
-                    <li class="image-upload-row">
-                        @* Thumbnail 404s for a few seconds until the processor lands the
-                           variants — the placeholder covers that window. *@
-                        <img class="thumb" src="@Cdn.Variant(image.ImageId)" alt="@image.FileName"
-                             onerror="this.onerror=null;this.src='@ImageCdn.Placeholder'" />
-                        <span class="image-upload-name">@image.FileName</span>
-                        <label class="image-upload-main">
-                            <input type="radio" name="mainImage" checked="@image.IsMain"
-                                   @onchange="() => SetMain(image)" />
-                            Main
-                        </label>
-                        <button type="button" class="btn btn-secondary" title="Move up"
-                                @onclick="() => Move(index, -1)" disabled="@(index == 0)">↑</button>
-                        <button type="button" class="btn btn-secondary" title="Move down"
-                                @onclick="() => Move(index, 1)"
-                                disabled="@(index == Model.Images.Count - 1)">↓</button>
-                        <button type="button" class="btn btn-danger" title="Remove"
-                                @onclick="() => Remove(image)">✕</button>
-                    </li>
-                }
-            </ul>
-        }
-    </div>
+            <section class="card">
+                <header class="card-header">
+                    <h2>Media</h2>
+                    <span class="card-header-meta">@Model.Images.Count / @MaxImages</span>
+                </header>
+                <div class="card-body">
+                    <label class="dropzone @(uploading ? "is-busy" : null)">
+                        <InputFile OnChange="OnFilesSelectedAsync" multiple
+                                   accept="image/jpeg,image/png,image/webp,image/avif" disabled="@uploading" />
+                        <span class="dropzone-icon"><Icon Name="upload" Size="20" /></span>
+                        <span class="dropzone-title">
+                            @(uploading ? $"Uploading {uploadingCount} image(s)..." : "Click to upload images")
+                        </span>
+                        <span class="dropzone-hint">JPEG, PNG, WebP or AVIF · up to 8 MB each</span>
+                    </label>
+                    @if (uploadError is not null)
+                    {
+                        <div class="validation-message">@uploadError</div>
+                    }
+                    @if (Model.Images.Count > 0)
+                    {
+                        <ul class="media-grid">
+                            @foreach (var (image, index) in Model.Images.Select((img, i) => (img, i)))
+                            {
+                                <li class="media-tile @(image.IsMain ? "is-main" : null)">
+                                    @* Thumbnail 404s for a few seconds until the processor lands the
+                                       variants — the placeholder covers that window. *@
+                                    <img src="@Cdn.Variant(image.ImageId, 320)" alt="@ImageLabel(image, index)"
+                                         onerror="this.onerror=null;this.src='@ImageCdn.Placeholder'" />
+                                    @if (image.IsMain)
+                                    {
+                                        <span class="media-badge">Main</span>
+                                    }
+                                    <div class="media-overlay">
+                                        @if (!image.IsMain)
+                                        {
+                                            <button type="button" class="media-btn" title="Set as main image"
+                                                    @onclick="() => SetMain(image)"><Icon Name="star-main" Size="14" /></button>
+                                        }
+                                        <button type="button" class="media-btn" title="Move left"
+                                                @onclick="() => Move(index, -1)" disabled="@(index == 0)"><Icon Name="chevron-left" Size="14" /></button>
+                                        <button type="button" class="media-btn" title="Move right"
+                                                @onclick="() => Move(index, 1)"
+                                                disabled="@(index == Model.Images.Count - 1)"><Icon Name="chevron-right" Size="14" /></button>
+                                        <button type="button" class="media-btn media-btn-danger" title="Remove"
+                                                @onclick="() => Remove(image)"><Icon Name="trash" Size="14" /></button>
+                                    </div>
+                                    <span class="media-caption">@ImageLabel(image, index)</span>
+                                </li>
+                            }
+                        </ul>
+                    }
+                </div>
+            </section>
+        </div>
 
-    <div class="form-field">
-        <label for="stock">Stock</label>
-        <InputNumber id="stock" @bind-Value="Model.Stock" />
-        <ValidationMessage For="() => Model.Stock" />
-    </div>
+        <div class="form-col">
+            <section class="card">
+                <header class="card-header"><h2>Pricing</h2></header>
+                <div class="card-body">
+                    <div class="form-row">
+                        <div class="form-field">
+                            <label for="price">Price</label>
+                            <div class="input-affix">
+                                <span class="affix">@CurrencySymbol</span>
+                                <InputNumber id="price" step="0.01" @bind-Value="Model.Price" />
+                            </div>
+                            <ValidationMessage For="() => Model.Price" />
+                        </div>
 
-    <div class="form-field">
-        <label for="price">Price</label>
-        <InputNumber id="price" step="0.01" @bind-Value="Model.Price" />
-        <ValidationMessage For="() => Model.Price" />
-    </div>
+                        <div class="form-field">
+                            <label for="cost">Cost</label>
+                            <div class="input-affix">
+                                <span class="affix">@CurrencySymbol</span>
+                                <InputNumber id="cost" step="0.01" @bind-Value="Model.Cost" />
+                            </div>
+                            <ValidationMessage For="() => Model.Cost" />
+                        </div>
+                    </div>
+                    @if (Model.Price > 0)
+                    {
+                        <div class="margin-hint @(Margin < 0 ? "is-negative" : null)">
+                            <span>Gross margin</span>
+                            <strong>@((Model.Price - Model.Cost).ToString("C")) · @Margin.ToString("P0")</strong>
+                        </div>
+                    }
+                </div>
+            </section>
 
-    <div class="form-field">
-        <label for="cost">Cost</label>
-        <InputNumber id="cost" step="0.01" @bind-Value="Model.Cost" />
-        <ValidationMessage For="() => Model.Cost" />
-    </div>
+            <section class="card">
+                <header class="card-header"><h2>Inventory</h2></header>
+                <div class="card-body">
+                    <div class="form-field">
+                        <label for="stock">Stock</label>
+                        <InputNumber id="stock" @bind-Value="Model.Stock" />
+                        <ValidationMessage For="() => Model.Stock" />
+                    </div>
+                </div>
+            </section>
 
-    <div class="form-field">
-        <label>Categories</label>
-        <CategoryMultiSelect @bind-Selected="Model.CategoryIds" />
-        <ValidationMessage For="() => Model.CategoryIds" />
+            <section class="card">
+                <header class="card-header">
+                    <h2>Categories</h2>
+                    <span class="card-header-meta">@Model.CategoryIds.Count selected</span>
+                </header>
+                <div class="card-body">
+                    <CategoryMultiSelect @bind-Selected="Model.CategoryIds" />
+                    <ValidationMessage For="() => Model.CategoryIds" />
+                </div>
+            </section>
+        </div>
     </div>
 
     <div class="form-actions">
         <a class="btn btn-secondary" href="products">Cancel</a>
-        <button class="btn btn-primary" type="submit" disabled="@Busy">
+        <button class="btn btn-primary" type="submit" disabled="@(Busy || uploading)">
             @(Busy ? "Saving..." : SubmitLabel)
         </button>
     </div>
@@ -97,6 +153,15 @@
     [Parameter, EditorRequired] public EventCallback OnValidSubmit { get; set; }
     [Parameter] public string SubmitLabel { get; set; } = "Save";
     [Parameter] public bool Busy { get; set; }
+
+    private static readonly string CurrencySymbol =
+        System.Globalization.CultureInfo.CurrentCulture.NumberFormat.CurrencySymbol;
+
+    private double Margin => Model.Price > 0 ? (Model.Price - Model.Cost) / Model.Price : 0;
+
+    // Images loaded from an existing product carry no file name (only the imageId is stored).
+    private static string ImageLabel(ProductImageFormModel image, int index) =>
+        string.IsNullOrWhiteSpace(image.FileName) ? $"Image {index + 1}" : image.FileName;
 
     private bool uploading;
     private int uploadingCount;

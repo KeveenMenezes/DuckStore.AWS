@@ -1,8 +1,14 @@
 @if (visible)
 {
-    <div class="dialog-backdrop">
-        <div class="dialog">
-            <p>@message</p>
+    <div class="dialog-backdrop" @onclick="() => Close(false)">
+        <div class="dialog" role="alertdialog" aria-modal="true" @onclick:stopPropagation="true">
+            <div class="dialog-body dialog-confirm">
+                <span class="dialog-icon"><Icon Name="alert" Size="20" /></span>
+                <div>
+                    <h3 class="dialog-title">Are you sure?</h3>
+                    <p class="dialog-text">@message</p>
+                </div>
+            </div>
             <div class="dialog-actions">
                 <button class="btn btn-secondary" @onclick="() => Close(false)">Cancel</button>
                 <button class="btn btn-danger" @onclick="() => Close(true)">@ConfirmLabel</button>
