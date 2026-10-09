@@ -1142,6 +1142,39 @@ const resolvers = {
       }
     },
 
+    // Mirrors Mutation.updateChallengePoints.js (Admin-only in prod; no Cognito groups locally, same
+    // as the other admin mutations here): UpdateItem on the PUBLIC item only, so the new value
+    // applies to future answers; past attempts and the points ledger are untouched (ADR-0045 §2).
+    async updateChallengePoints(_: unknown, { id, points }: { id: string; points: number }) {
+      if (!Number.isInteger(points) || points <= 0) {
+        throw createGraphQLError('points must be a positive integer', {
+          extensions: { errorType: 'BadRequest' },
+        })
+      }
+      try {
+        const result = await dynamoDb.send(
+          new UpdateItemCommand({
+            TableName: 'challenges',
+            Key: { QuestionId: { S: id }, SK: { S: 'PUBLIC' } },
+            UpdateExpression: 'SET Points = :points, UpdatedAt = :now',
+            // Without this, UpdateItem would upsert a phantom PUBLIC item for an unknown id.
+            ConditionExpression: 'attribute_exists(QuestionId)',
+            ExpressionAttributeValues: {
+              ':points': { N: String(points) },
+              ':now': { S: new Date().toISOString() },
+            },
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
+        return mapChallenge(unmarshall(result.Attributes ?? {}))
+      } catch (err) {
+        if (err instanceof ConditionalCheckFailedException) {
+          throw createGraphQLError('Challenge not found', { extensions: { errorType: 'NOT_FOUND' } })
+        }
+        throw err
+      }
+    },
+
     async setNominalPrice(
       _: unknown,
       { productId, price, cost }: { productId: string; price: number; cost: number },
