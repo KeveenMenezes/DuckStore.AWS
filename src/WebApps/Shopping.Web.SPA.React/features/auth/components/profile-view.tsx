@@ -67,6 +67,12 @@ export function ProfileView() {
             <CardContent>
               <span className="text-2xl font-bold text-foreground">{score}</span>
               <span className="ml-1 text-sm text-muted-foreground">pts</span>
+              <Link
+                href={ROUTES.points}
+                className="mt-2 block text-sm text-primary underline-offset-4 hover:underline"
+              >
+                View history
+              </Link>
             </CardContent>
           </Card>
 

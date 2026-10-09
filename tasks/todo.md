@@ -16,27 +16,27 @@
   - Verificar: o Aspire sobe e a tabela aparece no DynamoDB Local (`aws dynamodb describe-table --endpoint-url http://localhost:8000`); `cdk synth ChallengesStack`.
   - Arquivos: `Modules/Progress/Data/PointsTransactionsSchema.cs`, `Challenges.DevelopmentDataSeeder/DynamoTableInitializer.cs`, `infra/constructs/challenges-dynamodb.ts`, `src/AppHost/ChallengesExtensions.cs` (se for preciso). Dependências: T1.
 
-- [ ] **T3: Domínio `PointsTransaction`** (S)
+- [x] **T3: Domínio `PointsTransaction`** (S)
   - Aceite: entidade + enums `PointsTransactionType`/`PointsTransactionStatus`; `ChallengeCredit(...)` rejeita pontos ≤ 0 e gera `CHALLENGE#<questionId>`, `Completed`.
   - Verificar: `dotnet test tests/Services/Challenges/Challenges.UnitTests`.
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Domain/Enums/PointsTransaction{Type,Status}.cs`, teste. Dependências: T2.
 
-- [ ] **T4: Crédito de desafio no ledger, na mesma transação** (M)
+- [x] **T4: Crédito de desafio no ledger, na mesma transação** (M)
   - Aceite: uma resposta correta grava o attempt, o `ADD Score` e o Put no ledger (`attribute_not_exists`) atomicamente; uma resposta errada não grava no ledger; o reenvio continua no-op; o Lambda `challenges-submit-answer` tem grant no CDK.
   - Verificar: testes do repositório e do handler (3 itens se correta, 2 se errada, reenvio sem exceção); manual no Aspire: responder certo, conferir a linha na tabela, reenviar, continua 1 linha.
   - Arquivos: `Data/DynamoPlayerProgressRepository.cs`, `Features/SubmitAnswer/Handler.cs`, `infra/constructs/challenges-lambdas.ts`, testes. Dependências: T3.
 
-- [ ] **T5: Query `myPointsHistory`** (M)
+- [x] **T5: Query `myPointsHistory`** (M)
   - Aceite: resolver direto, Query no LSI1 com `ScanIndexForward:false`, paginado, só Cognito, owner vindo de `ctx.identity.sub`; tipos `PointsTransaction*` no schema; `local.ts` espelha.
   - Verificar: `cdk synth AppSyncStack`; no Aspire, a query pelo SPA local devolve as linhas da T4 em ordem decrescente; sem token = Unauthorized.
   - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/challenges/queries/Query.myPointsHistory.js`, `infra/constructs/appsync-api.ts`, `app/api/graphql/local.ts`. Dependências: T4.
 
-- [ ] **T6: Saldo no header da SPA** (M)
+- [x] **T6: Saldo no header da SPA** (M)
   - Aceite: `features/points` (service, hook `usePointsBalance`, `points-balance-badge`); o badge aparece só autenticado; após `submitChallengeAnswer`, usa o `newScore` sem refetch; o valor é igual ao `myChallengeProgress.score`.
   - Verificar: `pnpm lint && pnpm build`; manual: logado vê o saldo, visitante não, e responder certo atualiza o badge.
   - Arquivos: `features/points/{services,hooks,components,types}/*`, componente de header. Dependências: T5.
 
-- [ ] **T7: Página `/my-points` (histórico)** (S)
+- [x] **T7: Página `/my-points` (histórico)** (S)
   - Aceite: tabela com data, motivo ("Desafio", "Avaliação", "Resgate") e valor com sinal; paginação; visitante é redirecionado ao login; link a partir de `my-profile`.
   - Verificar: `pnpm build`; manual com 2 desafios respondidos.
   - Arquivos: `app/my-points/page.tsx`, `features/points/components/points-history-table.tsx`, link em `app/my-profile`. Dependências: T6.

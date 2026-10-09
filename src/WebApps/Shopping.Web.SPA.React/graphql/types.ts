@@ -290,6 +290,31 @@ export interface GqlRevealChallengeHintResult {
   penaltyApplied: number
 }
 
+// Points ledger (ADR-0048 §1). `points` is signed: positive for credits, negative for redemptions.
+export type GqlPointsTransactionType = "ChallengeCredit" | "ReviewCredit" | "Redemption"
+
+export type GqlPointsTransactionStatus =
+  | "Completed"
+  | "Reserved"
+  | "Used"
+  | "Released"
+  | "Failed"
+  | "Refunded"
+
+export interface GqlPointsTransaction {
+  id: string
+  type: GqlPointsTransactionType
+  status: GqlPointsTransactionStatus
+  points: number
+  createdAt: string
+  orderId: string | null
+}
+
+export interface GqlPointsHistoryPage {
+  items: GqlPointsTransaction[]
+  nextToken: string | null
+}
+
 export interface GqlRedeemChallengePointsResult {
   redemptionId: string
   newBalance: number
