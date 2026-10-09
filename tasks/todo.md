@@ -78,7 +78,7 @@
   - Verificar: testes da regra (Pending→Completed casa; Completed→Completed não; Pending→Cancelled não; produtos duplicados viram distintos).
   - Arquivos: `BuildingBlocks.Messaging/Events/OrderCompletedEvent.cs`, `.../Serialization/MessagingSerializerContext.cs`, `Ordering.Function/.../Rules/OrderCompletedRule.cs`, registro da regra (DI do publisher), teste. Dependências: T10.
 
-- [ ] **T12: Status da review no modelo da Review** (M)
+- [x] **T12: Status da review no modelo da Review** (M)
   - Aceite: enum `ReviewStatus`; `ReviewSchema` com `Status`, `ExpiresAt` e o helper `EffectiveStatus` (ausente = `Published`); `ReviewStreamImage` carrega `Status`; TTL `ExpiresAt` na tabela (seeder + CDK).
   - Verificar: testes do `EffectiveStatus`; `cdk synth ReviewStack`.
   - Arquivos: `Domain/Enums/ReviewStatus.cs`, `Data/ReviewSchema.cs`, `Publishers/ReviewStreamImage.cs`, `Review.DevelopmentDataSeeder/DynamoTableInitializer.cs`, `infra/constructs/review-dynamodb.ts`. Dependências: T10.
