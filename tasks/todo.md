@@ -98,7 +98,7 @@
   - Verificar: um teste por linha da tabela.
   - Arquivos: `Rules/ReviewCreatedRule.cs`, `Rules/ReviewUpdatedRule.cs`, `Rules/ReviewDeletedRule.cs`, `BuildingBlocks.Messaging/Events/{ReviewCreatedEvent,ReviewDeletedEvent}.cs` (+ serializer context), testes. Dependências: T12.
 
-- [ ] **T16: CatalogView `ReviewDeletedStrategy`** (M)
+- [x] **T16: CatalogView `ReviewDeletedStrategy`** (M)
   - Aceite: estratégia nova no `ReviewSync` (sem `switch`, ADR-0040); decrementa a contagem e remove o rating do histograma, com piso em zero; `ReviewDeletedEvent` adicionado à regra EventBridge do `ReviewSync`.
   - Verificar: testes da estratégia; `cdk synth CatalogViewStack`.
   - Arquivos: `ReviewSync/Strategies/ReviewDeleteStrategy.cs`, registro no dispatcher/DI, `infra/constructs/catalogview-lambdas.ts`, teste. Dependências: T15.
