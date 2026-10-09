@@ -28,6 +28,9 @@ public class PointsTransaction : Entity<string>
             throw new BadRequestException(nameof(points), points, "must be greater than zero");
         }
 
+        // CreatedAt is the LSI1 sort key and Query.myPointsHistory reads it back as UTC.
+        at = at.ToUniversalTime();
+
         return new PointsTransaction
         {
             Id = PointsTransactionsSchema.ChallengeTransactionId(questionId.Value),

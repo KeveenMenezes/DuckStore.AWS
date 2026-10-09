@@ -22,6 +22,20 @@ public class PointsTransactionTests
         Assert.Null(credit.OrderId);
     }
 
+    [Fact]
+    public void ChallengeCredit_ShouldStoreTimestampsInUtc_WhenGivenALocalTime()
+    {
+        // CreatedAt is the LSI1 sort key, persisted as ISO-8601 and read back by
+        // Query.myPointsHistory as UTC — a local time would serialize with an offset instead.
+        var local = At.ToLocalTime();
+
+        var credit = PointsTransaction.ChallengeCredit(Owner, QuestionId.Of("py-001"), 75, local);
+
+        Assert.Equal(DateTimeKind.Utc, credit.CreatedAt!.Value.Kind);
+        Assert.Equal(At, credit.CreatedAt);
+        Assert.Equal(At, credit.UpdatedAt);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
