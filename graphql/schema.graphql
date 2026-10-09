@@ -151,6 +151,16 @@ type Review @aws_api_key @aws_cognito_user_pools {
   # Set on every write, including the first (ADR-0029) — distinct from createdAt once a customer
   # edits their existing review (same productId+userId upserts in place, createdAt unchanged).
   updatedAt: String!
+  # Rows without a stored Status (written before ADR-0049) are legacy = Published.
+  status: ReviewStatus!
+}
+
+# Review lifecycle (ADR-0049 §1). Only Published rows are in GSI1, so reviewsByProduct never
+# returns Eligible/Deleted; myReview returns any of the three.
+enum ReviewStatus {
+  Eligible
+  Published
+  Deleted
 }
 
 type ReviewPage @aws_api_key @aws_cognito_user_pools {
@@ -545,6 +555,10 @@ type Query {
   # Direct DynamoDB resolver — public (API_KEY or Cognito)
   reviewsByProduct(productId: ID!, pageSize: Int, nextToken: String): ReviewPage! @aws_api_key @aws_cognito_user_pools
 
+  # Direct DynamoDB resolver — Cognito required; GetItem on productId#ctx.identity.sub, null when
+  # there's no row (never bought the product). Returns Eligible/Published/Deleted (ADR-0049 §4).
+  myReview(productId: ID!): Review @aws_cognito_user_pools
+
   # Direct DynamoDB resolver — public (API_KEY or Cognito); Query on GSI1 when language is given
   # (sparse — the ANSWER item is never indexed, ADR-0045 §2), Scan filtered to SK=PUBLIC otherwise
   # (mirrors the products/product pattern, ADR-0030).
@@ -633,10 +647,15 @@ type Mutation {
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
   deleteOrder(orderId: ID!): DeleteOrderResult! @aws_cognito_user_pools
 
-  # Direct DynamoDB pipeline resolver — Cognito required; upserts by (productId, ctx.identity.sub)
-  # so a customer has exactly one active review per product, and the key can't be spoofed via
-  # client input; CDC updates product rating (ADR-0011 for new reviews, ADR-0029 for edits)
+  # Direct DynamoDB pipeline resolver — Cognito required; keyed by (productId, ctx.identity.sub) so
+  # the key can't be spoofed via client input. Requires an existing row (the purchase gate, created
+  # Eligible on order completion) and publishes it via UpdateItem — never creates one (ADR-0049 §4);
+  # CDC updates product rating (ADR-0029, ADR-0049 §5)
   createReview(input: CreateReviewInput!): CreateReviewResult!
+
+  # Direct DynamoDB resolver — Cognito required; UpdateItem on productId#ctx.identity.sub,
+  # Published -> Deleted, drops it from GSI1 and sets a 5-day TTL (ADR-0049 §4)
+  deleteReview(productId: ID!): Review! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito only (default auth); UpdateItem keyed by ctx.identity.sub (ADR-0017)
   updateProfile(input: UpdateProfileInput!): UserProfile!

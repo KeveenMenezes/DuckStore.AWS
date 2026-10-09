@@ -69,51 +69,51 @@
 
 ## Fase 3 — `review-eligibility` ([spec](../SPEC-review-eligibility.md)), paralelizável com a fase 1
 
-- [ ] **T10: ADR-0049, status da review, GSI1 esparso, TTL e `ReviewDeleted`** (XS)
+- [x] **T10: ADR-0049, status da review, GSI1 esparso, TTL e `ReviewDeleted`** (XS)
   - Aceite: emenda as ADRs 0011 e 0029; registra as transições e a regra "o TTL não gera evento".
   - Arquivos: `docs/adr/0049-*.md`, `docs/adr/README.md`. Dependências: nenhuma.
 
-- [ ] **T11: Ordering publica `OrderCompletedEvent`** (M)
+- [x] **T11: Ordering publica `OrderCompletedEvent`** (M)
   - Aceite: `OrderCompletedRule` casa só em MODIFY `Old.Status != Completed` e `New.Status == Completed`; o evento leva `OrderId`, `CustomerId` e `ProductIds` distintos; o evento está registrado no `MessagingSerializerContext`.
   - Verificar: testes da regra (Pending→Completed casa; Completed→Completed não; Pending→Cancelled não; produtos duplicados viram distintos).
   - Arquivos: `BuildingBlocks.Messaging/Events/OrderCompletedEvent.cs`, `.../Serialization/MessagingSerializerContext.cs`, `Ordering.Function/.../Rules/OrderCompletedRule.cs`, registro da regra (DI do publisher), teste. Dependências: T10.
 
-- [ ] **T12: Status da review no modelo da Review** (M)
+- [x] **T12: Status da review no modelo da Review** (M)
   - Aceite: enum `ReviewStatus`; `ReviewSchema` com `Status`, `ExpiresAt` e o helper `EffectiveStatus` (ausente = `Published`); `ReviewStreamImage` carrega `Status`; TTL `ExpiresAt` na tabela (seeder + CDK).
   - Verificar: testes do `EffectiveStatus`; `cdk synth ReviewStack`.
   - Arquivos: `Domain/Enums/ReviewStatus.cs`, `Data/ReviewSchema.cs`, `Publishers/ReviewStreamImage.cs`, `Review.DevelopmentDataSeeder/DynamoTableInitializer.cs`, `infra/constructs/review-dynamodb.ts`. Dependências: T10.
 
-- [ ] **T13: Consumer `review-order-completed-consumer`** (M)
+- [x] **T13: Consumer `review-order-completed-consumer`** (M)
   - Aceite: um `PutItem` por produto com `Status = Eligible`, sem atributos GSI1, condição `attribute_not_exists(Id)`; `ConditionalCheckFailed` é no-op; registrado no AppHost.
   - Verificar: testes (N produtos = N puts; condição presente; falha condicional não propaga).
   - Arquivos: `Consumers/OrderCompleted/{Endpoint,Handler,Mapper}.cs`, `src/AppHost/ReviewExtensions.cs`, teste. Dependências: T11, T12. Usar `cdc-integration-scaffold`.
 
-- [ ] **T14: CDK do consumer `OrderCompleted`** (S)
+- [x] **T14: CDK do consumer `OrderCompleted`** (S)
   - Aceite: regra EventBridge `detail-type = OrderCompletedEvent` no `duckstore-event-bus`, DLQ, alarme no `duckstore-alerts`, grant de escrita em `reviews`, `functionName` fixo.
   - Verificar: `cdk synth ReviewStack && cdk diff ReviewStack`.
   - Arquivos: `infra/constructs/review-lambdas.ts`. Dependências: T13.
 
-- [ ] **T15: Regras da Review por transição + `ReviewDeletedEvent` + `UserId`** (M)
+- [x] **T15: Regras da Review por transição + `ReviewDeletedEvent` + `UserId`** (M)
   - Aceite: todas as linhas da tabela §5 do spec (INSERT `Eligible` = nada; →`Published` = Created; `Published→Published` = Updated; →`Deleted` = Deleted; REMOVE = nada; legado = `Published`); o `ReviewCreatedEvent` ganha `UserId`.
   - Verificar: um teste por linha da tabela.
   - Arquivos: `Rules/ReviewCreatedRule.cs`, `Rules/ReviewUpdatedRule.cs`, `Rules/ReviewDeletedRule.cs`, `BuildingBlocks.Messaging/Events/{ReviewCreatedEvent,ReviewDeletedEvent}.cs` (+ serializer context), testes. Dependências: T12.
 
-- [ ] **T16: CatalogView `ReviewDeletedStrategy`** (M)
+- [x] **T16: CatalogView `ReviewDeletedStrategy`** (M)
   - Aceite: estratégia nova no `ReviewSync` (sem `switch`, ADR-0040); decrementa a contagem e remove o rating do histograma, com piso em zero; `ReviewDeletedEvent` adicionado à regra EventBridge do `ReviewSync`.
   - Verificar: testes da estratégia; `cdk synth CatalogViewStack`.
   - Arquivos: `ReviewSync/Strategies/ReviewDeleteStrategy.cs`, registro no dispatcher/DI, `infra/constructs/catalogview-lambdas.ts`, teste. Dependências: T15.
 
-- [ ] **T17: GraphQL `myReview`, `deleteReview` e `createReview` restrito** (M)
+- [x] **T17: GraphQL `myReview`, `deleteReview` e `createReview` restrito** (M)
   - Aceite: `myReview` com GetItem, retorna `null` sem linha; `createReview` exige linha existente e passa a ser `UpdateItem` (SET `Published`, GSI1, REMOVE `ExpiresAt`); `deleteReview` faz SET `Deleted` + `ExpiresAt = now + 5d`, REMOVE GSI1, com condição `Published` ou legado; `status` no tipo `Review`.
   - Verificar: `cdk synth AppSyncStack`; no AWS dev: `createReview` sem compra = Unauthorized.
   - Arquivos: `graphql/schema.graphql`, `Query.myReview.js`, `Mutation.deleteReview.js`, `Mutation.createReview.{checkExisting,upsert}.js`, `infra/constructs/appsync-api.ts`. Dependências: T12. Usar `appsync-resolver-scaffold`.
 
-- [ ] **T18: `local.ts` para reviews com status** (S)
+- [x] **T18: `local.ts` para reviews com status** (S)
   - Aceite: `myReview`, `deleteReview` e `createReview` com a exigência de linha; o checkout local cria as linhas `Eligible` dos produtos do pedido.
   - Verificar: no Aspire, comprar e avaliar funciona; avaliar sem comprar falha.
   - Arquivos: `app/api/graphql/local.ts`. Dependências: T17.
 
-- [ ] **T19: SPA, avaliação no detalhe do produto** (M)
+- [x] **T19: SPA, avaliação no detalhe do produto** (M)
   - Aceite: os 4 estados (sem login / `null` / `Eligible` ou `Deleted` / `Published` com Editar e Excluir com confirmação); formulário em modo edição; a lista e a média são atualizadas após publicar, editar ou excluir.
   - Verificar: `pnpm lint && pnpm build`; roteiro manual dos critérios 1, 2, 4, 5 e 6.
   - Arquivos: `features/reviews/services/*`, `components/reviews-section.tsx`, `components/review-form.tsx`, `components/my-review-card.tsx` (novo). Dependências: T18.

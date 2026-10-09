@@ -19,6 +19,7 @@ namespace BuildingBlocks.Messaging.Serialization;
 [JsonSerializable(typeof(CatalogViewProductDeletedEvent))]
 [JsonSerializable(typeof(CatalogViewProductSyncedEvent))]
 [JsonSerializable(typeof(ChallengeAnsweredEvent))]
+[JsonSerializable(typeof(OrderCompletedEvent))]
 [JsonSerializable(typeof(OrderCreatedEvent))]
 [JsonSerializable(typeof(OrderCreatedItem))]
 [JsonSerializable(typeof(PaymentAuthorizedEvent))]
@@ -33,6 +34,7 @@ namespace BuildingBlocks.Messaging.Serialization;
 [JsonSerializable(typeof(ProductSyncedEvent))]
 [JsonSerializable(typeof(ProductUpdatedEvent))]
 [JsonSerializable(typeof(ReviewCreatedEvent))]
+[JsonSerializable(typeof(ReviewDeletedEvent))]
 [JsonSerializable(typeof(ReviewUpdatedEvent))]
 public partial class MessagingSerializerContext : JsonSerializerContext
 {

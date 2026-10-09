@@ -56,6 +56,7 @@ decision without opening every file.
 | [0046](./0046-challenge-points-redeem-into-pricing-customer-discount.md) | Challenge Points Redeem into a Pricing Customer Discount via CDC | Accepted |
 | [0047](./0047-catalogview-gsi1-single-partition-key-kept-deliberately.md) | CatalogView's GSI1 Keeps a Single Partition Key Value — Deliberately | Proposed |
 | [0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) | Points Transactions Ledger and In-Cart Points Redemption | Proposed |
+| [0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md) | Review Status — Purchase Eligibility, Sparse GSI1, TTL on Delete and `ReviewDeleted` | Proposed |
 
 ## Superseded chains
 

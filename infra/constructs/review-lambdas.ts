@@ -3,6 +3,8 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
 import {
@@ -19,6 +21,7 @@ export interface ReviewLambdasProps {
 
 export class ReviewLambdas extends Construct {
   public readonly reviewStreamPublisher: lambda.Function;
+  public readonly orderCompletedConsumer: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ReviewLambdasProps) {
     super(scope, id);
@@ -80,5 +83,55 @@ export class ReviewLambdas extends Construct {
     );
 
     eventBus.grantPutEventsTo(this.reviewStreamPublisher);
+
+    // review-order-completed-consumer
+    //   Trigger: EventBridge rule (OrderCompletedEvent, source=duckstore)
+    //   Creates one Eligible reviews row per purchased product with an individual conditional
+    //   PutItem (attribute_not_exists(Id)) — no inbox, no transaction (ADR-0049 §3). Publishes
+    //   nothing, so it only needs PutItem on reviews.
+    this.orderCompletedConsumer = new lambda.Function(
+      this,
+      'OrderCompletedConsumer',
+      {
+        functionName: 'review-order-completed-consumer',
+        tracing: lambda.Tracing.ACTIVE,
+        architecture: DOTNET_ARCH,
+        runtime: DOTNET_RUNTIME,
+        // provided.al2023 runs the file named `bootstrap`; this value is inert.
+        handler: 'bootstrap',
+        code: reviewCode,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: DOTNET_MEMORY_MB,
+        description:
+          'Consumes OrderCompletedEvent and creates an Eligible review row per purchased product (ADR-0049)',
+        environment: {
+          ANNOTATIONS_HANDLER: 'OrderCompletedConsumer',
+        },
+      },
+    );
+
+    reviewsTable.grant(this.orderCompletedConsumer, 'dynamodb:PutItem');
+
+    const orderCompletedRule = new events.Rule(this, 'OrderCompletedRule', {
+      eventBus,
+      ruleName: 'review-order-completed-consumer-rule',
+      description:
+        'Routes OrderCompletedEvent (source=duckstore) to review-order-completed-consumer',
+      eventPattern: {
+        source: ['duckstore'],
+        detailType: ['OrderCompletedEvent'],
+      },
+    });
+    this.orderCompletedConsumer.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(dlq.queue),
+      retryAttempts: 2,
+    });
+    orderCompletedRule.addTarget(
+      new targets.LambdaFunction(this.orderCompletedConsumer, {
+        deadLetterQueue: dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
+    );
   }
 }

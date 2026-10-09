@@ -65,6 +65,10 @@ export interface BasketInstallmentItemInput {
   quantity: number
 }
 
+// Review lifecycle (ADR-0049 §1): only Published rows are public; Eligible means "bought, not
+// reviewed yet" and Deleted means "withdrawn, can re-publish until the TTL removes the row".
+export type GqlReviewStatus = "Eligible" | "Published" | "Deleted"
+
 export interface GqlReview {
   id: string
   productId: string
@@ -73,6 +77,7 @@ export interface GqlReview {
   comment: string
   createdAt: string
   updatedAt: string
+  status: GqlReviewStatus
 }
 
 export interface GqlReviewPage {

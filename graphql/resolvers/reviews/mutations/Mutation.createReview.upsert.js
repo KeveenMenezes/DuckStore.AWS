@@ -1,14 +1,16 @@
 import { util } from '@aws-appsync/utils'
 
-// Pipeline function 2/2: PutItem on the Id function 1 computed. A resubmission by the same
-// authenticated customer for the same product overwrites the row (upsert) instead of creating a
-// duplicate — CreatedAt is preserved from the existing item so GSI1SK (and therefore
-// reviewsByProduct's sort order) never moves on an edit; UpdatedAt is always refreshed. UserId is
-// the Cognito sub (key component, immutable); UserName is display-only, read from the ID token's
-// `name` claim at write time — never client-supplied, same pattern as Query.myProfile.js /
-// Mutation.updateProfile.js. The DynamoDB Streams MODIFY this produces (vs. INSERT for a
-// first-time review) is what drives the CDC rating-delta flow in CatalogView
-// (ReviewUpdatedRule/ReviewUpdatedEvent).
+// Pipeline function 2/2: UpdateItem on the Id function 1 computed — it transitions the existing
+// row (Eligible, Published or Deleted) to Published and never creates one (ADR-0049 §4). The
+// attribute_exists(Id) condition backs up function 1's check against a Deleted row's TTL removing
+// it between the two functions. SET GSI1PK/GSI1SK puts the row into the sparse GSI1 (the only
+// visibility mechanism for reviewsByProduct, ADR-0049 §2) and REMOVE ExpiresAt cancels a pending
+// TTL on re-publish. CreatedAt is preserved from the existing row (the Eligible row already has it
+// from purchase time) so GSI1SK — and reviewsByProduct's sort order — never moves on an edit;
+// UpdatedAt is always refreshed. UserId is the Cognito sub (key component, immutable); UserName is
+// display-only, read from the ID token's `name` claim at write time — never client-supplied, same
+// pattern as Query.myProfile.js / Mutation.updateProfile.js. The status transition on the
+// DynamoDB Streams MODIFY is what the publisher turns into ReviewCreated/ReviewUpdated (ADR-0049 §5).
 export function request(ctx) {
   const { productId, rating, comment } = ctx.args.input
   const id = ctx.stash.id
@@ -17,18 +19,29 @@ export function request(ctx) {
   const updatedAt = util.time.nowISO8601()
 
   return {
-    operation: 'PutItem',
+    operation: 'UpdateItem',
     key: { Id: util.dynamodb.toDynamoDB(id) },
-    attributeValues: {
-      ProductId: util.dynamodb.toDynamoDB(productId),
-      UserId: util.dynamodb.toDynamoDB(ctx.identity.sub),
-      UserName: util.dynamodb.toDynamoDB(ctx.identity.claims.name),
-      Rating: util.dynamodb.toDynamoDB(rating),
-      Comment: util.dynamodb.toDynamoDB(comment),
-      CreatedAt: util.dynamodb.toDynamoDB(createdAt),
-      UpdatedAt: util.dynamodb.toDynamoDB(updatedAt),
-      GSI1PK: util.dynamodb.toDynamoDB(productId),
-      GSI1SK: util.dynamodb.toDynamoDB(createdAt),
+    update: {
+      // Status and Comment are DynamoDB reserved words.
+      expression:
+        'SET #status = :published, Rating = :rating, #comment = :comment, UserName = :userName, ' +
+        'UserId = :userId, CreatedAt = :createdAt, UpdatedAt = :updatedAt, ' +
+        'GSI1PK = :gsi1pk, GSI1SK = :gsi1sk REMOVE ExpiresAt',
+      expressionNames: { '#status': 'Status', '#comment': 'Comment' },
+      expressionValues: util.dynamodb.toMapValues({
+        ':published': 'Published',
+        ':rating': rating,
+        ':comment': comment,
+        ':userName': ctx.identity.claims.name,
+        ':userId': ctx.identity.sub,
+        ':createdAt': createdAt,
+        ':updatedAt': updatedAt,
+        ':gsi1pk': productId,
+        ':gsi1sk': createdAt,
+      }),
+    },
+    condition: {
+      expression: 'attribute_exists(Id)',
     },
   }
 }
