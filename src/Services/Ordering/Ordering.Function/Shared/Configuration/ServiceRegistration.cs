@@ -32,6 +32,7 @@ public static class ServiceRegistration
         // Stream-publisher rules + dispatcher (see ADR-0019). Scoped so a rule can depend on the
         // scoped repository; add a rule per state-change the Orders module needs to publish.
         services.AddScoped<IStreamRule<OrderStreamImage>, OrderCreatedRule>();
+        services.AddScoped<IStreamRule<OrderStreamImage>, OrderCompletedRule>();
         services.AddScoped<StreamRuleDispatcher<OrderStreamImage>>();
 
         return services;

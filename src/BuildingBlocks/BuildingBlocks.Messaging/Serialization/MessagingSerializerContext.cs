@@ -19,6 +19,7 @@ namespace BuildingBlocks.Messaging.Serialization;
 [JsonSerializable(typeof(CatalogViewProductDeletedEvent))]
 [JsonSerializable(typeof(CatalogViewProductSyncedEvent))]
 [JsonSerializable(typeof(ChallengeAnsweredEvent))]
+[JsonSerializable(typeof(OrderCompletedEvent))]
 [JsonSerializable(typeof(OrderCreatedEvent))]
 [JsonSerializable(typeof(OrderCreatedItem))]
 [JsonSerializable(typeof(PaymentAuthorizedEvent))]

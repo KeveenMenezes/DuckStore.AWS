@@ -73,7 +73,7 @@
   - Aceite: emenda as ADRs 0011 e 0029; registra as transições e a regra "o TTL não gera evento".
   - Arquivos: `docs/adr/0049-*.md`, `docs/adr/README.md`. Dependências: nenhuma.
 
-- [ ] **T11: Ordering publica `OrderCompletedEvent`** (M)
+- [x] **T11: Ordering publica `OrderCompletedEvent`** (M)
   - Aceite: `OrderCompletedRule` casa só em MODIFY `Old.Status != Completed` e `New.Status == Completed`; o evento leva `OrderId`, `CustomerId` e `ProductIds` distintos; o evento está registrado no `MessagingSerializerContext`.
   - Verificar: testes da regra (Pending→Completed casa; Completed→Completed não; Pending→Cancelled não; produtos duplicados viram distintos).
   - Arquivos: `BuildingBlocks.Messaging/Events/OrderCompletedEvent.cs`, `.../Serialization/MessagingSerializerContext.cs`, `Ordering.Function/.../Rules/OrderCompletedRule.cs`, registro da regra (DI do publisher), teste. Dependências: T10.
