@@ -91,6 +91,10 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
 
         var transactItems = new List<TransactWriteItem> { attemptUpdate, profileUpdate };
 
+        // Balance and ledger move together or not at all (ADR-0048 §2). Appended after the two
+        // items above so their positions — which ConditionFailedOn reads by index — don't shift.
+        transactItems.AddRange(delta.PointsTransactions.Select(BuildLedgerPut));
+
         try
         {
             await dynamoDb.TransactWriteItemsAsync(
@@ -103,7 +107,9 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
         {
             // Already scored — a double-click, a retried mutation, or a replayed request all land
             // here. Not an error: re-read and return exactly what was stored the first time
-            // (ADR-0045 §4).
+            // (ADR-0045 §4). Only the attempt's own condition means "replay": a conflict on the
+            // ledger Put alone (a CHALLENGE# row without a finalized attempt) is an inconsistency
+            // and keeps propagating instead of being swallowed.
             return await GetAttemptAsync(ownerId, attempt.Id, cancellationToken)
                 ?? throw new InvalidOperationException(
                     $"Attempt finalize for question \"{attempt.Id.Value}\" was rejected as a " +
@@ -244,6 +250,30 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
             ? int.Parse(score.N, CultureInfo.InvariantCulture)
             : 0;
     }
+
+    private static TransactWriteItem BuildLedgerPut(PointsTransaction transaction) =>
+        new()
+        {
+            Put = new Put
+            {
+                TableName = PointsTransactionsSchema.TableName,
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    [PointsTransactionsSchema.PartitionKey] = new(transaction.OwnerId.Value),
+                    [PointsTransactionsSchema.SortKey] = new(transaction.Id),
+                    ["Type"] = new(transaction.Type.ToString()),
+                    ["Status"] = new(transaction.Status.ToString()),
+                    ["Points"] = new AttributeValue { N = transaction.Points.ToString(CultureInfo.InvariantCulture) },
+                    ["SourceId"] = new(transaction.SourceId),
+                    // "O" is fixed-width ISO-8601, so LSI1 (ordered by this attribute) sorts
+                    // chronologically as a plain string.
+                    [PointsTransactionsSchema.CreatedAtAttribute] = new(transaction.CreatedAt!.Value.ToString("O")),
+                    ["UpdatedAt"] = new(transaction.UpdatedAt.ToString("O"))
+                },
+                // The deterministic TransactionId IS the idempotency key (ADR-0048 §1).
+                ConditionExpression = $"attribute_not_exists({PointsTransactionsSchema.SortKey})"
+            }
+        };
 
     // Every field on `delta` (a PlayerProgress.CreateEmpty shell with exactly one Apply call) IS
     // the amount to ADD/SET — no scoring/streak decision is made here, only a mechanical

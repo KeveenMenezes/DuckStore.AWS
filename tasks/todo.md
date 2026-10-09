@@ -21,7 +21,7 @@
   - Verificar: `dotnet test tests/Services/Challenges/Challenges.UnitTests`.
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Domain/Enums/PointsTransaction{Type,Status}.cs`, teste. Dependências: T2.
 
-- [ ] **T4: Crédito de desafio no ledger, na mesma transação** (M)
+- [x] **T4: Crédito de desafio no ledger, na mesma transação** (M)
   - Aceite: uma resposta correta grava o attempt, o `ADD Score` e o Put no ledger (`attribute_not_exists`) atomicamente; uma resposta errada não grava no ledger; o reenvio continua no-op; o Lambda `challenges-submit-answer` tem grant no CDK.
   - Verificar: testes do repositório e do handler (3 itens se correta, 2 se errada, reenvio sem exceção); manual no Aspire: responder certo, conferir a linha na tabela, reenviar, continua 1 linha.
   - Arquivos: `Data/DynamoPlayerProgressRepository.cs`, `Features/SubmitAnswer/Handler.cs`, `infra/constructs/challenges-lambdas.ts`, testes. Dependências: T3.

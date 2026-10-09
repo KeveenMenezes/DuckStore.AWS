@@ -15,6 +15,7 @@ import {
 export interface ChallengesLambdasProps {
   readonly challengesTable: dynamodb.Table;
   readonly challengeProgressTable: dynamodb.Table;
+  readonly pointsTransactionsTable: dynamodb.Table;
 }
 
 export class ChallengesLambdas extends Construct {
@@ -26,7 +27,7 @@ export class ChallengesLambdas extends Construct {
   constructor(scope: Construct, id: string, props: ChallengesLambdasProps) {
     super(scope, id);
 
-    const { challengesTable, challengeProgressTable } = props;
+    const { challengesTable, challengeProgressTable, pointsTransactionsTable } = props;
 
     // EventBridge bus — created by FoundationStack; imported here by name (ADR-0004).
     const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
@@ -60,6 +61,9 @@ export class ChallengesLambdas extends Construct {
     });
     challengesTable.grantReadData(this.submitChallengeAnswer);
     challengeProgressTable.grantReadWriteData(this.submitChallengeAnswer);
+    // Write-only: a correct answer Puts its CHALLENGE# credit in the same TransactWriteItems as
+    // the attempt and the balance (ADR-0048 §2). The Lambda never reads the ledger back.
+    pointsTransactionsTable.grantWriteData(this.submitChallengeAnswer);
 
     // 2. challenges-reveal-hint  (AppSync Invoke — Mutation.revealChallengeHint)
     //    Commits the hint penalty before returning the hint text (ADR-0045 §6) — the read of the
