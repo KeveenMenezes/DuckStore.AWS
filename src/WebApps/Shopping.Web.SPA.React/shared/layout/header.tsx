@@ -1,10 +1,10 @@
 "use client"
 
 import Link from "next/link"
-import { ShoppingCart, Code2, Store, Menu, X, Trophy, Sun, Moon, LogIn, UserPlus } from "lucide-react"
+import { ShoppingCart, Code2, Store, Menu, X, Sun, Moon, LogIn, UserPlus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useCart } from "@/features/cart/hooks/use-cart"
-import { useScore } from "@/features/challenges/hooks/use-score"
+import { PointsBalanceBadge } from "@/features/points/components/points-balance-badge"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { useTheme } from "@/features/theme/hooks/use-theme"
 import { UserDropdown } from "@/shared/layout/user-dropdown"
@@ -58,7 +58,6 @@ function AuthSlot({ isLoading, user, loginWithCognito, signUpWithCognito }: Auth
 
 export function Header() {
   const { totalItems } = useCart()
-  const { score } = useScore()
   const { user, isLoading, loginWithCognito, signUpWithCognito } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -94,11 +93,7 @@ export function Header() {
           </nav>
 
           <div className="flex items-center gap-2">
-            <div className="hidden items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 sm:flex">
-              <Trophy className="h-4 w-4 text-primary" />
-              <span className="text-sm font-semibold text-foreground">{score}</span>
-              <span className="text-xs text-muted-foreground">pts</span>
-            </div>
+            <PointsBalanceBadge className="hidden sm:flex" />
 
             <Button
               variant="ghost"
@@ -161,10 +156,7 @@ export function Header() {
                   Challenges
                 </Link>
               </Button>
-              <div className="flex items-center gap-1.5 rounded-lg bg-secondary px-3 py-1.5 sm:hidden">
-                <Trophy className="h-4 w-4 text-primary" />
-                <span className="text-sm font-semibold text-foreground">{score} pts</span>
-              </div>
+              <PointsBalanceBadge className="sm:hidden" />
               {/* Sign in is always in the header now; only Sign up needs the narrow-width fallback.
                   The breakpoint must mirror the header button's exactly, or Sign up renders twice. */}
               {!isLoading && !user && (

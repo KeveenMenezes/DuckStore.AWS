@@ -31,7 +31,7 @@
   - Verificar: `cdk synth AppSyncStack`; no Aspire, a query pelo SPA local devolve as linhas da T4 em ordem decrescente; sem token = Unauthorized.
   - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/challenges/queries/Query.myPointsHistory.js`, `infra/constructs/appsync-api.ts`, `app/api/graphql/local.ts`. Dependências: T4.
 
-- [ ] **T6: Saldo no header da SPA** (M)
+- [x] **T6: Saldo no header da SPA** (M)
   - Aceite: `features/points` (service, hook `usePointsBalance`, `points-balance-badge`); o badge aparece só autenticado; após `submitChallengeAnswer`, usa o `newScore` sem refetch; o valor é igual ao `myChallengeProgress.score`.
   - Verificar: `pnpm lint && pnpm build`; manual: logado vê o saldo, visitante não, e responder certo atualiza o badge.
   - Arquivos: `features/points/{services,hooks,components,types}/*`, componente de header. Dependências: T5.
