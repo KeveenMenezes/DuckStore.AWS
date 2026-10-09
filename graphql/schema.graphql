@@ -238,6 +238,39 @@ type RedeemChallengePointsResult @aws_cognito_user_pools {
   newBalance: Int!
 }
 
+# Points ledger (ADR-0048 §1). One row per movement of the balance; the balance itself stays on
+# ChallengeProgress.score (§2). `points` is signed — positive for credits, negative for
+# redemptions — and no row ever carries a currency amount (ADR-0046 §1). The status values beyond
+# Completed belong to the redemption state machine (ADR-0048 §5).
+enum PointsTransactionType {
+  ChallengeCredit
+  ReviewCredit
+  Redemption
+}
+
+enum PointsTransactionStatus {
+  Completed
+  Reserved
+  Used
+  Released
+  Failed
+  Refunded
+}
+
+type PointsTransaction @aws_cognito_user_pools {
+  id: ID!
+  type: PointsTransactionType!
+  status: PointsTransactionStatus!
+  points: Int!
+  createdAt: AWSDateTime!
+  orderId: ID
+}
+
+type PointsHistoryPage @aws_cognito_user_pools {
+  items: [PointsTransaction!]!
+  nextToken: String
+}
+
 type Category @aws_api_key @aws_cognito_user_pools {
   id: ID!
   name: String!
@@ -528,6 +561,10 @@ type Query {
   # Direct DynamoDB resolver — Cognito required (guests play but don't score, ADR-0045 §7); one
   # Query on OwnerId returns PROFILE and every attempt in a single round trip.
   myChallengeProgress: ChallengeProgress!
+
+  # Direct DynamoDB resolver — Cognito required; Query on the points-transactions LSI1
+  # (OwnerId + CreatedAt), newest first, paginated (ADR-0048 §1). Owner comes from the token.
+  myPointsHistory(pageSize: Int, nextToken: String): PointsHistoryPage!
 
   # Direct DynamoDB resolver — Cognito required; Query on OwnerId filtered to Status=Issued and
   # not expired (ADR-0046 §4). Expiry is checked here, not left to the table's TTL.

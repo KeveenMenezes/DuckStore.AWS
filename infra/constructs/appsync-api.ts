@@ -195,6 +195,13 @@ export class AppSyncApi extends Construct {
     const challengeProgressTable = dynamodb.Table.fromTableName(
       this, 'ChallengeProgressTable', 'challenge-progress',
     );
+    // Points ledger (ADR-0048 §1) — myPointsHistory queries LSI1 (OwnerId + CreatedAt), so
+    // grantIndexPermissions is required (not fromTableName) for the grantReadData below to cover
+    // the index ARN.
+    const pointsTransactionsTable = dynamodb.Table.fromTableAttributes(this, 'PointsTransactionsTable', {
+      tableName: 'points-transactions',
+      grantIndexPermissions: true,
+    });
     // Customer-scoped reward (ADR-0046 §4) — no GSI, myRewards queries the base table by OwnerId.
     const customerDiscountsTable = dynamodb.Table.fromTableName(
       this, 'CustomerDiscountsTable', 'customer-discounts',
@@ -216,6 +223,7 @@ export class AppSyncApi extends Construct {
     const challengesDs = api.addDynamoDbDataSource('ChallengesDS', challengesTable);
     const challengeProgressDs = api.addDynamoDbDataSource('ChallengeProgressDS', challengeProgressTable);
     const customerDiscountsDs = api.addDynamoDbDataSource('CustomerDiscountsDS', customerDiscountsTable);
+    const pointsTransactionsDs = api.addDynamoDbDataSource('PointsTransactionsDS', pointsTransactionsTable);
     // NONE (local) data source — rewardConversion has no backend call, values are baked in below.
     const rewardConversionDs = api.addNoneDataSource('RewardConversionDS');
 
@@ -236,6 +244,7 @@ export class AppSyncApi extends Construct {
     challengesTable.grantReadData(challengesDs);
     challengeProgressTable.grantReadData(challengeProgressDs);
     customerDiscountsTable.grantReadData(customerDiscountsDs);
+    pointsTransactionsTable.grantReadData(pointsTransactionsDs);
 
     // Lambda data sources — imported by function name (no CF coupling)
     const checkoutFn = lambda.Function.fromFunctionName(this, 'CheckoutFn', 'basket-checkout-basket');
@@ -324,6 +333,10 @@ export class AppSyncApi extends Construct {
     this.resolver(cartsDs, 'BasketResolver', 'Query', 'basket', 'basket');
     // Direct DynamoDB resolver — Cognito only; guests play but don't score (ADR-0045 §7).
     this.resolver(challengeProgressDs, 'MyChallengeProgressResolver', 'Query', 'myChallengeProgress', 'challenges');
+    // Direct DynamoDB LSI1 query, newest first — Cognito only (ADR-0048 §1, ADR-0009).
+    this.resolver(
+      pointsTransactionsDs, 'MyPointsHistoryResolver', 'Query', 'myPointsHistory', 'challenges',
+    );
     // Direct DynamoDB GSI1 query — scoped to the caller's Cognito sub in the resolver (ADR-0009).
     this.resolver(orderingDs, 'OrdersByCustomerResolver', 'Query', 'ordersByCustomer', 'orders');
     // Direct DynamoDB resolver — Cognito only; Query on OwnerId filtered to Status=Issued and not

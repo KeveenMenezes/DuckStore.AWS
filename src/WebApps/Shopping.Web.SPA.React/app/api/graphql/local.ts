@@ -61,6 +61,8 @@ function marshalImages(images: ProductImageInput[]) {
 // resolved below as a passthrough (arbitrary JSON value in, same value out).
 const typeDefs =
   'scalar AWSJSON\n' +
+  // Built into AppSync too; ISO-8601 strings pass straight through, so no scalar class is needed.
+  'scalar AWSDateTime\n' +
   // The schema lives at the monorepo root (ADR-0033) — shared contract, not SPA code.
   // cwd is the SPA directory when Next.js runs, so reach up to the repo root.
   readFileSync(join(process.cwd(), '../../../graphql/schema.graphql'), 'utf-8')
@@ -702,6 +704,46 @@ const resolvers = {
           pointsEarned: Number(item.PointsEarned ?? 0),
           answeredAt: (item.AnsweredAt as string) ?? null,
         })),
+      }
+    },
+
+    // Mirrors Query.myPointsHistory.js (ADR-0048 §1): LSI1 Query, newest first, paginated. Cognito
+    // only in prod; locally the BFF-resolved owner stands in for the identity, same as
+    // myChallengeProgress. Keep the page-size clamp and the createdAt trimming in sync with the
+    // resolver.
+    async myPointsHistory(
+      _: unknown,
+      { pageSize, nextToken }: { pageSize?: number; nextToken?: string },
+      context: LocalContext,
+    ) {
+      const result = await dynamoDb.send(
+        new QueryCommand({
+          TableName: 'points-transactions',
+          IndexName: 'LSI1',
+          KeyConditionExpression: 'OwnerId = :ownerId',
+          ExpressionAttributeValues: { ':ownerId': { S: context.owner.ownerId } },
+          ScanIndexForward: false,
+          Limit: Math.max(1, Math.min(pageSize ?? 20, 100)),
+          ...(nextToken
+            ? { ExclusiveStartKey: JSON.parse(Buffer.from(nextToken, 'base64').toString()) }
+            : {}),
+        }),
+      )
+
+      return {
+        items: (result.Items ?? [])
+          .map(raw => unmarshall(raw))
+          .map(item => ({
+            id: item.TransactionId as string,
+            type: item.Type as string,
+            status: item.Status as string,
+            points: Number(item.Points),
+            createdAt: `${(item.CreatedAt as string).slice(0, 23)}Z`,
+            orderId: (item.OrderId as string) ?? null,
+          })),
+        nextToken: result.LastEvaluatedKey
+          ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+          : null,
       }
     },
 

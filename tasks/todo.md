@@ -26,7 +26,7 @@
   - Verificar: testes do repositório e do handler (3 itens se correta, 2 se errada, reenvio sem exceção); manual no Aspire: responder certo, conferir a linha na tabela, reenviar, continua 1 linha.
   - Arquivos: `Data/DynamoPlayerProgressRepository.cs`, `Features/SubmitAnswer/Handler.cs`, `infra/constructs/challenges-lambdas.ts`, testes. Dependências: T3.
 
-- [ ] **T5: Query `myPointsHistory`** (M)
+- [x] **T5: Query `myPointsHistory`** (M)
   - Aceite: resolver direto, Query no LSI1 com `ScanIndexForward:false`, paginado, só Cognito, owner vindo de `ctx.identity.sub`; tipos `PointsTransaction*` no schema; `local.ts` espelha.
   - Verificar: `cdk synth AppSyncStack`; no Aspire, a query pelo SPA local devolve as linhas da T4 em ordem decrescente; sem token = Unauthorized.
   - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/challenges/queries/Query.myPointsHistory.js`, `infra/constructs/appsync-api.ts`, `app/api/graphql/local.ts`. Dependências: T4.
