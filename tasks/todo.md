@@ -69,7 +69,7 @@
 
 ## Fase 3 — `review-eligibility` ([spec](../SPEC-review-eligibility.md)), paralelizável com a fase 1
 
-- [ ] **T10: ADR-0049, status da review, GSI1 esparso, TTL e `ReviewDeleted`** (XS)
+- [x] **T10: ADR-0049, status da review, GSI1 esparso, TTL e `ReviewDeleted`** (XS)
   - Aceite: emenda as ADRs 0011 e 0029; registra as transições e a regra "o TTL não gera evento".
   - Arquivos: `docs/adr/0049-*.md`, `docs/adr/README.md`. Dependências: nenhuma.
 
