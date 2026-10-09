@@ -5,68 +5,73 @@
 
 <PageTitle>Discounts — DuckStore Management</PageTitle>
 
-<div class="page-header">
-    <h1>Discounts</h1>
-    <a class="btn btn-primary" href="campaigns/new">New campaign</a>
-</div>
+<PageHeader Title="Discounts" Subtitle="Promotional campaigns applied by Pricing to selected products.">
+    <Actions>
+        <a class="btn btn-primary" href="campaigns/new"><Icon Name="plus" /> New campaign</a>
+    </Actions>
+</PageHeader>
 
-@if (banner is not null)
-{
-    <div class="banner banner-success">@banner</div>
-}
-@if (error is not null)
-{
-    <div class="banner banner-error">@error</div>
-}
+<Banner @bind-Message="banner" />
+<Banner @bind-Message="error" Kind="error" />
 
-@if (items is null)
-{
-    <p class="muted">Loading campaigns...</p>
-}
-else if (items.Count == 0)
-{
-    <p class="muted">No campaigns found.</p>
-}
-else
-{
-    <table class="data-table">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Discount</th>
-                <th>Period</th>
-                <th>Products</th>
-                <th>Status</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var campaign in items)
-            {
-                <tr>
-                    <td>@campaign.Name</td>
-                    <td>@FormatDiscount(campaign)</td>
-                    <td>@FormatDate(campaign.StartsAt) – @FormatDate(campaign.EndsAt)</td>
-                    <td>@campaign.ProductIds.Count</td>
-                    <td>@DisplayStatus(campaign)</td>
-                    <td class="row-actions">
-                        @if (CanEnd(campaign))
-                        {
-                            <button class="btn btn-danger" @onclick="() => EndAsync(campaign)">End</button>
-                        }
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
-
-    @if (nextToken is not null)
+<section class="card">
+    @if (items is null)
     {
-        <button class="btn btn-secondary" disabled="@loadingMore" @onclick="LoadMoreAsync">
-            @(loadingMore ? "Loading..." : "Load more")
-        </button>
+        <p class="card-loading muted">Loading campaigns...</p>
     }
-}
+    else if (items.Count == 0)
+    {
+        <EmptyState Title="No campaigns yet" IconName="percent"
+                    Description="Create a campaign to discount one or more products for a period." />
+    }
+    else
+    {
+        <div class="table-wrap">
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Campaign</th>
+                        <th>Discount</th>
+                        <th>Period</th>
+                        <th class="num">Products</th>
+                        <th>Status</th>
+                        <th class="col-actions"><span class="sr-only">Actions</span></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var campaign in items)
+                    {
+                        var status = DisplayStatus(campaign);
+                        <tr>
+                            <td><span class="cell-product-name">@campaign.Name</span></td>
+                            <td><span class="badge badge-accent">@FormatDiscount(campaign)</span></td>
+                            <td class="nowrap">@FormatDate(campaign.StartsAt) – @FormatDate(campaign.EndsAt)</td>
+                            <td class="num">@campaign.ProductIds.Count</td>
+                            <td><span class="badge badge-dot @StatusBadge(status)">@status</span></td>
+                            <td class="col-actions">
+                                <div class="row-actions">
+                                    @if (CanEnd(campaign))
+                                    {
+                                        <button class="btn btn-secondary btn-sm btn-ghost-danger" @onclick="() => EndAsync(campaign)">End</button>
+                                    }
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (nextToken is not null)
+        {
+            <div class="card-footer">
+                <button class="btn btn-secondary" disabled="@loadingMore" @onclick="LoadMoreAsync">
+                    @(loadingMore ? "Loading..." : "Load more")
+                </button>
+            </div>
+        }
+    }
+</section>
 
 <ConfirmDialog @ref="confirmDialog" ConfirmLabel="End campaign" />
 
@@ -169,4 +174,12 @@ else
 
     private static bool CanEnd(Campaign campaign) =>
         campaign.Status == "Active" && DisplayStatus(campaign) != "Expired";
+
+    private static string StatusBadge(string status) => status switch
+    {
+        "Active" => "badge-success",
+        "Scheduled" => "badge-info",
+        "Cancelled" => "badge-danger",
+        _ => "badge-neutral",
+    };
 }

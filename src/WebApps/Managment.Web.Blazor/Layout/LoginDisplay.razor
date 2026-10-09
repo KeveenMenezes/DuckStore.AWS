@@ -2,18 +2,23 @@
 
 <AuthorizeView>
     <Authorized>
-        <span class="user-name">@context.User.Identity?.Name</span>
-        @if (context.User.Identity?.AuthenticationType != "DevAuth")
-        {
-            <button class="btn btn-link" @onclick="Logout">Log out</button>
-        }
-        else
-        {
-            <span class="dev-badge">local dev</span>
-        }
+        <div class="user-chip">
+            <span class="avatar">@Initials(context.User.Identity?.Name)</span>
+            <span class="user-name">@context.User.Identity?.Name</span>
+            @if (context.User.Identity?.AuthenticationType != "DevAuth")
+            {
+                <button class="btn btn-ghost btn-icon" title="Log out" aria-label="Log out" @onclick="Logout">
+                    <Icon Name="logout" />
+                </button>
+            }
+            else
+            {
+                <span class="dev-badge">local dev</span>
+            }
+        </div>
     </Authorized>
     <NotAuthorized>
-        <a href="authentication/login">Log in</a>
+        <a class="btn btn-secondary" href="authentication/login">Log in</a>
     </NotAuthorized>
 </AuthorizeView>
 
@@ -21,5 +26,16 @@
     private void Logout()
     {
         Navigation.NavigateToLogout("authentication/logout");
+    }
+
+    private static string Initials(string? name)
+    {
+        if (string.IsNullOrWhiteSpace(name)) return "?";
+        // Cognito names are often emails — initials from the local part read better.
+        var local = name.Split('@')[0];
+        var parts = local.Split([' ', '.', '_', '-'], StringSplitOptions.RemoveEmptyEntries);
+        return parts.Length >= 2
+            ? $"{char.ToUpperInvariant(parts[0][0])}{char.ToUpperInvariant(parts[1][0])}"
+            : char.ToUpperInvariant(local[0]).ToString();
     }
 }

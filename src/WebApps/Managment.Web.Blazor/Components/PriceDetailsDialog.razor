@@ -1,32 +1,30 @@
 @if (product is not null)
 {
-    <div class="dialog-backdrop">
-        <div class="dialog">
-            <h3>@product.Name — CatalogView pricing</h3>
-            <table class="data-table">
-                <tbody>
-                    <tr>
-                        <td>Calculated price</td>
-                        <td>@product.Price.ToString("C")</td>
-                    </tr>
-                    <tr>
-                        <td>Original price</td>
-                        <td>@product.OriginalPrice.ToString("C")</td>
-                    </tr>
-                    <tr>
-                        <td>Cash price</td>
-                        <td>@product.CashPrice.ToString("C")</td>
-                    </tr>
-                    <tr>
-                        <td>Max installments without interest</td>
-                        <td>@product.MaxInstallmentsWithoutInterest</td>
-                    </tr>
-                    <tr>
-                        <td>Max installment value</td>
-                        <td>@product.MaxInstallmentValue.ToString("C")</td>
-                    </tr>
-                </tbody>
-            </table>
+    <div class="dialog-backdrop" @onclick="Close">
+        <div class="dialog dialog-wide" role="dialog" aria-modal="true" @onclick:stopPropagation="true">
+            <header class="dialog-header">
+                <div>
+                    <h3 class="dialog-title">Pricing details</h3>
+                    <p class="dialog-subtitle">@product.Name · calculated by CatalogView</p>
+                </div>
+                <button class="btn btn-ghost btn-icon" aria-label="Close" @onclick="Close"><Icon Name="x" /></button>
+            </header>
+            <div class="dialog-body">
+                <div class="price-hero">
+                    <span class="price-hero-value">@product.Price.ToString("C")</span>
+                    @if (product.OriginalPrice > product.Price)
+                    {
+                        <span class="price-hero-original">@product.OriginalPrice.ToString("C")</span>
+                    }
+                    <span class="muted">calculated price</span>
+                </div>
+                <dl class="detail-list">
+                    <div><dt>Original price</dt><dd>@product.OriginalPrice.ToString("C")</dd></div>
+                    <div><dt>Cash price</dt><dd>@product.CashPrice.ToString("C")</dd></div>
+                    <div><dt>Max installments without interest</dt><dd>@product.MaxInstallmentsWithoutInterest×</dd></div>
+                    <div><dt>Max installment value</dt><dd>@product.MaxInstallmentValue.ToString("C")</dd></div>
+                </dl>
+            </div>
             <div class="dialog-actions">
                 <button class="btn btn-secondary" @onclick="Close">Close</button>
             </div>
