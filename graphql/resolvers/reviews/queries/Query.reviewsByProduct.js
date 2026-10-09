@@ -28,6 +28,9 @@ export function response(ctx) {
     comment: item.Comment,
     createdAt: item.CreatedAt,
     updatedAt: item.UpdatedAt,
+    // GSI1 is sparse — only Published rows are indexed, so no status filter here (ADR-0049 §2).
+    // Legacy rows written before Status existed are Published.
+    status: item.Status ?? 'Published',
   }))
 
   return { items, nextToken: ctx.result.nextToken ?? null }

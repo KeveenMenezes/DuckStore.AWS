@@ -103,7 +103,7 @@
   - Verificar: testes da estratégia; `cdk synth CatalogViewStack`.
   - Arquivos: `ReviewSync/Strategies/ReviewDeleteStrategy.cs`, registro no dispatcher/DI, `infra/constructs/catalogview-lambdas.ts`, teste. Dependências: T15.
 
-- [ ] **T17: GraphQL `myReview`, `deleteReview` e `createReview` restrito** (M)
+- [x] **T17: GraphQL `myReview`, `deleteReview` e `createReview` restrito** (M)
   - Aceite: `myReview` com GetItem, retorna `null` sem linha; `createReview` exige linha existente e passa a ser `UpdateItem` (SET `Published`, GSI1, REMOVE `ExpiresAt`); `deleteReview` faz SET `Deleted` + `ExpiresAt = now + 5d`, REMOVE GSI1, com condição `Published` ou legado; `status` no tipo `Review`.
   - Verificar: `cdk synth AppSyncStack`; no AWS dev: `createReview` sem compra = Unauthorized.
   - Arquivos: `graphql/schema.graphql`, `Query.myReview.js`, `Mutation.deleteReview.js`, `Mutation.createReview.{checkExisting,upsert}.js`, `infra/constructs/appsync-api.ts`. Dependências: T12. Usar `appsync-resolver-scaffold`.

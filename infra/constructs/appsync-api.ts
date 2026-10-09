@@ -326,6 +326,8 @@ export class AppSyncApi extends Construct {
     this.resolver(challengeProgressDs, 'MyChallengeProgressResolver', 'Query', 'myChallengeProgress', 'challenges');
     // Direct DynamoDB GSI1 query — scoped to the caller's Cognito sub in the resolver (ADR-0009).
     this.resolver(orderingDs, 'OrdersByCustomerResolver', 'Query', 'ordersByCustomer', 'orders');
+    // Direct DynamoDB GetItem on productId#sub — the caller's own review row (ADR-0049 §4).
+    this.resolver(reviewsDs, 'MyReviewResolver', 'Query', 'myReview', 'reviews');
     // Direct DynamoDB resolver — Cognito only; Query on OwnerId filtered to Status=Issued and not
     // expired (ADR-0046 §4).
     this.resolver(customerDiscountsDs, 'MyRewardsResolver', 'Query', 'myRewards', 'pricing');
@@ -362,6 +364,8 @@ export class AppSyncApi extends Construct {
       'Mutation.createReview.checkExisting.js',
       'Mutation.createReview.upsert.js',
     ]);
+    // Direct DynamoDB UpdateItem — Published -> Deleted with a 5-day TTL (ADR-0049 §4).
+    this.resolver(reviewsDs, 'DeleteReviewResolver', 'Mutation', 'deleteReview', 'reviews');
 
     // Admin/Seller mutations (group check in resolver)
     // Lambda resolver — batch presigned POSTs for direct browser->S3 uploads (ADR-0034).
