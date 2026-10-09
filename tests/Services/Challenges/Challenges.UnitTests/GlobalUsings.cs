@@ -1,5 +1,6 @@
 ﻿global using Challenges.Function.Modules.Progress.Data;
 global using Challenges.Function.Modules.Progress.Domain.Entities;
+global using Challenges.Function.Modules.Progress.Domain.Enums;
 global using Challenges.Function.Modules.Progress.Domain.ValueObjects;
 global using Challenges.Function.Modules.Questions.Data;
 global using Challenges.Function.Modules.Questions.Domain;

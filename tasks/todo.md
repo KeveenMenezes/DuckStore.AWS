@@ -16,7 +16,7 @@
   - Verificar: o Aspire sobe e a tabela aparece no DynamoDB Local (`aws dynamodb describe-table --endpoint-url http://localhost:8000`); `cdk synth ChallengesStack`.
   - Arquivos: `Modules/Progress/Data/PointsTransactionsSchema.cs`, `Challenges.DevelopmentDataSeeder/DynamoTableInitializer.cs`, `infra/constructs/challenges-dynamodb.ts`, `src/AppHost/ChallengesExtensions.cs` (se for preciso). Dependências: T1.
 
-- [ ] **T3: Domínio `PointsTransaction`** (S)
+- [x] **T3: Domínio `PointsTransaction`** (S)
   - Aceite: entidade + enums `PointsTransactionType`/`PointsTransactionStatus`; `ChallengeCredit(...)` rejeita pontos ≤ 0 e gera `CHALLENGE#<questionId>`, `Completed`.
   - Verificar: `dotnet test tests/Services/Challenges/Challenges.UnitTests`.
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Domain/Enums/PointsTransaction{Type,Status}.cs`, teste. Dependências: T2.
