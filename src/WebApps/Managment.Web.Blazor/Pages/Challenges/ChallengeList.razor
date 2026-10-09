@@ -9,6 +9,10 @@
 </div>
 
 <p class="muted">A new point value applies to future answers only. Past attempts and credits are not recalculated.</p>
+@if (!isAdmin)
+{
+    <p class="muted">Only the Admin group can change point values.</p>
+}
 
 @if (banner is not null)
 {
@@ -49,7 +53,7 @@ else
                     @if (editingId == challenge.Id)
                     {
                         <td>
-                            <input type="number" min="1" step="1" class="inline-input" aria-label="Points for @challenge.Title"
+                            <input type="number" min="1" max="@ChallengePointsInput.Max" step="1" class="inline-input" aria-label="Points for @challenge.Title"
                                    @bind="editText" @bind:event="oninput" disabled="@saving" />
                             @if (editError is not null)
                             {
@@ -67,7 +71,11 @@ else
                     {
                         <td>@challenge.Points</td>
                         <td class="row-actions">
-                            <button class="btn btn-secondary" disabled="@saving" @onclick="() => StartEdit(challenge)">Edit</button>
+                            @* Admin only, like the resolver; a Seller would just get Unauthorized on save. *@
+                            @if (isAdmin)
+                            {
+                                <button class="btn btn-secondary" disabled="@saving" @onclick="() => StartEdit(challenge)">Edit</button>
+                            }
                         </td>
                     }
                 </tr>
@@ -84,6 +92,10 @@ else
 }
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    private bool isAdmin;
     private List<ChallengeSummary>? items;
     private string? nextToken;
     private string? banner;
@@ -97,6 +109,8 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        isAdmin = CognitoGroups.Contains((await AuthenticationState).User, CognitoGroups.Admin);
+
         try
         {
             var page = await Challenges.GetChallengesAsync();

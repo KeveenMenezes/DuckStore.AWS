@@ -1,18 +1,22 @@
 import { util } from '@aws-appsync/utils'
 
 // Admin only (Seller deliberately excluded). Direct DynamoDB UpdateItem resolver (ADR-0009): one
-// item, one attribute, and the only invariant (points > 0) fits in the resolver. Only the PUBLIC
+// item, one attribute, and the only invariant (1..MAX_POINTS) fits in the resolver. Only the PUBLIC
 // item changes — Question.Grade reads Points from it at answer time, so the new value applies to
 // future answers without touching past attempts or the points ledger. The ANSWER item is never
 // addressed here (ADR-0045 §2).
+// 100 points = R$1 (ADR-0048), so this caps one challenge at R$10 — a typo can't mint a fortune.
+// Mirrored by local.ts and the Blazor ChallengePointsInput.
+const MAX_POINTS = 1000
+
 export function request(ctx) {
   const groups = ctx.identity?.groups ?? []
   if (!groups.includes('Admin')) util.unauthorized()
 
   const { id, points } = ctx.args
   // GraphQL Int already rejects non-integers; this keeps the invariant local if the arg type ever loosens.
-  if (!Number.isInteger(points) || points <= 0) {
-    util.error('points must be a positive integer', 'BadRequest')
+  if (!Number.isInteger(points) || points <= 0 || points > MAX_POINTS) {
+    util.error(`points must be an integer between 1 and ${MAX_POINTS}`, 'BadRequest')
   }
 
   return {

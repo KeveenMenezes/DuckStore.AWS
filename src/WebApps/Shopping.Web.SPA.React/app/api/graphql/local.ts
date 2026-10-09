@@ -200,6 +200,9 @@ function unauthorized(field: string) {
 
 const REVIEW_TTL_SECONDS = 5 * 24 * 60 * 60
 
+// Same ceiling as Mutation.updateChallengePoints.js (MAX_POINTS) and the Blazor ChallengePointsInput.
+const MAX_CHALLENGE_POINTS = 1000
+
 // Distinct product ids in the saved cart (Data is the .NET-serialized PascalCase JSON).
 async function cartProductIds(ownerId: string): Promise<string[]> {
   const result = await dynamoDb.send(
@@ -1146,8 +1149,8 @@ const resolvers = {
     // as the other admin mutations here): UpdateItem on the PUBLIC item only, so the new value
     // applies to future answers; past attempts and the points ledger are untouched (ADR-0045 §2).
     async updateChallengePoints(_: unknown, { id, points }: { id: string; points: number }) {
-      if (!Number.isInteger(points) || points <= 0) {
-        throw createGraphQLError('points must be a positive integer', {
+      if (!Number.isInteger(points) || points <= 0 || points > MAX_CHALLENGE_POINTS) {
+        throw createGraphQLError(`points must be an integer between 1 and ${MAX_CHALLENGE_POINTS}`, {
           extensions: { errorType: 'BadRequest' },
         })
       }
