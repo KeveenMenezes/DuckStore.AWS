@@ -439,6 +439,9 @@ input ShoppingCartInput {
 }
 
 input CheckoutInput {
+  # The total the customer confirmed on screen — never the amount charged. The checkout pipeline
+  # recomputes the total in Pricing for the saved cart, pointsToUse and the payment choice, and
+  # fails with errorType PriceChanged (errorInfo.serverTotal) when it differs (ADR-0048 §4).
   totalPrice: Float!
   firstName: String!
   lastName: String!
@@ -457,6 +460,9 @@ input CheckoutInput {
   # Opaque pass-through, chosen by the customer beforehand via basketInstallmentPlan(discountId:)
   # (ADR-0046 §5, §6) — Basket never validates or interprets it. Null/omitted when no coupon.
   discountId: ID
+  # Points to use on this order, 0/omitted for none. Capped by Pricing (PointsAboveCap), reserved
+  # against the balance by Challenges after checkout (ADR-0048 §4, §5).
+  pointsToUse: Int
 }
 
 input BasketInstallmentItemInput {
@@ -606,8 +612,10 @@ type Mutation {
   # ownerId (ADR-0009, ADR-0016)
   storeBasket(ownerId: String!, input: ShoppingCartInput!): StoreBasketResult! @aws_api_key @aws_cognito_user_pools
 
-  # Lambda resolver — Cognito ONLY (login required, which triggers the merge); resolver injects
-  # ctx.identity.sub as CustomerId and USER#<sub> as OwnerId (ADR-0009, ADR-0016)
+  # Pipeline resolver — Cognito ONLY (login required, which triggers the merge): loads the saved
+  # cart, has Pricing quote it (cap + charged total), then checks out through the Basket Lambda
+  # with the server's total. Injects ctx.identity.sub as CustomerId and USER#<sub> as OwnerId
+  # (ADR-0009, ADR-0016, ADR-0048 §4)
   checkoutBasket(input: CheckoutInput!): CheckoutResult!
 
   # Direct DynamoDB resolver — Cognito OR API_KEY (guest via BFF); resolver derives/validates ownerId

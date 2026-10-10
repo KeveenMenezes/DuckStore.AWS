@@ -160,7 +160,7 @@
   - Verificar: teste do Basket (campos chegam inalterados ao evento); `dotnet build` da solução.
   - Arquivos: `BuildingBlocks.Messaging/Events/{BasketCheckoutEvent,PointsReservedEvent,PointsReservationFailedEvent,OrderCancelledEvent}.cs`, `MessagingSerializerContext.cs`, `Basket.Function/.../Dtos/BasketCheckoutDto.cs` + `CheckoutBasket/Handler.cs`. Dependências: T22.
 
-- [ ] **T25: Pipeline `checkoutBasket` (`loadCart` → `quote` → `checkout`)** (M) ⚠ maior risco
+- [x] **T25: Pipeline `checkoutBasket` (`loadCart` → `quote` → `checkout`)** (M) ⚠ maior risco
   - Aceite: roda em **todo** checkout; usa os itens do carrinho salvo (`JSON.parse(Data)`); `quote` envia `expectedTotal`, `paymentMethod` e `installments` ao Pricing e repassa `PriceChanged`/`PointsAboveCap` com `errorType` e `serverTotal`; o Basket recebe `TotalPrice = chargedTotal` e `PointsToUse`; o JS só mapeia (nenhuma regra de preço no resolver — ADR-0009); `pipelineResolver()` ganha a variante com um data source por função.
   - Verificar: `cdk synth AppSyncStack`; no AWS dev: checkout normal OK, `totalPrice` adulterado → `PriceChanged`, preço alterado entre cotação e checkout → `PriceChanged`, pontos acima do teto → erro; `Ordering.FunctionalTests` verde.
   - Arquivos: `Mutation.checkoutBasket.js` + `.loadCart.js` + `.quote.js` + `.checkout.js`, `graphql/schema.graphql` (input `pointsToUse`), `infra/constructs/appsync-api.ts`. Dependências: T23, T24.

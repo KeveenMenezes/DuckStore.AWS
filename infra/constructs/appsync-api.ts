@@ -107,33 +107,38 @@ export class AppSyncApi extends Construct {
     });
   }
 
-  // Pipeline resolver (ADR-0029) — this repo's first: every other resolver here is a single-step
-  // unit resolver against one data source. `steps` are the intermediate AppSync Functions (each its
-  // own request/response, e.g. `Mutation.createReview.checkExisting.js`), run in order and sharing
+  // Pipeline resolver (ADR-0029). `steps` are the intermediate AppSync Functions (each its own
+  // request/response, e.g. `Mutation.createReview.checkExisting.js`), run in order and sharing
   // `ctx.stash`/`ctx.prev.result`; the top-level `${typeName}.${fieldName}.js` file is just the
-  // pipeline's own pass-through request/response (returns `ctx.prev.result`).
+  // pipeline's own pass-through request/response (returns `ctx.prev.result`). A step given as a
+  // file name runs against `dataSource`; one given as `{ file, dataSource }` runs against its own —
+  // an orchestration pipeline whose steps call different services (checkoutBasket, ADR-0048 §4).
   private pipelineResolver(
-    dataSource: appsync.BaseDataSource,
+    dataSource: appsync.BaseDataSource | undefined,
     id: string,
     typeName: string,
     fieldName: string,
     domain: string,
-    steps: string[],
+    steps: Array<string | { file: string; dataSource: appsync.BaseDataSource }>,
   ) {
     const runtime = appsync.FunctionRuntime.JS_1_0_0;
     const readResolverCode = (fileName: string) =>
       appsync.Code.fromInline(readFileSync(this.resolverPath(domain, typeName, fileName), 'utf-8'));
 
-    const functions = steps.map(
-      (fileName, index) =>
-        new appsync.AppsyncFunction(this, `${id}Fn${index}`, {
-          api: this.api,
-          dataSource,
-          name: `${id}Fn${index}`,
-          runtime,
-          code: readResolverCode(fileName),
-        }),
-    );
+    const functions = steps.map((step, index) => {
+      const { file, dataSource: stepDataSource } =
+        typeof step === 'string' ? { file: step, dataSource } : step;
+      if (!stepDataSource) {
+        throw new Error(`Pipeline step ${file} of ${id} has no data source.`);
+      }
+      return new appsync.AppsyncFunction(this, `${id}Fn${index}`, {
+        api: this.api,
+        dataSource: stepDataSource,
+        name: `${id}Fn${index}`,
+        runtime,
+        code: readResolverCode(file),
+      });
+    });
 
     this.api.createResolver(id, {
       typeName,
@@ -377,7 +382,15 @@ export class AppSyncApi extends Construct {
     // checkoutBasket/mergeBasket are Cognito-only (see ADR-0016). storeBasket is a direct
     // DynamoDB PutItem resolver (ADR-0009).
     this.resolver(cartsDs, 'StoreBasketResolver', 'Mutation', 'storeBasket', 'basket');
-    this.resolver(checkoutDs, 'CheckoutBasketResolver', 'Mutation', 'checkoutBasket', 'basket');
+    // Pipeline (ADR-0048 §4): saved cart → Pricing quote (cap + charged total, or PriceChanged) →
+    // Basket checkout with the server's total. Same construct id as the unit resolver it replaces,
+    // so CloudFormation updates the resolver in place instead of creating a second one for the
+    // same field.
+    this.pipelineResolver(undefined, 'CheckoutBasketResolver', 'Mutation', 'checkoutBasket', 'basket', [
+      { file: 'Mutation.checkoutBasket.loadCart.js', dataSource: cartsDs },
+      { file: 'Mutation.checkoutBasket.quote.js', dataSource: getBasketInstallmentPlanDs },
+      { file: 'Mutation.checkoutBasket.checkout.js', dataSource: checkoutDs },
+    ]);
     this.resolver(mergeBasketDs, 'MergeBasketResolver', 'Mutation', 'mergeBasket', 'basket');
     this.resolver(cartsDs, 'DeleteBasketResolver', 'Mutation', 'deleteBasket', 'basket');
     this.pipelineResolver(reviewsDs, 'CreateReviewResolver', 'Mutation', 'createReview', 'reviews', [
