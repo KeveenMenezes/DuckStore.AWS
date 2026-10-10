@@ -185,7 +185,7 @@
   - Verificar: testes das regras; `cdk synth ChallengesStack`.
   - Arquivos: `Publishers/PointsTransactions/{Endpoint,PointsTransactionStreamImage}.cs`, `Rules/{PointsReservedRule,PointsReservationFailedRule}.cs`, `src/AppHost/ChallengesExtensions.cs`, `infra/constructs/challenges-lambdas.ts`. Dependências: T28. Usar `cdc-integration-scaffold`.
 
-- [ ] **T30: Payment, status `AwaitingPoints`** (M)
+- [x] **T30: Payment, status `AwaitingPoints`** (M)
   - Aceite: `PaymentStatus.AwaitingPoints`; checkout com pontos cria `AwaitingPoints`; `Payment.ConfirmPoints()` (→ `Pending`) e `Payment.RejectPoints()` (→ `Declined`, motivo `InsufficientPoints`); a `PaymentRequestedRule` também casa em MODIFY `AwaitingPoints→Pending`; a nova `PaymentDeclinedInsufficientPointsRule` publica `PaymentDeclinedEvent` em MODIFY `AwaitingPoints→Declined`; sem pontos, o comportamento não muda.
   - Verificar: testes (o INSERT `AwaitingPoints` não dispara `PaymentRequested`; as transições; a regra de recusa local; a regressão sem pontos).
   - Arquivos: `Domain/Enums/PaymentStatus.cs`, `Domain/Entities/Payment.cs`, `Consumers/BasketCheckout/{Command,Handler,Mapper}.cs`, `Rules/{PaymentRequestedRule,PaymentDeclinedInsufficientPointsRule}.cs`. Dependências: T24.

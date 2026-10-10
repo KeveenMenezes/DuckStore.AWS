@@ -32,6 +32,7 @@ public static class ServiceRegistration
         // Stream-publisher rules + dispatcher (see ADR-0019). Scoped so a rule can depend on the
         // scoped repository; add a rule per state-change the Payments module needs to publish.
         services.AddScoped<IStreamRule<PaymentStreamImage>, PaymentRequestedRule>();
+        services.AddScoped<IStreamRule<PaymentStreamImage>, PaymentDeclinedInsufficientPointsRule>();
         services.AddScoped<StreamRuleDispatcher<PaymentStreamImage>>();
 
         return services;

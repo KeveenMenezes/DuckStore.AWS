@@ -1,14 +1,19 @@
 ﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Publishers.Rules;
 
-// Publishes PaymentRequestedEvent when a new, still-pending payment row lands in the table. The
-// aggregate is rehydrated from the repository (a domain abstraction — not AWS infrastructure);
+// Publishes PaymentRequestedEvent when a payment becomes Pending: on its INSERT (no points), or on
+// the MODIFY AwaitingPoints → Pending once Challenges reserved the checkout's points (ADR-0048 §6).
+// The aggregate is rehydrated from the repository (a domain abstraction — not AWS infrastructure);
 // the rule never references EventBridge and only returns a generic PublishInstruction.
 public sealed class PaymentRequestedRule(IPaymentRepository payments) : IStreamRule<PaymentStreamImage>
 {
+    private static readonly string Pending = nameof(PaymentStatus.Pending);
+    private static readonly string AwaitingPoints = nameof(PaymentStatus.AwaitingPoints);
+
     public bool Match(StreamContext<PaymentStreamImage> context) =>
-        context.EventName == "INSERT" &&
-        context.New?.Type == "Payment" &&
-        context.New?.Status == "Pending";
+        context.New is { Type: "Payment" } next
+        && next.Status == Pending
+        && (context.EventName == "INSERT"
+            || (context.EventName == "MODIFY" && context.Old?.Status == AwaitingPoints));
 
     public async Task<PublishInstruction> BuildAsync(
         StreamContext<PaymentStreamImage> context, CancellationToken cancellationToken = default)
