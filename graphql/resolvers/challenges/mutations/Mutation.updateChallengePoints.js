@@ -15,7 +15,8 @@ export function request(ctx) {
 
   const { id, points } = ctx.args
   // GraphQL Int already rejects non-integers; this keeps the invariant local if the arg type ever loosens.
-  if (!Number.isInteger(points) || points <= 0 || points > MAX_POINTS) {
+  // Math.floor, not Number.isInteger: APPSYNC_JS doesn't implement Number.isInteger and rejects the code.
+  if (Math.floor(points) !== points || points <= 0 || points > MAX_POINTS) {
     util.error(`points must be an integer between 1 and ${MAX_POINTS}`, 'BadRequest')
   }
 
