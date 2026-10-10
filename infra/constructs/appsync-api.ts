@@ -7,7 +7,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
-import { REWARD_CURRENCY_PER_UNIT, REWARD_EXPIRY_DAYS, REWARD_POINTS_PER_UNIT } from './reward-config';
+import { REWARD_CURRENCY_PER_UNIT, REWARD_POINTS_PER_UNIT } from './reward-config';
 
 // The GraphQL contract lives at the repo root (ADR-0033) — shared infrastructure, not
 // SPA code: the CDK deploys it to AppSync, the SPA's local yoga backend executes it in
@@ -358,7 +358,6 @@ export class AppSyncApi extends Construct {
       {
         __REWARD_POINTS_PER_UNIT__: REWARD_POINTS_PER_UNIT.toString(),
         __REWARD_CURRENCY_PER_UNIT__: REWARD_CURRENCY_PER_UNIT.toString(),
-        __REWARD_EXPIRY_DAYS__: REWARD_EXPIRY_DAYS.toString(),
       },
     );
 

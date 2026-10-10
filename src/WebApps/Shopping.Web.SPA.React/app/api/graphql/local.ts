@@ -243,6 +243,58 @@ async function createEligibleReviews(userId: string, productIds: string[]) {
   }
 }
 
+type BasketQuote = {
+  TotalOriginalPrice: number
+  Price: number
+  CashPrice: number
+  MaxInstallmentsWithoutInterest: number
+  InstallmentPlan: { Count: number; Value: number; TotalValue: number; HasInterest: boolean }[]
+  MaxRedeemablePoints: number
+  PointsDiscount: number
+  ChargedTotal: number | null
+  Rejection: {
+    ErrorType: string
+    Message: string
+    ServerTotal: number | null
+    MaxRedeemablePoints: number | null
+  } | null
+}
+
+// Invokes Pricing's GetBasketInstallmentPlan and raises a refused quote (PointsAboveCap,
+// PriceChanged) as the same typed error AppSync raises from the resolvers' Rejection mapping.
+async function quoteBasket(payload: Record<string, unknown>): Promise<BasketQuote> {
+  const body = await invokeLambda<BasketQuote>('pricing-get-basket-installment-plan', payload)
+  if (body.Rejection) {
+    throw createGraphQLError(body.Rejection.Message, {
+      extensions: {
+        errorType: body.Rejection.ErrorType,
+        errorInfo: {
+          serverTotal: body.Rejection.ServerTotal,
+          maxRedeemablePoints: body.Rejection.MaxRedeemablePoints,
+        },
+      },
+    })
+  }
+  return body
+}
+
+function mapBasketQuote(body: BasketQuote) {
+  return {
+    totalOriginalPrice: body.TotalOriginalPrice,
+    price: body.Price,
+    cashPrice: body.CashPrice,
+    maxInstallmentsWithoutInterest: body.MaxInstallmentsWithoutInterest,
+    installments: (body.InstallmentPlan ?? []).map(e => ({
+      count: e.Count,
+      value: e.Value,
+      totalValue: e.TotalValue,
+      hasInterest: e.HasInterest,
+    })),
+    maxRedeemablePoints: body.MaxRedeemablePoints ?? 0,
+    pointsDiscount: body.PointsDiscount ?? 0,
+  }
+}
+
 // Same value as PointsPolicy.ReviewCredit in Challenges.Function (SPEC-review-points).
 const REVIEW_CREDIT_POINTS = 15
 
@@ -612,36 +664,33 @@ const resolvers = {
       }
     },
 
-    // Sums cost/originalPrice across every cart item, then runs the whole cart through the same
-    // cost-floor calculation as a single checkout transaction (ADR-0009). discountId is optional
-    // and Cognito-only (ADR-0046 §5) — same owner used for basket/challenges stands in locally.
+    // Mirrors Query.basketInstallmentPlan.js: sums cost/originalPrice across every cart item, then
+    // runs the whole cart through the same cost-floor calculation as a single checkout transaction
+    // (ADR-0009). discountId and a positive pointsToUse are Cognito-only (ADR-0046 §5, ADR-0048 §3)
+    // — the BFF-resolved owner stands in for the identity, so a visitor is rejected the same way.
     async basketInstallmentPlan(
       _: unknown,
-      { items, discountId }: { items: Array<{ productId: string; quantity: number }>; discountId?: string | null },
+      {
+        items,
+        discountId,
+        pointsToUse,
+      }: {
+        items: Array<{ productId: string; quantity: number }>
+        discountId?: string | null
+        pointsToUse?: number | null
+      },
       context: LocalContext,
     ) {
-      const body = await invokeLambda<{
-        TotalOriginalPrice: number
-        Price: number
-        CashPrice: number
-        MaxInstallmentsWithoutInterest: number
-        InstallmentPlan: { Count: number; Value: number; TotalValue: number; HasInterest: boolean }[]
-      }>('pricing-get-basket-installment-plan', {
+      const points = pointsToUse ?? 0
+      const isGuest = context.owner.ownerId.startsWith('GUEST#')
+      if ((points > 0 || discountId) && isGuest) throw unauthorized('basketInstallmentPlan', 'Query')
+
+      const body = await quoteBasket({
         Items: items.map(i => ({ ProductId: i.productId, Quantity: i.quantity })),
+        ...(points > 0 ? { PointsToUse: points } : {}),
         ...(discountId ? { OwnerId: context.owner.ownerId, DiscountId: discountId } : {}),
       })
-      return {
-        totalOriginalPrice: body.TotalOriginalPrice,
-        price: body.Price,
-        cashPrice: body.CashPrice,
-        maxInstallmentsWithoutInterest: body.MaxInstallmentsWithoutInterest,
-        installments: (body.InstallmentPlan ?? []).map(e => ({
-          count: e.Count,
-          value: e.Value,
-          totalValue: e.TotalValue,
-          hasInterest: e.HasInterest,
-        })),
-      }
+      return mapBasketQuote(body)
     },
 
     async reviewsByProduct(
@@ -891,11 +940,11 @@ const resolvers = {
     },
 
     // Mirrors the constants baked into the rewardConversion NONE resolver in prod
-    // (infra/constructs/reward-config.ts) and pricing-points-redeemed-consumer's Rewards__* env
-    // vars (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
+    // (infra/constructs/reward-config.ts) and the Pricing Lambdas' Rewards__* env vars
+    // (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
     // to read them from (ADR-0046 §8).
     async rewardConversion() {
-      return { pointsPerUnit: 100, currencyPerUnit: 10, expiryDays: 90 }
+      return { pointsPerUnit: 100, currencyPerUnit: 1 }
     },
   },
 

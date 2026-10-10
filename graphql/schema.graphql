@@ -86,12 +86,18 @@ type InstallmentPlan @aws_api_key @aws_cognito_user_pools {
 # Cart-level equivalent of InstallmentPlan: every item's Cost/NominalPrice is summed first (the
 # whole cart is billed as a single checkout transaction) and run through the same cost-floor
 # calculation, so a mixed-margin cart resolves to one unified plan instead of N per-product ones.
+#
+# With pointsToUse, price/cashPrice/installments are already net of pointsDiscount (ADR-0048 §3).
+# maxRedeemablePoints is this cart's cap (20% of the post-campaign price, in points) whatever
+# pointsToUse was — the customer's balance is a separate, client-side limit.
 type BasketInstallmentPlan @aws_api_key @aws_cognito_user_pools {
   totalOriginalPrice: Float!
   price: Float!
   cashPrice: Float!
   maxInstallmentsWithoutInterest: Int!
   installments: [InstallmentOption!]!
+  maxRedeemablePoints: Int!
+  pointsDiscount: Float!
 }
 
 type Campaign @aws_cognito_user_pools {
@@ -123,12 +129,12 @@ type CustomerDiscount @aws_cognito_user_pools {
   sourceRedemptionId: ID!
 }
 
-# The current points -> currency rate, so the SPA can show "500 points -> R$50" before the
-# customer redeems (ADR-0046 §1, §8). A fixed v1 constant, not a tier catalogue.
+# The current points -> currency rate, so the SPA can show "500 points = R$5" before the customer
+# uses them (ADR-0046 §1, §8; ADR-0048 §3). A fixed v1 constant, not a tier catalogue. Points
+# never expire (SPEC.md), so there is no expiry here.
 type RewardConversion @aws_cognito_user_pools {
   pointsPerUnit: Int!
   currencyPerUnit: Float!
-  expiryDays: Int!
 }
 
 # One payment-gateway provider's operating costs (ADR-0028): a flat fee per transaction, a
@@ -534,9 +540,12 @@ type Query {
   # first, then runs the same InstallmentCalculator over the whole cart as one transaction (ADR-0009).
   # discountId is optional and Cognito-only (ADR-0046 §5): the resolver rejects it unless
   # ctx.identity is present, and applies it after campaign allocation, floored at zero.
+  # pointsToUse > 0 is Cognito-only too (ADR-0048 §3); above the cap it fails with
+  # errorType PointsAboveCap (errorInfo.maxRedeemablePoints), never trimmed.
   basketInstallmentPlan(
     items: [BasketInstallmentItemInput!]!
     discountId: ID
+    pointsToUse: Int
   ): BasketInstallmentPlan @aws_api_key @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)

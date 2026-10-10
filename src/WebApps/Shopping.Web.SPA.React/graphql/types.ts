@@ -58,6 +58,10 @@ export interface GqlBasketInstallmentPlan {
   cashPrice: number
   maxInstallmentsWithoutInterest: number
   installments: GqlInstallmentOption[]
+  /** This cart's cap in points (20% of the post-campaign price), whatever pointsToUse was. */
+  maxRedeemablePoints: number
+  /** Currency taken off by pointsToUse; price/cashPrice/installments are already net of it. */
+  pointsDiscount: number
 }
 
 export interface BasketInstallmentItemInput {
@@ -339,5 +343,4 @@ export interface GqlCustomerDiscount {
 export interface GqlRewardConversion {
   pointsPerUnit: number
   currencyPerUnit: number
-  expiryDays: number
 }

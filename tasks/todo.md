@@ -150,7 +150,7 @@
   - Verificar: testes (R$200 → 4000; R$0,99 → 19; acima do teto rejeita; o desconto entra depois da campanha; à vista e parcelado recalculados; total igual → `ChargedTotal`; diferente em 1 centavo → `PriceChanged`; parcela inexistente → BadRequest).
   - Arquivos: `Shared/Configuration/RewardOptions.cs`, `GetBasketInstallmentPlan/{Query,Handler,Endpoint}.cs`, `InstallmentCalculator.cs`, `Shared/Exceptions/{PointsAboveCap,PriceChanged}Exception.cs`, `infra/constructs/{reward-config,pricing-lambdas}.ts`. Pode chegar a 6 arquivos; se crescer, separar o `PriceChanged` em uma T22b. Dependências: T3.
 
-- [ ] **T23: Cotação GraphQL com `pointsToUse`** (S)
+- [x] **T23: Cotação GraphQL com `pointsToUse`** (S)
   - Aceite: `basketInstallmentPlan(items, pointsToUse)` com `maxRedeemablePoints` e `pointsDiscount` na resposta; `pointsToUse > 0` sem token = Unauthorized; `rewardConversion` sem `expiryDays`; o `local.ts` espelha (o `discountId` continua aceito até a T35).
   - Verificar: `cdk synth AppSyncStack`; consulta manual com e sem pontos.
   - Arquivos: `graphql/schema.graphql`, `Query.basketInstallmentPlan.js`, `infra/constructs/appsync-api.ts`, `api/queries/pricing.ts`, `app/api/graphql/local.ts`. Dependências: T22.

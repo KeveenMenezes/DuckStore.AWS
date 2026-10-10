@@ -14,16 +14,19 @@ export const GET_INSTALLMENT_PLAN = `
 `
 
 // Cart-level equivalent: sums cost/originalPrice across every item and returns one unified plan
-// for the whole checkout transaction. Fetched by the checkout page. discountId is optional and
-// Cognito-only (ADR-0046 §5) — see getBasketInstallmentPlan, which switches auth clients when set.
+// for the whole checkout transaction. Fetched by the checkout page. discountId and a positive
+// pointsToUse are Cognito-only (ADR-0046 §5, ADR-0048 §3) — see getBasketInstallmentPlan, which
+// switches auth clients when either is set.
 export const GET_BASKET_INSTALLMENT_PLAN = `
-  query GetBasketInstallmentPlan($items: [BasketInstallmentItemInput!]!, $discountId: ID) {
-    basketInstallmentPlan(items: $items, discountId: $discountId) {
+  query GetBasketInstallmentPlan($items: [BasketInstallmentItemInput!]!, $discountId: ID, $pointsToUse: Int) {
+    basketInstallmentPlan(items: $items, discountId: $discountId, pointsToUse: $pointsToUse) {
       totalOriginalPrice
       price
       cashPrice
       maxInstallmentsWithoutInterest
       installments { count value totalValue hasInterest }
+      maxRedeemablePoints
+      pointsDiscount
     }
   }
 `
@@ -45,14 +48,13 @@ export const GET_MY_REWARDS = `
   }
 `
 
-// The current points -> currency rate, so the SPA can show "500 points -> R$50" before redemption
-// (ADR-0046 §1, §8). Public within Cognito (no anonymous quote — redemption itself never is).
+// The current points -> currency rate, so the SPA can show "500 points = R$5" before the customer
+// uses them (ADR-0046 §1, §8; ADR-0048 §3). Cognito-only, like using points.
 export const GET_REWARD_CONVERSION = `
   query RewardConversion {
     rewardConversion {
       pointsPerUnit
       currencyPerUnit
-      expiryDays
     }
   }
 `
