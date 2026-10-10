@@ -197,7 +197,7 @@
 
 - [x] **T32: Challenges liquida o resgate (`Used`/`Released`/`Refunded`)** (M)
   - Aceite: `challenges-payment-authorized-consumer` (`Reserved→Used`) e `challenges-order-cancelled-consumer` (`Reserved→Released` / `Used→Refunded` com `ADD Score +|pts|`; `Failed` = no-op); busca por `GetItem` consistente na chave da tabela base (`USER#<CustomerId>`), e linha não encontrada = pedido sem pontos = no-op (ADR-0048 §5, emendada); toda transição é condicional, e uma condição falhada sobre uma linha que existe é no-op; CDK com regras, DLQ e grants.
-  - Verificar: um teste por transição + evento duplicado + `Failed` no-op + linha ausente lança exceção.
+  - Verificar: um teste por transição + evento duplicado + `Failed` no-op + linha ausente (pedido sem pontos) é no-op.
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Consumers/{PaymentAuthorized,OrderCancelled}/*`, `src/AppHost/ChallengesExtensions.cs`, `infra/constructs/challenges-lambdas.ts`. Dependências: T27, T28.
 
 - [x] **T33: SPA, pontos no carrinho e `PriceChanged`** (M)
