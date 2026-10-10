@@ -21,11 +21,19 @@ export function CheckoutView() {
     items,
     totalItems,
     totalPrice,
+    chargedTotal,
     installmentPlan,
     isLoadingInstallmentPlan,
     isLoadingProfile,
+    isSignedIn,
+    balance,
+    pointsToUse,
+    maxPoints,
+    pointsNotice,
+    priceChangedTotal,
     updateField,
     updatePaymentMethod,
+    updatePointsToUse,
     handleSubmit,
   } = useCheckout()
 
@@ -52,6 +60,15 @@ export function CheckoutView() {
 
       <h1 className="mb-8 text-3xl font-bold text-foreground">Checkout</h1>
 
+      {priceChangedTotal !== null && (
+        <div
+          role="alert"
+          className="mb-6 rounded-md border border-amber-500/50 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-400"
+        >
+          Your cart total changed. Review the new total before checking out.
+        </div>
+      )}
+
       {checkoutError && (
         <div className="mb-6 rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           {checkoutError}
@@ -62,7 +79,7 @@ export function CheckoutView() {
         <CheckoutForm
           formData={formData}
           errors={errors}
-          totalPrice={totalPrice}
+          chargedTotal={chargedTotal}
           installmentPlan={installmentPlan}
           isLoadingInstallmentPlan={isLoadingInstallmentPlan}
           isLoadingProfile={isLoadingProfile}
@@ -74,8 +91,15 @@ export function CheckoutView() {
           items={items}
           totalItems={totalItems}
           totalPrice={totalPrice}
+          chargedTotal={chargedTotal}
+          totalChanged={priceChangedTotal !== null}
           installmentPlan={installmentPlan}
           selectedInstallments={Number(formData.installments) || 1}
+          points={
+            isSignedIn
+              ? { balance, max: maxPoints, value: pointsToUse, notice: pointsNotice, onChange: updatePointsToUse }
+              : null
+          }
         />
       </div>
     </div>

@@ -15,24 +15,45 @@ const PAYMENT_METHOD_CODE: Record<CheckoutFormData["paymentMethod"], number> = {
 /**
  * Fetch the unified, cart-level installment plan (sums cost/originalPrice across every item,
  * then runs the whole cart through InstallmentCalculator as a single checkout transaction).
- * Public/cookie-free by default — same trust model as installmentPlanFor. Passing a discountId
- * switches to the authenticated client: applying a customer discount is Cognito-only (ADR-0046
- * §5), and the resolver rejects a discountId sent without ctx.identity.
+ * Public/cookie-free by default — same trust model as installmentPlanFor. Using points (or a
+ * discountId) switches to the authenticated client: both are Cognito-only (ADR-0046 §5,
+ * ADR-0048 §3), and the resolver rejects them without ctx.identity. With points, every figure in
+ * the plan is already net of `pointsDiscount`; more points than `maxRedeemablePoints` fails with
+ * a GraphQLRequestError whose errorType is "PointsAboveCap".
  */
 export async function getBasketInstallmentPlan(
   items: CartItem[],
+  pointsToUse = 0,
   discountId?: string,
 ): Promise<GqlBasketInstallmentPlan | null> {
   if (items.length === 0) return null
-  const client = discountId ? gql : gqlPublic
+  const client = discountId || pointsToUse > 0 ? gql : gqlPublic
   const data = await client<{ basketInstallmentPlan: GqlBasketInstallmentPlan | null }>(
     GET_BASKET_INSTALLMENT_PLAN,
     {
       items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
       discountId: discountId ?? null,
+      pointsToUse: pointsToUse > 0 ? pointsToUse : null,
     },
   )
   return data.basketInstallmentPlan
+}
+
+/**
+ * The total charged for a payment choice, read off the quote — the same choice Pricing makes in
+ * the checkout pipeline (ADR-0048 §4): cash → cashPrice, one card installment → price, N → that
+ * installment's totalValue (interest included). Null while there is no quote, or when the chosen
+ * count isn't offered.
+ */
+export function chargedTotalFor(
+  plan: GqlBasketInstallmentPlan | null,
+  paymentMethod: CheckoutFormData["paymentMethod"],
+  installments: number,
+): number | null {
+  if (!plan) return null
+  if (paymentMethod === "cash") return plan.cashPrice
+  if (installments <= 1) return plan.price
+  return plan.installments.find((i) => i.count === installments)?.totalValue ?? null
 }
 
 /**
@@ -45,7 +66,10 @@ export async function getBasketInstallmentPlan(
  */
 export async function submitCheckout(
   formData: CheckoutFormData,
+  // The total the customer sees and confirms — chargedTotalFor() over the current quote. The
+  // server recomputes it and rejects a mismatch with errorType "PriceChanged" (ADR-0048 §4).
   totalPrice: number,
+  pointsToUse = 0,
   discountId?: string,
 ): Promise<string | null> {
   const nameParts = formData.name.trim().split(" ")
@@ -64,6 +88,7 @@ export async function submitCheckout(
       // Opaque pass-through, chosen beforehand via basketInstallmentPlan(discountId:) — never
       // interpreted here (ADR-0046 §6).
       discountId: discountId ?? null,
+      pointsToUse,
       firstName,
       lastName,
       emailAddress: formData.email,

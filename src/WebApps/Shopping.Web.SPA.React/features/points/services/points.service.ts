@@ -1,12 +1,25 @@
 import { gql } from "@/api"
 import { GET_MY_POINTS_HISTORY } from "@/api/queries/points"
-import type { GqlPointsHistoryPage, GqlPointsTransactionType } from "@/graphql/types"
-import type { PointsHistoryPage, PointsReason } from "@/features/points/types/points.types"
+import type {
+  GqlPointsHistoryPage,
+  GqlPointsTransactionStatus,
+  GqlPointsTransactionType,
+} from "@/graphql/types"
+import type { PointsHistoryPage, PointsReason, PointsStatus } from "@/features/points/types/points.types"
 
 const REASON_FROM_GQL: Record<GqlPointsTransactionType, PointsReason> = {
   ChallengeCredit: "challenge",
   ReviewCredit: "review",
   Redemption: "redemption",
+}
+
+const STATUS_FROM_GQL: Record<GqlPointsTransactionStatus, PointsStatus> = {
+  Completed: "completed",
+  Reserved: "awaiting",
+  Used: "used",
+  Released: "released",
+  Refunded: "refunded",
+  Failed: "failed",
 }
 
 /**
@@ -26,6 +39,7 @@ export async function getMyPointsHistory(
     entries: data.myPointsHistory.items.map((item) => ({
       id: item.id,
       reason: REASON_FROM_GQL[item.type],
+      status: STATUS_FROM_GQL[item.status],
       points: item.points,
       createdAt: item.createdAt,
     })),

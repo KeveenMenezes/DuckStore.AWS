@@ -200,7 +200,7 @@
   - Verificar: um teste por transição + evento duplicado + `Failed` no-op + linha ausente lança exceção.
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Consumers/{PaymentAuthorized,OrderCancelled}/*`, `src/AppHost/ChallengesExtensions.cs`, `infra/constructs/challenges-lambdas.ts`. Dependências: T27, T28.
 
-- [ ] **T33: SPA, pontos no carrinho e `PriceChanged`** (M)
+- [x] **T33: SPA, pontos no carrinho e `PriceChanged`** (M)
   - Aceite: `points-redeem-input` com máximo `min(saldo, maxRedeemablePoints)` e a conversão; cotação com debounce; o checkout envia `pointsToUse` e o `totalPrice` exibido; `PriceChanged` gera alerta inline + nova cotação + novo total destacado, sem reenviar; os pontos são ajustados se o teto cair; status de resgate no histórico (Aguardando pagamento, Usado, Estornado, Reembolsado, Falhou).
   - Verificar: `pnpm lint && pnpm build`; roteiro manual dos critérios 1 a 3, 6 e 14.
   - Arquivos: `features/cart/components/points-redeem-input.tsx`, `features/cart/hooks/*`, `features/checkout/services/checkout.service.ts`, `features/checkout/components/*` (resumo e alerta), `features/points/components/points-history-table.tsx`. Dependências: T23, T25.
