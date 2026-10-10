@@ -1,4 +1,6 @@
 ﻿using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.BasketCheckout;
+using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.OrderCancelled;
+using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.PaymentAuthorized;
 using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.ReviewCreated;
 using Challenges.Function.Modules.Progress.EventsIntegration.Publishers.PointsTransactions;
 using Challenges.Function.Modules.Progress.EventsIntegration.Publishers.PointsTransactions.Rules;
@@ -36,6 +38,8 @@ public static class ServiceRegistration
 
         services.AddScoped<ReviewCreatedHandler>();
         services.AddScoped<BasketCheckoutHandler>();
+        services.AddScoped<PaymentAuthorizedHandler>();
+        services.AddScoped<OrderCancelledHandler>();
 
         services.AddEventBridgeMessaging(configuration);
         services.AddScoped<IStreamRule<ProgressStreamImage>, ChallengeAnsweredRule>();

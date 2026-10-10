@@ -28,6 +28,8 @@ export class ChallengesLambdas extends Construct {
   public readonly reviewCreatedConsumer: lambda.Function;
   public readonly basketCheckoutConsumer: lambda.Function;
   public readonly pointsTransactionsStreamPublisher: lambda.Function;
+  public readonly paymentAuthorizedConsumer: lambda.Function;
+  public readonly orderCancelledConsumer: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ChallengesLambdasProps) {
     super(scope, id);
@@ -259,6 +261,58 @@ export class ChallengesLambdas extends Construct {
     );
 
     eventBus.grantPutEventsTo(this.pointsTransactionsStreamPublisher);
+
+    // 8–9. Settlement of the checkout's points (ADR-0048 §5). Every authorized payment / cancelled
+    //    order reaches them; the REDEMPTION# row is read by its base-table key (the events carry
+    //    the customer) with a consistent read, so an order without points is a plain no-op.
+    //    Every status write is conditional on the status it leaves, which makes redeliveries
+    //    no-ops too.
+    //    - challenges-payment-authorized-consumer: Reserved → Used.
+    //    - challenges-order-cancelled-consumer: Reserved → Released / Used → Refunded, giving the
+    //      points back to PROFILE Score in the same transaction.
+    this.paymentAuthorizedConsumer = this.settlementConsumer(
+      'PaymentAuthorizedConsumer', 'challenges-payment-authorized-consumer', 'PaymentAuthorizedEvent',
+      'Consumes PaymentAuthorizedEvent and marks the order\'s reserved points Used',
+      { challengesCode, eventBus, dlq, challengeProgressTable, pointsTransactionsTable },
+    );
+    this.orderCancelledConsumer = this.settlementConsumer(
+      'OrderCancelledConsumer', 'challenges-order-cancelled-consumer', 'OrderCancelledEvent',
+      'Consumes OrderCancelledEvent and gives the order\'s points back (Released/Refunded)',
+      { challengesCode, eventBus, dlq, challengeProgressTable, pointsTransactionsTable },
+    );
+  }
+
+  private settlementConsumer(
+    id: string,
+    functionName: string,
+    detailType: string,
+    description: string,
+    deps: {
+      challengesCode: lambda.Code;
+      eventBus: events.IEventBus;
+      dlq: ContextDlq;
+      challengeProgressTable: dynamodb.ITable;
+      pointsTransactionsTable: dynamodb.ITable;
+    },
+  ): lambda.Function {
+    const fn = new lambda.Function(this, id, {
+      functionName,
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: deps.challengesCode,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: DOTNET_MEMORY_MB,
+      description,
+      environment: { ANNOTATIONS_HANDLER: id },
+    });
+    deps.pointsTransactionsTable.grant(fn, 'dynamodb:GetItem', 'dynamodb:UpdateItem');
+    // Only OrderCancelled returns points, but both share the shape; ADD on PROFILE is all it does.
+    deps.challengeProgressTable.grant(fn, 'dynamodb:UpdateItem');
+    this.addEventConsumer(fn, deps.eventBus, deps.dlq, `${id}Rule`, functionName, detailType);
+    return fn;
   }
 
   // EventBridge rule → consumer Lambda, with the context DLQ on both legs: the rule's target

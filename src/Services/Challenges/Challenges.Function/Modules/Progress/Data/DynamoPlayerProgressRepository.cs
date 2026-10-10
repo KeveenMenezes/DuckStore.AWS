@@ -245,6 +245,127 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
         }
     }
 
+    public async Task<PointsTransaction?> GetRedemptionAsync(
+        OwnerId ownerId, Guid orderId, CancellationToken cancellationToken = default)
+    {
+        var response = await dynamoDb.GetItemAsync(
+            new GetItemRequest
+            {
+                TableName = PointsTransactionsSchema.TableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    [PointsTransactionsSchema.PartitionKey] = new(ownerId.Value),
+                    [PointsTransactionsSchema.SortKey] = new(PointsTransactionsSchema.RedemptionTransactionId(orderId))
+                },
+                ConsistentRead = true
+            },
+            cancellationToken);
+
+        if (response.Item is not { Count: > 0 } item)
+        {
+            return null;
+        }
+
+        return PointsTransaction.Load(
+            ownerId,
+            item[PointsTransactionsSchema.SortKey].S,
+            Enum.Parse<PointsTransactionType>(item["Type"].S),
+            Enum.Parse<PointsTransactionStatus>(item["Status"].S),
+            int.Parse(item["Points"].N, CultureInfo.InvariantCulture),
+            item["SourceId"].S,
+            item.TryGetValue(PointsTransactionsSchema.OrderIdAttribute, out var order) ? order.S : null,
+            DateTime.Parse(item[PointsTransactionsSchema.CreatedAtAttribute].S, null, DateTimeStyles.RoundtripKind),
+            DateTime.Parse(item["UpdatedAt"].S, null, DateTimeStyles.RoundtripKind));
+    }
+
+    public async Task<bool> SaveSettlementAsync(PointsTransaction settled, CancellationToken cancellationToken = default)
+    {
+        var from = settled.PreviousStatus
+            ?? throw new InvalidOperationException($"Points transaction \"{settled.Id}\" has no settlement to save.");
+
+        var statusUpdate = new Update
+        {
+            TableName = PointsTransactionsSchema.TableName,
+            Key = new Dictionary<string, AttributeValue>
+            {
+                [PointsTransactionsSchema.PartitionKey] = new(settled.OwnerId.Value),
+                [PointsTransactionsSchema.SortKey] = new(settled.Id)
+            },
+            // Only from the exact status the settlement starts from (ADR-0048 §5).
+            ConditionExpression = "#status = :from",
+            UpdateExpression = "SET #status = :to, UpdatedAt = :updatedAt",
+            ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                [":from"] = new(from.ToString()),
+                [":to"] = new(settled.Status.ToString()),
+                [":updatedAt"] = new(settled.UpdatedAt.ToString("O"))
+            }
+        };
+
+        return settled.PointsToReturn == 0
+            ? await UpdateStatusAsync(statusUpdate, cancellationToken)
+            : await UpdateStatusAndReturnPointsAsync(statusUpdate, settled, cancellationToken);
+    }
+
+    private async Task<bool> UpdateStatusAsync(Update statusUpdate, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await dynamoDb.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = statusUpdate.TableName,
+                    Key = statusUpdate.Key,
+                    ConditionExpression = statusUpdate.ConditionExpression,
+                    UpdateExpression = statusUpdate.UpdateExpression,
+                    ExpressionAttributeNames = statusUpdate.ExpressionAttributeNames,
+                    ExpressionAttributeValues = statusUpdate.ExpressionAttributeValues
+                },
+                cancellationToken);
+
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    // Status and balance move together or not at all: a returned point is never lost or given
+    // twice (ADR-0048 §2).
+    private async Task<bool> UpdateStatusAndReturnPointsAsync(
+        Update statusUpdate, PointsTransaction settled, CancellationToken cancellationToken)
+    {
+        var ledgerUpdate = new TransactWriteItem { Update = statusUpdate };
+        var balanceUpdate = new TransactWriteItem
+        {
+            Update = new Update
+            {
+                TableName = TableName,
+                Key = Key(settled.OwnerId.Value, ProgressSchema.ProfileSortKey),
+                UpdateExpression = "ADD Score :points",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":points"] = new AttributeValue { N = settled.PointsToReturn.ToString(CultureInfo.InvariantCulture) }
+                }
+            }
+        };
+        var transactItems = new List<TransactWriteItem> { ledgerUpdate, balanceUpdate };
+
+        try
+        {
+            await dynamoDb.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }, cancellationToken);
+
+            return true;
+        }
+        catch (TransactionCanceledException ex) when (ConditionFailedOn(ex, transactItems.IndexOf(ledgerUpdate)))
+        {
+            return false;
+        }
+    }
+
     private async Task<PointsReservationOutcome> PutFailedReservationAsync(
         PointsTransaction failure, CancellationToken cancellationToken)
     {

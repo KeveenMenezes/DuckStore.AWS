@@ -20,6 +20,8 @@ namespace Challenges.Function.Shared.Configuration;
 [JsonSerializable(typeof(RedeemChallengePointsResponse))]
 [JsonSerializable(typeof(EventBridgeEvent<ReviewCreatedEvent>))]
 [JsonSerializable(typeof(EventBridgeEvent<BasketCheckoutEvent>))]
+[JsonSerializable(typeof(EventBridgeEvent<PaymentAuthorizedEvent>))]
+[JsonSerializable(typeof(EventBridgeEvent<OrderCancelledEvent>))]
 public partial class ChallengesSerializerContext : JsonSerializerContext
 {
 }

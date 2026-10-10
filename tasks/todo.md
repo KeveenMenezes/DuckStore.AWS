@@ -195,7 +195,7 @@
   - Verificar: testes dos handlers; `cdk synth PaymentStack`.
   - Arquivos: `Consumers/PointsReservation/{Endpoint,Handler,Mapper}.cs`, `src/AppHost/PaymentExtensions.cs`, `infra/constructs/payment-lambdas.ts`. Dependências: T29, T30.
 
-- [ ] **T32: Challenges liquida o resgate (`Used`/`Released`/`Refunded`)** (M)
+- [x] **T32: Challenges liquida o resgate (`Used`/`Released`/`Refunded`)** (M)
   - Aceite: `challenges-payment-authorized-consumer` (`Reserved→Used`) e `challenges-order-cancelled-consumer` (`Reserved→Released` / `Used→Refunded` com `ADD Score +|pts|`; `Failed` = no-op); busca por GSI1 `OrderId`, e **linha não encontrada = exceção** (retry/DLQ, porque o GSI1 é eventualmente consistente); toda transição é condicional, e uma condição falhada sobre uma linha que existe é no-op; CDK com regras, DLQ e grants.
   - Verificar: um teste por transição + evento duplicado + `Failed` no-op + linha ausente lança exceção.
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Consumers/{PaymentAuthorized,OrderCancelled}/*`, `src/AppHost/ChallengesExtensions.cs`, `infra/constructs/challenges-lambdas.ts`. Dependências: T27, T28.

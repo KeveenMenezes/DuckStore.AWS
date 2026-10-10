@@ -17,7 +17,73 @@ public class PointsTransaction : Entity<string>
     public string? OrderId { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
+    // The status a settlement moved this row out of — the condition the write is made under, so a
+    // duplicated or out-of-order event finds the row already moved and writes nothing. Null until
+    // a transition happens.
+    public PointsTransactionStatus? PreviousStatus { get; private set; }
+
+    // What a settlement gives back to the balance: exactly what left, read from the row itself and
+    // never from the event (ADR-0048 §5). Zero for every other state, Failed included — it never
+    // debited anything.
+    public int PointsToReturn =>
+        Status is PointsTransactionStatus.Released or PointsTransactionStatus.Refunded && PreviousStatus is not null
+            ? -Points
+            : 0;
+
     private PointsTransaction() { }
+
+    public static PointsTransaction Load(
+        OwnerId ownerId,
+        string id,
+        PointsTransactionType type,
+        PointsTransactionStatus status,
+        int points,
+        string sourceId,
+        string? orderId,
+        DateTime createdAt,
+        DateTime updatedAt) =>
+        new()
+        {
+            Id = id,
+            OwnerId = ownerId,
+            Type = type,
+            Status = status,
+            Points = points,
+            SourceId = sourceId,
+            OrderId = orderId,
+            CreatedAt = createdAt,
+            UpdatedAt = updatedAt
+        };
+
+    // Payment authorized: the reserved points are spent. Balance unchanged — they left at checkout.
+    public bool Use(DateTime at) =>
+        Transition(PointsTransactionStatus.Reserved, PointsTransactionStatus.Used, at);
+
+    // Order cancelled: before payment the reservation is released, after it the points are
+    // refunded — either way they go back. Failed, or already settled, has nothing to give back.
+    public bool CancelOrder(DateTime at) => Status switch
+    {
+        PointsTransactionStatus.Reserved =>
+            Transition(PointsTransactionStatus.Reserved, PointsTransactionStatus.Released, at),
+        PointsTransactionStatus.Used =>
+            Transition(PointsTransactionStatus.Used, PointsTransactionStatus.Refunded, at),
+        _ => false
+    };
+
+    // Every redemption transition is from one exact status; anything else is a no-op, so a
+    // duplicated or out-of-order event never debits or refunds twice (SPEC-cart-points-redemption §4).
+    private bool Transition(PointsTransactionStatus from, PointsTransactionStatus to, DateTime at)
+    {
+        if (Type != PointsTransactionType.Redemption || Status != from)
+        {
+            return false;
+        }
+
+        PreviousStatus = from;
+        Status = to;
+        UpdatedAt = at.ToUniversalTime();
+        return true;
+    }
 
     // Completed is terminal for a credit: the points were granted in the same TransactWriteItems
     // that wrote this row, so there is no intermediate state to model (ADR-0048 §2).

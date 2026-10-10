@@ -117,6 +117,72 @@ public class PointsTransactionTests
             () => PointsTransaction.Reserve(Owner, Guid.Empty, 100, At));
     }
 
+    private static readonly DateTime Later = At.AddMinutes(5);
+
+    private static PointsTransaction Redemption(PointsTransactionStatus status) =>
+        PointsTransaction.Load(
+            Owner, $"REDEMPTION#{Order}", PointsTransactionType.Redemption, status, -1000,
+            Order.ToString(), Order.ToString(), At, At);
+
+    [Fact]
+    public void Use_ShouldSettleAReservation_WithoutReturningPoints()
+    {
+        var redemption = Redemption(PointsTransactionStatus.Reserved);
+
+        Assert.True(redemption.Use(Later));
+        Assert.Equal(PointsTransactionStatus.Used, redemption.Status);
+        Assert.Equal(PointsTransactionStatus.Reserved, redemption.PreviousStatus);
+        Assert.Equal(0, redemption.PointsToReturn);
+        Assert.Equal(Later, redemption.UpdatedAt);
+    }
+
+    [Theory]
+    [InlineData(PointsTransactionStatus.Used)]
+    [InlineData(PointsTransactionStatus.Failed)]
+    [InlineData(PointsTransactionStatus.Released)]
+    public void Use_ShouldBeANoOp_UnlessReserved(PointsTransactionStatus status)
+    {
+        var redemption = Redemption(status);
+
+        Assert.False(redemption.Use(Later));
+        Assert.Equal(status, redemption.Status);
+    }
+
+    [Fact]
+    public void CancelOrder_ShouldReleaseAReservation_AndGiveThePointsBack()
+    {
+        var redemption = Redemption(PointsTransactionStatus.Reserved);
+
+        Assert.True(redemption.CancelOrder(Later));
+        Assert.Equal(PointsTransactionStatus.Released, redemption.Status);
+        Assert.Equal(1000, redemption.PointsToReturn); // exactly what left, read from the row
+    }
+
+    [Fact]
+    public void CancelOrder_ShouldRefundAUsedRedemption_AndGiveThePointsBack()
+    {
+        var redemption = Redemption(PointsTransactionStatus.Used);
+
+        Assert.True(redemption.CancelOrder(Later));
+        Assert.Equal(PointsTransactionStatus.Refunded, redemption.Status);
+        Assert.Equal(PointsTransactionStatus.Used, redemption.PreviousStatus);
+        Assert.Equal(1000, redemption.PointsToReturn);
+    }
+
+    // Failed never debited anything; Released/Refunded already gave the points back.
+    [Theory]
+    [InlineData(PointsTransactionStatus.Failed)]
+    [InlineData(PointsTransactionStatus.Released)]
+    [InlineData(PointsTransactionStatus.Refunded)]
+    public void CancelOrder_ShouldBeANoOp_WhenThereIsNothingToGiveBack(PointsTransactionStatus status)
+    {
+        var redemption = Redemption(status);
+
+        Assert.False(redemption.CancelOrder(Later));
+        Assert.Equal(status, redemption.Status);
+        Assert.Equal(0, redemption.PointsToReturn);
+    }
+
     [Fact]
     public void Statuses_ShouldDeclareTheWholeRedemptionLifecycle_EvenThoughOnlyCreditsExistYet()
     {

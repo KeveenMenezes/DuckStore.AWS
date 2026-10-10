@@ -91,6 +91,22 @@ public static class ChallengesExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
+        // Settlement of the checkout's points (ADR-0048 §5): Reserved → Used on PaymentAuthorizedEvent,
+        // Released/Refunded (points back) on OrderCancelledEvent. Writes only.
+        builder.AddAWSLambdaFunction<Projects.Challenges_Function>(
+                "challenges-payment-authorized-consumer",
+                lambdaHandler: LambdaHandler("Challenges.Function", "PaymentAuthorizedConsumer"))
+            .WaitForCompletion(challengesSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
+        builder.AddAWSLambdaFunction<Projects.Challenges_Function>(
+                "challenges-order-cancelled-consumer",
+                lambdaHandler: LambdaHandler("Challenges.Function", "OrderCancelledConsumer"))
+            .WaitForCompletion(challengesSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
         return challengesSeeder;
     }
 }

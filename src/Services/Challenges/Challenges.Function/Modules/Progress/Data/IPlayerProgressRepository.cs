@@ -50,6 +50,18 @@ public interface IPlayerProgressRepository
     Task<PointsReservationOutcome> ReservePointsAsync(
         OwnerId ownerId, Guid orderId, int points, CancellationToken cancellationToken = default);
 
+    // The order's REDEMPTION# row, read by its base-table key with a consistent read. The payment
+    // and cancellation events carry the customer, so the key is known and GSI1's eventual
+    // consistency never enters into it: null means this order used no points.
+    Task<PointsTransaction?> GetRedemptionAsync(
+        OwnerId ownerId, Guid orderId, CancellationToken cancellationToken = default);
+
+    // Writes a settled redemption (Use/CancelOrder already applied in memory), conditioned on the
+    // row still being in PreviousStatus. When it gives points back, the same TransactWriteItems
+    // ADDs them to PROFILE Score. Returns false — nothing written — when the condition fails: the
+    // row already moved, so the event was a duplicate or out of order.
+    Task<bool> SaveSettlementAsync(PointsTransaction settled, CancellationToken cancellationToken = default);
+
     // Debits PROFILE and writes the REDEMPTION# ledger row in one TransactWriteItems (ADR-0046 §2).
     // `delta` MUST be a PlayerProgress.CreateEmpty shell that has had exactly one Redeem call —
     // Score carries the negative delta to ADD, PointsSpent the positive one, mirroring
