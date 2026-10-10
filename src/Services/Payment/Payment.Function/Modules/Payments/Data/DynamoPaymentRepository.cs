@@ -26,6 +26,26 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
         return response.Item is { Count: > 0 } ? MapPayment(response.Item) : null;
     }
 
+    public async Task<PaymentEntity?> GetByOrderIdAsync(Guid orderId, CancellationToken cancellationToken = default)
+    {
+        var response = await dynamoDb.QueryAsync(
+            new QueryRequest
+            {
+                TableName = TableName,
+                IndexName = Gsi1Name,
+                KeyConditionExpression = "GSI1PK = :pk",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":pk"] = new(OrderGsiPk(orderId))
+                },
+                Limit = 1
+            },
+            cancellationToken);
+
+        // GSI1 projects ALL attributes, so the index item maps like a base-table item.
+        return response.Items is [var item, ..] ? MapPayment(item) : null;
+    }
+
     public Task AddAsync(PaymentEntity payment, CancellationToken cancellationToken = default) =>
         dynamoDb.PutItemAsync(
             new PutItemRequest { TableName = TableName, Item = ToItem(payment) },
