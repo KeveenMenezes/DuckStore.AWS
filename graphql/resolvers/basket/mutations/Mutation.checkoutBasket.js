@@ -37,5 +37,5 @@ export function request(ctx) {
 
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
-  return { isSuccess: ctx.result.IsSuccess }
+  return { isSuccess: ctx.result.IsSuccess, orderId: ctx.result.OrderId ?? null }
 }

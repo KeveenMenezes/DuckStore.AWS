@@ -3,9 +3,9 @@
 public partial class Functions
 {
     // Triggered by the reviews DynamoDB Stream. Dispatches each record to the registered
-    // IStreamRule<ReviewStreamImage> rules (ADR-0019): ReviewCreatedRule on INSERT, ReviewUpdatedRule
-    // on MODIFY (ADR-0029) — so both a brand-new review and an upsert-edit of an existing one feed
-    // CatalogView's rating aggregation.
+    // IStreamRule<ReviewStreamImage> rules (ADR-0019), which decide by status transition
+    // (ADR-0049 §5): ReviewCreatedRule on → Published, ReviewUpdatedRule on Published → Published,
+    // ReviewDeletedRule on Published → Deleted. Eligible inserts and TTL removes publish nothing.
     [LambdaFunction]
     public async Task ReviewStreamPublisher(
         DynamoDBEvent dynamoEvent,

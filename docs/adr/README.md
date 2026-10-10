@@ -18,7 +18,7 @@ decision without opening every file.
 | [0008](./0008-extend-cdc-event-publishing-basket-shoppingcarts-stream-publisher.md) | Extend CDC Event Publishing — Basket ShoppingCarts Stream Publisher | Accepted |
 | [0009](./0009-appsync-resolver-selection-direct-first-lambda-for-complex-logic.md) | AppSync Resolver Selection — Direct First, Lambda for Complex Logic | Accepted |
 | [0010](./0010-collapse-ordering-into-single-function-single-item-model.md) | Collapse Ordering into a Single Function Project with a Single-Item DynamoDB Model | Accepted |
-| [0011](./0011-review-bounded-context-rating-aggregation-via-cdc.md) | Review Bounded Context — Product Ratings Aggregated into Catalog via CDC | Accepted |
+| [0011](./0011-review-bounded-context-rating-aggregation-via-cdc.md) | Review Bounded Context — Product Ratings Aggregated into Catalog via CDC | Accepted (amended by [0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md)) |
 | [0012](./0012-merge-discount-into-basket-coupon-as-in-process-entity.md) | Merge Discount into Basket — Coupon as an In-Process Entity | Superseded → [0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md) |
 | [0013](./0013-remove-basket-caching-redis-and-dax.md) | Remove All Basket Caching — Redis Cache-Aside and DynamoDB DAX | Accepted |
 | [0014](./0014-deploy-spa-via-opennext-hand-rolled-cdk.md) | Deploy the React SPA to AWS via OpenNext, Hand-Rolled CDK | Superseded → [0020](./0020-migrate-spa-deploy-to-sst.md) |
@@ -32,11 +32,11 @@ decision without opening every file.
 | [0022](./0022-lambda-production-observability.md) | Production Observability for Lambda Functions | Accepted |
 | [0023](./0023-decommission-yarp-gateway-and-angular-spa.md) | Decommission the YARP Gateway and Complete the Angular SPA Removal | Accepted |
 | [0024](./0024-testing-strategy-minimum-coverage.md) | Testing Strategy and Minimum Coverage Standard | Accepted |
-| [0025](./0025-payment-bounded-context-simulated-gateway-cdc.md) | Payment Bounded Context — Simulated Gateway via Async EventBridge/CDC | Accepted |
-| [0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md) | Pricing Bounded Context — Price and Campaign Ownership Move from Catalog/Basket | Accepted (supersedes 0012 §1/§2) |
+| [0025](./0025-payment-bounded-context-simulated-gateway-cdc.md) | Payment Bounded Context — Simulated Gateway via Async EventBridge/CDC | Accepted (amended by [0048](./0048-points-transactions-ledger-and-in-cart-redemption.md)) |
+| [0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md) | Pricing Bounded Context — Price and Campaign Ownership Move from Catalog/Basket | Accepted (supersedes 0012 §1/§2; amended by [0048](./0048-points-transactions-ledger-and-in-cart-redemption.md)) |
 | [0027](./0027-catalogview-opensearch-product-search-and-rating-sync.md) | CatalogView — Product Search and Rating Aggregation via OpenSearch | Superseded → [0030](./0030-catalogview-dynamodb-drop-opensearch.md) |
 | [0028](./0028-gateway-cost-table-and-payment-highlights.md) | Gateway Cost Table and Payment Highlights | Accepted |
-| [0029](./0029-review-upsert-composite-key-and-rating-delta.md) | Review Upsert — Composite Key and Rating-Delta Aggregation | Accepted |
+| [0029](./0029-review-upsert-composite-key-and-rating-delta.md) | Review Upsert — Composite Key and Rating-Delta Aggregation | Accepted (amended by [0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md)) |
 | [0030](./0030-catalogview-dynamodb-drop-opensearch.md) | CatalogView Goes DynamoDB-Backed — Drop OpenSearch | Accepted (supersedes 0027) |
 | [0031](./0031-cdc-events-named-after-domain-occurrence-no-changetype-discriminator.md) | CDC Events Named After the Domain Occurrence, Never a ChangeType Discriminator | Accepted |
 | [0032](./0032-create-product-with-price-step-functions-express-saga.md) | Product Creation With Price as a Step Functions Express Saga | Accepted |
@@ -52,9 +52,11 @@ decision without opening every file.
 | [0042](./0042-lambda-native-aot-zip-provided-al2023.md) | .NET Lambdas Ship as Native AOT ZIPs on `provided.al2023` | Accepted |
 | [0043](./0043-cart-discount-allocation-policy.md) | Cart Discount Allocation — Per-Product Campaigns Against a Single-Transaction Cart | Accepted |
 | [0044](./0044-campaign-cdc-product-discounts-stream-and-ttl.md) | Campaign Changes Reach CatalogView via a `product-discounts` Stream and TTL | Accepted |
-| [0045](./0045-challenges-bounded-context-server-side-grading.md) | Challenges Bounded Context — Server-Side Grading and Answer-Key Isolation | Accepted |
-| [0046](./0046-challenge-points-redeem-into-pricing-customer-discount.md) | Challenge Points Redeem into a Pricing Customer Discount via CDC | Accepted |
+| [0045](./0045-challenges-bounded-context-server-side-grading.md) | Challenges Bounded Context — Server-Side Grading and Answer-Key Isolation | Accepted (amended by [0048](./0048-points-transactions-ledger-and-in-cart-redemption.md)) |
+| [0046](./0046-challenge-points-redeem-into-pricing-customer-discount.md) | Challenge Points Redeem into a Pricing Customer Discount via CDC | Partially superseded → [0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) |
 | [0047](./0047-catalogview-gsi1-single-partition-key-kept-deliberately.md) | CatalogView's GSI1 Keeps a Single Partition Key Value — Deliberately | Proposed |
+| [0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) | Points Transactions Ledger and In-Cart Points Redemption | Accepted |
+| [0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md) | Review Status — Purchase Eligibility, Sparse GSI1, TTL on Delete and `ReviewDeleted` | Accepted |
 
 ## Superseded chains
 

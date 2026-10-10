@@ -137,10 +137,11 @@ export class CatalogViewLambdas extends Construct {
     );
 
     // 2. catalogview-review-sync-consumer (ADR-0040)
-    //    Triggers: ReviewCreatedEvent, ReviewUpdatedEvent — every CatalogView consumer sourced
-    //    from Review, grouped behind one Lambda. Both strategies apply the same two-step,
-    //    non-atomic ADD + recompute average (ADR-0030 accepted trade-off 2); ReviewUpdateStrategy
-    //    is the sibling that moves ratingSum by delta instead of ratingCount+1.
+    //    Triggers: ReviewCreatedEvent, ReviewUpdatedEvent, ReviewDeletedEvent — every CatalogView
+    //    consumer sourced from Review, grouped behind one Lambda. All strategies apply the same
+    //    two-step, non-atomic ADD + recompute average (ADR-0030 accepted trade-off 2);
+    //    ReviewUpdateStrategy moves ratingSum by delta instead of ratingCount+1, and
+    //    ReviewDeleteStrategy subtracts the withdrawn rating, floored at zero (ADR-0049 §6).
     this.reviewSyncConsumer = new lambda.Function(this, 'ReviewSyncConsumer', {
       functionName: 'catalogview-review-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,
@@ -151,7 +152,8 @@ export class CatalogViewLambdas extends Construct {
       code: catalogViewCode,
       timeout: cdk.Duration.seconds(30),
       memorySize: DOTNET_MEMORY_MB,
-      description: 'Consumes ReviewCreatedEvent/ReviewUpdatedEvent and folds ratings into catalogview-products',
+      description:
+        'Consumes ReviewCreatedEvent/ReviewUpdatedEvent/ReviewDeletedEvent and folds ratings into catalogview-products',
       environment: {
         ANNOTATIONS_HANDLER: 'ReviewSyncConsumer',
         EventBridge__BusName: eventBus.eventBusName,
@@ -171,6 +173,13 @@ export class CatalogViewLambdas extends Construct {
       'catalogview-review-updated-rule',
       'ReviewUpdatedEvent',
       'Routes ReviewUpdatedEvent (source=duckstore) to catalogview-review-sync-consumer',
+    );
+    ruleFor(
+      'ReviewDeleteAggregate',
+      this.reviewSyncConsumer,
+      'catalogview-review-deleted-rule',
+      'ReviewDeletedEvent',
+      'Routes ReviewDeletedEvent (source=duckstore) to catalogview-review-sync-consumer',
     );
 
     // 3. catalogview-pricing-sync-consumer

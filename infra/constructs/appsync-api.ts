@@ -195,31 +195,44 @@ export class AppSyncApi extends Construct {
     const challengeProgressTable = dynamodb.Table.fromTableName(
       this, 'ChallengeProgressTable', 'challenge-progress',
     );
+    // Points ledger (ADR-0048 §1) — myPointsHistory queries LSI1 (OwnerId + CreatedAt), so
+    // grantIndexPermissions is required (not fromTableName) for the grantReadData below to cover
+    // the index ARN.
+    const pointsTransactionsTable = dynamodb.Table.fromTableAttributes(this, 'PointsTransactionsTable', {
+      tableName: 'points-transactions',
+      grantIndexPermissions: true,
+    });
     // Customer-scoped reward (ADR-0046 §4) — no GSI, myRewards queries the base table by OwnerId.
     const customerDiscountsTable = dynamodb.Table.fromTableName(
       this, 'CustomerDiscountsTable', 'customer-discounts',
     );
 
-    const productsDs = api.addDynamoDbDataSource('ProductsDS', productsTable);
-    const categoriesDs = api.addDynamoDbDataSource('CategoriesDS', categoriesTable);
-    const cartsDs = api.addDynamoDbDataSource('CartsDS', cartsTable);
-    const pricesDs = api.addDynamoDbDataSource('PricesDS', pricesTable);
-    const orderingDs = api.addDynamoDbDataSource('OrderingDS', orderingTable);
-    const reviewsDs = api.addDynamoDbDataSource('ReviewsDS', reviewsTable);
-    const userProfilesDs = api.addDynamoDbDataSource('UserProfilesDS', userProfilesTable);
-    const gatewayCostsDs = api.addDynamoDbDataSource('GatewayCostsDS', gatewayCostsTable);
-    const campaignsDs = api.addDynamoDbDataSource('CampaignsDS', campaignsTable);
-    const catalogViewProductsDs = api.addDynamoDbDataSource(
+    const productsDs = this.dynamoDbDataSource('ProductsDS', productsTable);
+    const categoriesDs = this.dynamoDbDataSource('CategoriesDS', categoriesTable);
+    const cartsDs = this.dynamoDbDataSource('CartsDS', cartsTable);
+    const pricesDs = this.dynamoDbDataSource('PricesDS', pricesTable);
+    const orderingDs = this.dynamoDbDataSource('OrderingDS', orderingTable);
+    const reviewsDs = this.dynamoDbDataSource('ReviewsDS', reviewsTable);
+    const userProfilesDs = this.dynamoDbDataSource('UserProfilesDS', userProfilesTable);
+    const gatewayCostsDs = this.dynamoDbDataSource('GatewayCostsDS', gatewayCostsTable);
+    const campaignsDs = this.dynamoDbDataSource('CampaignsDS', campaignsTable);
+    const catalogViewProductsDs = this.dynamoDbDataSource(
       'CatalogViewProductsDS',
       catalogViewProductsTable,
     );
-    const challengesDs = api.addDynamoDbDataSource('ChallengesDS', challengesTable);
-    const challengeProgressDs = api.addDynamoDbDataSource('ChallengeProgressDS', challengeProgressTable);
-    const customerDiscountsDs = api.addDynamoDbDataSource('CustomerDiscountsDS', customerDiscountsTable);
+    const challengesDs = this.dynamoDbDataSource('ChallengesDS', challengesTable);
+    // Admin-only writer for updateChallengePoints, kept off the API-key-reachable ChallengesDS role
+    // so the public challenges/challenge reads stay read-only. IAM can't scope by sort key — "PUBLIC
+    // item only" is enforced by the resolver's hard-coded SK (ADR-0045 §2).
+    const challengesAdminDs = this.dynamoDbDataSource('ChallengesAdminDS', challengesTable);
+    const challengeProgressDs = this.dynamoDbDataSource('ChallengeProgressDS', challengeProgressTable);
+    const customerDiscountsDs = this.dynamoDbDataSource('CustomerDiscountsDS', customerDiscountsTable);
+    const pointsTransactionsDs = this.dynamoDbDataSource('PointsTransactionsDS', pointsTransactionsTable);
     // NONE (local) data source — rewardConversion has no backend call, values are baked in below.
     const rewardConversionDs = api.addNoneDataSource('RewardConversionDS');
 
-    // Explicit grants — addDynamoDbDataSource creates the role but does not auto-grant
+    // Explicit grants — every DynamoDB data source above is read-only by construction (see
+    // dynamoDbDataSource), so these are the only write access any data source role gets.
     productsTable.grantReadWriteData(productsDs);
     categoriesTable.grantReadData(categoriesDs);
     cartsTable.grantReadWriteData(cartsDs);
@@ -234,8 +247,12 @@ export class AppSyncApi extends Construct {
     campaignsTable.grantReadData(campaignsDs);
     catalogViewProductsTable.grantReadData(catalogViewProductsDs);
     challengesTable.grantReadData(challengesDs);
+    // Write needed for updateChallengePoints only — UpdateItem on the admin data source, never on
+    // the public ChallengesDS.
+    challengesTable.grant(challengesAdminDs, 'dynamodb:UpdateItem');
     challengeProgressTable.grantReadData(challengeProgressDs);
     customerDiscountsTable.grantReadData(customerDiscountsDs);
+    pointsTransactionsTable.grantReadData(pointsTransactionsDs);
 
     // Lambda data sources — imported by function name (no CF coupling)
     const checkoutFn = lambda.Function.fromFunctionName(this, 'CheckoutFn', 'basket-checkout-basket');
@@ -324,8 +341,14 @@ export class AppSyncApi extends Construct {
     this.resolver(cartsDs, 'BasketResolver', 'Query', 'basket', 'basket');
     // Direct DynamoDB resolver — Cognito only; guests play but don't score (ADR-0045 §7).
     this.resolver(challengeProgressDs, 'MyChallengeProgressResolver', 'Query', 'myChallengeProgress', 'challenges');
+    // Direct DynamoDB LSI1 query, newest first — Cognito only (ADR-0048 §1, ADR-0009).
+    this.resolver(
+      pointsTransactionsDs, 'MyPointsHistoryResolver', 'Query', 'myPointsHistory', 'challenges',
+    );
     // Direct DynamoDB GSI1 query — scoped to the caller's Cognito sub in the resolver (ADR-0009).
     this.resolver(orderingDs, 'OrdersByCustomerResolver', 'Query', 'ordersByCustomer', 'orders');
+    // Direct DynamoDB GetItem on productId#sub — the caller's own review row (ADR-0049 §4).
+    this.resolver(reviewsDs, 'MyReviewResolver', 'Query', 'myReview', 'reviews');
     // Direct DynamoDB resolver — Cognito only; Query on OwnerId filtered to Status=Issued and not
     // expired (ADR-0046 §4).
     this.resolver(customerDiscountsDs, 'MyRewardsResolver', 'Query', 'myRewards', 'pricing');
@@ -362,6 +385,8 @@ export class AppSyncApi extends Construct {
       'Mutation.createReview.checkExisting.js',
       'Mutation.createReview.upsert.js',
     ]);
+    // Direct DynamoDB UpdateItem — Published -> Deleted with a 5-day TTL (ADR-0049 §4).
+    this.resolver(reviewsDs, 'DeleteReviewResolver', 'Mutation', 'deleteReview', 'reviews');
 
     // Admin/Seller mutations (group check in resolver)
     // Lambda resolver — batch presigned POSTs for direct browser->S3 uploads (ADR-0034).
@@ -403,5 +428,19 @@ export class AppSyncApi extends Construct {
     this.resolver(
       redeemChallengePointsDs, 'RedeemChallengePointsResolver', 'Mutation', 'redeemChallengePoints', 'challenges',
     );
+
+    // Admin-only direct DynamoDB UpdateItem on the PUBLIC item (ADR-0009) — no Lambda: one item,
+    // one attribute, invariant local to the resolver.
+    this.resolver(
+      challengesAdminDs, 'UpdateChallengePointsResolver', 'Mutation', 'updateChallengePoints', 'challenges',
+    );
+  }
+
+  // addDynamoDbDataSource always grants full read/write on the table — it doesn't expose
+  // readOnlyAccess — which silently widens every explicit grant in addDataSources. Building the
+  // data source directly on the api keeps the same construct path (and logical ID) while starting
+  // it read-only; write access is then granted explicitly, per table.
+  private dynamoDbDataSource(id: string, table: dynamodb.ITable) {
+    return new appsync.DynamoDbDataSource(this.api, id, { api: this.api, table, readOnlyAccess: true });
   }
 }

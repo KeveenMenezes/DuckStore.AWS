@@ -9,6 +9,8 @@ tags:
 ## Status
 **Accepted** — July 2026. Supersedes [ADR-0012](./0012-merge-discount-into-basket-coupon-as-in-process-entity.md) §1/§2 (`Coupon`/discount ownership moves to Pricing).
 
+**Amended** — October 2026: [ADR-0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) §4 amends §3's second sentence — the `checkoutBasket` mutation depends synchronously on a Pricing read orchestrated by AppSync; Basket's Lambdas still never call Pricing.
+
 ---
 
 ## Context

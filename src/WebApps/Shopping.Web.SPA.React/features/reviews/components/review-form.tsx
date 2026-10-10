@@ -8,40 +8,31 @@ import { StarRatingInput } from "@/features/reviews/components/star-rating"
 import { createReview } from "@/features/reviews/services/reviews.service"
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { GraphQLRequestError } from "@/api"
-import type { Review } from "@/features/reviews/types/review.types"
 
 interface ReviewFormProps {
   productId: string
-  onReviewCreated: (review: Review) => void
+  // "edit" pre-fills the customer's published review; "create" publishes an Eligible/Deleted row.
+  mode?: "create" | "edit"
+  initialRating?: number
+  initialComment?: string
+  onSubmitted: (result: { id: string; userName: string; rating: number; comment: string }) => void
+  onCancel?: () => void
 }
 
-export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
-  const { user, loginWithCognito } = useAuth()
-  const [rating, setRating] = useState(0)
-  const [comment, setComment] = useState("")
+export function ReviewForm({
+  productId,
+  mode = "create",
+  initialRating = 0,
+  initialComment = "",
+  onSubmitted,
+  onCancel,
+}: ReviewFormProps) {
+  const { loginWithCognito } = useAuth()
+  const [rating, setRating] = useState(initialRating)
+  const [comment, setComment] = useState(initialComment)
   const [error, setError] = useState<string | null>(null)
   const [sessionExpired, setSessionExpired] = useState(false)
-  const [submitted, setSubmitted] = useState(false)
   const [isPending, startTransition] = useTransition()
-
-  if (!user) {
-    return (
-      <div className="rounded-lg border border-border bg-secondary/40 p-4 text-center">
-        <p className="text-sm text-muted-foreground">
-          Sign in to leave a review.
-        </p>
-      </div>
-    )
-  }
-
-  if (submitted) {
-    return (
-      <div className="rounded-lg border border-border bg-secondary/40 p-4 text-center">
-        <p className="text-sm font-medium text-foreground">Thanks for your review!</p>
-        <p className="mt-1 text-xs text-muted-foreground">Your feedback helps other customers.</p>
-      </div>
-    )
-  }
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -58,24 +49,16 @@ export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
           rating,
           comment,
         })
-        onReviewCreated({
-          id,
-          productId,
-          userName,
-          rating,
-          comment,
-          createdAt: new Date().toISOString(),
-        })
         // ISR revalidation for other users happens server-side only, via
-        // ReviewCreatedEvent (DynamoDB Streams -> EventBridge -> the
+        // ReviewCreatedEvent/ReviewUpdatedEvent (DynamoDB Streams -> EventBridge -> the
         // `revalidator` Lambda -> /api/webhooks/revalidate, see
         // sst.config.ts). No client-side trigger here — it would only cover
         // reviews submitted through this exact form, leaving a silent blind
         // spot for reviews created any other way (the same category of bug
         // this project already hit once with Catalog updates never
-        // reaching the CDN). The reviewer already sees their own review
-        // instantly via the local state update above.
-        setSubmitted(true)
+        // reaching the CDN). The reviewer sees their own review instantly via
+        // the parent's local state update.
+        onSubmitted({ id, userName, rating, comment })
       } catch (err) {
         // Surface the real GraphQL error instead of a fixed string — an
         // AppSync "Not Authorized" means the Cognito session lapsed, which
@@ -94,7 +77,9 @@ export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4 rounded-lg border border-border bg-card p-4">
-      <h3 className="text-sm font-semibold text-foreground">Write a Review</h3>
+      <h3 className="text-sm font-semibold text-foreground">
+        {mode === "edit" ? "Edit Your Review" : "Write a Review"}
+      </h3>
 
       <div className="flex flex-col gap-1.5">
         <Label className="text-xs text-muted-foreground">Your Rating</Label>
@@ -134,9 +119,16 @@ export function ReviewForm({ productId, onReviewCreated }: ReviewFormProps) {
         </p>
       )}
 
-      <Button type="submit" size="sm" disabled={isPending} className="self-end">
-        {isPending ? "Submitting..." : "Submit Review"}
-      </Button>
+      <div className="flex justify-end gap-2">
+        {onCancel && (
+          <Button type="button" variant="ghost" size="sm" disabled={isPending} onClick={onCancel}>
+            Cancel
+          </Button>
+        )}
+        <Button type="submit" size="sm" disabled={isPending}>
+          {isPending ? "Submitting..." : mode === "edit" ? "Save Changes" : "Submit Review"}
+        </Button>
+      </div>
     </form>
   )
 }

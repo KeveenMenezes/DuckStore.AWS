@@ -29,6 +29,15 @@ public static class ReviewExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
+        // Consumes Ordering's OrderCompletedEvent and creates one Eligible review row per purchased
+        // product, so only buyers can review (ADR-0049 §3). Writes only; publishes nothing.
+        builder.AddAWSLambdaFunction<Projects.Review_Function>(
+                "review-order-completed-consumer",
+                lambdaHandler: LambdaHandler("Review.Function", "OrderCompletedConsumer"))
+            .WaitForCompletion(reviewSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
         return reviewSeeder;
     }
 }

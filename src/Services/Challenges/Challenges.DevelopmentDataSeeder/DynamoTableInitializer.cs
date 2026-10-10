@@ -13,6 +13,69 @@ public static class DynamoTableInitializer
 
         await EnsureChallengesTableAsync(dynamoDb);
         await EnsureChallengeProgressTableAsync(dynamoDb);
+        await EnsurePointsTransactionsTableAsync(dynamoDb);
+    }
+
+    // The points ledger (ADR-0048 §1). Mirrors infra/constructs/challenges-dynamodb.ts: LSI1 for
+    // date-ordered history, sparse GSI1 on OrderId for settlement lookups, no TTL — the ledger is
+    // permanent.
+    private static async Task EnsurePointsTransactionsTableAsync(IAmazonDynamoDB dynamoDb)
+    {
+        try
+        {
+            await dynamoDb.CreateTableAsync(new CreateTableRequest
+            {
+                TableName = PointsTransactionsSchema.TableName,
+                AttributeDefinitions =
+                [
+                    new AttributeDefinition(PointsTransactionsSchema.PartitionKey, ScalarAttributeType.S),
+                    new AttributeDefinition(PointsTransactionsSchema.SortKey, ScalarAttributeType.S),
+                    new AttributeDefinition(PointsTransactionsSchema.CreatedAtAttribute, ScalarAttributeType.S),
+                    new AttributeDefinition(PointsTransactionsSchema.OrderIdAttribute, ScalarAttributeType.S)
+                ],
+                KeySchema =
+                [
+                    new KeySchemaElement(PointsTransactionsSchema.PartitionKey, KeyType.HASH),
+                    new KeySchemaElement(PointsTransactionsSchema.SortKey, KeyType.RANGE)
+                ],
+                LocalSecondaryIndexes =
+                [
+                    new LocalSecondaryIndex
+                    {
+                        IndexName = PointsTransactionsSchema.Lsi1Name,
+                        KeySchema =
+                        [
+                            new KeySchemaElement(PointsTransactionsSchema.PartitionKey, KeyType.HASH),
+                            new KeySchemaElement(PointsTransactionsSchema.CreatedAtAttribute, KeyType.RANGE)
+                        ],
+                        Projection = new Projection { ProjectionType = ProjectionType.ALL }
+                    }
+                ],
+                GlobalSecondaryIndexes =
+                [
+                    new GlobalSecondaryIndex
+                    {
+                        // Sparse by construction: only redemption rows carry OrderId.
+                        IndexName = PointsTransactionsSchema.Gsi1Name,
+                        KeySchema = [new KeySchemaElement(PointsTransactionsSchema.OrderIdAttribute, KeyType.HASH)],
+                        Projection = new Projection { ProjectionType = ProjectionType.ALL }
+                    }
+                ],
+                BillingMode = BillingMode.PAY_PER_REQUEST,
+                // Drives challenges-points-transactions-stream-publisher (ADR-0048 §6).
+                StreamSpecification = new StreamSpecification
+                {
+                    StreamEnabled = true,
+                    StreamViewType = StreamViewType.NEW_AND_OLD_IMAGES
+                }
+            });
+
+            await WaitUntilTableIsActiveAsync(dynamoDb, PointsTransactionsSchema.TableName);
+        }
+        catch (ResourceInUseException)
+        {
+            // Table already exists — idempotent.
+        }
     }
 
     private static async Task EnsureChallengeProgressTableAsync(IAmazonDynamoDB dynamoDb)

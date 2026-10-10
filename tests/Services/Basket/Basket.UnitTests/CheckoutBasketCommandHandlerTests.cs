@@ -66,6 +66,42 @@ public class CheckoutBasketCommandHandlerTests
             repo.DeleteBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()), Times.Once);
     }
 
+    // The checkout screen shows this id as the order number, so it has to be the same OrderId the
+    // checkout payload carries — the one Ordering keys the order off of (ADR-0038).
+    [Fact]
+    public async Task Handle_ShouldReturnTheOrderIdWrittenToTheCheckoutPayload()
+    {
+        // Arrange
+        var basketCheckoutDto = new BasketCheckoutDto
+        {
+            OwnerId = "USER#testuser",
+            TotalPrice = 100.0m,
+            ShippingAddress = ValidShippingAddress()
+        };
+
+        var basket = ShoppingCart.Create(
+            "USER#testuser",
+            [ShoppingCartItem.Create(ProductId.Of(Guid.NewGuid()), "Sample Product", "https://example.com/img.jpg", "Red", 1, 100.0m)]);
+
+        _basketRepositoryMock.Setup(repo =>
+            repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(basket);
+
+        string? checkoutJson = null;
+        _basketRepositoryMock
+            .Setup(repo => repo.MarkCheckoutAsync(basketCheckoutDto.OwnerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, CancellationToken>((_, json, _) => checkoutJson = json);
+
+        // Act
+        var result = await _handler.Handle(new CheckoutBasketCommand(basketCheckoutDto), CancellationToken.None);
+
+        // Assert
+        Assert.NotNull(result.OrderId);
+        Assert.NotEqual(Guid.Empty, result.OrderId);
+        Assert.NotNull(checkoutJson);
+        Assert.Contains(result.OrderId.Value.ToString(), checkoutJson);
+    }
+
     [Fact]
     public async Task Handle_ShouldReturnFailure_WhenBasketDoesNotExist()
     {
@@ -90,6 +126,7 @@ public class CheckoutBasketCommandHandlerTests
         // Assert
         Assert.NotNull(result);
         Assert.False(result.IsSuccess);
+        Assert.Null(result.OrderId);
 
         _basketRepositoryMock.Verify(repo =>
             repo.MarkCheckoutAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
