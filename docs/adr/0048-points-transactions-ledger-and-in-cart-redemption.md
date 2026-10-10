@@ -236,6 +236,9 @@ and both consumers), `myRewards`, and every `DiscountId` field are removed once 
 end to end. `rewardConversion` stays (without `expiryDays`). `PaymentAuthorizedEvent.CustomerId` and
 `OrderCancelledEvent.CustomerId` stay: settlement keys the ledger row off them (§5).
 
+*Implemented October 2026:* everything above is removed except the `customer-discounts` table, which
+is empty and nothing reads; dropping a stateful resource waits for an explicit decision.
+
 ### 8. Challenges gains inbound consumers (amends ADR-0045)
 
 Challenges now consumes four events, each from a different producer, so each is a plain 1:1 consumer

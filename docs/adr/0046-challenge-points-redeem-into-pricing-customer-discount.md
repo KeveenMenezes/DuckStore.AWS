@@ -10,7 +10,7 @@ tags:
 ## Status
 **Accepted** — July 2026. Implemented alongside [ADR-0045](./0045-challenges-bounded-context-server-side-grading.md).
 
-**Partially superseded** — October 2026: [ADR-0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) replaces §2–§8, the Flow and the Future Constraints with in-cart redemption. §1 rows 1–2, the CDC principle and §5's application order stand; §1 row 3 changes (Pricing persists no discount; Challenges tracks the redemption lifecycle in points). The coupon flow described here stays deployed until ADR-0048's in-cart redemption ships (its §7 removes it); until then its redemptions write no ledger rows.
+**Partially superseded** — October 2026: [ADR-0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) replaces §2–§8, the Flow and the Future Constraints with in-cart redemption. §1 rows 1–2, the CDC principle and §5's application order stand; §1 row 3 changes (Pricing persists no discount; Challenges tracks the redemption lifecycle in points). The coupon flow described here was removed in October 2026 per ADR-0048 §7, once in-cart redemption was validated on AWS dev; only the empty `customer-discounts` table remains, pending its own removal.
 
 Extends [ADR-0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md) with a second
 discount shape (customer-scoped) without reopening its ownership ruling. Depends on
@@ -271,11 +271,11 @@ sequenceDiagram
 
 ## Applies To
 
-- `src/Services/Pricing/Pricing.Function/Modules/CustomerDiscounts` *(new)*
-- `src/Services/Pricing/Pricing.Function/Modules/Prices/Features/GetBasketInstallmentPlan` *(amended)*
-- `src/Services/Challenges/Challenges.Function/Modules/Progress` *(redemption feature + stream rule)*
+- `src/Services/Pricing/Pricing.Function/Modules/CustomerDiscounts` *(removed — ADR-0048 §7)*
+- `src/Services/Pricing/Pricing.Function/Modules/Prices/Features/GetBasketInstallmentPlan` *(amended; its `DiscountId` input removed — ADR-0048 §7)*
+- `src/Services/Challenges/Challenges.Function/Modules/Progress` *(redemption feature + stream rule removed — ADR-0048 §7)*
 - `infra/constructs/pricing-dynamodb.ts`, `infra/constructs/pricing-lambdas.ts`
-- `graphql/schema.graphql`, `graphql/resolvers/pricing/**`, `graphql/resolvers/challenges/**`
+- `graphql/schema.graphql`, `graphql/resolvers/pricing/**`, `graphql/resolvers/challenges/**` *(`myRewards` and `redeemChallengePoints` removed — ADR-0048 §7)*
 
 ---
 
