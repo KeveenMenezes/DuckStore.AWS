@@ -102,6 +102,42 @@ public class CheckoutBasketCommandHandlerTests
         Assert.Contains(result.OrderId.Value.ToString(), checkoutJson);
     }
 
+    // Basket is a pure passthrough for points (ADR-0026 "zero discount responsibility", ADR-0048
+    // §4): whatever the pipeline confirmed reaches BasketCheckoutEvent untouched — CheckoutedRule
+    // deserializes this very payload as the event.
+    [Fact]
+    public async Task Handle_ShouldCarryPointsToUseAndTotalPriceUnchanged_IntoTheCheckoutEvent()
+    {
+        var basketCheckoutDto = new BasketCheckoutDto
+        {
+            OwnerId = "USER#testuser",
+            TotalPrice = 189.99m,
+            PointsToUse = 1000,
+            ShippingAddress = ValidShippingAddress()
+        };
+
+        _basketRepositoryMock.Setup(repo =>
+            repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ShoppingCart.Create(
+                "USER#testuser",
+                [ShoppingCartItem.Create(ProductId.Of(Guid.NewGuid()), "Sample Product", null, "Red", 1, 199.99m)]));
+
+        string? checkoutJson = null;
+        _basketRepositoryMock
+            .Setup(repo => repo.MarkCheckoutAsync(basketCheckoutDto.OwnerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, CancellationToken>((_, json, _) => checkoutJson = json);
+
+        await _handler.Handle(new CheckoutBasketCommand(basketCheckoutDto), CancellationToken.None);
+
+        var evt = System.Text.Json.JsonSerializer.Deserialize(
+            checkoutJson!,
+            BuildingBlocks.Messaging.Serialization.MessagingSerializerContext.Default.BasketCheckoutEvent);
+
+        Assert.NotNull(evt);
+        Assert.Equal(1000, evt!.PointsToUse);
+        Assert.Equal(189.99m, evt.TotalPrice);
+    }
+
     [Fact]
     public async Task Handle_ShouldReturnFailure_WhenBasketDoesNotExist()
     {

@@ -16,6 +16,12 @@ public record BasketCheckoutEvent : IntegrationEvent
     // way it never interprets TotalPrice or the card fields below. Null when no coupon was applied.
     public string? DiscountId { get; set; }
 
+    // How many points the customer used in the cart, 0 for none (ADR-0048 §4). A quantity only —
+    // never a currency amount: the points discount is already inside TotalPrice (the total Pricing
+    // charged), and Challenges consumes this event and must never see money (ADR-0046 §1).
+    // Basket passes it through without validating or interpreting it.
+    public int PointsToUse { get; set; }
+
     public BasketCheckoutAddress ShippingAddress { get; set; } = new();
     public BasketCheckoutPayment Payment { get; set; } = new();
     public List<BasketCheckoutItem> Items { get; set; } = [];

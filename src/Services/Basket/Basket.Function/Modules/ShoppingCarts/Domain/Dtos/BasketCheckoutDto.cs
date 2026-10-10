@@ -16,6 +16,10 @@ public class BasketCheckoutDto
     // validates or interprets it, the same as TotalPrice/the card fields. Null when no coupon.
     public string? DiscountId { get; set; }
 
+    // Points used in the cart, as confirmed by the checkout pipeline's Pricing quote (ADR-0048 §4).
+    // Passed through to BasketCheckoutEvent untouched — Basket never validates or interprets it.
+    public int PointsToUse { get; set; }
+
     public BasketCheckoutAddressDto ShippingAddress { get; set; } = new();
     public BasketCheckoutPaymentDto Payment { get; set; } = new();
 

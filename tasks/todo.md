@@ -155,7 +155,7 @@
   - Verificar: `cdk synth AppSyncStack`; consulta manual com e sem pontos.
   - Arquivos: `graphql/schema.graphql`, `Query.basketInstallmentPlan.js`, `infra/constructs/appsync-api.ts`, `api/queries/pricing.ts`, `app/api/graphql/local.ts`. Dependências: T22.
 
-- [ ] **T24: Contratos de evento (aditivo)** (S)
+- [x] **T24: Contratos de evento (aditivo)** (S)
   - Aceite: `BasketCheckoutEvent` + `PointsToUse` (**sem** campo em moeda — ADR-0048 §4); novos `PointsReservedEvent`, `PointsReservationFailedEvent` e `OrderCancelledEvent` no serializer context; o Basket repassa os campos novos do DTO ao evento. O `DiscountId` ainda **não** é removido.
   - Verificar: teste do Basket (campos chegam inalterados ao evento); `dotnet build` da solução.
   - Arquivos: `BuildingBlocks.Messaging/Events/{BasketCheckoutEvent,PointsReservedEvent,PointsReservationFailedEvent,OrderCancelledEvent}.cs`, `MessagingSerializerContext.cs`, `Basket.Function/.../Dtos/BasketCheckoutDto.cs` + `CheckoutBasket/Handler.cs`. Dependências: T22.
