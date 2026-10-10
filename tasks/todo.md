@@ -145,7 +145,7 @@
 
 ## Fase 5 — `cart-points-redemption` ([spec](../SPEC-cart-points-redemption.md))
 
-- [ ] **T22: Pricing, conversão 100:1, teto de 20% e desconto de pontos** (M)
+- [x] **T22: Pricing, conversão 100:1, teto de 20% e desconto de pontos** (M)
   - Aceite: `RewardOptions` com `MaxDiscountPercent` (sem `ExpiryDays` para o resgate novo); `GetBasketInstallmentPlanQuery.PointsToUse`; `MaxRedeemablePoints` sobre o `Price` pós-campanha; `PointsAboveCapException` (BadRequest); o desconto é aplicado pelo parâmetro `customerDiscountAmount` que já existe; o resultado tem `MaxRedeemablePoints` e `PointsDiscount`; com `ExpectedTotal`/`PaymentMethod`/`Installments`, escolhe o total da forma de pagamento (`CashPrice` ou `InstallmentPlan[N].TotalValue`), compara em centavos e lança `PriceChangedException` (`ServerTotal`), ou devolve `ChargedTotal`; parcela N inexistente = BadRequest; `reward-config.ts` com 100, 1 e 20, e as env vars no `pricing-lambdas.ts`.
   - Verificar: testes (R$200 → 4000; R$0,99 → 19; acima do teto rejeita; o desconto entra depois da campanha; à vista e parcelado recalculados; total igual → `ChargedTotal`; diferente em 1 centavo → `PriceChanged`; parcela inexistente → BadRequest).
   - Arquivos: `Shared/Configuration/RewardOptions.cs`, `GetBasketInstallmentPlan/{Query,Handler,Endpoint}.cs`, `InstallmentCalculator.cs`, `Shared/Exceptions/{PointsAboveCap,PriceChanged}Exception.cs`, `infra/constructs/{reward-config,pricing-lambdas}.ts`. Pode chegar a 6 arquivos; se crescer, separar o `PriceChanged` em uma T22b. Dependências: T3.

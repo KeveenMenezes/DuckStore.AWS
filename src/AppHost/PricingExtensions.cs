@@ -45,7 +45,11 @@ public static class PricingExtensions
             .WithEnvironment("Installments__ValueTiers__0__MinAmount", "150")
             .WithEnvironment("Installments__ValueTiers__0__MaxInstallments", "6")
             .WithEnvironment("Installments__ValueTiers__1__MinAmount", "300")
-            .WithEnvironment("Installments__ValueTiers__1__MaxInstallments", "10");
+            .WithEnvironment("Installments__ValueTiers__1__MaxInstallments", "10")
+            // In-cart points (ADR-0048 §3); must match infra/constructs/reward-config.ts.
+            .WithEnvironment("Rewards__PointsPerUnit", "100")
+            .WithEnvironment("Rewards__CurrencyPerUnit", "1")
+            .WithEnvironment("Rewards__MaxDiscountPercent", "20");
 
         // setGatewayCost is gone — it's now an AppSync direct DynamoDB UpdateItem resolver (ADR-0009).
 
@@ -81,7 +85,7 @@ public static class PricingExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus")
             .WithEnvironment("Rewards__PointsPerUnit", "100")
-            .WithEnvironment("Rewards__CurrencyPerUnit", "10")
+            .WithEnvironment("Rewards__CurrencyPerUnit", "1")
             .WithEnvironment("Rewards__ExpiryDays", "90");
 
         // Consumes PaymentAuthorizedEvent (published by PaymentGateway.Function — same event

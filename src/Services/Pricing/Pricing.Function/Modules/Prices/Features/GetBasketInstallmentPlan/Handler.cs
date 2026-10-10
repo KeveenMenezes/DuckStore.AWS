@@ -9,9 +9,13 @@ public class GetBasketInstallmentPlanHandler(
     IGatewayCostRepository gatewayCostRepository,
     ICampaignRepository campaignRepository,
     ICustomerDiscountRepository customerDiscountRepository,
-    InstallmentOptions installmentOptions)
+    InstallmentOptions installmentOptions,
+    RewardOptions rewardOptions)
     : IQueryHandler<GetBasketInstallmentPlanQuery, GetBasketInstallmentPlanResult>
 {
+    // Ordering's PaymentMethod enum value for cash; every other value is a card.
+    private const int CashPaymentMethod = 3;
+
     public async ValueTask<GetBasketInstallmentPlanResult> Handle(
         GetBasketInstallmentPlanQuery query, CancellationToken cancellationToken)
     {
@@ -51,6 +55,28 @@ public class GetBasketInstallmentPlanHandler(
             items, gatewayCost, installmentOptions.MinMarginPercent, installmentOptions.ValueTiers,
             customerDiscountAmount);
 
+        // The cap is 20% of the post-campaign card price — the cart's price before any customer
+        // discount (ADR-0048 §3). The points discount then goes through the same cart-level,
+        // after-campaign path the coupon uses, which also recomputes the cash price and every
+        // installment over the net total (ADR-0046 §5).
+        var maxRedeemablePoints = rewardOptions.MaxRedeemablePoints(cartPlan.Breakdown.Price);
+        if (query.PointsToUse > maxRedeemablePoints)
+        {
+            throw new PointsAboveCapException(query.PointsToUse, maxRedeemablePoints);
+        }
+
+        var pointsDiscount = rewardOptions.PointsDiscount(query.PointsToUse);
+        if (pointsDiscount > 0)
+        {
+            cartPlan = InstallmentCalculator.CalculateForCart(
+                items, gatewayCost, installmentOptions.MinMarginPercent, installmentOptions.ValueTiers,
+                pointsDiscount);
+        }
+
+        var chargedTotal = query.ExpectedTotal is { } expectedTotal
+            ? ConfirmChargedTotal(cartPlan.Breakdown, expectedTotal, query.PaymentMethod!.Value, query.Installments!.Value)
+            : (decimal?)null;
+
         return new GetBasketInstallmentPlanResult(
             cartPlan.TotalOriginalPrice,
             cartPlan.Breakdown.Price,
@@ -58,8 +84,35 @@ public class GetBasketInstallmentPlanHandler(
             cartPlan.Breakdown.MaxInstallmentsWithoutInterest,
             cartPlan.Breakdown.InstallmentPlan
                 .Select(e => new InstallmentPlanEntryDto(e.Count, e.Value, e.TotalValue, e.HasInterest))
-                .ToList());
+                .ToList(),
+            maxRedeemablePoints,
+            pointsDiscount,
+            chargedTotal);
     }
+
+    // The total charged for the customer's payment choice, the same figure the cart shows them:
+    // cash → CashPrice, one card installment → Price, N installments → that entry's TotalValue
+    // (interest included). Compared in whole cents — both sides come from this same calculation,
+    // so any difference is a changed price or a tampered client, never rounding (ADR-0048 §4).
+    private static decimal ConfirmChargedTotal(
+        PricingBreakdown breakdown, decimal expectedTotal, int paymentMethod, int installments)
+    {
+        var serverTotal =
+            paymentMethod == CashPaymentMethod ? breakdown.CashPrice
+            : installments == 1 ? breakdown.Price
+            : breakdown.InstallmentPlan.FirstOrDefault(e => e.Count == installments)?.TotalValue
+                ?? throw new BadRequestException(nameof(installments), installments, "is not an available installment option");
+
+        if (ToCents(serverTotal) != ToCents(expectedTotal))
+        {
+            throw new PriceChangedException(serverTotal);
+        }
+
+        return serverTotal;
+    }
+
+    private static long ToCents(decimal amount) =>
+        (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero);
 
     // Null for the common no-coupon case. Validates owner match, Status=Issued and not expired in
     // one call (CustomerDiscount.IsRedeemableBy) — the same undifferentiated rejection either way,

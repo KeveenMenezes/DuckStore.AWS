@@ -60,7 +60,8 @@ public class GetBasketInstallmentPlanTests
     private GetBasketInstallmentPlanHandler CreateHandler() =>
         new(_priceRepository.Object, _gatewayCostRepository.Object, _campaignRepository.Object,
             _customerDiscountRepository.Object,
-            new InstallmentOptions { ActiveProvider = "Simulated", MinMarginPercent = 0m });
+            new InstallmentOptions { ActiveProvider = "Simulated", MinMarginPercent = 0m },
+            new RewardOptions());
 
     [Fact]
     public async Task Handle_ShouldFindAUnifiedPlan_DistinctFromEitherItemsOwnPlan_WhenCartMixesMargins()

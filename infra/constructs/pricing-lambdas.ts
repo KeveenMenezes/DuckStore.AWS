@@ -13,7 +13,12 @@ import {
   DOTNET_RUNTIME,
   dotnetLambdaCode,
 } from './dotnet-lambda-code';
-import { REWARD_CURRENCY_PER_UNIT, REWARD_EXPIRY_DAYS, REWARD_POINTS_PER_UNIT } from './reward-config';
+import {
+  REWARD_CURRENCY_PER_UNIT,
+  REWARD_EXPIRY_DAYS,
+  REWARD_MAX_DISCOUNT_PERCENT,
+  REWARD_POINTS_PER_UNIT,
+} from './reward-config';
 
 
 export interface PricingLambdasProps {
@@ -103,6 +108,10 @@ export class PricingLambdas extends Construct {
         ANNOTATIONS_HANDLER: 'GetBasketInstallmentPlan',
         Installments__ActiveProvider: 'Simulated',
         Installments__MinMarginPercent: '5',
+        // In-cart points: the rate and the 20% cap are applied here (ADR-0048 §3).
+        Rewards__PointsPerUnit: REWARD_POINTS_PER_UNIT.toString(),
+        Rewards__CurrencyPerUnit: REWARD_CURRENCY_PER_UNIT.toString(),
+        Rewards__MaxDiscountPercent: REWARD_MAX_DISCOUNT_PERCENT.toString(),
       },
     });
     pricesTable.grantReadData(this.getBasketInstallmentPlan);
