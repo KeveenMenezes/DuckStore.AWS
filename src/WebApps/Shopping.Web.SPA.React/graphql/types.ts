@@ -325,21 +325,6 @@ export interface GqlPointsHistoryPage {
   nextToken: string | null
 }
 
-export interface GqlRedeemChallengePointsResult {
-  redemptionId: string
-  newBalance: number
-}
-
-// A customer-scoped reward minted from a Challenges points redemption (ADR-0046 §4) — distinct
-// from a campaign discount, which is product-scoped.
-export interface GqlCustomerDiscount {
-  id: string
-  amount: number
-  status: string
-  expiresAt: string
-  sourceRedemptionId: string
-}
-
 export interface GqlRewardConversion {
   pointsPerUnit: number
   currencyPerUnit: number

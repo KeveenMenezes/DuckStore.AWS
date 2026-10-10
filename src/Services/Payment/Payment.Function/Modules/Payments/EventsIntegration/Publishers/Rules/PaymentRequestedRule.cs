@@ -32,7 +32,6 @@ public sealed class PaymentRequestedRule(IPaymentRepository payments) : IStreamR
         CardNumber = payment.Card.CardNumber,
         Expiration = payment.Card.Expiration,
         Cvv = payment.Card.Cvv,
-        PaymentMethod = (int)payment.Card.PaymentMethod,
-        DiscountId = payment.DiscountId
+        PaymentMethod = (int)payment.Card.PaymentMethod
     };
 }

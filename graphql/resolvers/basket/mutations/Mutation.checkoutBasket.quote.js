@@ -7,21 +7,16 @@ import { util } from '@aws-appsync/utils'
 // GraphQL error, so the SPA can branch on PriceChanged/PointsAboveCap and read serverTotal.
 export function request(ctx) {
   const input = ctx.args.input
-  const payload = {
-    Items: ctx.stash.cartItems,
-    PointsToUse: input.pointsToUse ?? 0,
-    ExpectedTotal: input.totalPrice,
-    PaymentMethod: input.paymentMethod,
-    Installments: input.installments,
+  return {
+    operation: 'Invoke',
+    payload: {
+      Items: ctx.stash.cartItems,
+      PointsToUse: input.pointsToUse ?? 0,
+      ExpectedTotal: input.totalPrice,
+      PaymentMethod: input.paymentMethod,
+      Installments: input.installments,
+    },
   }
-
-  // The legacy coupon is priced in the same quote, so the total charged includes it (ADR-0046 §5).
-  if (input.discountId) {
-    payload.OwnerId = `USER#${ctx.identity.sub}`
-    payload.DiscountId = input.discountId
-  }
-
-  return { operation: 'Invoke', payload }
 }
 
 export function response(ctx) {

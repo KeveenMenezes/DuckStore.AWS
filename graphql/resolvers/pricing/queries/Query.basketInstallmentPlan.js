@@ -2,10 +2,10 @@ import { util } from '@aws-appsync/utils'
 
 // Public (API_KEY or Cognito). Invokes Pricing's GetBasketInstallmentPlan Lambda — sums
 // cost/originalPrice across every cart item and runs the whole cart through the same
-// cost-floor calculation as a single checkout transaction (ADR-0009). discountId and a positive
-// pointsToUse are Cognito-only (ADR-0046 §5, ADR-0048 §3) — a guest (API_KEY) sending either is
-// rejected rather than silently ignored, since that would otherwise look like the discount was
-// applied when it was not. The cap and the conversion are Pricing's; this only maps.
+// cost-floor calculation as a single checkout transaction (ADR-0009). A positive pointsToUse is
+// Cognito-only (ADR-0048 §3) — a guest (API_KEY) sending it is rejected rather than silently
+// ignored, since that would otherwise look like the discount was applied when it was not. The cap
+// and the conversion are Pricing's; this only maps.
 export function request(ctx) {
   const payload = {
     Items: ctx.args.items.map(i => ({ ProductId: i.productId, Quantity: i.quantity })),
@@ -15,12 +15,6 @@ export function request(ctx) {
   if (pointsToUse > 0) {
     if (!ctx.identity || !ctx.identity.sub) util.unauthorized()
     payload.PointsToUse = pointsToUse
-  }
-
-  if (ctx.args.discountId) {
-    if (!ctx.identity || !ctx.identity.sub) util.unauthorized()
-    payload.OwnerId = `USER#${ctx.identity.sub}`
-    payload.DiscountId = ctx.args.discountId
   }
 
   return { operation: 'Invoke', payload }

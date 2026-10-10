@@ -10,11 +10,6 @@ public class Payment : Aggregate<PaymentId>
     public string? AuthorizationCode { get; private set; }
     public string? DeclineReason { get; private set; }
 
-    // Opaque pass-through from BasketCheckoutEvent, carried into PaymentRequestedEvent so
-    // PaymentGateway can forward it to PaymentAuthorizedEvent (ADR-0046 §6) — Payment never
-    // validates or interprets it. Null when no coupon was applied at checkout.
-    public string? DiscountId { get; private set; }
-
     // DeclineReason for a checkout whose points couldn't be reserved (ADR-0048 §6).
     public const string InsufficientPointsReason = "InsufficientPoints";
 
@@ -22,8 +17,7 @@ public class Payment : Aggregate<PaymentId>
     // the gateway is asked — otherwise it could be authorized with a discount the customer didn't
     // have (ADR-0048 §6). Without points the payment starts Pending, as it always has.
     public static Payment Create(
-        PaymentId id, Guid orderId, Guid customerId, decimal amount, CardDetails card, string? discountId = null,
-        bool awaitingPoints = false)
+        PaymentId id, Guid orderId, Guid customerId, decimal amount, CardDetails card, bool awaitingPoints = false)
     {
         return new Payment
         {
@@ -33,7 +27,6 @@ public class Payment : Aggregate<PaymentId>
             Amount = amount,
             Card = card,
             Status = awaitingPoints ? PaymentStatus.AwaitingPoints : PaymentStatus.Pending,
-            DiscountId = discountId,
             CreatedAt = DateTime.UtcNow
         };
     }
@@ -99,8 +92,7 @@ public class Payment : Aggregate<PaymentId>
         string? authorizationCode,
         string? declineReason,
         DateTime? createdAt = null,
-        DateTime? lastModified = null,
-        string? discountId = null)
+        DateTime? lastModified = null)
     {
         return new Payment
         {
@@ -113,8 +105,7 @@ public class Payment : Aggregate<PaymentId>
             AuthorizationCode = authorizationCode,
             DeclineReason = declineReason,
             CreatedAt = createdAt,
-            LastModified = lastModified,
-            DiscountId = discountId
+            LastModified = lastModified
         };
     }
 }

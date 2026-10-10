@@ -3,7 +3,7 @@ import { util } from '@aws-appsync/utils'
 // AppSync NONE (local) resolver — no backend call. Values are baked in at synth time by
 // appsync-api.ts from the same constants the Pricing Lambdas' Rewards__* env vars use
 // (infra/constructs/reward-config.ts) — a NONE resolver has no runtime config to read
-// (ADR-0046 §8).
+// (ADR-0048 §3).
 export function request(ctx) {
   if (!ctx.identity || !ctx.identity.sub) util.unauthorized()
 

@@ -13,8 +13,6 @@ export function request(ctx) {
         CustomerId: ctx.identity.sub,  // always from Cognito — never trust client value
         TotalPrice: ctx.stash.chargedTotal,
         PointsToUse: input.pointsToUse ?? 0,
-        // Opaque pass-through — never interpreted here (ADR-0046 §6).
-        DiscountId: input.discountId ?? null,
         ShippingAddress: {
           FirstName: input.firstName,
           LastName: input.lastName,

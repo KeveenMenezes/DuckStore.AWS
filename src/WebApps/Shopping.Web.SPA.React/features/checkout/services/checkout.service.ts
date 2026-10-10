@@ -15,24 +15,22 @@ const PAYMENT_METHOD_CODE: Record<CheckoutFormData["paymentMethod"], number> = {
 /**
  * Fetch the unified, cart-level installment plan (sums cost/originalPrice across every item,
  * then runs the whole cart through InstallmentCalculator as a single checkout transaction).
- * Public/cookie-free by default — same trust model as installmentPlanFor. Using points (or a
- * discountId) switches to the authenticated client: both are Cognito-only (ADR-0046 §5,
- * ADR-0048 §3), and the resolver rejects them without ctx.identity. With points, every figure in
- * the plan is already net of `pointsDiscount`; more points than `maxRedeemablePoints` fails with
- * a GraphQLRequestError whose errorType is "PointsAboveCap".
+ * Public/cookie-free by default — same trust model as installmentPlanFor. Using points switches
+ * to the authenticated client: they are Cognito-only (ADR-0048 §3), and the resolver rejects them
+ * without ctx.identity. With points, every figure in the plan is already net of `pointsDiscount`;
+ * more points than `maxRedeemablePoints` fails with a GraphQLRequestError whose errorType is
+ * "PointsAboveCap".
  */
 export async function getBasketInstallmentPlan(
   items: CartItem[],
   pointsToUse = 0,
-  discountId?: string,
 ): Promise<GqlBasketInstallmentPlan | null> {
   if (items.length === 0) return null
-  const client = discountId || pointsToUse > 0 ? gql : gqlPublic
+  const client = pointsToUse > 0 ? gql : gqlPublic
   const data = await client<{ basketInstallmentPlan: GqlBasketInstallmentPlan | null }>(
     GET_BASKET_INSTALLMENT_PLAN,
     {
       items: items.map((i) => ({ productId: i.product.id, quantity: i.quantity })),
-      discountId: discountId ?? null,
       pointsToUse: pointsToUse > 0 ? pointsToUse : null,
     },
   )
@@ -70,7 +68,6 @@ export async function submitCheckout(
   // server recomputes it and rejects a mismatch with errorType "PriceChanged" (ADR-0048 §4).
   totalPrice: number,
   pointsToUse = 0,
-  discountId?: string,
 ): Promise<string | null> {
   const nameParts = formData.name.trim().split(" ")
   const firstName = nameParts[0] ?? "Guest"
@@ -85,9 +82,6 @@ export async function submitCheckout(
   const data = await gql<{ checkoutBasket: GqlCheckoutResult }>(CHECKOUT_BASKET, {
     input: {
       totalPrice,
-      // Opaque pass-through, chosen beforehand via basketInstallmentPlan(discountId:) — never
-      // interpreted here (ADR-0046 §6).
-      discountId: discountId ?? null,
       pointsToUse,
       firstName,
       lastName,

@@ -69,10 +69,9 @@ export class PricingDynamoDB extends Construct {
     });
 
     // Customer-scoped reward, minted from a Challenges points redemption (ADR-0046 §4) — PK
-    // OwnerId, SK DiscountId, distinct from the product-scoped campaign discount above. No
-    // stream: myRewards and GetBasketInstallmentPlan both read this table directly. TTL on
-    // ExpiresAt only clears dead rows eventually; expiry is checked at read time and is
-    // authoritative (ADR-0044 precedent).
+    // OwnerId, SK DiscountId, distinct from the product-scoped campaign discount above. Nothing
+    // reads or writes it since the coupon model was removed (ADR-0048 §7); the table itself goes
+    // in T36, after its data is confirmed disposable.
     this.customerDiscountsTable = new dynamodb.Table(this, 'CustomerDiscountsTable', {
       tableName: 'customer-discounts',
       partitionKey: { name: 'OwnerId', type: dynamodb.AttributeType.STRING },

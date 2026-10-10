@@ -207,10 +207,6 @@ export class AppSyncApi extends Construct {
       tableName: 'points-transactions',
       grantIndexPermissions: true,
     });
-    // Customer-scoped reward (ADR-0046 §4) — no GSI, myRewards queries the base table by OwnerId.
-    const customerDiscountsTable = dynamodb.Table.fromTableName(
-      this, 'CustomerDiscountsTable', 'customer-discounts',
-    );
 
     const productsDs = this.dynamoDbDataSource('ProductsDS', productsTable);
     const categoriesDs = this.dynamoDbDataSource('CategoriesDS', categoriesTable);
@@ -231,7 +227,6 @@ export class AppSyncApi extends Construct {
     // item only" is enforced by the resolver's hard-coded SK (ADR-0045 §2).
     const challengesAdminDs = this.dynamoDbDataSource('ChallengesAdminDS', challengesTable);
     const challengeProgressDs = this.dynamoDbDataSource('ChallengeProgressDS', challengeProgressTable);
-    const customerDiscountsDs = this.dynamoDbDataSource('CustomerDiscountsDS', customerDiscountsTable);
     const pointsTransactionsDs = this.dynamoDbDataSource('PointsTransactionsDS', pointsTransactionsTable);
     // NONE (local) data source — rewardConversion has no backend call, values are baked in below.
     const rewardConversionDs = api.addNoneDataSource('RewardConversionDS');
@@ -256,7 +251,6 @@ export class AppSyncApi extends Construct {
     // the public ChallengesDS.
     challengesTable.grant(challengesAdminDs, 'dynamodb:UpdateItem');
     challengeProgressTable.grantReadData(challengeProgressDs);
-    customerDiscountsTable.grantReadData(customerDiscountsDs);
     pointsTransactionsTable.grantReadData(pointsTransactionsDs);
 
     // Lambda data sources — imported by function name (no CF coupling)
@@ -281,9 +275,6 @@ export class AppSyncApi extends Construct {
     const revealChallengeHintFn = lambda.Function.fromFunctionName(
       this, 'RevealChallengeHintFn', 'challenges-reveal-hint',
     );
-    const redeemChallengePointsFn = lambda.Function.fromFunctionName(
-      this, 'RedeemChallengePointsFn', 'challenges-redeem-points',
-    );
     // addLambdaDataSource automatically grants lambda:InvokeFunction to the DS role
     const checkoutDs = api.addLambdaDataSource('CheckoutDS', checkoutFn);
     const mergeBasketDs = api.addLambdaDataSource('MergeBasketDS', mergeBasketFn);
@@ -305,10 +296,6 @@ export class AppSyncApi extends Construct {
     const revealChallengeHintDs = api.addLambdaDataSource(
       'RevealChallengeHintDS',
       revealChallengeHintFn,
-    );
-    const redeemChallengePointsDs = api.addLambdaDataSource(
-      'RedeemChallengePointsDS',
-      redeemChallengePointsFn,
     );
 
     // HTTP data source — Step Functions StartSyncExecution (ADR-0032)
@@ -354,10 +341,7 @@ export class AppSyncApi extends Construct {
     this.resolver(orderingDs, 'OrdersByCustomerResolver', 'Query', 'ordersByCustomer', 'orders');
     // Direct DynamoDB GetItem on productId#sub — the caller's own review row (ADR-0049 §4).
     this.resolver(reviewsDs, 'MyReviewResolver', 'Query', 'myReview', 'reviews');
-    // Direct DynamoDB resolver — Cognito only; Query on OwnerId filtered to Status=Issued and not
-    // expired (ADR-0046 §4).
-    this.resolver(customerDiscountsDs, 'MyRewardsResolver', 'Query', 'myRewards', 'pricing');
-    // NONE resolver — Cognito only; values baked in at synth time (ADR-0046 §8).
+    // NONE resolver — Cognito only; values baked in at synth time (ADR-0048 §3).
     this.resolver(
       rewardConversionDs, 'RewardConversionResolver', 'Query', 'rewardConversion', 'pricing',
       {
@@ -436,9 +420,6 @@ export class AppSyncApi extends Construct {
     );
     this.resolver(
       revealChallengeHintDs, 'RevealChallengeHintResolver', 'Mutation', 'revealChallengeHint', 'challenges',
-    );
-    this.resolver(
-      redeemChallengePointsDs, 'RedeemChallengePointsResolver', 'Mutation', 'redeemChallengePoints', 'challenges',
     );
 
     // Admin-only direct DynamoDB UpdateItem on the PUBLIC item (ADR-0009) — no Lambda: one item,

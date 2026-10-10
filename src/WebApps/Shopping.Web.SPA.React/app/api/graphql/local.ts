@@ -723,29 +723,26 @@ const resolvers = {
 
     // Mirrors Query.basketInstallmentPlan.js: sums cost/originalPrice across every cart item, then
     // runs the whole cart through the same cost-floor calculation as a single checkout transaction
-    // (ADR-0009). discountId and a positive pointsToUse are Cognito-only (ADR-0046 §5, ADR-0048 §3)
-    // — the BFF-resolved owner stands in for the identity, so a visitor is rejected the same way.
+    // (ADR-0009). A positive pointsToUse is Cognito-only (ADR-0048 §3) — the BFF-resolved owner
+    // stands in for the identity, so a visitor is rejected the same way.
     async basketInstallmentPlan(
       _: unknown,
       {
         items,
-        discountId,
         pointsToUse,
       }: {
         items: Array<{ productId: string; quantity: number }>
-        discountId?: string | null
         pointsToUse?: number | null
       },
       context: LocalContext,
     ) {
       const points = pointsToUse ?? 0
       const isGuest = context.owner.ownerId.startsWith('GUEST#')
-      if ((points > 0 || discountId) && isGuest) throw unauthorized('basketInstallmentPlan', 'Query')
+      if (points > 0 && isGuest) throw unauthorized('basketInstallmentPlan', 'Query')
 
       const body = await quoteBasket({
         Items: items.map(i => ({ ProductId: i.productId, Quantity: i.quantity })),
         ...(points > 0 ? { PointsToUse: points } : {}),
-        ...(discountId ? { OwnerId: context.owner.ownerId, DiscountId: discountId } : {}),
       })
       return mapBasketQuote(body)
     },
@@ -971,35 +968,10 @@ const resolvers = {
       }
     },
 
-    // Cognito-only in prod; locally the BFF-resolved owner stands in for the identity, same as
-    // myChallengeProgress. Expiry is checked here (not left to the table's TTL), same rule the
-    // NONE/direct resolvers apply in prod (ADR-0046 §4).
-    async myRewards(_: unknown, __: unknown, context: LocalContext) {
-      const result = await dynamoDb.send(
-        new QueryCommand({
-          TableName: 'customer-discounts',
-          KeyConditionExpression: 'OwnerId = :ownerId',
-          ExpressionAttributeValues: { ':ownerId': { S: context.owner.ownerId } },
-        }),
-      )
-
-      const now = Math.floor(Date.now() / 1000)
-      return (result.Items ?? [])
-        .map(raw => unmarshall(raw))
-        .filter(item => item.Status === 'Issued' && Number(item.ExpiresAt) > now)
-        .map(item => ({
-          id: item.DiscountId as string,
-          amount: Number(item.Amount),
-          status: item.Status as string,
-          expiresAt: new Date(Number(item.ExpiresAt) * 1000).toISOString(),
-          sourceRedemptionId: item.SourceRedemptionId as string,
-        }))
-    },
-
     // Mirrors the constants baked into the rewardConversion NONE resolver in prod
     // (infra/constructs/reward-config.ts) and the Pricing Lambdas' Rewards__* env vars
     // (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
-    // to read them from (ADR-0046 §8).
+    // to read them from (ADR-0048 §3).
     async rewardConversion() {
       return { pointsPerUnit: 100, currencyPerUnit: 1 }
     },
@@ -1068,7 +1040,6 @@ const resolvers = {
         ExpectedTotal: input.totalPrice,
         PaymentMethod: input.paymentMethod,
         Installments: input.installments,
-        ...(input.discountId ? { OwnerId: ownerId, DiscountId: input.discountId } : {}),
       })
 
       // On AWS a missing balance only surfaces after checkout (Failed reservation → payment
@@ -1085,9 +1056,6 @@ const resolvers = {
           CustomerId: customerIdFromOwner(ownerId),
           TotalPrice: quote.ChargedTotal,
           PointsToUse: pointsToUse,
-          // Opaque pass-through, chosen beforehand via basketInstallmentPlan(discountId:) — never
-          // interpreted here (ADR-0046 §6).
-          DiscountId: input.discountId ?? null,
           ShippingAddress: {
             FirstName: input.firstName,
             LastName: input.lastName,
@@ -1642,24 +1610,6 @@ const resolvers = {
         hint: body.Hint,
         hintsRevealed: body.HintsRevealed,
         penaltyApplied: body.PenaltyApplied,
-      }
-    },
-
-    // Cognito-only in prod (ADR-0046 §2): the balance debit is a conditional TransactWriteItems,
-    // so this goes through the Challenges Lambda even locally rather than being reimplemented
-    // against DynamoDB here. No currency amount ever appears — Pricing converts asynchronously.
-    async redeemChallengePoints(
-      _: unknown,
-      { points }: { points: number },
-      context: LocalContext,
-    ) {
-      const body = await invokeLambda<{ RedemptionId: string; NewBalance: number }>(
-        'challenges-redeem-points',
-        { OwnerId: context.owner.ownerId, Points: points },
-      )
-      return {
-        redemptionId: body.RedemptionId,
-        newBalance: body.NewBalance,
       }
     },
   },

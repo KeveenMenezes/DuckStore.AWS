@@ -12,10 +12,6 @@ public class BasketCheckoutDto
     // Generated server-side by CheckoutBasketCommandHandler, not supplied by the client (ADR-0038).
     public Guid OrderId { get; set; }
 
-    // Opaque pass-through, chosen by the customer in the cart (ADR-0046 §6) — Basket never
-    // validates or interprets it, the same as TotalPrice/the card fields. Null when no coupon.
-    public string? DiscountId { get; set; }
-
     // Points used in the cart, as confirmed by the checkout pipeline's Pricing quote (ADR-0048 §4).
     // Passed through to BasketCheckoutEvent untouched — Basket never validates or interprets it.
     public int PointsToUse { get; set; }

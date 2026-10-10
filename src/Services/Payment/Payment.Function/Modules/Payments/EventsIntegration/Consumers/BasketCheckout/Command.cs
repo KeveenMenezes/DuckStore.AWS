@@ -10,7 +10,6 @@ public record CreatePaymentCommand(
     string Expiration,
     string Cvv,
     PaymentMethod PaymentMethod,
-    string? DiscountId = null,
     int PointsToUse = 0)
     : ICommand<CreatePaymentResult>;
 

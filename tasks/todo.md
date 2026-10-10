@@ -216,10 +216,11 @@
   - Arquivos: diretórios removidos + `ServiceRegistration.cs` dos dois serviços + `src/AppHost/{Challenges,Pricing}Extensions.cs`. Dependências: Checkpoint 5a.
   - Feito: as Lambdas `challenges-redeem-points`, `pricing-points-redeemed-consumer` e `pricing-payment-authorized-consumer` saíram do CDK aqui, e não na T35, para o CDK nunca apontar para um handler que não existe mais. Saíram também `PointsSpent`, `InsufficientPointsException`, `RewardOptions.ExpiryDays`/`ConvertToCurrency` e `REWARD_EXPIRY_DAYS`, que ficaram sem uso. O teste "desconto depois da campanha" foi portado do cupom para os pontos.
 
-- [ ] **T35: Remover o `DiscountId` e o schema de cupom** (M)
+- [x] **T35: Remover o `DiscountId` e o schema de cupom** (M)
   - Aceite: o `DiscountId` sai de `BasketCheckoutEvent`, `PaymentRequestedEvent`, `PaymentAuthorizedEvent`, do `Payment` e do PaymentGateway; saem `redeemChallengePoints`, `myRewards`, `CustomerDiscount` e `discountId` do schema, dos resolvers, do `local.ts` e da SPA (`GET_MY_REWARDS`); Lambdas e regras de CDK sem estado são removidas.
   - Verificar: `dotnet test` (solução); `cdk synth` nas stacks tocadas; `pnpm build`; `grep -ri "discountId\|myRewards\|redeemChallengePoints"` sem resultados fora de docs/ADRs.
   - Arquivos: eventos, `Payment.cs` e o consumer, o PaymentGateway, `graphql/**`, `infra/constructs/{appsync-api,pricing-lambdas,challenges-lambdas}.ts`, SPA. Pode passar de 5 arquivos, por ser uma remoção mecânica; se crescer, dividir por serviço. Dependências: T34.
+  - Feito: as Lambdas e regras de CDK do cupom já tinham saído na T34. O grep só acha a tabela `customer-discounts` (T36) e o parâmetro genérico `customerDiscountAmount` do `InstallmentCalculator`, que os pontos usam. Os diagramas (`docs/diagrams/*.svg`, `duckstore-process-flow.drawio`, `scripts/validate-diagrams.py`) ainda citam o `PointsRedeemedEvent` e ficam para o Checkpoint 5.
 
 - [ ] **T36: Remover recursos com estado do CDK** (S) ⚠ **perguntar antes**
   - Aceite: a tabela `customer-discounts` é removida do `pricing-dynamodb.ts` depois de confirmar a `RemovalPolicy` e o descarte dos dados de dev com o humano.

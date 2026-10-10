@@ -1,4 +1,4 @@
-// v1 conversion is a fixed constant, not a tier catalogue (ADR-0046 §8). Single source of truth
+// v1 conversion is a fixed constant, not a tier catalogue (ADR-0048 §3). Single source of truth
 // for the Rewards__* env vars of the Pricing Lambdas that convert points (pricing-lambdas.ts) and
 // the rewardConversion NONE resolver's baked-in values (appsync-api.ts) — a NONE resolver has no
 // runtime config to read, so it must match the Lambda's env exactly or the SPA's quote would lie.
