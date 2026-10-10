@@ -191,12 +191,12 @@
   - Arquivos: `Domain/Enums/PaymentStatus.cs`, `Domain/Entities/Payment.cs`, `Consumers/BasketCheckout/{Command,Handler,Mapper}.cs`, `Rules/{PaymentRequestedRule,PaymentDeclinedInsufficientPointsRule}.cs`. Dependências: T24.
 
 - [x] **T31: Payment consome `PointsReserved` e `PointsReservationFailed`** (M)
-  - Aceite: slice `Consumers/PointsReservation/` (Lambda `payment-points-reservation-consumer`) com dois `[LambdaFunction]`, no formato do `PaymentResult/`, chamando `ConfirmPoints`/`RejectPoints`; **pagamento não encontrado = exceção** (retry/DLQ), nunca no-op; idempotência pelo `payment-processed-events`; teste de que o `PaymentResult` do próprio Payment faz no-op ao receber o `PaymentDeclinedEvent` publicado pela T30; Lambdas no AppHost; CDK com duas regras, DLQ, alarme e grants.
+  - Aceite: slice `Consumers/PointsReservation/` com dois `[LambdaFunction]` (Lambdas `payment-points-reserved-consumer` e `payment-points-reservation-failed-consumer`), no formato do `PaymentResult/`, chamando `ConfirmPoints`/`RejectPoints`; **pagamento não encontrado = exceção** (retry/DLQ), nunca no-op; idempotência pelo `payment-processed-events`; teste de que o `PaymentResult` do próprio Payment faz no-op ao receber o `PaymentDeclinedEvent` publicado pela T30; Lambdas no AppHost; CDK com duas regras, DLQ, alarme e grants.
   - Verificar: testes dos handlers; `cdk synth PaymentStack`.
   - Arquivos: `Consumers/PointsReservation/{Endpoint,Handler,Mapper}.cs`, `src/AppHost/PaymentExtensions.cs`, `infra/constructs/payment-lambdas.ts`. Dependências: T29, T30.
 
 - [x] **T32: Challenges liquida o resgate (`Used`/`Released`/`Refunded`)** (M)
-  - Aceite: `challenges-payment-authorized-consumer` (`Reserved→Used`) e `challenges-order-cancelled-consumer` (`Reserved→Released` / `Used→Refunded` com `ADD Score +|pts|`; `Failed` = no-op); busca por GSI1 `OrderId`, e **linha não encontrada = exceção** (retry/DLQ, porque o GSI1 é eventualmente consistente); toda transição é condicional, e uma condição falhada sobre uma linha que existe é no-op; CDK com regras, DLQ e grants.
+  - Aceite: `challenges-payment-authorized-consumer` (`Reserved→Used`) e `challenges-order-cancelled-consumer` (`Reserved→Released` / `Used→Refunded` com `ADD Score +|pts|`; `Failed` = no-op); busca por `GetItem` consistente na chave da tabela base (`USER#<CustomerId>`), e linha não encontrada = pedido sem pontos = no-op (ADR-0048 §5, emendada); toda transição é condicional, e uma condição falhada sobre uma linha que existe é no-op; CDK com regras, DLQ e grants.
   - Verificar: um teste por transição + evento duplicado + `Failed` no-op + linha ausente lança exceção.
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Consumers/{PaymentAuthorized,OrderCancelled}/*`, `src/AppHost/ChallengesExtensions.cs`, `infra/constructs/challenges-lambdas.ts`. Dependências: T27, T28.
 

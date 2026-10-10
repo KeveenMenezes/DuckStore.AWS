@@ -66,7 +66,7 @@ Challenges owns the balance):
 | PK | `OwnerId` (`USER#<cognito-sub>`) |
 | SK | `TransactionId`, **deterministic** per source |
 | LSI1 | `OwnerId` + `CreatedAt` (ISO-8601) — history ordered by date |
-| GSI1 | `OrderId`, **sparse** (redemption rows only) — lets payment/order events find the row |
+| GSI1 | `OrderId`, **sparse** (redemption rows only) — operational lookup of an order's redemption; settlement reads by the base-table key (§5) |
 | Stream | `NEW_AND_OLD_IMAGES` |
 | TTL | **none** — the ledger is permanent |
 
@@ -187,10 +187,16 @@ Every transition is a conditional `Update` on the ledger row (`Status = <source>
 `Refunded` put it in the same `TransactWriteItems` as `ADD Score :pts` on PROFILE. The amount returned
 is read from the ledger row, never from the event.
 
-**Missing target vs. failed condition.** A consumer that finds **no** target row — the payment not yet
-created, or a GSI1 lookup that misses because the index is eventually consistent — MUST throw, so
-EventBridge retries and an exhausted event lands in the DLQ. It MUST NOT no-op. A no-op is correct only
-when the row exists and its conditional status check fails (a duplicate or already-settled event).
+**Missing target vs. failed condition.** The settlement consumers (`PaymentAuthorized`,
+`OrderCancelled`) read `REDEMPTION#<orderId>` by its base-table key — `USER#<CustomerId>`, which both
+events carry — with a **consistent** `GetItem`. Both events reach them for every order, and for an
+order that used points the row always exists before either can occur: the gateway runs only after
+`PointsReservedEvent`, and a decline that cancels such an order happens only after the reservation
+outcome. So a missing row means the order used no points, and the consumer no-ops. A consumer whose
+target MUST already exist — Payment's `PointsReservation`, which can race the payment row's creation
+— MUST throw on a miss, so EventBridge retries and an exhausted event lands in the DLQ. Otherwise a
+no-op is correct only when the row exists and its conditional status check fails (a duplicate or
+already-settled event).
 
 Settlement keys off `OrderCancelledEvent` (new, published by Ordering's existing
 `ordering-stream-publisher` on any transition into `Cancelled`), not `PaymentDeclinedEvent`: a
@@ -227,7 +233,8 @@ To close the race in Context:
 `redeemChallengePoints`, the `RedeemPoints` feature, `REDEMPTION#` rows in `challenge-progress`,
 `PointsRedeemedEvent` and its rule, Pricing's `CustomerDiscounts` module (`customer-discounts` table
 and both consumers), `myRewards`, and every `DiscountId` field are removed once in-cart redemption works
-end to end. `rewardConversion` stays (without `expiryDays`).
+end to end. `rewardConversion` stays (without `expiryDays`). `PaymentAuthorizedEvent.CustomerId` and
+`OrderCancelledEvent.CustomerId` stay: settlement keys the ledger row off them (§5).
 
 ### 8. Challenges gains inbound consumers (amends ADR-0045)
 
@@ -249,7 +256,7 @@ New publishers and their sources:
 | `challenges-points-transactions-stream-publisher` | `points-transactions` stream; `onFailure` SQS DLQ on its `DynamoEventSource` (ADR-0015 §1) |
 | `OrderCancelledRule` | existing `ordering-stream-publisher` |
 | `PaymentDeclinedInsufficientPointsRule` | existing `payment-payments-stream-publisher` |
-| `payment-points-reservation-consumer` | Payment, consumes `PointsReservedEvent` + `PointsReservationFailedEvent` |
+| `payment-points-reserved-consumer` / `payment-points-reservation-failed-consumer` | Payment, one per event (`PointsReservedEvent`, `PointsReservationFailedEvent`), the two entry points of §6 |
 
 ### Flow
 
@@ -306,7 +313,7 @@ sequenceDiagram
   the customer to confirm again.
 - Checkouts with points take a longer asynchronous path (reservation → event → Payment) before the
   gateway is called.
-- Six new event-driven Lambdas (Challenges: 4 consumers + 1 publisher; Payment: 1 consumer), each with
+- Seven new event-driven Lambdas (Challenges: 4 consumers + 1 publisher; Payment: 2 consumers), each with
   a rule or stream source, DLQ and alarm, plus two new rules on existing publishers.
 - Payment's own `PaymentResult` consumer receives the `PaymentDeclinedEvent` Payment now publishes — an
   extra invocation and inbox write that no-ops by design.
@@ -333,6 +340,10 @@ sequenceDiagram
 - Basket's checkout contract MUST NOT gain a currency field derived from points.
 - Adding an action to cancel a paid order requires no change here — it only has to move the order to
   `Cancelled`.
+- Any cancellation trigger that can fire while the payment is still `AwaitingPoints` (cancelling an
+  unpaid order, expiry, an admin cancel) MUST first make settlement handle a reservation that lands
+  after the cancellation — e.g. by writing a terminal row with `attribute_not_exists` so the late
+  reservation fails — because settlement treats a missing row as "no points" (§5).
 
 ---
 
