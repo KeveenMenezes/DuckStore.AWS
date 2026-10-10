@@ -313,4 +313,79 @@ public class DynamoPlayerProgressRepositoryTests
         await Assert.ThrowsAsync<Challenges.Function.Shared.Exceptions.InsufficientPointsException>(
             () => _repository.RedeemPointsAsync(_ownerId, RedeemDelta(_ownerId, 5_000)));
     }
+
+    private static readonly Guid ReviewedProduct = Guid.Parse("6755192f-0676-413c-8358-7d70c118fc2a");
+
+    private PointsTransaction ReviewCredit() =>
+        PointsTransaction.ReviewCredit(_ownerId, ReviewedProduct, new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc));
+
+    [Fact]
+    public async Task CreditAsync_ShouldPutTheLedgerRow_AndAddToScore_InOneTransaction()
+    {
+        TransactWriteItemsRequest? captured = null;
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<TransactWriteItemsRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new TransactWriteItemsResponse());
+
+        var credited = await _repository.CreditAsync(ReviewCredit());
+
+        Assert.True(credited);
+        Assert.Equal(2, captured!.TransactItems.Count);
+
+        var put = captured.TransactItems.Single(i => i.Put is not null).Put;
+        Assert.Equal(PointsTransactionsSchema.TableName, put.TableName);
+        Assert.Equal("attribute_not_exists(TransactionId)", put.ConditionExpression);
+        Assert.Equal("USER#alice", put.Item["OwnerId"].S);
+        Assert.Equal($"REVIEW#{ReviewedProduct}", put.Item["TransactionId"].S);
+        Assert.Equal("ReviewCredit", put.Item["Type"].S);
+        Assert.Equal("Completed", put.Item["Status"].S);
+        Assert.Equal("15", put.Item["Points"].N);
+
+        // A player who never answered a challenge has no PROFILE yet: ADD creates it, and every
+        // reader treats the absent counters as 0.
+        var profileUpdate = captured.TransactItems.Single(i => i.Update is not null).Update;
+        Assert.Equal(ProgressSchema.TableName, profileUpdate.TableName);
+        Assert.Equal("PROFILE", profileUpdate.Key["SK"].S);
+        Assert.Equal("USER#alice", profileUpdate.Key["OwnerId"].S);
+        Assert.Equal("ADD Score :points", profileUpdate.UpdateExpression);
+        Assert.Equal("15", profileUpdate.ExpressionAttributeValues[":points"].N);
+        Assert.Null(profileUpdate.ConditionExpression);
+    }
+
+    [Fact]
+    public async Task CreditAsync_ShouldReturnFalse_WhenTheLedgerRowAlreadyExists()
+    {
+        // Redelivered event, or the review was deleted and published again: the deterministic
+        // REVIEW#<productId> row is already there, so the balance is left untouched.
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TransactionCanceledException("cancelled")
+            {
+                CancellationReasons =
+                [
+                    new CancellationReason { Code = "ConditionalCheckFailed" },
+                    new CancellationReason { Code = "None" }
+                ]
+            });
+
+        Assert.False(await _repository.CreditAsync(ReviewCredit()));
+    }
+
+    [Fact]
+    public async Task CreditAsync_ShouldPropagate_WhenTheTransactionFailsForAnyOtherReason()
+    {
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TransactionCanceledException("cancelled")
+            {
+                CancellationReasons =
+                [
+                    new CancellationReason { Code = "None" },
+                    new CancellationReason { Code = "TransactionConflict" }
+                ]
+            });
+
+        await Assert.ThrowsAsync<TransactionCanceledException>(() => _repository.CreditAsync(ReviewCredit()));
+    }
 }

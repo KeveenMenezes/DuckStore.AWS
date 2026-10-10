@@ -57,6 +57,16 @@ public static class ChallengesExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
+        // Consumes Review's ReviewCreatedEvent and credits the review points once per product
+        // (SPEC-review-points). Writes only; publishes nothing. Locally EventBridge is best-effort,
+        // so the SPA's local GraphQL backend simulates the credit instead.
+        builder.AddAWSLambdaFunction<Projects.Challenges_Function>(
+                "challenges-review-created-consumer",
+                lambdaHandler: LambdaHandler("Challenges.Function", "ReviewCreatedConsumer"))
+            .WaitForCompletion(challengesSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
         return challengesSeeder;
     }
 }

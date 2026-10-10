@@ -47,6 +47,34 @@ public class PointsTransactionTests
     }
 
     [Fact]
+    public void ReviewCredit_ShouldBuildACompletedCreditOfThePolicyAmount_KeyedByProduct()
+    {
+        var productId = Guid.Parse("6755192f-0676-413c-8358-7d70c118fc2a");
+
+        var credit = PointsTransaction.ReviewCredit(Owner, productId, At.ToLocalTime());
+
+        // REVIEW#<productId> is the "once per product" lock (SPEC-review-points): it holds even
+        // after the review is deleted, expires by TTL and is published again.
+        Assert.Equal($"REVIEW#{productId}", credit.Id);
+        Assert.Equal(Owner, credit.OwnerId);
+        Assert.Equal(PointsTransactionType.ReviewCredit, credit.Type);
+        Assert.Equal(PointsTransactionStatus.Completed, credit.Status);
+        Assert.Equal(15, credit.Points);
+        Assert.Equal(PointsPolicy.ReviewCredit, credit.Points);
+        Assert.Equal(productId.ToString(), credit.SourceId);
+        Assert.Equal(At, credit.CreatedAt);
+        Assert.Equal(DateTimeKind.Utc, credit.CreatedAt!.Value.Kind);
+        Assert.Null(credit.OrderId);
+    }
+
+    [Fact]
+    public void ReviewCredit_ShouldReject_AnEmptyProductId()
+    {
+        Assert.Throws<BuildingBlocks.Core.Exceptions.BadRequestException>(
+            () => PointsTransaction.ReviewCredit(Owner, Guid.Empty, At));
+    }
+
+    [Fact]
     public void Statuses_ShouldDeclareTheWholeRedemptionLifecycle_EvenThoughOnlyCreditsExistYet()
     {
         // ADR-0048 §5: the redemption states ship in the enum now so the persisted/GraphQL

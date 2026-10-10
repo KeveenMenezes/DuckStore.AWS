@@ -36,6 +36,12 @@ public interface IPlayerProgressRepository
     Task<int> RevealHintAsync(
         OwnerId ownerId, QuestionId questionId, int hintCount, CancellationToken cancellationToken = default);
 
+    // Puts a credit's ledger row and ADDs its points to PROFILE Score in one TransactWriteItems
+    // (ADR-0048 §2). PROFILE may not exist yet (the player never answered a challenge); ADD creates
+    // it. Returns false — nothing written — when the deterministic TransactionId is already in the
+    // ledger, which is how a redelivered or repeated source event stays a no-op.
+    Task<bool> CreditAsync(PointsTransaction credit, CancellationToken cancellationToken = default);
+
     // Debits PROFILE and writes the REDEMPTION# ledger row in one TransactWriteItems (ADR-0046 §2).
     // `delta` MUST be a PlayerProgress.CreateEmpty shell that has had exactly one Redeem call —
     // Score carries the negative delta to ADD, PointsSpent the positive one, mirroring

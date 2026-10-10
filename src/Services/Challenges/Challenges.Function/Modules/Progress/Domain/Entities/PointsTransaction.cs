@@ -43,4 +43,29 @@ public class PointsTransaction : Entity<string>
             UpdatedAt = at
         };
     }
+
+    // Keyed by product, not by review: the review row can go Published -> Deleted -> Published,
+    // or expire by TTL and be bought and written again, and none of that may credit twice
+    // (SPEC-review-points). The amount is the fixed PointsPolicy.ReviewCredit.
+    public static PointsTransaction ReviewCredit(OwnerId ownerId, Guid productId, DateTime at)
+    {
+        if (productId == Guid.Empty)
+        {
+            throw new BadRequestException(nameof(productId), productId, "must not be empty");
+        }
+
+        at = at.ToUniversalTime();
+
+        return new PointsTransaction
+        {
+            Id = PointsTransactionsSchema.ReviewTransactionId(productId),
+            OwnerId = ownerId,
+            Type = PointsTransactionType.ReviewCredit,
+            Status = PointsTransactionStatus.Completed,
+            Points = PointsPolicy.ReviewCredit,
+            SourceId = productId.ToString(),
+            CreatedAt = at,
+            UpdatedAt = at
+        };
+    }
 }

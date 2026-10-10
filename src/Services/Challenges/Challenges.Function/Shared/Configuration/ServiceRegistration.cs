@@ -1,4 +1,5 @@
-﻿using Challenges.Function.Modules.Progress.Features.RedeemPoints;
+﻿using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.ReviewCreated;
+using Challenges.Function.Modules.Progress.Features.RedeemPoints;
 using Challenges.Function.Modules.Progress.Features.RevealHint;
 using Challenges.Function.Modules.Progress.Features.SubmitAnswer;
 
@@ -29,6 +30,8 @@ public static class ServiceRegistration
         services.AddScoped<IValidator<SubmitAnswerCommand>, SubmitAnswerCommandValidator>();
         services.AddScoped<IValidator<RevealHintCommand>, RevealHintCommandValidator>();
         services.AddScoped<IValidator<RedeemPointsCommand>, RedeemPointsCommandValidator>();
+
+        services.AddScoped<ReviewCreatedHandler>();
 
         services.AddEventBridgeMessaging(configuration);
         services.AddScoped<IStreamRule<ProgressStreamImage>, ChallengeAnsweredRule>();

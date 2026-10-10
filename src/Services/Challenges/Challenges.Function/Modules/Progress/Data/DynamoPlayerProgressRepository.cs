@@ -161,6 +161,42 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
         }
     }
 
+    public async Task<bool> CreditAsync(PointsTransaction credit, CancellationToken cancellationToken = default)
+    {
+        var ledgerPut = BuildLedgerPut(credit);
+
+        var balanceUpdate = new TransactWriteItem
+        {
+            Update = new Update
+            {
+                TableName = TableName,
+                Key = Key(credit.OwnerId.Value, ProgressSchema.ProfileSortKey),
+                UpdateExpression = "ADD Score :points",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":points"] = new AttributeValue { N = credit.Points.ToString(CultureInfo.InvariantCulture) }
+                }
+            }
+        };
+
+        var transactItems = new List<TransactWriteItem> { ledgerPut, balanceUpdate };
+
+        try
+        {
+            await dynamoDb.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }, cancellationToken);
+
+            return true;
+        }
+        catch (TransactionCanceledException ex)
+            when (ConditionFailedOn(ex, transactItems.IndexOf(ledgerPut)))
+        {
+            // Already credited: the ledger row is the lock, and the balance update was cancelled
+            // with it.
+            return false;
+        }
+    }
+
     public async Task<Redemption> RedeemPointsAsync(
         OwnerId ownerId, PlayerProgress delta, CancellationToken cancellationToken = default)
     {

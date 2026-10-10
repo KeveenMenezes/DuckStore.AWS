@@ -127,7 +127,7 @@
 
 ## Fase 4 — `review-points` ([spec](../SPEC-review-points.md))
 
-- [ ] **T20: Consumer `challenges-review-created-consumer`** (M)
+- [x] **T20: Consumer `challenges-review-created-consumer`** (M)
   - Aceite: `PointsPolicy.ReviewCredit = 15`; `PointsTransaction.ReviewCredit` gera `REVIEW#<productId>`; uma transação com Put no ledger (`attribute_not_exists`) + `ADD Score 15`; falha condicional = no-op; um PROFILE inexistente é criado e lido sem erro; registrado no AppHost.
   - Verificar: testes do domínio, do handler e do mapper (`UserId` vazio rejeitado); teste do `PlayerProgress.Load` com PROFILE só com `Score`.
   - Arquivos: `Domain/PointsPolicy.cs`, `Domain/Entities/PointsTransaction.cs`, `Consumers/ReviewCreated/{Endpoint,Handler,Mapper}.cs`, `Data/DynamoPlayerProgressRepository.cs`, `src/AppHost/ChallengesExtensions.cs`. Dependências: T4, T15. Usar `cdc-integration-scaffold`.
