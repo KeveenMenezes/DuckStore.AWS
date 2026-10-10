@@ -98,6 +98,8 @@ export function ReviewsSection({ productId, initialReviews, initialNextToken }: 
     if (!myReview) return
     setReviews((prev) => prev.filter((r) => r.id !== myReview.id))
     recordReviewRemoval(myReview.rating)
+    // The promise belonged to that publication; republishing the same product earns nothing.
+    setPointsOnTheWay(false)
     setMyReview({ ...myReview, status: "Deleted" })
   }
 
