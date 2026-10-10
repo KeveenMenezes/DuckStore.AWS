@@ -8,6 +8,3 @@
 export const REWARD_POINTS_PER_UNIT = 100;
 export const REWARD_CURRENCY_PER_UNIT = 1;
 export const REWARD_MAX_DISCOUNT_PERCENT = 20;
-
-// Only the legacy coupon expires; removed with it (T34/T35).
-export const REWARD_EXPIRY_DAYS = 90;

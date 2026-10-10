@@ -265,55 +265,6 @@ public class DynamoPlayerProgressRepositoryTests
         Assert.True(captured!.ConsistentRead);
     }
 
-    private static PlayerProgress RedeemDelta(OwnerId ownerId, int points)
-    {
-        var progress = PlayerProgress.CreateEmpty(ownerId);
-        progress.Redeem(points);
-        return progress;
-    }
-
-    [Fact]
-    public async Task RedeemPointsAsync_ShouldDebitProfile_AndWriteTheRedemptionRow()
-    {
-        TransactWriteItemsRequest? captured = null;
-        _dynamoDb
-            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
-            .Callback<TransactWriteItemsRequest, CancellationToken>((r, _) => captured = r)
-            .ReturnsAsync(new TransactWriteItemsResponse());
-
-        var redemption = await _repository.RedeemPointsAsync(_ownerId, RedeemDelta(_ownerId, 500));
-
-        Assert.NotNull(captured);
-        Assert.Equal(2, captured!.TransactItems.Count);
-
-        var profileUpdate = captured.TransactItems[0].Update;
-        Assert.Equal("PROFILE", profileUpdate.Key["SK"].S);
-        Assert.Equal("Score >= :pts", profileUpdate.ConditionExpression);
-        Assert.Equal("500", profileUpdate.ExpressionAttributeValues[":pts"].N);
-        Assert.Equal("-500", profileUpdate.ExpressionAttributeValues[":scoreDelta"].N);
-
-        var redemptionPut = captured.TransactItems[1].Put;
-        Assert.Equal("attribute_not_exists(SK)", redemptionPut.ConditionExpression);
-        Assert.Equal(500, int.Parse(redemptionPut.Item["PointsSpent"].N));
-        Assert.StartsWith("REDEMPTION#", redemptionPut.Item["SK"].S);
-
-        Assert.Equal(500, redemption.Points);
-    }
-
-    [Fact]
-    public async Task RedeemPointsAsync_ShouldThrowInsufficientPoints_WhenTheBalanceConditionFails()
-    {
-        _dynamoDb
-            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new TransactionCanceledException("cancelled")
-            {
-                CancellationReasons = [new CancellationReason { Code = "ConditionalCheckFailed" }]
-            });
-
-        await Assert.ThrowsAsync<Challenges.Function.Shared.Exceptions.InsufficientPointsException>(
-            () => _repository.RedeemPointsAsync(_ownerId, RedeemDelta(_ownerId, 5_000)));
-    }
-
     private static readonly Guid ReviewedProduct = Guid.Parse("6755192f-0676-413c-8358-7d70c118fc2a");
 
     private PointsTransaction ReviewCredit() =>

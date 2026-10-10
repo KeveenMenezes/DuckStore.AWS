@@ -4,7 +4,6 @@ using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.PaymentAu
 using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.ReviewCreated;
 using Challenges.Function.Modules.Progress.EventsIntegration.Publishers.PointsTransactions;
 using Challenges.Function.Modules.Progress.EventsIntegration.Publishers.PointsTransactions.Rules;
-using Challenges.Function.Modules.Progress.Features.RedeemPoints;
 using Challenges.Function.Modules.Progress.Features.RevealHint;
 using Challenges.Function.Modules.Progress.Features.SubmitAnswer;
 
@@ -34,7 +33,6 @@ public static class ServiceRegistration
         // FluentValidation (ADR-0042 §7).
         services.AddScoped<IValidator<SubmitAnswerCommand>, SubmitAnswerCommandValidator>();
         services.AddScoped<IValidator<RevealHintCommand>, RevealHintCommandValidator>();
-        services.AddScoped<IValidator<RedeemPointsCommand>, RedeemPointsCommandValidator>();
 
         services.AddScoped<ReviewCreatedHandler>();
         services.AddScoped<BasketCheckoutHandler>();
@@ -43,7 +41,6 @@ public static class ServiceRegistration
 
         services.AddEventBridgeMessaging(configuration);
         services.AddScoped<IStreamRule<ProgressStreamImage>, ChallengeAnsweredRule>();
-        services.AddScoped<IStreamRule<ProgressStreamImage>, PointsRedeemedRule>();
         services.AddScoped<StreamRuleDispatcher<ProgressStreamImage>>();
         services.AddScoped<IStreamRule<PointsTransactionStreamImage>, PointsReservedRule>();
         services.AddScoped<IStreamRule<PointsTransactionStreamImage>, PointsReservationFailedRule>();

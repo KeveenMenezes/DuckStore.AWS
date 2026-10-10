@@ -8,7 +8,6 @@ public class GetBasketInstallmentPlanHandler(
     IPriceRepository priceRepository,
     IGatewayCostRepository gatewayCostRepository,
     ICampaignRepository campaignRepository,
-    ICustomerDiscountRepository customerDiscountRepository,
     InstallmentOptions installmentOptions,
     RewardOptions rewardOptions)
     : IQueryHandler<GetBasketInstallmentPlanQuery, GetBasketInstallmentPlanResult>
@@ -21,16 +20,15 @@ public class GetBasketInstallmentPlanHandler(
     {
         var productIds = query.Items.Select(item => item.ProductId).ToList();
 
-        // Four independent reads (prices, campaign discounts, gateway cost, customer coupon): none
-        // feeds another's key, so they go out together instead of costing four sequential round
-        // trips on a query the customer waits through synchronously.
+        // Three independent reads (prices, campaign discounts, gateway cost): none feeds another's
+        // key, so they go out together instead of costing three sequential round trips on a query
+        // the customer waits through synchronously.
         var pricesTask = priceRepository.GetByProductIdsAsync(productIds, cancellationToken);
         var discountsTask = campaignRepository.GetActiveDiscountsForProductsAsync(productIds, cancellationToken);
         var gatewayCostTask = gatewayCostRepository.GetByProviderAsync(
             installmentOptions.ActiveProvider, cancellationToken);
-        var customerDiscountTask = ResolveCustomerDiscountAsync(query, cancellationToken);
 
-        await Task.WhenAll(pricesTask, discountsTask, gatewayCostTask, customerDiscountTask);
+        await Task.WhenAll(pricesTask, discountsTask, gatewayCostTask);
 
         var pricesByProductId = (await pricesTask).ToDictionary(price => price.Id.Value);
         var discountsByProductId = await discountsTask;
@@ -49,16 +47,13 @@ public class GetBasketInstallmentPlanHandler(
         var gatewayCost = await gatewayCostTask
             ?? throw new GatewayCostNotFoundException(installmentOptions.ActiveProvider);
 
-        var customerDiscountAmount = await customerDiscountTask;
-
         var cartPlan = InstallmentCalculator.CalculateForCart(
-            items, gatewayCost, installmentOptions.MinMarginPercent, installmentOptions.ValueTiers,
-            customerDiscountAmount);
+            items, gatewayCost, installmentOptions.MinMarginPercent, installmentOptions.ValueTiers);
 
-        // The cap is 20% of the post-campaign card price — the cart's price before any customer
-        // discount (ADR-0048 §3). The points discount then goes through the same cart-level,
-        // after-campaign path the coupon uses, which also recomputes the cash price and every
-        // installment over the net total (ADR-0046 §5).
+        // The cap is 20% of the post-campaign card price — the cart's price before the points
+        // (ADR-0048 §3). The points discount then goes through the cart-level, after-campaign
+        // customer-discount path, which also recomputes the cash price and every installment over
+        // the net total (ADR-0046 §5).
         var maxRedeemablePoints = rewardOptions.MaxRedeemablePoints(cartPlan.Breakdown.Price);
         if (query.PointsToUse > maxRedeemablePoints)
         {
@@ -113,27 +108,4 @@ public class GetBasketInstallmentPlanHandler(
 
     private static long ToCents(decimal amount) =>
         (long)Math.Round(amount * 100m, MidpointRounding.AwayFromZero);
-
-    // Null for the common no-coupon case. Validates owner match, Status=Issued and not expired in
-    // one call (CustomerDiscount.IsRedeemableBy) — the same undifferentiated rejection either way,
-    // so a caller can't learn from the error whether a discountId belongs to someone else, is
-    // already spent, or never existed (ADR-0046 §5).
-    private async Task<decimal?> ResolveCustomerDiscountAsync(
-        GetBasketInstallmentPlanQuery query, CancellationToken cancellationToken)
-    {
-        if (string.IsNullOrWhiteSpace(query.DiscountId))
-        {
-            return null;
-        }
-
-        var discount = await customerDiscountRepository.GetAsync(
-            query.OwnerId!, query.DiscountId, cancellationToken);
-
-        if (discount is null || !discount.IsRedeemableBy(query.OwnerId!, DateTime.UtcNow))
-        {
-            throw new CustomerDiscountNotRedeemableException(query.DiscountId);
-        }
-
-        return discount.Amount;
-    }
 }

@@ -16,7 +16,6 @@ public class RewardOptionsTests
         {
             ["Rewards:PointsPerUnit"] = "200",
             ["Rewards:CurrencyPerUnit"] = "25",
-            ["Rewards:ExpiryDays"] = "30",
             ["Rewards:MaxDiscountPercent"] = "15"
         });
 
@@ -24,7 +23,6 @@ public class RewardOptionsTests
 
         Assert.Equal(200, options.PointsPerUnit);
         Assert.Equal(25m, options.CurrencyPerUnit);
-        Assert.Equal(30, options.ExpiryDays);
         Assert.Equal(15m, options.MaxDiscountPercent);
     }
 
@@ -39,7 +37,6 @@ public class RewardOptionsTests
         Assert.Equal(100, options.PointsPerUnit);
         Assert.Equal(1m, options.CurrencyPerUnit);
         Assert.Equal(20m, options.MaxDiscountPercent);
-        Assert.Equal(90, options.ExpiryDays);
     }
 
     // PointsPerUnit is a divisor: a zero from a typo'd env var would throw DivideByZeroException
@@ -58,7 +55,7 @@ public class RewardOptionsTests
         var options = RewardOptions.FromConfiguration(configuration);
 
         Assert.Equal(100, options.PointsPerUnit);
-        Assert.Equal(5m, options.ConvertToCurrency(500));
+        Assert.Equal(5m, options.PointsDiscount(500));
     }
 
     [Theory]
@@ -69,14 +66,12 @@ public class RewardOptionsTests
         var configuration = BuildConfiguration(new Dictionary<string, string?>
         {
             ["Rewards:CurrencyPerUnit"] = configured,
-            ["Rewards:ExpiryDays"] = configured,
             ["Rewards:MaxDiscountPercent"] = configured
         });
 
         var options = RewardOptions.FromConfiguration(configuration);
 
         Assert.Equal(1m, options.CurrencyPerUnit);
-        Assert.Equal(90, options.ExpiryDays);
         Assert.Equal(20m, options.MaxDiscountPercent);
     }
 
@@ -90,16 +85,6 @@ public class RewardOptionsTests
         });
 
         Assert.Equal(20m, RewardOptions.FromConfiguration(configuration).MaxDiscountPercent);
-    }
-
-    [Fact]
-    public void ConvertToCurrency_ShouldApplyTheRate_AndRoundToTwoDecimals()
-    {
-        var options = new RewardOptions { PointsPerUnit = 100, CurrencyPerUnit = 10m };
-
-        var amount = options.ConvertToCurrency(333);
-
-        Assert.Equal(33.30m, amount);
     }
 
     [Theory]

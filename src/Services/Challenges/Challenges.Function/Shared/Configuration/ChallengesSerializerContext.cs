@@ -16,8 +16,6 @@ namespace Challenges.Function.Shared.Configuration;
 [JsonSerializable(typeof(SubmitChallengeAnswerResponse))]
 [JsonSerializable(typeof(RevealChallengeHintRequest))]
 [JsonSerializable(typeof(RevealChallengeHintResponse))]
-[JsonSerializable(typeof(RedeemChallengePointsRequest))]
-[JsonSerializable(typeof(RedeemChallengePointsResponse))]
 [JsonSerializable(typeof(EventBridgeEvent<ReviewCreatedEvent>))]
 [JsonSerializable(typeof(EventBridgeEvent<BasketCheckoutEvent>))]
 [JsonSerializable(typeof(EventBridgeEvent<PaymentAuthorizedEvent>))]

@@ -39,18 +39,8 @@ public static class ChallengesExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
-        // AppSync Mutation resolver (Lambda-backed — the balance debit is a conditional
-        // TransactWriteItems, ADR-0046 §2).
-        builder.AddAWSLambdaFunction<Projects.Challenges_Function>(
-                "challenges-redeem-points",
-                lambdaHandler: LambdaHandler("Challenges.Function", "RedeemChallengePoints"))
-            .WaitForCompletion(challengesSeeder)
-            .WithReference(dynamoDb)
-            .WithAwsDevEnvironment();
-
-        // CDC publisher: challenge-progress INSERT/MODIFY → DynamoDB Stream →
-        // ChallengeAnsweredEvent/PointsRedeemedEvent on EventBridge (ADR-0045 §7/ADR-0046),
-        // dispatched via the rule-based StreamRuleDispatcher (ADR-0019).
+        // CDC publisher: challenge-progress INSERT/MODIFY → DynamoDB Stream → ChallengeAnsweredEvent
+        // on EventBridge (ADR-0045 §7), dispatched via the rule-based StreamRuleDispatcher (ADR-0019).
         builder.AddAWSLambdaFunction<Projects.Challenges_Function>(
                 "challenges-progress-stream-publisher",
                 lambdaHandler: LambdaHandler("Challenges.Function", "ChallengesProgressStreamPublisher"))

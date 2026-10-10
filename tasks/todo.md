@@ -210,10 +210,11 @@
 - [ ] AWS dev: critérios 1 a 8, 10, 11, 13 e 14 do spec; o 9 pelo teste unitário.
 - [ ] `adr-guardian` no diff da fase. Revisão humana antes da remoção.
 
-- [ ] **T34: Remover o cupom do backend (Challenges + Pricing)** (M)
+- [x] **T34: Remover o cupom do backend (Challenges + Pricing)** (M)
   - Aceite: saem a feature `RedeemPoints`, `PlayerProgress.Redeem`/`MinimumRedeemablePoints`, `Redemption`/`REDEMPTION#` em `challenge-progress`, `PointsRedeemedRule`/`Event`, o módulo `Pricing/CustomerDiscounts` e o `DiscountId` no `GetBasketInstallmentPlan`; o registro de DI e o AppHost são limpos; os testes correspondentes são removidos ou ajustados.
   - Verificar: `dotnet build` + `dotnet test` (Challenges e Pricing).
   - Arquivos: diretórios removidos + `ServiceRegistration.cs` dos dois serviços + `src/AppHost/{Challenges,Pricing}Extensions.cs`. Dependências: Checkpoint 5a.
+  - Feito: as Lambdas `challenges-redeem-points`, `pricing-points-redeemed-consumer` e `pricing-payment-authorized-consumer` saíram do CDK aqui, e não na T35, para o CDK nunca apontar para um handler que não existe mais. Saíram também `PointsSpent`, `InsufficientPointsException`, `RewardOptions.ExpiryDays`/`ConvertToCurrency` e `REWARD_EXPIRY_DAYS`, que ficaram sem uso. O teste "desconto depois da campanha" foi portado do cupom para os pontos.
 
 - [ ] **T35: Remover o `DiscountId` e o schema de cupom** (M)
   - Aceite: o `DiscountId` sai de `BasketCheckoutEvent`, `PaymentRequestedEvent`, `PaymentAuthorizedEvent`, do `Payment` e do PaymentGateway; saem `redeemChallengePoints`, `myRewards`, `CustomerDiscount` e `discountId` do schema, dos resolvers, do `local.ts` e da SPA (`GET_MY_REWARDS`); Lambdas e regras de CDK sem estado são removidas.

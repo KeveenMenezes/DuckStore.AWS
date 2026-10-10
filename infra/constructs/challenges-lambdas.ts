@@ -23,7 +23,6 @@ export interface ChallengesLambdasProps {
 export class ChallengesLambdas extends Construct {
   public readonly submitChallengeAnswer: lambda.Function;
   public readonly revealChallengeHint: lambda.Function;
-  public readonly redeemChallengePoints: lambda.Function;
   public readonly challengesProgressStreamPublisher: lambda.Function;
   public readonly reviewCreatedConsumer: lambda.Function;
   public readonly basketCheckoutConsumer: lambda.Function;
@@ -91,31 +90,11 @@ export class ChallengesLambdas extends Construct {
     challengesTable.grantReadData(this.revealChallengeHint);
     challengeProgressTable.grantReadWriteData(this.revealChallengeHint);
 
-    // 3. challenges-redeem-points  (AppSync Invoke — Mutation.redeemChallengePoints)
-    //    Debits the balance via a conditional TransactWriteItems (Score >= points) and writes the
-    //    REDEMPTION# ledger row in the same transaction (ADR-0046 §2). No currency amount ever
-    //    passes through this Lambda — Pricing converts points to money asynchronously off the
-    //    PointsRedeemedEvent the ledger write triggers (ADR-0046 §1, §4).
-    this.redeemChallengePoints = new lambda.Function(this, 'RedeemChallengePoints', {
-      functionName: 'challenges-redeem-points',
-      tracing: lambda.Tracing.ACTIVE,
-      architecture: DOTNET_ARCH,
-      runtime: DOTNET_RUNTIME,
-      // provided.al2023 runs the file named `bootstrap`; this value is inert.
-      handler: 'bootstrap',
-      code: challengesCode,
-      timeout: cdk.Duration.seconds(30),
-      memorySize: DOTNET_MEMORY_MB,
-      description: 'Debits a player\'s point balance and writes the redemption ledger row',
-      environment: { ANNOTATIONS_HANDLER: 'RedeemChallengePoints' },
-    });
-    challengeProgressTable.grantReadWriteData(this.redeemChallengePoints);
-
-    // 4. challenges-progress-stream-publisher
+    // 3. challenges-progress-stream-publisher
     //    Trigger: DynamoDB Streams on challenge-progress (NEW_AND_OLD_IMAGES). Rule-based
-    //    dispatcher (ADR-0019): the IsCorrect null→set transition → ChallengeAnsweredEvent, a
-    //    REDEMPTION# insert → PointsRedeemedEvent (ADR-0045 §7, ADR-0046 §3). MODIFY of PROFILE
-    //    never matches either rule, so the KPI-fold write publishes nothing.
+    //    dispatcher (ADR-0019): the IsCorrect null→set transition → ChallengeAnsweredEvent
+    //    (ADR-0045 §7). MODIFY of PROFILE never matches the rule, so the KPI-fold write publishes
+    //    nothing.
     this.challengesProgressStreamPublisher = new lambda.Function(
       this,
       'ChallengesProgressStreamPublisher',
@@ -130,7 +109,7 @@ export class ChallengesLambdas extends Construct {
         timeout: cdk.Duration.seconds(30),
         memorySize: DOTNET_MEMORY_MB,
         description:
-          'CDC: reads DynamoDB Streams on challenge-progress and publishes ChallengeAnswered/PointsRedeemed to EventBridge',
+          'CDC: reads DynamoDB Streams on challenge-progress and publishes ChallengeAnswered to EventBridge',
         environment: {
           ANNOTATIONS_HANDLER: 'ChallengesProgressStreamPublisher',
           EventBridge__BusName: eventBus.eventBusName,
@@ -152,7 +131,7 @@ export class ChallengesLambdas extends Construct {
 
     eventBus.grantPutEventsTo(this.challengesProgressStreamPublisher);
 
-    // 5. challenges-review-created-consumer
+    // 4. challenges-review-created-consumer
     //    Trigger: EventBridge rule (ReviewCreatedEvent, source=duckstore) — the second rule on
     //    this event, next to CatalogView's. Credits the review points once per product: one
     //    TransactWriteItems Puts the REVIEW#<productId> ledger row (attribute_not_exists) and ADDs
@@ -196,7 +175,7 @@ export class ChallengesLambdas extends Construct {
       }),
     );
 
-    // 6. challenges-basket-checkout-consumer
+    // 5. challenges-basket-checkout-consumer
     //    Trigger: EventBridge rule (BasketCheckoutEvent, source=duckstore). Reserves the points a
     //    checkout used (ADR-0048 §5): one TransactWriteItems debits PROFILE under Score >= points
     //    and Puts REDEMPTION#<orderId> Reserved; a short balance Puts a Failed row instead.
@@ -221,7 +200,7 @@ export class ChallengesLambdas extends Construct {
       'challenges-basket-checkout-consumer', 'BasketCheckoutEvent',
     );
 
-    // 7. challenges-points-transactions-stream-publisher
+    // 6. challenges-points-transactions-stream-publisher
     //    Trigger: DynamoDB Streams on points-transactions (NEW_AND_OLD_IMAGES). Rule-based
     //    dispatcher (ADR-0019): a redemption row's INSERT → PointsReservedEvent (Reserved) or
     //    PointsReservationFailedEvent (Failed), which Payment waits on (ADR-0048 §5). Credits and

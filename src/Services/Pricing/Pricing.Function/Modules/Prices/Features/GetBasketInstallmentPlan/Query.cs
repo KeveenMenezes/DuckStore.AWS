@@ -4,19 +4,14 @@ namespace Pricing.Function.Modules.Prices.Features.GetBasketInstallmentPlan;
 
 public record BasketInstallmentItem(Guid ProductId, int Quantity);
 
-// OwnerId/DiscountId are both null for the common no-coupon case (ADR-0046 §5) — the resolver only
-// populates them when the client sends a discountId, and only after confirming ctx.identity (a
-// customer discount is Cognito-only; basketInstallmentPlan itself stays public for guests).
-//
 // PointsToUse is the in-cart redemption (ADR-0048 §3): capped here, never checked against the
-// balance — Pricing doesn't know it (ADR-0046 §1). ExpectedTotal/PaymentMethod/Installments come
+// balance — Pricing doesn't know it (ADR-0046 §1). The resolver only sends it for a signed-in
+// customer; basketInstallmentPlan itself stays public for guests. ExpectedTotal/PaymentMethod/Installments come
 // only from the checkout pipeline: with them, the quote also picks the total charged for that
 // payment choice and refuses it if it differs from what the customer confirmed (ADR-0048 §4).
 // PaymentMethod follows Ordering's enum: Debit = 1, Credit = 2, Cash = 3.
 public record GetBasketInstallmentPlanQuery(
     IReadOnlyList<BasketInstallmentItem> Items,
-    string? OwnerId = null,
-    string? DiscountId = null,
     int PointsToUse = 0,
     decimal? ExpectedTotal = null,
     int? PaymentMethod = null,
@@ -62,21 +57,9 @@ public class GetBasketInstallmentPlanQueryValidator : IValidator<GetBasketInstal
             }
         }
 
-        if (!string.IsNullOrWhiteSpace(instance.DiscountId) && string.IsNullOrWhiteSpace(instance.OwnerId))
-        {
-            yield return new(nameof(instance.OwnerId), "OwnerId is required when DiscountId is provided");
-        }
-
         if (instance.PointsToUse < 0)
         {
             yield return new(nameof(instance.PointsToUse), "PointsToUse must not be negative");
-        }
-
-        // The coupon is on its way out (ADR-0048 supersedes ADR-0046's model); stacking both would
-        // let the old coupon slip past the new cap.
-        if (instance.PointsToUse > 0 && !string.IsNullOrWhiteSpace(instance.DiscountId))
-        {
-            yield return new(nameof(instance.PointsToUse), "PointsToUse cannot be combined with a DiscountId");
         }
 
         if (instance.ExpectedTotal is not null)

@@ -10,13 +10,6 @@ public class RewardOptions
     public decimal CurrencyPerUnit { get; init; } = 1m;
     public decimal MaxDiscountPercent { get; init; } = 20m;
 
-    // Only the legacy coupon (CustomerDiscounts) expires; in-cart points never do. Goes away with
-    // the coupon (T34).
-    public int ExpiryDays { get; init; } = 90;
-
-    public decimal ConvertToCurrency(int points) =>
-        Math.Round(points * (CurrencyPerUnit / PointsPerUnit), 2, MidpointRounding.AwayFromZero);
-
     // Whole points, rounded down: the cap may never be exceeded by a fraction of a point.
     public int MaxRedeemablePoints(decimal total) =>
         total <= 0
@@ -54,12 +47,7 @@ public class RewardOptions
                 configuration["Rewards:MaxDiscountPercent"], NumberStyles.Number, CultureInfo.InvariantCulture, out var maxDiscountPercent)
                 && maxDiscountPercent is > 0 and <= 100
                 ? maxDiscountPercent
-                : defaults.MaxDiscountPercent,
-            ExpiryDays = int.TryParse(
-                configuration["Rewards:ExpiryDays"], NumberStyles.Integer, CultureInfo.InvariantCulture, out var expiryDays)
-                && expiryDays > 0
-                ? expiryDays
-                : defaults.ExpiryDays
+                : defaults.MaxDiscountPercent
         };
     }
 }

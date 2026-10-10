@@ -109,38 +109,4 @@ public class PlayerProgressTests
 
         Assert.Empty(progress.PointsTransactions);
     }
-
-    [Fact]
-    public void Redeem_ShouldCarryTheNegativeScoreDelta_AndThePositivePointsSpentDelta()
-    {
-        var progress = Empty();
-
-        progress.Redeem(500);
-
-        Assert.Equal(-500, progress.Score);
-        Assert.Equal(500, progress.PointsSpent);
-    }
-
-    [Fact]
-    public void Redeem_ShouldReturnANewRedemption_RecordingThePointsSpent()
-    {
-        var progress = Empty();
-
-        var redemption = progress.Redeem(500);
-
-        Assert.Same(redemption, progress.Redemptions.Single());
-        Assert.Equal(500, redemption.Points);
-        Assert.False(string.IsNullOrWhiteSpace(redemption.Id));
-    }
-
-    [Fact]
-    public void Redeem_ShouldMintADifferentId_OnEachCall()
-    {
-        var progress = Empty();
-
-        var first = progress.Redeem(100);
-        var second = progress.Redeem(100);
-
-        Assert.NotEqual(first.Id, second.Id);
-    }
 }

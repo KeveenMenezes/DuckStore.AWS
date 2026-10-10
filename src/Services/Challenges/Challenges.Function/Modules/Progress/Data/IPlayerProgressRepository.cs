@@ -61,12 +61,4 @@ public interface IPlayerProgressRepository
     // ADDs them to PROFILE Score. Returns false — nothing written — when the condition fails: the
     // row already moved, so the event was a duplicate or out of order.
     Task<bool> SaveSettlementAsync(PointsTransaction settled, CancellationToken cancellationToken = default);
-
-    // Debits PROFILE and writes the REDEMPTION# ledger row in one TransactWriteItems (ADR-0046 §2).
-    // `delta` MUST be a PlayerProgress.CreateEmpty shell that has had exactly one Redeem call —
-    // Score carries the negative delta to ADD, PointsSpent the positive one, mirroring
-    // SaveAttemptAsync's mechanical-translation contract. Throws InsufficientPointsException when
-    // the database's own Score >= points condition fails; that failure never debits anything.
-    Task<Redemption> RedeemPointsAsync(
-        OwnerId ownerId, PlayerProgress delta, CancellationToken cancellationToken = default);
 }

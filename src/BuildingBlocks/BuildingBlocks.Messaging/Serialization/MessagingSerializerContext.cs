@@ -26,7 +26,6 @@ namespace BuildingBlocks.Messaging.Serialization;
 [JsonSerializable(typeof(PaymentAuthorizedEvent))]
 [JsonSerializable(typeof(PaymentDeclinedEvent))]
 [JsonSerializable(typeof(PaymentRequestedEvent))]
-[JsonSerializable(typeof(PointsRedeemedEvent))]
 [JsonSerializable(typeof(PointsReservationFailedEvent))]
 [JsonSerializable(typeof(PointsReservedEvent))]
 [JsonSerializable(typeof(PriceChangedEvent))]

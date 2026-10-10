@@ -83,8 +83,8 @@ public static class InstallmentCalculator
     //
     // Unlike ApplyDiscount/ApplyCartDiscounts, this one *does* move cashPrice. A campaign discount
     // is a markdown on the sticker price, which cashPrice (cost-floor-derived) never tracked; a
-    // customer discount is a fixed currency coupon the customer paid points for, and it has to be
-    // worth the same however they pay. Leaving cashPrice alone would both hide the reward from
+    // customer discount is a fixed currency amount the customer paid points for (ADR-0048 §3), and
+    // it has to be worth the same however they pay. Leaving cashPrice alone would both hide the reward from
     // anyone paying à vista and let cashPrice exceed price.
     private static PricingBreakdown ApplyCustomerDiscount(
         PricingBreakdown breakdown, decimal totalOriginalPrice, decimal customerDiscountAmount,

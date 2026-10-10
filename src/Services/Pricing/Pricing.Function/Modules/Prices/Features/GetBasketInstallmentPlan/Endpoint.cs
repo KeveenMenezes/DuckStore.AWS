@@ -7,8 +7,6 @@ public record BasketInstallmentItemRequest(Guid ProductId, int Quantity);
 
 public record GetBasketInstallmentPlanRequest(
     IReadOnlyList<BasketInstallmentItemRequest> Items,
-    string? OwnerId = null,
-    string? DiscountId = null,
     int PointsToUse = 0,
     decimal? ExpectedTotal = null,
     int? PaymentMethod = null,
@@ -45,8 +43,6 @@ public partial class Functions
     {
         var query = new GetBasketInstallmentPlanQuery(
             [.. request.Items.Select(i => new BasketInstallmentItem(i.ProductId, i.Quantity))],
-            request.OwnerId,
-            request.DiscountId,
             request.PointsToUse,
             request.ExpectedTotal,
             request.PaymentMethod,

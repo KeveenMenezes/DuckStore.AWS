@@ -2,7 +2,6 @@ using BuildingBlocks.Core.Exceptions;
 using Pricing.Function.Modules.Campaigns.Data;
 using Pricing.Function.Modules.Campaigns.Domain.Enums;
 using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
-using Pricing.Function.Modules.CustomerDiscounts.Data;
 using Pricing.Function.Modules.GatewayCosts.Data;
 using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
 using Pricing.Function.Modules.GatewayCosts.Domain.ValueObjects;
@@ -26,7 +25,6 @@ public class GetBasketInstallmentPlanPointsTests
     private readonly Mock<IPriceRepository> _priceRepository = new();
     private readonly Mock<IGatewayCostRepository> _gatewayCostRepository = new();
     private readonly Mock<ICampaignRepository> _campaignRepository = new();
-    private readonly Mock<ICustomerDiscountRepository> _customerDiscountRepository = new();
     private readonly Guid _productId = Guid.NewGuid();
 
     public GetBasketInstallmentPlanPointsTests()
@@ -55,7 +53,6 @@ public class GetBasketInstallmentPlanPointsTests
 
     private GetBasketInstallmentPlanHandler CreateHandler() =>
         new(_priceRepository.Object, _gatewayCostRepository.Object, _campaignRepository.Object,
-            _customerDiscountRepository.Object,
             new InstallmentOptions { ActiveProvider = "Simulated", MinMarginPercent = 0m },
             new RewardOptions());
 
@@ -120,6 +117,33 @@ public class GetBasketInstallmentPlanPointsTests
         Assert.Equal(190m * 1.05m, result.InstallmentPlan.Single(e => e.Count == 2).TotalValue);
         // The cap is a property of the cart, not of what the customer chose to use.
         Assert.Equal(withoutPoints.MaxRedeemablePoints, result.MaxRedeemablePoints);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldSubtractThePointsDiscount_AfterTheCampaignAllocation()
+    {
+        // Two R$100 products, one 20% off: the campaign allocation brings the cart to 90, and the
+        // points come off that resulting total, never per line (ADR-0046 §5, ADR-0048 §3).
+        var discounted = Guid.NewGuid();
+        var fullPrice = Guid.NewGuid();
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                Price.Create(ProductId.Of(discounted), nominalPrice: 100m, cost: 50m),
+                Price.Create(ProductId.Of(fullPrice), nominalPrice: 100m, cost: 50m)
+            ]);
+        ActiveCampaigns(new Dictionary<Guid, ActiveDiscount> { [discounted] = new(DiscountType.Percentage, 20m) });
+
+        var result = await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery(
+                [new BasketInstallmentItem(discounted, 1), new BasketInstallmentItem(fullPrice, 1)],
+                PointsToUse: 1500),
+            CancellationToken.None);
+
+        Assert.Equal(1800, result.MaxRedeemablePoints); // 20% of 90
+        Assert.Equal(75m, result.Price); // 90 (post-campaign) - 15
+        Assert.Equal(200m, result.TotalOriginalPrice); // the sticker price is never discounted
     }
 
     [Fact]
@@ -215,17 +239,6 @@ public class GetBasketInstallmentPlanPointsTests
     {
         var failures = new GetBasketInstallmentPlanQueryValidator().Validate(
             new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(Guid.NewGuid(), 1)], PointsToUse: points));
-
-        Assert.Contains(failures, f => f.PropertyName == "PointsToUse");
-    }
-
-    [Fact]
-    public void Validator_ShouldReject_PointsTogetherWithACoupon()
-    {
-        var failures = new GetBasketInstallmentPlanQueryValidator().Validate(
-            new GetBasketInstallmentPlanQuery(
-                [new BasketInstallmentItem(Guid.NewGuid(), 1)],
-                OwnerId: "USER#alice", DiscountId: "discount-1", PointsToUse: 100));
 
         Assert.Contains(failures, f => f.PropertyName == "PointsToUse");
     }
