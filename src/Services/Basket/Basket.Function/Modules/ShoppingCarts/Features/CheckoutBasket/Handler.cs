@@ -36,6 +36,6 @@ public class CheckoutBasketCommandHandler(IShoppingCartRepository basketReposito
         await basketRepository.DeleteBasket(
             command.BasketCheckoutDto.OwnerId, cancellationToken);
 
-        return new CheckoutBasketResult(true);
+        return new CheckoutBasketResult(true, command.BasketCheckoutDto.OrderId);
     }
 }

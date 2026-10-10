@@ -894,7 +894,7 @@ const resolvers = {
       const ownerId = context.owner.ownerId
       // Read before the checkout, which empties the cart.
       const productIds = await cartProductIds(ownerId)
-      const body = await invokeLambda<{ IsSuccess: boolean }>('basket-checkout-basket', {
+      const body = await invokeLambda<{ IsSuccess: boolean; OrderId: string | null }>('basket-checkout-basket', {
         BasketCheckoutDto: {
           OwnerId: ownerId,
           CustomerId: customerIdFromOwner(ownerId),
@@ -923,7 +923,7 @@ const resolvers = {
         },
       })
       if (body.IsSuccess) await createEligibleReviews(customerIdFromOwner(ownerId), productIds)
-      return { isSuccess: body.IsSuccess }
+      return { isSuccess: body.IsSuccess, orderId: body.OrderId ?? null }
     },
 
     async mergeBasket(

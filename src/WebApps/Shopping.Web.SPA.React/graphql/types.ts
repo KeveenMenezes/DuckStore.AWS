@@ -130,6 +130,7 @@ export interface GqlStoreBasketResult {
 
 export interface GqlCheckoutResult {
   isSuccess: boolean
+  orderId: string | null
 }
 
 export interface GqlDeleteBasketResult {

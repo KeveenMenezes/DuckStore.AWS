@@ -365,6 +365,9 @@ type StoreBasketResult @aws_api_key @aws_cognito_user_pools {
 
 type CheckoutResult {
   isSuccess: Boolean!
+  # The OrderId Basket mints at checkout and Ordering keys the order off of (ADR-0038) — the order
+  # number the customer sees. Null when there was no cart to check out.
+  orderId: ID
 }
 
 type DeleteBasketResult @aws_api_key @aws_cognito_user_pools {

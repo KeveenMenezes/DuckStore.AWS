@@ -143,7 +143,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // is created asynchronously by the Ordering service and replaces this on the next fetch.
   const addOrder = useCallback((orderData: NewOrderInput) => {
     setOrders((prev) => [
-      { ...orderData, id: createOrderId(), date: new Date().toISOString(), status: "processing" },
+      { ...orderData, id: orderData.id ?? createOrderId(), date: new Date().toISOString(), status: "processing" },
       ...prev,
     ])
   }, [])
