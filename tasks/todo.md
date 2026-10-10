@@ -170,7 +170,7 @@
   - Verificar: no Aspire, checkout com e sem pontos e com total adulterado.
   - Arquivos: `app/api/graphql/local.ts`. Dependências: T25.
 
-- [ ] **T27: Ordering publica `OrderCancelledEvent`** (S)
+- [x] **T27: Ordering publica `OrderCancelledEvent`** (S)
   - Aceite: `OrderCancelledRule` casa em MODIFY `Old.Status != Cancelled` e `New.Status == Cancelled` (de `Pending` ou `Completed`).
   - Verificar: testes da regra.
   - Arquivos: `Rules/OrderCancelledRule.cs`, registro da regra, teste. Dependências: T24.
