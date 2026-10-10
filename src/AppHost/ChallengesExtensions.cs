@@ -9,6 +9,9 @@ public static class ChallengesExtensions
     // Must match ProgressSchema.TableName in Challenges.Function (table created by the seeder).
     private const string ChallengeProgressTableName = "challenge-progress";
 
+    // Must match PointsTransactionsSchema.TableName in Challenges.Function (created by the seeder).
+    private const string PointsTransactionsTableName = "points-transactions";
+
     public static IResourceBuilder<ProjectResource> AddChallengesServices(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb)
@@ -76,6 +79,17 @@ public static class ChallengesExtensions
             .WaitForCompletion(challengesSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
+
+        // CDC publisher: points-transactions INSERT → DynamoDB Stream → PointsReservedEvent /
+        // PointsReservationFailedEvent on EventBridge (ADR-0048 §5), rule-based (ADR-0019).
+        builder.AddAWSLambdaFunction<Projects.Challenges_Function>(
+                "challenges-points-transactions-stream-publisher",
+                lambdaHandler: LambdaHandler("Challenges.Function", "ChallengesPointsTransactionsStreamPublisher"))
+            .WaitForCompletion(challengesSeeder)
+            .WithReference(dynamoDb)
+            .WithDynamoDBStreamsEventSource(PointsTransactionsTableName)
+            .WithAwsDevEnvironment()
+            .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
         return challengesSeeder;
     }

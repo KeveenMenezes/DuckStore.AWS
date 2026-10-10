@@ -1,5 +1,7 @@
 ﻿using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.BasketCheckout;
 using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.ReviewCreated;
+using Challenges.Function.Modules.Progress.EventsIntegration.Publishers.PointsTransactions;
+using Challenges.Function.Modules.Progress.EventsIntegration.Publishers.PointsTransactions.Rules;
 using Challenges.Function.Modules.Progress.Features.RedeemPoints;
 using Challenges.Function.Modules.Progress.Features.RevealHint;
 using Challenges.Function.Modules.Progress.Features.SubmitAnswer;
@@ -39,6 +41,9 @@ public static class ServiceRegistration
         services.AddScoped<IStreamRule<ProgressStreamImage>, ChallengeAnsweredRule>();
         services.AddScoped<IStreamRule<ProgressStreamImage>, PointsRedeemedRule>();
         services.AddScoped<StreamRuleDispatcher<ProgressStreamImage>>();
+        services.AddScoped<IStreamRule<PointsTransactionStreamImage>, PointsReservedRule>();
+        services.AddScoped<IStreamRule<PointsTransactionStreamImage>, PointsReservationFailedRule>();
+        services.AddScoped<StreamRuleDispatcher<PointsTransactionStreamImage>>();
 
         return services;
     }

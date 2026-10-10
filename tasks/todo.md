@@ -180,7 +180,7 @@
   - Verificar: testes (saldo suficiente, insuficiente, duplicado, zero pontos).
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Consumers/BasketCheckout/{Endpoint,Handler,Mapper}.cs`, `Data/` (repositório do ledger), `src/AppHost/ChallengesExtensions.cs`. Dependências: T24, T3.
 
-- [ ] **T29: Publisher `challenges-points-transactions-stream-publisher`** (M)
+- [x] **T29: Publisher `challenges-points-transactions-stream-publisher`** (M)
   - Aceite: `PointsReservedRule` (INSERT `Reserved`) e `PointsReservationFailedRule` (INSERT `Failed`); sem moeda nos eventos; stream source no AppHost e no CDK, com DLQ `onFailure` alarmada (ADR-0015 §1); CDK do consumer da T28 (regra `BasketCheckoutEvent`, DLQ, alarme, grants).
   - Verificar: testes das regras; `cdk synth ChallengesStack`.
   - Arquivos: `Publishers/PointsTransactions/{Endpoint,PointsTransactionStreamImage}.cs`, `Rules/{PointsReservedRule,PointsReservationFailedRule}.cs`, `src/AppHost/ChallengesExtensions.cs`, `infra/constructs/challenges-lambdas.ts`. Dependências: T28. Usar `cdc-integration-scaffold`.

@@ -26,6 +26,8 @@ export class ChallengesLambdas extends Construct {
   public readonly redeemChallengePoints: lambda.Function;
   public readonly challengesProgressStreamPublisher: lambda.Function;
   public readonly reviewCreatedConsumer: lambda.Function;
+  public readonly basketCheckoutConsumer: lambda.Function;
+  public readonly pointsTransactionsStreamPublisher: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ChallengesLambdasProps) {
     super(scope, id);
@@ -186,6 +188,104 @@ export class ChallengesLambdas extends Construct {
     });
     reviewCreatedRule.addTarget(
       new targets.LambdaFunction(this.reviewCreatedConsumer, {
+        deadLetterQueue: dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
+    );
+
+    // 6. challenges-basket-checkout-consumer
+    //    Trigger: EventBridge rule (BasketCheckoutEvent, source=duckstore). Reserves the points a
+    //    checkout used (ADR-0048 §5): one TransactWriteItems debits PROFILE under Score >= points
+    //    and Puts REDEMPTION#<orderId> Reserved; a short balance Puts a Failed row instead.
+    //    Checkouts without points are ignored. Writes only those two item actions.
+    this.basketCheckoutConsumer = new lambda.Function(this, 'BasketCheckoutConsumer', {
+      functionName: 'challenges-basket-checkout-consumer',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: challengesCode,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: DOTNET_MEMORY_MB,
+      description: 'Consumes BasketCheckoutEvent and reserves the points the checkout used',
+      environment: { ANNOTATIONS_HANDLER: 'BasketCheckoutConsumer' },
+    });
+    pointsTransactionsTable.grant(this.basketCheckoutConsumer, 'dynamodb:PutItem');
+    challengeProgressTable.grant(this.basketCheckoutConsumer, 'dynamodb:UpdateItem');
+    this.addEventConsumer(
+      this.basketCheckoutConsumer, eventBus, dlq, 'BasketCheckoutRule',
+      'challenges-basket-checkout-consumer', 'BasketCheckoutEvent',
+    );
+
+    // 7. challenges-points-transactions-stream-publisher
+    //    Trigger: DynamoDB Streams on points-transactions (NEW_AND_OLD_IMAGES). Rule-based
+    //    dispatcher (ADR-0019): a redemption row's INSERT → PointsReservedEvent (Reserved) or
+    //    PointsReservationFailedEvent (Failed), which Payment waits on (ADR-0048 §5). Credits and
+    //    settlement MODIFYs publish nothing.
+    this.pointsTransactionsStreamPublisher = new lambda.Function(
+      this,
+      'PointsTransactionsStreamPublisher',
+      {
+        functionName: 'challenges-points-transactions-stream-publisher',
+        tracing: lambda.Tracing.ACTIVE,
+        architecture: DOTNET_ARCH,
+        runtime: DOTNET_RUNTIME,
+        // provided.al2023 runs the file named `bootstrap`; this value is inert.
+        handler: 'bootstrap',
+        code: challengesCode,
+        timeout: cdk.Duration.seconds(30),
+        memorySize: DOTNET_MEMORY_MB,
+        description:
+          'CDC: reads DynamoDB Streams on points-transactions and publishes PointsReserved/PointsReservationFailed to EventBridge',
+        environment: {
+          ANNOTATIONS_HANDLER: 'ChallengesPointsTransactionsStreamPublisher',
+          EventBridge__BusName: eventBus.eventBusName,
+        },
+      },
+    );
+
+    this.pointsTransactionsStreamPublisher.addEventSource(
+      new lambdaEventSources.DynamoEventSource(pointsTransactionsTable, {
+        startingPosition: lambda.StartingPosition.TRIM_HORIZON,
+        batchSize: 10,
+        bisectBatchOnError: true,
+        retryAttempts: 3,
+        // Records exhausted after bisect+retries land here (ADR-0015 §1) — shard/sequence
+        // metadata, not the payload; redrive by re-reading the stream.
+        onFailure: new lambdaEventSources.SqsDlq(dlq.queue),
+      }),
+    );
+
+    eventBus.grantPutEventsTo(this.pointsTransactionsStreamPublisher);
+  }
+
+  // EventBridge rule → consumer Lambda, with the context DLQ on both legs: the rule's target
+  // delivery and the Lambda's own async retries (same shape as every consumer above).
+  private addEventConsumer(
+    fn: lambda.Function,
+    eventBus: events.IEventBus,
+    dlq: ContextDlq,
+    ruleId: string,
+    functionName: string,
+    detailType: string,
+  ) {
+    const rule = new events.Rule(this, ruleId, {
+      eventBus,
+      ruleName: `${functionName}-rule`,
+      description: `Routes ${detailType} (source=duckstore) to ${functionName}`,
+      eventPattern: {
+        source: ['duckstore'],
+        detailType: [detailType],
+      },
+    });
+    fn.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(dlq.queue),
+      retryAttempts: 2,
+    });
+    rule.addTarget(
+      new targets.LambdaFunction(fn, {
         deadLetterQueue: dlq.queue,
         retryAttempts: 3,
         maxEventAge: cdk.Duration.hours(2),
