@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { formatBRL } from "@/shared/lib/format"
-import { POINTS_PER_REAL } from "@/features/points/constants"
+import { pointsToCurrency, useRewardConversion } from "@/features/points/hooks/use-reward-conversion"
 
 interface PointsRedeemInputProps {
   balance: number
@@ -25,6 +25,9 @@ interface PointsRedeemInputProps {
  */
 export function PointsRedeemInput({ balance, max, value, onChange, notice, disabled }: PointsRedeemInputProps) {
   const clamp = (points: number) => Math.max(0, Math.min(max, Math.floor(points)))
+  // Rendered only for a signed-in customer, which is what rewardConversion requires.
+  const conversion = useRewardConversion(true)
+  const preview = conversion ? ` · ${value} pts = ${formatBRL(pointsToCurrency(value, conversion))}` : ""
 
   return (
     <div className="flex flex-col gap-2 rounded-md border border-border p-3">
@@ -64,7 +67,7 @@ export function PointsRedeemInput({ balance, max, value, onChange, notice, disab
       <span id="pointsToUse-help" className="text-xs text-muted-foreground">
         {max === 0
           ? "No points can be used on this order."
-          : `Up to ${max} pts on this order · ${value} pts = ${formatBRL(value / POINTS_PER_REAL)}`}
+          : `Up to ${max} pts on this order${preview}`}
       </span>
       {notice && (
         <span role="status" className="text-xs font-medium text-amber-600">
