@@ -205,14 +205,71 @@ const REVIEW_TTL_SECONDS = 5 * 24 * 60 * 60
 // Same ceiling as Mutation.updateChallengePoints.js (MAX_POINTS) and the Blazor ChallengePointsInput.
 const MAX_CHALLENGE_POINTS = 1000
 
-// Distinct product ids in the saved cart (Data is the .NET-serialized PascalCase JSON).
-async function cartProductIds(ownerId: string): Promise<string[]> {
+// The saved cart's lines as Pricing quotes them — the checkout pipeline's loadCart step (Data is
+// the .NET-serialized PascalCase JSON).
+async function cartItems(ownerId: string): Promise<Array<{ ProductId: string; Quantity: number }>> {
   const result = await dynamoDb.send(
-    new GetItemCommand({ TableName: 'shopping-carts', Key: { OwnerId: { S: ownerId } } }),
+    new GetItemCommand({ TableName: 'shopping-carts', Key: { OwnerId: { S: ownerId } }, ConsistentRead: true }),
   )
   if (!result.Item) return []
-  const cart = JSON.parse(unmarshall(result.Item).Data as string) as { Items?: Array<{ ProductId: string }> }
-  return [...new Set((cart.Items ?? []).map(i => String(i.ProductId)))]
+  const cart = JSON.parse(unmarshall(result.Item).Data as string) as {
+    Items?: Array<{ ProductId: string; Quantity: number }>
+  }
+  return (cart.Items ?? []).map(i => ({ ProductId: String(i.ProductId), Quantity: Number(i.Quantity) }))
+}
+
+async function pointsBalance(ownerId: string): Promise<number> {
+  const result = await dynamoDb.send(
+    new GetItemCommand({
+      TableName: 'challenge-progress',
+      Key: { OwnerId: { S: ownerId }, SK: { S: 'PROFILE' } },
+      ConsistentRead: true,
+    }),
+  )
+  return result.Item ? Number(unmarshall(result.Item).Score ?? 0) : 0
+}
+
+// Local stand-in for the whole redemption flow (ADR-0048 §5), which on AWS runs over EventBridge:
+// challenges-basket-checkout-consumer reserves (debit + REDEMPTION#<orderId> Reserved), and the
+// payment authorization turns it Used. Locally the payment always goes through, so the row is
+// written Used directly, in the same transaction as the debit and under the same balance guard.
+async function redeemPointsForOrder(ownerId: string, orderId: string, points: number) {
+  const now = new Date().toISOString()
+  await dynamoDb.send(
+    new TransactWriteItemsCommand({
+      TransactItems: [
+        {
+          Update: {
+            TableName: 'challenge-progress',
+            Key: { OwnerId: { S: ownerId }, SK: { S: 'PROFILE' } },
+            ConditionExpression: 'Score >= :points',
+            UpdateExpression: 'ADD Score :debit',
+            ExpressionAttributeValues: {
+              ':points': { N: String(points) },
+              ':debit': { N: String(-points) },
+            },
+          },
+        },
+        {
+          Put: {
+            TableName: 'points-transactions',
+            Item: {
+              OwnerId: { S: ownerId },
+              TransactionId: { S: `REDEMPTION#${orderId}` },
+              Type: { S: 'Redemption' },
+              Status: { S: 'Used' },
+              Points: { N: String(-points) },
+              SourceId: { S: orderId },
+              OrderId: { S: orderId },
+              CreatedAt: { S: now },
+              UpdatedAt: { S: now },
+            },
+            ConditionExpression: 'attribute_not_exists(TransactionId)',
+          },
+        },
+      ],
+    }),
+  )
 }
 
 // Local stand-in for review-order-completed-consumer: EventBridge doesn't exist locally, so the
@@ -989,16 +1046,45 @@ const resolvers = {
       { input }: { input: Record<string, unknown> },
       context: LocalContext,
     ) {
-      // Checkout is Cognito-only in prod (resolver derives the owner from the token). Locally
-      // there is no Cognito, so we take the owner from the BFF-resolved context.
+      // Mirrors the checkoutBasket pipeline (loadCart → quote → checkout, ADR-0048 §4). Checkout is
+      // Cognito-only in prod (resolver derives the owner from the token). Locally there is no
+      // Cognito, so we take the owner from the BFF-resolved context.
       const ownerId = context.owner.ownerId
-      // Read before the checkout, which empties the cart.
-      const productIds = await cartProductIds(ownerId)
+      if (ownerId.startsWith('GUEST#')) throw unauthorized('checkoutBasket')
+
+      // loadCart: the saved cart, read before the checkout empties it.
+      const items = await cartItems(ownerId)
+      if (items.length === 0) {
+        throw createGraphQLError('There is no cart to check out.', { extensions: { errorType: 'BadRequest' } })
+      }
+      const productIds = [...new Set(items.map(i => i.ProductId))]
+
+      // quote: Pricing's total for this cart, points and payment choice, or PriceChanged /
+      // PointsAboveCap. The client's totalPrice is only compared, never charged.
+      const pointsToUse = Number(input.pointsToUse ?? 0)
+      const quote = await quoteBasket({
+        Items: items,
+        PointsToUse: pointsToUse,
+        ExpectedTotal: input.totalPrice,
+        PaymentMethod: input.paymentMethod,
+        Installments: input.installments,
+        ...(input.discountId ? { OwnerId: ownerId, DiscountId: input.discountId } : {}),
+      })
+
+      // On AWS a missing balance only surfaces after checkout (Failed reservation → payment
+      // declined). Locally there's no event flow to decline the order, so refuse up front.
+      if (pointsToUse > 0 && (await pointsBalance(ownerId)) < pointsToUse) {
+        throw createGraphQLError('Not enough points for this order.', {
+          extensions: { errorType: 'InsufficientPoints' },
+        })
+      }
+
       const body = await invokeLambda<{ IsSuccess: boolean; OrderId: string | null }>('basket-checkout-basket', {
         BasketCheckoutDto: {
           OwnerId: ownerId,
           CustomerId: customerIdFromOwner(ownerId),
-          TotalPrice: input.totalPrice,
+          TotalPrice: quote.ChargedTotal,
+          PointsToUse: pointsToUse,
           // Opaque pass-through, chosen beforehand via basketInstallmentPlan(discountId:) — never
           // interpreted here (ADR-0046 §6).
           DiscountId: input.discountId ?? null,
@@ -1022,7 +1108,10 @@ const resolvers = {
           },
         },
       })
-      if (body.IsSuccess) await createEligibleReviews(customerIdFromOwner(ownerId), productIds)
+      if (body.IsSuccess) {
+        await createEligibleReviews(customerIdFromOwner(ownerId), productIds)
+        if (pointsToUse > 0 && body.OrderId) await redeemPointsForOrder(ownerId, body.OrderId, pointsToUse)
+      }
       return { isSuccess: body.IsSuccess, orderId: body.OrderId ?? null }
     },
 

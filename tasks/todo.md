@@ -165,7 +165,7 @@
   - Verificar: `cdk synth AppSyncStack`; no AWS dev: checkout normal OK, `totalPrice` adulterado → `PriceChanged`, preço alterado entre cotação e checkout → `PriceChanged`, pontos acima do teto → erro; `Ordering.FunctionalTests` verde.
   - Arquivos: `Mutation.checkoutBasket.js` + `.loadCart.js` + `.quote.js` + `.checkout.js`, `graphql/schema.graphql` (input `pointsToUse`), `infra/constructs/appsync-api.ts`. Dependências: T23, T24.
 
-- [ ] **T26: `local.ts` checkout com total do servidor e pontos** (S)
+- [x] **T26: `local.ts` checkout com total do servidor e pontos** (S)
   - Aceite: o checkout local recalcula, compara (`PriceChanged`), simula a reserva e o débito síncronos e grava `REDEMPTION#<orderId>` como `Used`.
   - Verificar: no Aspire, checkout com e sem pontos e com total adulterado.
   - Arquivos: `app/api/graphql/local.ts`. Dependências: T25.
