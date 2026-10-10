@@ -197,6 +197,77 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
         }
     }
 
+    public async Task<PointsReservationOutcome> ReservePointsAsync(
+        OwnerId ownerId, Guid orderId, int points, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var reservation = PointsTransaction.Reserve(ownerId, orderId, points, now);
+
+        var balanceUpdate = new TransactWriteItem
+        {
+            Update = new Update
+            {
+                TableName = TableName,
+                Key = Key(ownerId.Value, ProgressSchema.ProfileSortKey),
+                // The balance guard, enforced by the database so concurrent checkouts can't both
+                // pass. A missing PROFILE fails it too: no profile, no points.
+                ConditionExpression = "Score >= :points",
+                UpdateExpression = "ADD Score :debit",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":points"] = new AttributeValue { N = points.ToString(CultureInfo.InvariantCulture) },
+                    [":debit"] = new AttributeValue { N = reservation.Points.ToString(CultureInfo.InvariantCulture) }
+                }
+            }
+        };
+        var ledgerPut = BuildLedgerPut(reservation);
+        var transactItems = new List<TransactWriteItem> { balanceUpdate, ledgerPut };
+
+        try
+        {
+            await dynamoDb.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }, cancellationToken);
+
+            return PointsReservationOutcome.Reserved;
+        }
+        catch (TransactionCanceledException ex)
+            when (ConditionFailedOn(ex, transactItems.IndexOf(ledgerPut)))
+        {
+            // Checked first: on a redelivery the balance condition may fail too (the points were
+            // already debited), but the existing row is what makes it a replay.
+            return PointsReservationOutcome.AlreadyProcessed;
+        }
+        catch (TransactionCanceledException ex)
+            when (ConditionFailedOn(ex, transactItems.IndexOf(balanceUpdate)))
+        {
+            return await PutFailedReservationAsync(
+                PointsTransaction.Fail(ownerId, orderId, points, now), cancellationToken);
+        }
+    }
+
+    private async Task<PointsReservationOutcome> PutFailedReservationAsync(
+        PointsTransaction failure, CancellationToken cancellationToken)
+    {
+        var put = BuildLedgerPut(failure).Put;
+        try
+        {
+            await dynamoDb.PutItemAsync(
+                new PutItemRequest
+                {
+                    TableName = put.TableName,
+                    Item = put.Item,
+                    ConditionExpression = put.ConditionExpression
+                },
+                cancellationToken);
+
+            return PointsReservationOutcome.Failed;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return PointsReservationOutcome.AlreadyProcessed;
+        }
+    }
+
     public async Task<Redemption> RedeemPointsAsync(
         OwnerId ownerId, PlayerProgress delta, CancellationToken cancellationToken = default)
     {
@@ -287,29 +358,39 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
             : 0;
     }
 
-    private static TransactWriteItem BuildLedgerPut(PointsTransaction transaction) =>
-        new()
+    private static TransactWriteItem BuildLedgerPut(PointsTransaction transaction)
+    {
+        var item = new Dictionary<string, AttributeValue>
+        {
+            [PointsTransactionsSchema.PartitionKey] = new(transaction.OwnerId.Value),
+            [PointsTransactionsSchema.SortKey] = new(transaction.Id),
+            ["Type"] = new(transaction.Type.ToString()),
+            ["Status"] = new(transaction.Status.ToString()),
+            ["Points"] = new AttributeValue { N = transaction.Points.ToString(CultureInfo.InvariantCulture) },
+            ["SourceId"] = new(transaction.SourceId),
+            // "O" is fixed-width ISO-8601, so LSI1 (ordered by this attribute) sorts
+            // chronologically as a plain string.
+            [PointsTransactionsSchema.CreatedAtAttribute] = new(transaction.CreatedAt!.Value.ToString("O")),
+            ["UpdatedAt"] = new(transaction.UpdatedAt.ToString("O"))
+        };
+
+        // Only redemptions carry it, which is what keeps GSI1 sparse (ADR-0048 §1).
+        if (transaction.OrderId is not null)
+        {
+            item[PointsTransactionsSchema.OrderIdAttribute] = new(transaction.OrderId);
+        }
+
+        return new TransactWriteItem
         {
             Put = new Put
             {
                 TableName = PointsTransactionsSchema.TableName,
-                Item = new Dictionary<string, AttributeValue>
-                {
-                    [PointsTransactionsSchema.PartitionKey] = new(transaction.OwnerId.Value),
-                    [PointsTransactionsSchema.SortKey] = new(transaction.Id),
-                    ["Type"] = new(transaction.Type.ToString()),
-                    ["Status"] = new(transaction.Status.ToString()),
-                    ["Points"] = new AttributeValue { N = transaction.Points.ToString(CultureInfo.InvariantCulture) },
-                    ["SourceId"] = new(transaction.SourceId),
-                    // "O" is fixed-width ISO-8601, so LSI1 (ordered by this attribute) sorts
-                    // chronologically as a plain string.
-                    [PointsTransactionsSchema.CreatedAtAttribute] = new(transaction.CreatedAt!.Value.ToString("O")),
-                    ["UpdatedAt"] = new(transaction.UpdatedAt.ToString("O"))
-                },
+                Item = item,
                 // The deterministic TransactionId IS the idempotency key (ADR-0048 §1).
                 ConditionExpression = $"attribute_not_exists({PointsTransactionsSchema.SortKey})"
             }
         };
+    }
 
     // Every field on `delta` (a PlayerProgress.CreateEmpty shell with exactly one Apply call) IS
     // the amount to ADD/SET — no scoring/streak decision is made here, only a mechanical

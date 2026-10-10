@@ -67,6 +67,16 @@ public static class ChallengesExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
+        // Consumes Basket's BasketCheckoutEvent and reserves the points the checkout used
+        // (ADR-0048 §5). Writes only. Locally EventBridge is best-effort, so the SPA's local GraphQL
+        // backend debits the points synchronously instead.
+        builder.AddAWSLambdaFunction<Projects.Challenges_Function>(
+                "challenges-basket-checkout-consumer",
+                lambdaHandler: LambdaHandler("Challenges.Function", "BasketCheckoutConsumer"))
+            .WaitForCompletion(challengesSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
         return challengesSeeder;
     }
 }

@@ -388,4 +388,100 @@ public class DynamoPlayerProgressRepositoryTests
 
         await Assert.ThrowsAsync<TransactionCanceledException>(() => _repository.CreditAsync(ReviewCredit()));
     }
+
+    private static readonly Guid CheckedOutOrder = Guid.Parse("b91258ab-9298-43ae-9ee0-b65752590ec4");
+
+    private static TransactionCanceledException Cancelled(string balanceCode, string ledgerCode) =>
+        new("cancelled")
+        {
+            CancellationReasons =
+            [
+                new CancellationReason { Code = balanceCode },
+                new CancellationReason { Code = ledgerCode }
+            ]
+        };
+
+    [Fact]
+    public async Task ReservePointsAsync_ShouldDebitUnderTheBalanceGuard_AndPutTheReservedRow()
+    {
+        TransactWriteItemsRequest? captured = null;
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<TransactWriteItemsRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new TransactWriteItemsResponse());
+
+        var outcome = await _repository.ReservePointsAsync(_ownerId, CheckedOutOrder, 1000);
+
+        Assert.Equal(PointsReservationOutcome.Reserved, outcome);
+        var balance = captured!.TransactItems[0].Update;
+        Assert.Equal("PROFILE", balance.Key["SK"].S);
+        Assert.Equal("Score >= :points", balance.ConditionExpression);
+        Assert.Equal("ADD Score :debit", balance.UpdateExpression);
+        Assert.Equal("1000", balance.ExpressionAttributeValues[":points"].N);
+        Assert.Equal("-1000", balance.ExpressionAttributeValues[":debit"].N);
+
+        var put = captured.TransactItems[1].Put;
+        Assert.Equal(PointsTransactionsSchema.TableName, put.TableName);
+        Assert.Equal("attribute_not_exists(TransactionId)", put.ConditionExpression);
+        Assert.Equal($"REDEMPTION#{CheckedOutOrder}", put.Item["TransactionId"].S);
+        Assert.Equal("Reserved", put.Item["Status"].S);
+        Assert.Equal("-1000", put.Item["Points"].N);
+        Assert.Equal(CheckedOutOrder.ToString(), put.Item["OrderId"].S);
+    }
+
+    [Fact]
+    public async Task ReservePointsAsync_ShouldPutAFailedRow_WithoutDebiting_WhenTheBalanceIsShort()
+    {
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(Cancelled("ConditionalCheckFailed", "None"));
+        PutItemRequest? failedPut = null;
+        _dynamoDb
+            .Setup(d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<PutItemRequest, CancellationToken>((r, _) => failedPut = r)
+            .ReturnsAsync(new PutItemResponse());
+
+        var outcome = await _repository.ReservePointsAsync(_ownerId, CheckedOutOrder, 1000);
+
+        Assert.Equal(PointsReservationOutcome.Failed, outcome);
+        Assert.NotNull(failedPut);
+        Assert.Equal(PointsTransactionsSchema.TableName, failedPut!.TableName);
+        Assert.Equal("attribute_not_exists(TransactionId)", failedPut.ConditionExpression);
+        Assert.Equal("Failed", failedPut.Item["Status"].S);
+        Assert.Equal($"REDEMPTION#{CheckedOutOrder}", failedPut.Item["TransactionId"].S);
+        Assert.Equal(CheckedOutOrder.ToString(), failedPut.Item["OrderId"].S);
+    }
+
+    // A redelivered BasketCheckoutEvent: the REDEMPTION# row is already there, whatever the balance
+    // condition says now (it was debited the first time), so nothing more is written.
+    [Theory]
+    [InlineData("None")]
+    [InlineData("ConditionalCheckFailed")]
+    public async Task ReservePointsAsync_ShouldBeANoOp_WhenTheOrderWasAlreadyProcessed(string balanceCode)
+    {
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(Cancelled(balanceCode, "ConditionalCheckFailed"));
+
+        var outcome = await _repository.ReservePointsAsync(_ownerId, CheckedOutOrder, 1000);
+
+        Assert.Equal(PointsReservationOutcome.AlreadyProcessed, outcome);
+        _dynamoDb.Verify(
+            d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ReservePointsAsync_ShouldBeANoOp_WhenTheFailedRowWasAlreadyWritten()
+    {
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(Cancelled("ConditionalCheckFailed", "None"));
+        _dynamoDb
+            .Setup(d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConditionalCheckFailedException("exists"));
+
+        var outcome = await _repository.ReservePointsAsync(_ownerId, CheckedOutOrder, 1000);
+
+        Assert.Equal(PointsReservationOutcome.AlreadyProcessed, outcome);
+    }
 }

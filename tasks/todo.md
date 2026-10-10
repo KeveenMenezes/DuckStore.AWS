@@ -175,7 +175,7 @@
   - Verificar: testes da regra.
   - Arquivos: `Rules/OrderCancelledRule.cs`, registro da regra, teste. Dependências: T24.
 
-- [ ] **T28: Challenges reserva os pontos no `BasketCheckout`** (M)
+- [x] **T28: Challenges reserva os pontos no `BasketCheckout`** (M)
   - Aceite: `PointsTransaction.Reserve/Fail` (`Failed` guarda os pontos pedidos); com `PointsToUse > 0`, uma transação faz `ADD Score -pts` (condição `Score >= pts`) + Put `REDEMPTION#<orderId>` `Reserved` com `OrderId` (GSI1); se faltar saldo, Put `Failed`; checkout duplicado = no-op; `PointsToUse = 0` = ignora; consumer `challenges-basket-checkout-consumer` no AppHost.
   - Verificar: testes (saldo suficiente, insuficiente, duplicado, zero pontos).
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Consumers/BasketCheckout/{Endpoint,Handler,Mapper}.cs`, `Data/` (repositório do ledger), `src/AppHost/ChallengesExtensions.cs`. Dependências: T24, T3.

@@ -74,6 +74,49 @@ public class PointsTransactionTests
             () => PointsTransaction.ReviewCredit(Owner, Guid.Empty, At));
     }
 
+    private static readonly Guid Order = Guid.Parse("b91258ab-9298-43ae-9ee0-b65752590ec4");
+
+    [Fact]
+    public void Reserve_ShouldBuildAReservedDebit_KeyedAndIndexedByOrder()
+    {
+        var reservation = PointsTransaction.Reserve(Owner, Order, 1000, At);
+
+        Assert.Equal($"REDEMPTION#{Order}", reservation.Id);
+        Assert.Equal(PointsTransactionType.Redemption, reservation.Type);
+        Assert.Equal(PointsTransactionStatus.Reserved, reservation.Status);
+        Assert.Equal(-1000, reservation.Points); // signed: redemptions are negative
+        Assert.Equal(Order.ToString(), reservation.SourceId);
+        Assert.Equal(Order.ToString(), reservation.OrderId); // GSI1, for the settlement consumers
+        Assert.Equal(At, reservation.CreatedAt);
+    }
+
+    [Fact]
+    public void Fail_ShouldRecordThePointsAsked_WithoutBeingADebit()
+    {
+        var failed = PointsTransaction.Fail(Owner, Order, 1000, At);
+
+        Assert.Equal($"REDEMPTION#{Order}", failed.Id);
+        Assert.Equal(PointsTransactionStatus.Failed, failed.Status);
+        Assert.Equal(-1000, failed.Points);
+        Assert.Equal(Order.ToString(), failed.OrderId);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-5)]
+    public void Reserve_ShouldReject_NonPositivePoints(int points)
+    {
+        Assert.Throws<BuildingBlocks.Core.Exceptions.BadRequestException>(
+            () => PointsTransaction.Reserve(Owner, Order, points, At));
+    }
+
+    [Fact]
+    public void Reserve_ShouldReject_AnEmptyOrderId()
+    {
+        Assert.Throws<BuildingBlocks.Core.Exceptions.BadRequestException>(
+            () => PointsTransaction.Reserve(Owner, Guid.Empty, 100, At));
+    }
+
     [Fact]
     public void Statuses_ShouldDeclareTheWholeRedemptionLifecycle_EvenThoughOnlyCreditsExistYet()
     {

@@ -42,6 +42,14 @@ public interface IPlayerProgressRepository
     // ledger, which is how a redelivered or repeated source event stays a no-op.
     Task<bool> CreditAsync(PointsTransaction credit, CancellationToken cancellationToken = default);
 
+    // Reserves a checkout's points (ADR-0048 §5): one TransactWriteItems debits PROFILE under
+    // Score >= points and Puts REDEMPTION#<orderId> Reserved. When only the balance condition
+    // fails, a Failed row is Put instead and nothing is debited. When the row already exists the
+    // checkout was already processed and nothing is written — the deterministic id is the
+    // idempotency key.
+    Task<PointsReservationOutcome> ReservePointsAsync(
+        OwnerId ownerId, Guid orderId, int points, CancellationToken cancellationToken = default);
+
     // Debits PROFILE and writes the REDEMPTION# ledger row in one TransactWriteItems (ADR-0046 §2).
     // `delta` MUST be a PlayerProgress.CreateEmpty shell that has had exactly one Redeem call —
     // Score carries the negative delta to ADD, PointsSpent the positive one, mirroring

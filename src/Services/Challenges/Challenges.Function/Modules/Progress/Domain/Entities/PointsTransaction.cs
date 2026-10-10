@@ -44,6 +44,47 @@ public class PointsTransaction : Entity<string>
         };
     }
 
+    // The checkout's points, debited and held until the payment settles (ADR-0048 §5). Keyed and
+    // GSI1-indexed by the order: one redemption per order, found again by the payment/cancellation
+    // consumers, which know the OrderId. Points is negative — it left the balance.
+    public static PointsTransaction Reserve(OwnerId ownerId, Guid orderId, int points, DateTime at) =>
+        Redemption(ownerId, orderId, points, PointsTransactionStatus.Reserved, at);
+
+    // The checkout asked for more points than the balance held: nothing was debited. Points keeps
+    // what was asked (negative, like any redemption) so the history can show it; Failed never
+    // moves the balance in either direction.
+    public static PointsTransaction Fail(OwnerId ownerId, Guid orderId, int points, DateTime at) =>
+        Redemption(ownerId, orderId, points, PointsTransactionStatus.Failed, at);
+
+    private static PointsTransaction Redemption(
+        OwnerId ownerId, Guid orderId, int points, PointsTransactionStatus status, DateTime at)
+    {
+        if (points <= 0)
+        {
+            throw new BadRequestException(nameof(points), points, "must be greater than zero");
+        }
+
+        if (orderId == Guid.Empty)
+        {
+            throw new BadRequestException(nameof(orderId), orderId, "must not be empty");
+        }
+
+        at = at.ToUniversalTime();
+
+        return new PointsTransaction
+        {
+            Id = PointsTransactionsSchema.RedemptionTransactionId(orderId),
+            OwnerId = ownerId,
+            Type = PointsTransactionType.Redemption,
+            Status = status,
+            Points = -points,
+            SourceId = orderId.ToString(),
+            OrderId = orderId.ToString(),
+            CreatedAt = at,
+            UpdatedAt = at
+        };
+    }
+
     // Keyed by product, not by review: the review row can go Published -> Deleted -> Published,
     // or expire by TTL and be bought and written again, and none of that may credit twice
     // (SPEC-review-points). The amount is the fixed PointsPolicy.ReviewCredit.

@@ -1,4 +1,5 @@
-﻿using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.ReviewCreated;
+﻿using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.BasketCheckout;
+using Challenges.Function.Modules.Progress.EventsIntegration.Consumers.ReviewCreated;
 using Challenges.Function.Modules.Progress.Features.RedeemPoints;
 using Challenges.Function.Modules.Progress.Features.RevealHint;
 using Challenges.Function.Modules.Progress.Features.SubmitAnswer;
@@ -32,6 +33,7 @@ public static class ServiceRegistration
         services.AddScoped<IValidator<RedeemPointsCommand>, RedeemPointsCommandValidator>();
 
         services.AddScoped<ReviewCreatedHandler>();
+        services.AddScoped<BasketCheckoutHandler>();
 
         services.AddEventBridgeMessaging(configuration);
         services.AddScoped<IStreamRule<ProgressStreamImage>, ChallengeAnsweredRule>();
