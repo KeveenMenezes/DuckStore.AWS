@@ -132,7 +132,7 @@
   - Verificar: testes do domínio, do handler e do mapper (`UserId` vazio rejeitado); teste do `PlayerProgress.Load` com PROFILE só com `Score`.
   - Arquivos: `Domain/PointsPolicy.cs`, `Domain/Entities/PointsTransaction.cs`, `Consumers/ReviewCreated/{Endpoint,Handler,Mapper}.cs`, `Data/DynamoPlayerProgressRepository.cs`, `src/AppHost/ChallengesExtensions.cs`. Dependências: T4, T15. Usar `cdc-integration-scaffold`.
 
-- [ ] **T21: CDK do consumer + aviso na SPA + `local.ts`** (S)
+- [x] **T21: CDK do consumer + aviso na SPA + `local.ts`** (S)
   - Aceite: regra `ReviewCreatedEvent` (a segunda, ao lado da do CatalogView), DLQ, alarme e grants; a SPA mostra "+15 pontos em instantes" na primeira publicação e invalida o saldo; o `local.ts` credita na primeira publicação.
   - Verificar: `cdk synth ChallengesStack`; `pnpm build`.
   - Arquivos: `infra/constructs/challenges-lambdas.ts`, `features/reviews/components/reviews-section.tsx`, `app/api/graphql/local.ts`. Dependências: T20.

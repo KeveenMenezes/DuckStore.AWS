@@ -8,7 +8,9 @@ import {
   PutItemCommand,
   UpdateItemCommand,
   DeleteItemCommand,
+  TransactWriteItemsCommand,
   ConditionalCheckFailedException,
+  TransactionCanceledException,
   type AttributeValue,
 } from '@aws-sdk/client-dynamodb'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
@@ -238,6 +240,55 @@ async function createEligibleReviews(userId: string, productIds: string[]) {
     } catch (err) {
       if (!(err instanceof ConditionalCheckFailedException)) throw err
     }
+  }
+}
+
+// Same value as PointsPolicy.ReviewCredit in Challenges.Function (SPEC-review-points).
+const REVIEW_CREDIT_POINTS = 15
+
+// Local stand-in for challenges-review-created-consumer (same reason as createEligibleReviews):
+// one transaction Puts the REVIEW#<productId> ledger row and ADDs to PROFILE Score. A row already
+// there cancels the transaction, which is the once-per-product lock — so it is not an error.
+// Challenges only scores Cognito users (ADR-0045 §7), so a visitor's owner is skipped.
+async function creditReviewPoints(ownerId: string, productId: string) {
+  if (!ownerId.startsWith('USER#')) return
+  const now = new Date().toISOString()
+  try {
+    await dynamoDb.send(
+      new TransactWriteItemsCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: 'points-transactions',
+              Item: {
+                OwnerId: { S: ownerId },
+                TransactionId: { S: `REVIEW#${productId}` },
+                Type: { S: 'ReviewCredit' },
+                Status: { S: 'Completed' },
+                Points: { N: String(REVIEW_CREDIT_POINTS) },
+                SourceId: { S: productId },
+                CreatedAt: { S: now },
+                UpdatedAt: { S: now },
+              },
+              ConditionExpression: 'attribute_not_exists(TransactionId)',
+            },
+          },
+          {
+            Update: {
+              TableName: 'challenge-progress',
+              Key: { OwnerId: { S: ownerId }, SK: { S: 'PROFILE' } },
+              UpdateExpression: 'ADD Score :points',
+              ExpressionAttributeValues: { ':points': { N: String(REVIEW_CREDIT_POINTS) } },
+            },
+          },
+        ],
+      }),
+    )
+  } catch (err) {
+    const alreadyCredited =
+      err instanceof TransactionCanceledException &&
+      err.CancellationReasons?.[0]?.Code === 'ConditionalCheckFailed'
+    if (!alreadyCredited) throw err
   }
 }
 
@@ -1329,7 +1380,8 @@ const resolvers = {
       if (!existing.Item) throw unauthorized('createReview')
 
       const now = new Date().toISOString()
-      const createdAt = (unmarshall(existing.Item).CreatedAt as string | undefined) ?? now
+      const previous = unmarshall(existing.Item)
+      const createdAt = (previous.CreatedAt as string | undefined) ?? now
 
       try {
         await dynamoDb.send(
@@ -1359,6 +1411,15 @@ const resolvers = {
         if (err instanceof ConditionalCheckFailedException) throw unauthorized('createReview')
         throw err
       }
+
+      // On AWS the transition to Published emits ReviewCreatedEvent and
+      // challenges-review-created-consumer credits the points; locally EventBridge is best-effort,
+      // so the credit is simulated here, with the same transaction and the same once-per-product
+      // REVIEW#<productId> lock (SPEC-review-points). Legacy rows without Status already count as
+      // Published, so they never credit.
+      const wasPublished = previous.Status === undefined || previous.Status === 'Published'
+      if (!wasPublished) await creditReviewPoints(context.owner.ownerId, input.productId)
+
       return { id, userName }
     },
 

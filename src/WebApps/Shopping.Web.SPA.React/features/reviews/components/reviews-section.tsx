@@ -17,6 +17,8 @@ import { RatingHistogram } from "@/features/reviews/components/rating-histogram"
 import { useProductRating } from "@/features/reviews/hooks/use-product-rating"
 import { getMyReview, getReviewsByProduct } from "@/features/reviews/services/reviews.service"
 import { useAuth } from "@/features/auth/hooks/use-auth"
+import { usePointsBalance } from "@/features/points/hooks/use-points-balance"
+import { REVIEW_CREDIT_POINTS, REVIEW_CREDIT_REFRESH_DELAY_MS } from "@/features/points/constants"
 import type { MyReview, Review } from "@/features/reviews/types/review.types"
 
 interface ReviewsSectionProps {
@@ -36,6 +38,13 @@ export function ReviewsSection({ productId, initialReviews, initialNextToken }: 
   const [nextToken, setNextToken] = useState<string | null>(initialNextToken)
   const [isPending, startTransition] = useTransition()
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+  const { refresh: refreshBalance } = usePointsBalance()
+  const [pointsOnTheWay, setPointsOnTheWay] = useState(false)
+  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => {
+    if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+  }, [])
 
   const loadMore = useCallback(() => {
     if (!nextToken) return
@@ -73,6 +82,13 @@ export function ReviewsSection({ productId, initialReviews, initialNextToken }: 
     } else {
       setReviews((prev) => [published, ...prev.filter((r) => r.id !== published.id)])
       recordNewReview(published.rating)
+    }
+    // Only an Eligible row is a first publication; a Deleted one was published (and credited)
+    // before. The credit lands asynchronously, so promise it without a balance and re-read later.
+    if (myReview.status === "Eligible") {
+      setPointsOnTheWay(true)
+      if (refreshTimerRef.current) clearTimeout(refreshTimerRef.current)
+      refreshTimerRef.current = setTimeout(() => { void refreshBalance() }, REVIEW_CREDIT_REFRESH_DELAY_MS)
     }
     setMyReview(published)
     setEditing(false)
@@ -112,7 +128,16 @@ export function ReviewsSection({ productId, initialReviews, initialNextToken }: 
       )
     }
     if (myReview.status === "Published" && !editing) {
-      return <MyReviewCard review={myReview} onEdit={() => setEditing(true)} onDeleted={handleReviewDeleted} />
+      return (
+        <div className="flex flex-col gap-2">
+          {pointsOnTheWay && (
+            <p role="status" className="text-sm font-medium text-accent">
+              +{REVIEW_CREDIT_POINTS} points on the way. They&apos;ll show up in your balance in a moment.
+            </p>
+          )}
+          <MyReviewCard review={myReview} onEdit={() => setEditing(true)} onDeleted={handleReviewDeleted} />
+        </div>
+      )
     }
     if (myReview.status === "Published") {
       return (

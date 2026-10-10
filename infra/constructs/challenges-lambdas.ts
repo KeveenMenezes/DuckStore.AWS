@@ -2,6 +2,8 @@ import * as cdk from 'aws-cdk-lib';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as events from 'aws-cdk-lib/aws-events';
+import * as targets from 'aws-cdk-lib/aws-events-targets';
+import * as destinations from 'aws-cdk-lib/aws-lambda-destinations';
 import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
 import { ContextDlq } from './context-dlq';
@@ -23,6 +25,7 @@ export class ChallengesLambdas extends Construct {
   public readonly revealChallengeHint: lambda.Function;
   public readonly redeemChallengePoints: lambda.Function;
   public readonly challengesProgressStreamPublisher: lambda.Function;
+  public readonly reviewCreatedConsumer: lambda.Function;
 
   constructor(scope: Construct, id: string, props: ChallengesLambdasProps) {
     super(scope, id);
@@ -144,5 +147,49 @@ export class ChallengesLambdas extends Construct {
     );
 
     eventBus.grantPutEventsTo(this.challengesProgressStreamPublisher);
+
+    // 5. challenges-review-created-consumer
+    //    Trigger: EventBridge rule (ReviewCreatedEvent, source=duckstore) — the second rule on
+    //    this event, next to CatalogView's. Credits the review points once per product: one
+    //    TransactWriteItems Puts the REVIEW#<productId> ledger row (attribute_not_exists) and ADDs
+    //    to PROFILE Score (SPEC-review-points, ADR-0048 §2). Publishes nothing and reads nothing,
+    //    so it only needs those two item actions.
+    this.reviewCreatedConsumer = new lambda.Function(this, 'ReviewCreatedConsumer', {
+      functionName: 'challenges-review-created-consumer',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: challengesCode,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: DOTNET_MEMORY_MB,
+      description: 'Consumes ReviewCreatedEvent and credits the review points once per product',
+      environment: { ANNOTATIONS_HANDLER: 'ReviewCreatedConsumer' },
+    });
+    pointsTransactionsTable.grant(this.reviewCreatedConsumer, 'dynamodb:PutItem');
+    challengeProgressTable.grant(this.reviewCreatedConsumer, 'dynamodb:UpdateItem');
+
+    const reviewCreatedRule = new events.Rule(this, 'ReviewCreatedRule', {
+      eventBus,
+      ruleName: 'challenges-review-created-consumer-rule',
+      description:
+        'Routes ReviewCreatedEvent (source=duckstore) to challenges-review-created-consumer',
+      eventPattern: {
+        source: ['duckstore'],
+        detailType: ['ReviewCreatedEvent'],
+      },
+    });
+    this.reviewCreatedConsumer.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(dlq.queue),
+      retryAttempts: 2,
+    });
+    reviewCreatedRule.addTarget(
+      new targets.LambdaFunction(this.reviewCreatedConsumer, {
+        deadLetterQueue: dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
+    );
   }
 }
