@@ -51,6 +51,10 @@ delegate to the **same** handler.
 **Publishes** — `ordering-stream-publisher`, off the `ordering` stream:
 
 - `OrderCreatedEvent`
+- `OrderCompletedEvent` on `Pending → Completed` — Review creates the buyer's Eligible review rows
+  ([ADR-0049](../../../docs/adr/0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md))
+- `OrderCancelledEvent` on any transition into `Cancelled` — Challenges gives the order's reserved
+  points back ([ADR-0048 §5](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md))
 
 ## Failure handling
 

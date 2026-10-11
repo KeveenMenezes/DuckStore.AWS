@@ -36,11 +36,29 @@ public interface IPlayerProgressRepository
     Task<int> RevealHintAsync(
         OwnerId ownerId, QuestionId questionId, int hintCount, CancellationToken cancellationToken = default);
 
-    // Debits PROFILE and writes the REDEMPTION# ledger row in one TransactWriteItems (ADR-0046 §2).
-    // `delta` MUST be a PlayerProgress.CreateEmpty shell that has had exactly one Redeem call —
-    // Score carries the negative delta to ADD, PointsSpent the positive one, mirroring
-    // SaveAttemptAsync's mechanical-translation contract. Throws InsufficientPointsException when
-    // the database's own Score >= points condition fails; that failure never debits anything.
-    Task<Redemption> RedeemPointsAsync(
-        OwnerId ownerId, PlayerProgress delta, CancellationToken cancellationToken = default);
+    // Puts a credit's ledger row and ADDs its points to PROFILE Score in one TransactWriteItems
+    // (ADR-0048 §2). PROFILE may not exist yet (the player never answered a challenge); ADD creates
+    // it. Returns false — nothing written — when the deterministic TransactionId is already in the
+    // ledger, which is how a redelivered or repeated source event stays a no-op.
+    Task<bool> CreditAsync(PointsTransaction credit, CancellationToken cancellationToken = default);
+
+    // Reserves a checkout's points (ADR-0048 §5): one TransactWriteItems debits PROFILE under
+    // Score >= points and Puts REDEMPTION#<orderId> Reserved. When only the balance condition
+    // fails, a Failed row is Put instead and nothing is debited. When the row already exists the
+    // checkout was already processed and nothing is written — the deterministic id is the
+    // idempotency key.
+    Task<PointsReservationOutcome> ReservePointsAsync(
+        OwnerId ownerId, Guid orderId, int points, CancellationToken cancellationToken = default);
+
+    // The order's REDEMPTION# row, read by its base-table key with a consistent read. The payment
+    // and cancellation events carry the customer, so the key is known and GSI1's eventual
+    // consistency never enters into it: null means this order used no points.
+    Task<PointsTransaction?> GetRedemptionAsync(
+        OwnerId ownerId, Guid orderId, CancellationToken cancellationToken = default);
+
+    // Writes a settled redemption (Use/CancelOrder already applied in memory), conditioned on the
+    // row still being in PreviousStatus. When it gives points back, the same TransactWriteItems
+    // ADDs them to PROFILE Score. Returns false — nothing written — when the condition fails: the
+    // row already moved, so the event was a duplicate or out of order.
+    Task<bool> SaveSettlementAsync(PointsTransaction settled, CancellationToken cancellationToken = default);
 }

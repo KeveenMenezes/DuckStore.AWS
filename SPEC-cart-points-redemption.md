@@ -106,10 +106,10 @@ O Basket só repassa (passthrough): não valida nem interpreta pontos, igual ao 
 | Consumer (Challenges) | Evento | Escrita |
 |---|---|---|
 | `challenges-basket-checkout-consumer` | `BasketCheckoutEvent` com `PointsToUse > 0` | `TransactWriteItems`: Update PROFILE `ADD Score -pts` com condição `Score >= pts` + Put `REDEMPTION#<orderId>` `Reserved` com `attribute_not_exists`. Se a transação falhar só pela condição do saldo: Put `Failed` com `attribute_not_exists`. Se falhar pelo Put (duplicado): no-op |
-| `challenges-payment-authorized-consumer` | `PaymentAuthorizedEvent` | Query GSI1 por `OrderId`; Update `Status = Used` com condição `Status = Reserved` |
-| `challenges-order-cancelled-consumer` | `OrderCancelledEvent` | Query GSI1; se `Reserved`: `TransactWriteItems` com Update `Released` (cond `Status = Reserved`) + PROFILE `ADD Score +pts`. Se `Used`: o mesmo, com `Refunded` (cond `Status = Used`). Se `Failed` ou terminal: no-op |
+| `challenges-payment-authorized-consumer` | `PaymentAuthorizedEvent` | `GetItem` consistente por `USER#<CustomerId>` + `REDEMPTION#<orderId>`; Update `Status = Used` com condição `Status = Reserved` |
+| `challenges-order-cancelled-consumer` | `OrderCancelledEvent` | O mesmo `GetItem`; se `Reserved`: `TransactWriteItems` com Update `Released` (cond `Status = Reserved`) + PROFILE `ADD Score +pts`. Se `Used`: o mesmo, com `Refunded` (cond `Status = Used`). Se `Failed` ou terminal: no-op |
 
-**Alvo ausente ≠ condição falhada (ADR-0048 §5):** um consumer que **não encontra** a linha alvo (GSI1 ainda não propagado, por ser eventualmente consistente) **lança exceção**, para o EventBridge tentar de novo e, esgotadas as tentativas, mandar para a DLQ. No-op só quando a linha existe e a condição de status falha (evento duplicado ou já liquidado).
+**Alvo ausente ≠ condição falhada (ADR-0048 §5, emendada):** os dois eventos chegam para **todo** pedido e trazem o `CustomerId`, então a liquidação lê a linha pela chave da tabela base, com leitura consistente. Num pedido com pontos, a linha sempre existe antes desses eventos (o gateway só roda depois do `PointsReserved`). Por isso, linha ausente quer dizer "pedido sem pontos", e é no-op. Já o consumer do Payment, cujo alvo pode ainda não existir, **lança exceção** para o EventBridge tentar de novo. Fora isso, no-op só quando a linha existe e a condição de status falha (evento duplicado ou já liquidado).
 
 Publisher novo: `challenges-points-transactions-stream-publisher`, na stream de `points-transactions`, com as regras `PointsReservedRule` (INSERT `Reserved`) e `PointsReservationFailedRule` (INSERT `Failed`), e DLQ `onFailure` no `DynamoEventSource` (ADR-0015 §1).
 

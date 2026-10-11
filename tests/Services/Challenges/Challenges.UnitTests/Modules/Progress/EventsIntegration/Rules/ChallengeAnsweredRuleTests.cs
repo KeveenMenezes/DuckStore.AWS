@@ -8,10 +8,10 @@ namespace Challenges.UnitTests.Modules.Progress.EventsIntegration.Rules;
 public class ChallengeAnsweredRuleTests
 {
     private static ProgressStreamImage Attempt(bool? isCorrect, int hintsRevealed = 0) =>
-        new("USER#alice", "ATTEMPT#py-001", isCorrect, SelectedOption: 0, hintsRevealed, PointsEarned: 100, PointsSpent: 0);
+        new("USER#alice", "ATTEMPT#py-001", isCorrect, SelectedOption: 0, hintsRevealed, PointsEarned: 100);
 
     private static ProgressStreamImage Profile(bool? isCorrect = null) =>
-        new("USER#alice", "PROFILE", isCorrect, 0, 0, 0, 0);
+        new("USER#alice", "PROFILE", isCorrect, 0, 0, 0);
 
     [Fact]
     public void Match_ReturnsTrue_WhenAnsweredDirectly_NoPriorHint()

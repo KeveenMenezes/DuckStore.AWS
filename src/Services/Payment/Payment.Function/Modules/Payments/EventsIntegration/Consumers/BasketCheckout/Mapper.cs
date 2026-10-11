@@ -11,5 +11,5 @@ public static class BasketCheckoutMapper
             Expiration: message.Payment.Expiration,
             Cvv: message.Payment.Cvv,
             PaymentMethod: (PaymentMethod)message.Payment.PaymentMethod,
-            DiscountId: message.DiscountId);
+            PointsToUse: message.PointsToUse);
 }

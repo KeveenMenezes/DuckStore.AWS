@@ -10,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAuth } from "@/features/auth/hooks/use-auth"
 import { usePointsBalance } from "@/features/points/hooks/use-points-balance"
 import { usePointsHistory } from "@/features/points/hooks/use-points-history"
-import type { PointsReason } from "@/features/points/types/points.types"
+import type { PointsEntry, PointsReason, PointsStatus } from "@/features/points/types/points.types"
 import { ROUTES } from "@/shared/constants/routes"
 
 const REASON_LABEL: Record<PointsReason, string> = {
@@ -19,8 +19,26 @@ const REASON_LABEL: Record<PointsReason, string> = {
   redemption: "Redemption",
 }
 
+// Credits are always completed, so only a redemption shows its status.
+const STATUS_LABEL: Record<Exclude<PointsStatus, "completed">, string> = {
+  awaiting: "Awaiting payment",
+  used: "Used",
+  released: "Returned",
+  refunded: "Refunded",
+  failed: "Failed",
+}
+
 function formatPoints(points: number): string {
   return points > 0 ? `+${points}` : `${points}`
+}
+
+// A failed redemption never left the balance, and a released/refunded one came back: show them
+// struck through so the column still reads as "what moved the balance".
+function pointsClassName(entry: PointsEntry): string {
+  if (entry.status === "failed" || entry.status === "released" || entry.status === "refunded") {
+    return "text-muted-foreground line-through"
+  }
+  return entry.points > 0 ? "text-green-600" : "text-foreground"
 }
 
 /**
@@ -90,6 +108,7 @@ export function PointsHistoryView() {
                 <TableRow>
                   <TableHead>Date</TableHead>
                   <TableHead>Reason</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Points</TableHead>
                 </TableRow>
               </TableHeader>
@@ -106,9 +125,10 @@ export function PointsHistoryView() {
                       })}
                     </TableCell>
                     <TableCell>{REASON_LABEL[entry.reason]}</TableCell>
-                    <TableCell
-                      className={`text-right font-semibold ${entry.points > 0 ? "text-green-600" : "text-foreground"}`}
-                    >
+                    <TableCell className="text-muted-foreground">
+                      {entry.status === "completed" ? "" : STATUS_LABEL[entry.status]}
+                    </TableCell>
+                    <TableCell className={`text-right font-semibold ${pointsClassName(entry)}`}>
                       {formatPoints(entry.points)}
                     </TableCell>
                   </TableRow>

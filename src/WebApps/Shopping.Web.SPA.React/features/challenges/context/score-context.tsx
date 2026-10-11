@@ -41,6 +41,12 @@ interface ScoreContextType {
   requestHint: (challengeId: string) => Promise<RevealHintResult>
   /** Seeds the context from server-fetched progress (e.g. the /challenges SSR page), skipping this provider's own client-side fetch. */
   hydrate: (progress: ChallengeProgress) => void
+  /**
+   * Re-reads `myChallengeProgress` for a balance that changed outside a challenge answer — e.g.
+   * the review credit, which Challenges applies asynchronously off `ReviewCreatedEvent`
+   * (SPEC-review-points). A no-op for a signed-out visitor.
+   */
+  refresh: () => Promise<void>
 }
 
 const ScoreContext = createContext<ScoreContextType | null>(null)
@@ -125,6 +131,17 @@ export function ScoreProvider({ children }: { children: ReactNode }) {
     }
   }, [userId, applyProgress, resetProgress])
 
+  const refresh = useCallback(async () => {
+    if (!userId) return
+    try {
+      const progress = await getMyChallengeProgress()
+      // The user may have signed out or switched accounts while this was in flight.
+      if (hydratedForRef.current === userId) applyProgress(progress)
+    } catch (error) {
+      console.error("Failed to refresh challenge progress", error)
+    }
+  }, [userId, applyProgress])
+
   // Display-only estimate shown before a submission — the real penalty is whatever the server
   // actually applied, returned in SubmitAnswerResult.pointsEarned (ADR-0045 §10).
   const getHintPenalty = useCallback(
@@ -181,6 +198,7 @@ export function ScoreProvider({ children }: { children: ReactNode }) {
       submitAnswer,
       requestHint,
       hydrate,
+      refresh,
     }),
     [
       score,
@@ -193,6 +211,7 @@ export function ScoreProvider({ children }: { children: ReactNode }) {
       submitAnswer,
       requestHint,
       hydrate,
+      refresh,
     ],
   )
 

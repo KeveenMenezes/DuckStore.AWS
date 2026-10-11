@@ -16,6 +16,8 @@ namespace Payment.Function.Shared.Configuration;
 [JsonSerializable(typeof(EventBridgeEvent<BasketCheckoutEvent>))]
 [JsonSerializable(typeof(EventBridgeEvent<PaymentAuthorizedEvent>))]
 [JsonSerializable(typeof(EventBridgeEvent<PaymentDeclinedEvent>))]
+[JsonSerializable(typeof(EventBridgeEvent<PointsReservedEvent>))]
+[JsonSerializable(typeof(EventBridgeEvent<PointsReservationFailedEvent>))]
 public partial class PaymentSerializerContext : JsonSerializerContext
 {
 }

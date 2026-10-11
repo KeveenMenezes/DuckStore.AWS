@@ -265,15 +265,13 @@ public class DynamoPlayerProgressRepositoryTests
         Assert.True(captured!.ConsistentRead);
     }
 
-    private static PlayerProgress RedeemDelta(OwnerId ownerId, int points)
-    {
-        var progress = PlayerProgress.CreateEmpty(ownerId);
-        progress.Redeem(points);
-        return progress;
-    }
+    private static readonly Guid ReviewedProduct = Guid.Parse("6755192f-0676-413c-8358-7d70c118fc2a");
+
+    private PointsTransaction ReviewCredit() =>
+        PointsTransaction.ReviewCredit(_ownerId, ReviewedProduct, new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc));
 
     [Fact]
-    public async Task RedeemPointsAsync_ShouldDebitProfile_AndWriteTheRedemptionRow()
+    public async Task CreditAsync_ShouldPutTheLedgerRow_AndAddToScore_InOneTransaction()
     {
         TransactWriteItemsRequest? captured = null;
         _dynamoDb
@@ -281,36 +279,275 @@ public class DynamoPlayerProgressRepositoryTests
             .Callback<TransactWriteItemsRequest, CancellationToken>((r, _) => captured = r)
             .ReturnsAsync(new TransactWriteItemsResponse());
 
-        var redemption = await _repository.RedeemPointsAsync(_ownerId, RedeemDelta(_ownerId, 500));
+        var credited = await _repository.CreditAsync(ReviewCredit());
 
-        Assert.NotNull(captured);
+        Assert.True(credited);
         Assert.Equal(2, captured!.TransactItems.Count);
 
-        var profileUpdate = captured.TransactItems[0].Update;
+        var put = captured.TransactItems.Single(i => i.Put is not null).Put;
+        Assert.Equal(PointsTransactionsSchema.TableName, put.TableName);
+        Assert.Equal("attribute_not_exists(TransactionId)", put.ConditionExpression);
+        Assert.Equal("USER#alice", put.Item["OwnerId"].S);
+        Assert.Equal($"REVIEW#{ReviewedProduct}", put.Item["TransactionId"].S);
+        Assert.Equal("ReviewCredit", put.Item["Type"].S);
+        Assert.Equal("Completed", put.Item["Status"].S);
+        Assert.Equal("15", put.Item["Points"].N);
+
+        // A player who never answered a challenge has no PROFILE yet: ADD creates it, and every
+        // reader treats the absent counters as 0.
+        var profileUpdate = captured.TransactItems.Single(i => i.Update is not null).Update;
+        Assert.Equal(ProgressSchema.TableName, profileUpdate.TableName);
         Assert.Equal("PROFILE", profileUpdate.Key["SK"].S);
-        Assert.Equal("Score >= :pts", profileUpdate.ConditionExpression);
-        Assert.Equal("500", profileUpdate.ExpressionAttributeValues[":pts"].N);
-        Assert.Equal("-500", profileUpdate.ExpressionAttributeValues[":scoreDelta"].N);
-
-        var redemptionPut = captured.TransactItems[1].Put;
-        Assert.Equal("attribute_not_exists(SK)", redemptionPut.ConditionExpression);
-        Assert.Equal(500, int.Parse(redemptionPut.Item["PointsSpent"].N));
-        Assert.StartsWith("REDEMPTION#", redemptionPut.Item["SK"].S);
-
-        Assert.Equal(500, redemption.Points);
+        Assert.Equal("USER#alice", profileUpdate.Key["OwnerId"].S);
+        Assert.Equal("ADD Score :points", profileUpdate.UpdateExpression);
+        Assert.Equal("15", profileUpdate.ExpressionAttributeValues[":points"].N);
+        Assert.Null(profileUpdate.ConditionExpression);
     }
 
     [Fact]
-    public async Task RedeemPointsAsync_ShouldThrowInsufficientPoints_WhenTheBalanceConditionFails()
+    public async Task CreditAsync_ShouldReturnFalse_WhenTheLedgerRowAlreadyExists()
+    {
+        // Redelivered event, or the review was deleted and published again: the deterministic
+        // REVIEW#<productId> row is already there, so the balance is left untouched.
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TransactionCanceledException("cancelled")
+            {
+                CancellationReasons =
+                [
+                    new CancellationReason { Code = "ConditionalCheckFailed" },
+                    new CancellationReason { Code = "None" }
+                ]
+            });
+
+        Assert.False(await _repository.CreditAsync(ReviewCredit()));
+    }
+
+    [Fact]
+    public async Task CreditAsync_ShouldPropagate_WhenTheTransactionFailsForAnyOtherReason()
     {
         _dynamoDb
             .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new TransactionCanceledException("cancelled")
             {
-                CancellationReasons = [new CancellationReason { Code = "ConditionalCheckFailed" }]
+                CancellationReasons =
+                [
+                    new CancellationReason { Code = "None" },
+                    new CancellationReason { Code = "TransactionConflict" }
+                ]
             });
 
-        await Assert.ThrowsAsync<Challenges.Function.Shared.Exceptions.InsufficientPointsException>(
-            () => _repository.RedeemPointsAsync(_ownerId, RedeemDelta(_ownerId, 5_000)));
+        await Assert.ThrowsAsync<TransactionCanceledException>(() => _repository.CreditAsync(ReviewCredit()));
+    }
+
+    private static readonly Guid CheckedOutOrder = Guid.Parse("b91258ab-9298-43ae-9ee0-b65752590ec4");
+
+    private static TransactionCanceledException Cancelled(string balanceCode, string ledgerCode) =>
+        new("cancelled")
+        {
+            CancellationReasons =
+            [
+                new CancellationReason { Code = balanceCode },
+                new CancellationReason { Code = ledgerCode }
+            ]
+        };
+
+    [Fact]
+    public async Task ReservePointsAsync_ShouldDebitUnderTheBalanceGuard_AndPutTheReservedRow()
+    {
+        TransactWriteItemsRequest? captured = null;
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<TransactWriteItemsRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new TransactWriteItemsResponse());
+
+        var outcome = await _repository.ReservePointsAsync(_ownerId, CheckedOutOrder, 1000);
+
+        Assert.Equal(PointsReservationOutcome.Reserved, outcome);
+        var balance = captured!.TransactItems[0].Update;
+        Assert.Equal("PROFILE", balance.Key["SK"].S);
+        Assert.Equal("Score >= :points", balance.ConditionExpression);
+        Assert.Equal("ADD Score :debit", balance.UpdateExpression);
+        Assert.Equal("1000", balance.ExpressionAttributeValues[":points"].N);
+        Assert.Equal("-1000", balance.ExpressionAttributeValues[":debit"].N);
+
+        var put = captured.TransactItems[1].Put;
+        Assert.Equal(PointsTransactionsSchema.TableName, put.TableName);
+        Assert.Equal("attribute_not_exists(TransactionId)", put.ConditionExpression);
+        Assert.Equal($"REDEMPTION#{CheckedOutOrder}", put.Item["TransactionId"].S);
+        Assert.Equal("Reserved", put.Item["Status"].S);
+        Assert.Equal("-1000", put.Item["Points"].N);
+        Assert.Equal(CheckedOutOrder.ToString(), put.Item["OrderId"].S);
+    }
+
+    [Fact]
+    public async Task ReservePointsAsync_ShouldPutAFailedRow_WithoutDebiting_WhenTheBalanceIsShort()
+    {
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(Cancelled("ConditionalCheckFailed", "None"));
+        PutItemRequest? failedPut = null;
+        _dynamoDb
+            .Setup(d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<PutItemRequest, CancellationToken>((r, _) => failedPut = r)
+            .ReturnsAsync(new PutItemResponse());
+
+        var outcome = await _repository.ReservePointsAsync(_ownerId, CheckedOutOrder, 1000);
+
+        Assert.Equal(PointsReservationOutcome.Failed, outcome);
+        Assert.NotNull(failedPut);
+        Assert.Equal(PointsTransactionsSchema.TableName, failedPut!.TableName);
+        Assert.Equal("attribute_not_exists(TransactionId)", failedPut.ConditionExpression);
+        Assert.Equal("Failed", failedPut.Item["Status"].S);
+        Assert.Equal($"REDEMPTION#{CheckedOutOrder}", failedPut.Item["TransactionId"].S);
+        Assert.Equal(CheckedOutOrder.ToString(), failedPut.Item["OrderId"].S);
+    }
+
+    // A redelivered BasketCheckoutEvent: the REDEMPTION# row is already there, whatever the balance
+    // condition says now (it was debited the first time), so nothing more is written.
+    [Theory]
+    [InlineData("None")]
+    [InlineData("ConditionalCheckFailed")]
+    public async Task ReservePointsAsync_ShouldBeANoOp_WhenTheOrderWasAlreadyProcessed(string balanceCode)
+    {
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(Cancelled(balanceCode, "ConditionalCheckFailed"));
+
+        var outcome = await _repository.ReservePointsAsync(_ownerId, CheckedOutOrder, 1000);
+
+        Assert.Equal(PointsReservationOutcome.AlreadyProcessed, outcome);
+        _dynamoDb.Verify(
+            d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetRedemptionAsync_ShouldReadTheOrdersRowConsistently_ByItsKey()
+    {
+        GetItemRequest? captured = null;
+        _dynamoDb
+            .Setup(d => d.GetItemAsync(It.IsAny<GetItemRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<GetItemRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new GetItemResponse
+            {
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["OwnerId"] = new("USER#alice"),
+                    ["TransactionId"] = new($"REDEMPTION#{CheckedOutOrder}"),
+                    ["Type"] = new("Redemption"),
+                    ["Status"] = new("Reserved"),
+                    ["Points"] = new AttributeValue { N = "-1000" },
+                    ["SourceId"] = new(CheckedOutOrder.ToString()),
+                    ["OrderId"] = new(CheckedOutOrder.ToString()),
+                    ["CreatedAt"] = new("2026-10-10T12:00:00.0000000Z"),
+                    ["UpdatedAt"] = new("2026-10-10T12:00:00.0000000Z")
+                }
+            });
+
+        var redemption = await _repository.GetRedemptionAsync(_ownerId, CheckedOutOrder);
+
+        // Consistent, on the base table: a miss means the order used no points, not "not yet".
+        Assert.True(captured!.ConsistentRead);
+        Assert.Equal(PointsTransactionsSchema.TableName, captured.TableName);
+        Assert.Equal("USER#alice", captured.Key["OwnerId"].S);
+        Assert.Equal($"REDEMPTION#{CheckedOutOrder}", captured.Key["TransactionId"].S);
+        Assert.NotNull(redemption);
+        Assert.Equal(PointsTransactionStatus.Reserved, redemption!.Status);
+        Assert.Equal(-1000, redemption.Points);
+        Assert.Equal(CheckedOutOrder.ToString(), redemption.OrderId);
+    }
+
+    [Fact]
+    public async Task GetRedemptionAsync_ShouldReturnNull_WhenTheOrderUsedNoPoints()
+    {
+        _dynamoDb
+            .Setup(d => d.GetItemAsync(It.IsAny<GetItemRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetItemResponse());
+
+        Assert.Null(await _repository.GetRedemptionAsync(_ownerId, CheckedOutOrder));
+    }
+
+    private PointsTransaction Settled(PointsTransactionStatus from, Func<PointsTransaction, bool> transition)
+    {
+        var redemption = PointsTransaction.Load(
+            _ownerId, $"REDEMPTION#{CheckedOutOrder}", PointsTransactionType.Redemption, from, -1000,
+            CheckedOutOrder.ToString(), CheckedOutOrder.ToString(), DateTime.UtcNow, DateTime.UtcNow);
+        Assert.True(transition(redemption));
+        return redemption;
+    }
+
+    [Fact]
+    public async Task SaveSettlementAsync_ShouldMoveTheStatus_ConditionedOnTheOneItLeft()
+    {
+        UpdateItemRequest? captured = null;
+        _dynamoDb
+            .Setup(d => d.UpdateItemAsync(It.IsAny<UpdateItemRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<UpdateItemRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new UpdateItemResponse());
+
+        var saved = await _repository.SaveSettlementAsync(
+            Settled(PointsTransactionStatus.Reserved, r => r.Use(DateTime.UtcNow)));
+
+        Assert.True(saved);
+        Assert.Equal(PointsTransactionsSchema.TableName, captured!.TableName);
+        Assert.Equal("#status = :from", captured.ConditionExpression);
+        Assert.Equal("Reserved", captured.ExpressionAttributeValues[":from"].S);
+        Assert.Equal("Used", captured.ExpressionAttributeValues[":to"].S);
+        _dynamoDb.Verify(
+            d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveSettlementAsync_ShouldReturnThePoints_InTheSameTransaction_OnRelease()
+    {
+        TransactWriteItemsRequest? captured = null;
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<TransactWriteItemsRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new TransactWriteItemsResponse());
+
+        var saved = await _repository.SaveSettlementAsync(
+            Settled(PointsTransactionStatus.Reserved, r => r.CancelOrder(DateTime.UtcNow)));
+
+        Assert.True(saved);
+        var ledger = captured!.TransactItems[0].Update;
+        Assert.Equal("#status = :from", ledger.ConditionExpression);
+        Assert.Equal("Reserved", ledger.ExpressionAttributeValues[":from"].S);
+        Assert.Equal("Released", ledger.ExpressionAttributeValues[":to"].S);
+        var balance = captured.TransactItems[1].Update;
+        Assert.Equal("PROFILE", balance.Key["SK"].S);
+        Assert.Equal("ADD Score :points", balance.UpdateExpression);
+        Assert.Equal("1000", balance.ExpressionAttributeValues[":points"].N);
+    }
+
+    // A duplicated or out-of-order event: the row already left the status this settlement starts
+    // from, so nothing is written — never a second refund.
+    [Fact]
+    public async Task SaveSettlementAsync_ShouldBeANoOp_WhenTheStatusAlreadyMoved()
+    {
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(Cancelled("ConditionalCheckFailed", "None"));
+
+        var saved = await _repository.SaveSettlementAsync(
+            Settled(PointsTransactionStatus.Used, r => r.CancelOrder(DateTime.UtcNow)));
+
+        Assert.False(saved);
+    }
+
+    [Fact]
+    public async Task ReservePointsAsync_ShouldBeANoOp_WhenTheFailedRowWasAlreadyWritten()
+    {
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(Cancelled("ConditionalCheckFailed", "None"));
+        _dynamoDb
+            .Setup(d => d.PutItemAsync(It.IsAny<PutItemRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConditionalCheckFailedException("exists"));
+
+        var outcome = await _repository.ReservePointsAsync(_ownerId, CheckedOutOrder, 1000);
+
+        Assert.Equal(PointsReservationOutcome.AlreadyProcessed, outcome);
     }
 }

@@ -10,13 +10,14 @@ public class Payment : Aggregate<PaymentId>
     public string? AuthorizationCode { get; private set; }
     public string? DeclineReason { get; private set; }
 
-    // Opaque pass-through from BasketCheckoutEvent, carried into PaymentRequestedEvent so
-    // PaymentGateway can forward it to PaymentAuthorizedEvent (ADR-0046 §6) — Payment never
-    // validates or interprets it. Null when no coupon was applied at checkout.
-    public string? DiscountId { get; private set; }
+    // DeclineReason for a checkout whose points couldn't be reserved (ADR-0048 §6).
+    public const string InsufficientPointsReason = "InsufficientPoints";
 
+    // awaitingPoints: the checkout used points, so the payment waits for their reservation before
+    // the gateway is asked — otherwise it could be authorized with a discount the customer didn't
+    // have (ADR-0048 §6). Without points the payment starts Pending, as it always has.
     public static Payment Create(
-        PaymentId id, Guid orderId, Guid customerId, decimal amount, CardDetails card, string? discountId = null)
+        PaymentId id, Guid orderId, Guid customerId, decimal amount, CardDetails card, bool awaitingPoints = false)
     {
         return new Payment
         {
@@ -25,10 +26,30 @@ public class Payment : Aggregate<PaymentId>
             CustomerId = customerId,
             Amount = amount,
             Card = card,
-            Status = PaymentStatus.Pending,
-            DiscountId = discountId,
+            Status = awaitingPoints ? PaymentStatus.AwaitingPoints : PaymentStatus.Pending,
             CreatedAt = DateTime.UtcNow
         };
+    }
+
+    // The points were reserved: the payment goes on to the gateway (PaymentRequestedRule matches
+    // this transition). A no-op once the payment left AwaitingPoints, so a redelivery is harmless.
+    public void ConfirmPoints()
+    {
+        if (Status != PaymentStatus.AwaitingPoints)
+            return;
+
+        Status = PaymentStatus.Pending;
+    }
+
+    // The balance was short: declined without asking the gateway. PaymentDeclinedInsufficientPointsRule
+    // announces it so Ordering cancels the order.
+    public void RejectPoints()
+    {
+        if (Status != PaymentStatus.AwaitingPoints)
+            return;
+
+        Status = PaymentStatus.Declined;
+        DeclineReason = InsufficientPointsReason;
     }
 
     // Maps a Payment gateway's authorize/decline outcome onto the payment's own transition, so
@@ -71,8 +92,7 @@ public class Payment : Aggregate<PaymentId>
         string? authorizationCode,
         string? declineReason,
         DateTime? createdAt = null,
-        DateTime? lastModified = null,
-        string? discountId = null)
+        DateTime? lastModified = null)
     {
         return new Payment
         {
@@ -85,8 +105,7 @@ public class Payment : Aggregate<PaymentId>
             AuthorizationCode = authorizationCode,
             DeclineReason = declineReason,
             CreatedAt = createdAt,
-            LastModified = lastModified,
-            DiscountId = discountId
+            LastModified = lastModified
         };
     }
 }

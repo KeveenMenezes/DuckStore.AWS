@@ -1,41 +1,18 @@
 import { util } from '@aws-appsync/utils'
 
+// Top-level pipeline resolver for checkoutBasket (ADR-0048 §4), run on every checkout, with or
+// without points. ADR-0009 criterion 2 — orchestration across services: the steps only map
+// arguments, results and errors; every price rule lives in the Pricing Lambda.
+//   1. Mutation.checkoutBasket.loadCart.js  (shopping-carts)  — the saved cart's items
+//   2. Mutation.checkoutBasket.quote.js     (Pricing)         — cap + total charged, or PriceChanged
+//   3. Mutation.checkoutBasket.checkout.js  (Basket)          — checkout with the server's total
+// Cognito-only: the owner always comes from the token.
 export function request(ctx) {
-  const input = ctx.args.input
-  return {
-    operation: 'Invoke',
-    payload: {
-      BasketCheckoutDto: {
-        OwnerId: `USER#${ctx.identity.sub}`,  // Cognito-only mutation — derive owner from the token
-        CustomerId: ctx.identity.sub,  // always from Cognito — never trust client value
-        TotalPrice: input.totalPrice,
-        // Opaque pass-through — never interpreted here (ADR-0046 §6).
-        DiscountId: input.discountId ?? null,
-        ShippingAddress: {
-          FirstName: input.firstName,
-          LastName: input.lastName,
-          EmailAddress: input.emailAddress,
-          AddressLine: input.addressLine,
-          Country: input.country,
-          State: input.state,
-          ZipCode: input.zipCode,
-        },
-        // Optional — empty for Cash, which carries no card (BasketCheckoutDto's fields are
-        // plain non-nullable strings, so default explicitly rather than passing null through).
-        Payment: {
-          CardName: input.cardName ?? '',
-          CardNumber: input.cardNumber ?? '',
-          Expiration: input.expiration ?? '',
-          Cvv: input.cvv ?? '',
-          PaymentMethod: input.paymentMethod,
-          Installments: input.installments,
-        },
-      },
-    },
-  }
+  if (!ctx.identity || !ctx.identity.sub) util.unauthorized()
+  return {}
 }
 
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
-  return { isSuccess: ctx.result.IsSuccess, orderId: ctx.result.OrderId ?? null }
+  return ctx.prev.result
 }

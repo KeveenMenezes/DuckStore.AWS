@@ -6,13 +6,7 @@
 // live here, the persistence stays a one-way write (ADR-0045 §5, §9).
 public class PlayerProgress : Aggregate<OwnerId>
 {
-    // Below this, a redemption's TransactWriteItems cost isn't worth what it converts to
-    // (ADR-0046 §2 leaves the exact economics to Pricing; this only guards against 1-point
-    // redemptions). Pricing's own minimum-redeemable-amount is a separate, unrelated constant.
-    public const int MinimumRedeemablePoints = 100;
-
     public int Score { get; private set; }
-    public int PointsSpent { get; private set; }
     public int Completed { get; private set; }
     public int CorrectCount { get; private set; }
     public int WrongCount { get; private set; }
@@ -25,9 +19,6 @@ public class PlayerProgress : Aggregate<OwnerId>
 
     private readonly List<Attempt> _attempts = [];
     public IReadOnlyList<Attempt> Attempts => _attempts.AsReadOnly();
-
-    private readonly List<Redemption> _redemptions = [];
-    public IReadOnlyList<Redemption> Redemptions => _redemptions.AsReadOnly();
 
     // The ledger rows this delta must commit alongside its Score change (ADR-0048 §2). Like every
     // other collection here it is delta-only: Load never fills it, because the ledger is read by
@@ -72,26 +63,9 @@ public class PlayerProgress : Aggregate<OwnerId>
         return attempt;
     }
 
-    // Run against a CreateEmpty shell, same delta-only shape as Apply (ADR-0046 §2): Score carries
-    // the *negative* delta the repository ADDs (never the resulting balance — the balance itself is
-    // never read here, only enforced by the database's own ConditionExpression), PointsSpent the
-    // positive one. The repository never decides how much to debit; it only translates these two
-    // fields and the minted Redemption into the transaction's Update/Put.
-    public Redemption Redeem(int points)
-    {
-        var redemption = Redemption.Create(points, DateTime.UtcNow);
-        _redemptions.Add(redemption);
-
-        Score -= points;
-        PointsSpent += points;
-
-        return redemption;
-    }
-
     public static PlayerProgress Load(
         string ownerId,
         int score,
-        int pointsSpent,
         int completed,
         int correctCount,
         int wrongCount,
@@ -105,7 +79,6 @@ public class PlayerProgress : Aggregate<OwnerId>
         {
             Id = OwnerId.Of(ownerId),
             Score = score,
-            PointsSpent = pointsSpent,
             Completed = completed,
             CorrectCount = correctCount,
             WrongCount = wrongCount,

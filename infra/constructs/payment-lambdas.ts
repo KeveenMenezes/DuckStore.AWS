@@ -25,6 +25,8 @@ export class PaymentLambdas extends Construct {
   public readonly paymentRequestedPublisher: lambda.Function;
   public readonly paymentAuthorizedConsumer: lambda.Function;
   public readonly paymentDeclinedConsumer: lambda.Function;
+  public readonly pointsReservedConsumer: lambda.Function;
+  public readonly pointsReservationFailedConsumer: lambda.Function;
 
   constructor(scope: Construct, id: string, props: PaymentLambdasProps) {
     super(scope, id);
@@ -234,6 +236,78 @@ export class PaymentLambdas extends Construct {
         maxEventAge: cdk.Duration.hours(2),
       }),
     );
+
+    // payment-points-reserved-consumer / payment-points-reservation-failed-consumer
+    //   Trigger: EventBridge rules (PointsReservedEvent / PointsReservationFailedEvent from
+    //   Challenges). Apply the checkout's points reservation outcome to the order's payment:
+    //   AwaitingPoints -> Pending (the gateway flow then runs as usual) or -> Declined with
+    //   InsufficientPoints (ADR-0048 §6). Same two-entry-point shape as the result consumers above.
+    //   The payment is found by order through GSI1, and a miss throws so EventBridge retries.
+    this.pointsReservedConsumer = this.pointsReservationConsumer(
+      'PointsReservedConsumer', 'payment-points-reserved-consumer', 'PointsReservedEvent',
+      'Applies PointsReservedEvent to the order\'s Payment (AwaitingPoints -> Pending)',
+      { paymentCode, eventBus, dlq, paymentsTable, processedEventsTable },
+    );
+    this.pointsReservationFailedConsumer = this.pointsReservationConsumer(
+      'PointsReservationFailedConsumer', 'payment-points-reservation-failed-consumer', 'PointsReservationFailedEvent',
+      'Applies PointsReservationFailedEvent to the order\'s Payment (AwaitingPoints -> Declined)',
+      { paymentCode, eventBus, dlq, paymentsTable, processedEventsTable },
+    );
+  }
+
+  private pointsReservationConsumer(
+    id: string,
+    functionName: string,
+    detailType: string,
+    description: string,
+    deps: {
+      paymentCode: lambda.Code;
+      eventBus: events.IEventBus;
+      dlq: ContextDlq;
+      paymentsTable: dynamodb.ITable;
+      processedEventsTable: dynamodb.ITable;
+    },
+  ): lambda.Function {
+    const fn = new lambda.Function(this, id, {
+      functionName,
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: deps.paymentCode,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: DOTNET_MEMORY_MB,
+      description,
+      environment: { ANNOTATIONS_HANDLER: id },
+    });
+
+    // Read covers the GSI1 lookup by order; write is the payment Put inside the inbox transaction.
+    deps.paymentsTable.grantReadWriteData(fn);
+    deps.processedEventsTable.grantWriteData(fn);
+
+    const rule = new events.Rule(this, `${id}Rule`, {
+      eventBus: deps.eventBus,
+      ruleName: `${functionName}-rule`,
+      description: `Routes ${detailType} (source=duckstore) to ${functionName}`,
+      eventPattern: {
+        source: ['duckstore'],
+        detailType: [detailType],
+      },
+    });
+    fn.configureAsyncInvoke({
+      onFailure: new destinations.SqsDestination(deps.dlq.queue),
+      retryAttempts: 2,
+    });
+    rule.addTarget(
+      new targets.LambdaFunction(fn, {
+        deadLetterQueue: deps.dlq.queue,
+        retryAttempts: 3,
+        maxEventAge: cdk.Duration.hours(2),
+      }),
+    );
+
+    return fn;
   }
 }
 

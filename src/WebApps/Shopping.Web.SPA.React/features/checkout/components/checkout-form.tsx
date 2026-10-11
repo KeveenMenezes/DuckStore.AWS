@@ -26,7 +26,9 @@ import type { GqlBasketInstallmentPlan } from "@/graphql/types"
 interface CheckoutFormProps {
   formData: CheckoutFormData
   errors: CheckoutFieldErrors
-  totalPrice: number
+  // The quote's total for the chosen payment method — what will be charged. Null while the quote
+  // is loading or stale, which keeps the order from being confirmed against an outdated total.
+  chargedTotal: number | null
   // The unified, cart-level installment plan (null while loading or when the cart is empty).
   installmentPlan: GqlBasketInstallmentPlan | null
   isLoadingInstallmentPlan: boolean
@@ -40,7 +42,7 @@ interface CheckoutFormProps {
 export function CheckoutForm({
   formData,
   errors,
-  totalPrice,
+  chargedTotal,
   installmentPlan,
   isLoadingInstallmentPlan,
   isLoadingProfile,
@@ -212,10 +214,10 @@ export function CheckoutForm({
         type="submit"
         size="lg"
         className="gap-2"
-        disabled={isLoadingProfile || (!isCash && isLoadingInstallmentPlan)}
+        disabled={isLoadingProfile || isLoadingInstallmentPlan || chargedTotal === null}
       >
         <CreditCard className="h-4 w-4" />
-        Confirm Order - {formatBRL(totalPrice)}
+        {chargedTotal === null ? "Calculating total..." : `Confirm Order - ${formatBRL(chargedTotal)}`}
       </Button>
     </form>
   )

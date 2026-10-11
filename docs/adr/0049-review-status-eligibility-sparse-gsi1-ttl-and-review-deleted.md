@@ -162,8 +162,9 @@ public record ReviewDeletedEvent : IntegrationEvent
 ### 6. CatalogView applies `ReviewDeleted`
 
 A new `ReviewDeleteStrategy` joins `Consumers/ReviewSync/` (ADR-0040 — a new strategy behind the
-Review producer's dispatcher, never a `switch`), and `ReviewDeletedEvent` is added to the existing
-ReviewSync EventBridge rule. It decrements `RatingCount`, `RatingSum` and the
+Review producer's dispatcher, never a `switch`), and `ReviewDeletedEvent` reaches the same
+`catalogview-review-sync-consumer` through its own EventBridge rule, `catalogview-review-deleted-rule`
+(one rule per event type — ADR-0040 §4, ADR-0031 §4). It decrements `RatingCount`, `RatingSum` and the
 `RatingDistribution` bucket under the same `LastRatingEventId` idempotency marker as create/update
 (ADR-0030), conditioned on the count and bucket being positive so the aggregate is **floored at
 zero**, then recomputes `AverageRating`.

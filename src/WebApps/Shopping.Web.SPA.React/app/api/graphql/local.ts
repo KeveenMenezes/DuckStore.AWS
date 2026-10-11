@@ -8,7 +8,9 @@ import {
   PutItemCommand,
   UpdateItemCommand,
   DeleteItemCommand,
+  TransactWriteItemsCommand,
   ConditionalCheckFailedException,
+  TransactionCanceledException,
   type AttributeValue,
 } from '@aws-sdk/client-dynamodb'
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda'
@@ -203,14 +205,71 @@ const REVIEW_TTL_SECONDS = 5 * 24 * 60 * 60
 // Same ceiling as Mutation.updateChallengePoints.js (MAX_POINTS) and the Blazor ChallengePointsInput.
 const MAX_CHALLENGE_POINTS = 1000
 
-// Distinct product ids in the saved cart (Data is the .NET-serialized PascalCase JSON).
-async function cartProductIds(ownerId: string): Promise<string[]> {
+// The saved cart's lines as Pricing quotes them — the checkout pipeline's loadCart step (Data is
+// the .NET-serialized PascalCase JSON).
+async function cartItems(ownerId: string): Promise<Array<{ ProductId: string; Quantity: number }>> {
   const result = await dynamoDb.send(
-    new GetItemCommand({ TableName: 'shopping-carts', Key: { OwnerId: { S: ownerId } } }),
+    new GetItemCommand({ TableName: 'shopping-carts', Key: { OwnerId: { S: ownerId } }, ConsistentRead: true }),
   )
   if (!result.Item) return []
-  const cart = JSON.parse(unmarshall(result.Item).Data as string) as { Items?: Array<{ ProductId: string }> }
-  return [...new Set((cart.Items ?? []).map(i => String(i.ProductId)))]
+  const cart = JSON.parse(unmarshall(result.Item).Data as string) as {
+    Items?: Array<{ ProductId: string; Quantity: number }>
+  }
+  return (cart.Items ?? []).map(i => ({ ProductId: String(i.ProductId), Quantity: Number(i.Quantity) }))
+}
+
+async function pointsBalance(ownerId: string): Promise<number> {
+  const result = await dynamoDb.send(
+    new GetItemCommand({
+      TableName: 'challenge-progress',
+      Key: { OwnerId: { S: ownerId }, SK: { S: 'PROFILE' } },
+      ConsistentRead: true,
+    }),
+  )
+  return result.Item ? Number(unmarshall(result.Item).Score ?? 0) : 0
+}
+
+// Local stand-in for the whole redemption flow (ADR-0048 §5), which on AWS runs over EventBridge:
+// challenges-basket-checkout-consumer reserves (debit + REDEMPTION#<orderId> Reserved), and the
+// payment authorization turns it Used. Locally the payment always goes through, so the row is
+// written Used directly, in the same transaction as the debit and under the same balance guard.
+async function redeemPointsForOrder(ownerId: string, orderId: string, points: number) {
+  const now = new Date().toISOString()
+  await dynamoDb.send(
+    new TransactWriteItemsCommand({
+      TransactItems: [
+        {
+          Update: {
+            TableName: 'challenge-progress',
+            Key: { OwnerId: { S: ownerId }, SK: { S: 'PROFILE' } },
+            ConditionExpression: 'Score >= :points',
+            UpdateExpression: 'ADD Score :debit',
+            ExpressionAttributeValues: {
+              ':points': { N: String(points) },
+              ':debit': { N: String(-points) },
+            },
+          },
+        },
+        {
+          Put: {
+            TableName: 'points-transactions',
+            Item: {
+              OwnerId: { S: ownerId },
+              TransactionId: { S: `REDEMPTION#${orderId}` },
+              Type: { S: 'Redemption' },
+              Status: { S: 'Used' },
+              Points: { N: String(-points) },
+              SourceId: { S: orderId },
+              OrderId: { S: orderId },
+              CreatedAt: { S: now },
+              UpdatedAt: { S: now },
+            },
+            ConditionExpression: 'attribute_not_exists(TransactionId)',
+          },
+        },
+      ],
+    }),
+  )
 }
 
 // Local stand-in for review-order-completed-consumer: EventBridge doesn't exist locally, so the
@@ -238,6 +297,107 @@ async function createEligibleReviews(userId: string, productIds: string[]) {
     } catch (err) {
       if (!(err instanceof ConditionalCheckFailedException)) throw err
     }
+  }
+}
+
+type BasketQuote = {
+  TotalOriginalPrice: number
+  Price: number
+  CashPrice: number
+  MaxInstallmentsWithoutInterest: number
+  InstallmentPlan: { Count: number; Value: number; TotalValue: number; HasInterest: boolean }[]
+  MaxRedeemablePoints: number
+  PointsDiscount: number
+  ChargedTotal: number | null
+  Rejection: {
+    ErrorType: string
+    Message: string
+    ServerTotal: number | null
+    MaxRedeemablePoints: number | null
+  } | null
+}
+
+// Invokes Pricing's GetBasketInstallmentPlan and raises a refused quote (PointsAboveCap,
+// PriceChanged) as the same typed error AppSync raises from the resolvers' Rejection mapping.
+async function quoteBasket(payload: Record<string, unknown>): Promise<BasketQuote> {
+  const body = await invokeLambda<BasketQuote>('pricing-get-basket-installment-plan', payload)
+  if (body.Rejection) {
+    throw createGraphQLError(body.Rejection.Message, {
+      extensions: {
+        errorType: body.Rejection.ErrorType,
+        errorInfo: {
+          serverTotal: body.Rejection.ServerTotal,
+          maxRedeemablePoints: body.Rejection.MaxRedeemablePoints,
+        },
+      },
+    })
+  }
+  return body
+}
+
+function mapBasketQuote(body: BasketQuote) {
+  return {
+    totalOriginalPrice: body.TotalOriginalPrice,
+    price: body.Price,
+    cashPrice: body.CashPrice,
+    maxInstallmentsWithoutInterest: body.MaxInstallmentsWithoutInterest,
+    installments: (body.InstallmentPlan ?? []).map(e => ({
+      count: e.Count,
+      value: e.Value,
+      totalValue: e.TotalValue,
+      hasInterest: e.HasInterest,
+    })),
+    maxRedeemablePoints: body.MaxRedeemablePoints ?? 0,
+    pointsDiscount: body.PointsDiscount ?? 0,
+  }
+}
+
+// Same value as PointsPolicy.ReviewCredit in Challenges.Function (SPEC-review-points).
+const REVIEW_CREDIT_POINTS = 15
+
+// Local stand-in for challenges-review-created-consumer (same reason as createEligibleReviews):
+// one transaction Puts the REVIEW#<productId> ledger row and ADDs to PROFILE Score. A row already
+// there cancels the transaction, which is the once-per-product lock — so it is not an error.
+// Challenges only scores Cognito users (ADR-0045 §7), so a visitor's owner is skipped.
+async function creditReviewPoints(ownerId: string, productId: string) {
+  if (!ownerId.startsWith('USER#')) return
+  const now = new Date().toISOString()
+  try {
+    await dynamoDb.send(
+      new TransactWriteItemsCommand({
+        TransactItems: [
+          {
+            Put: {
+              TableName: 'points-transactions',
+              Item: {
+                OwnerId: { S: ownerId },
+                TransactionId: { S: `REVIEW#${productId}` },
+                Type: { S: 'ReviewCredit' },
+                Status: { S: 'Completed' },
+                Points: { N: String(REVIEW_CREDIT_POINTS) },
+                SourceId: { S: productId },
+                CreatedAt: { S: now },
+                UpdatedAt: { S: now },
+              },
+              ConditionExpression: 'attribute_not_exists(TransactionId)',
+            },
+          },
+          {
+            Update: {
+              TableName: 'challenge-progress',
+              Key: { OwnerId: { S: ownerId }, SK: { S: 'PROFILE' } },
+              UpdateExpression: 'ADD Score :points',
+              ExpressionAttributeValues: { ':points': { N: String(REVIEW_CREDIT_POINTS) } },
+            },
+          },
+        ],
+      }),
+    )
+  } catch (err) {
+    const alreadyCredited =
+      err instanceof TransactionCanceledException &&
+      err.CancellationReasons?.[0]?.Code === 'ConditionalCheckFailed'
+    if (!alreadyCredited) throw err
   }
 }
 
@@ -561,36 +721,30 @@ const resolvers = {
       }
     },
 
-    // Sums cost/originalPrice across every cart item, then runs the whole cart through the same
-    // cost-floor calculation as a single checkout transaction (ADR-0009). discountId is optional
-    // and Cognito-only (ADR-0046 §5) — same owner used for basket/challenges stands in locally.
+    // Mirrors Query.basketInstallmentPlan.js: sums cost/originalPrice across every cart item, then
+    // runs the whole cart through the same cost-floor calculation as a single checkout transaction
+    // (ADR-0009). A positive pointsToUse is Cognito-only (ADR-0048 §3) — the BFF-resolved owner
+    // stands in for the identity, so a visitor is rejected the same way.
     async basketInstallmentPlan(
       _: unknown,
-      { items, discountId }: { items: Array<{ productId: string; quantity: number }>; discountId?: string | null },
+      {
+        items,
+        pointsToUse,
+      }: {
+        items: Array<{ productId: string; quantity: number }>
+        pointsToUse?: number | null
+      },
       context: LocalContext,
     ) {
-      const body = await invokeLambda<{
-        TotalOriginalPrice: number
-        Price: number
-        CashPrice: number
-        MaxInstallmentsWithoutInterest: number
-        InstallmentPlan: { Count: number; Value: number; TotalValue: number; HasInterest: boolean }[]
-      }>('pricing-get-basket-installment-plan', {
+      const points = pointsToUse ?? 0
+      const isGuest = context.owner.ownerId.startsWith('GUEST#')
+      if (points > 0 && isGuest) throw unauthorized('basketInstallmentPlan', 'Query')
+
+      const body = await quoteBasket({
         Items: items.map(i => ({ ProductId: i.productId, Quantity: i.quantity })),
-        ...(discountId ? { OwnerId: context.owner.ownerId, DiscountId: discountId } : {}),
+        ...(points > 0 ? { PointsToUse: points } : {}),
       })
-      return {
-        totalOriginalPrice: body.TotalOriginalPrice,
-        price: body.Price,
-        cashPrice: body.CashPrice,
-        maxInstallmentsWithoutInterest: body.MaxInstallmentsWithoutInterest,
-        installments: (body.InstallmentPlan ?? []).map(e => ({
-          count: e.Count,
-          value: e.Value,
-          totalValue: e.TotalValue,
-          hasInterest: e.HasInterest,
-        })),
-      }
+      return mapBasketQuote(body)
     },
 
     async reviewsByProduct(
@@ -814,37 +968,12 @@ const resolvers = {
       }
     },
 
-    // Cognito-only in prod; locally the BFF-resolved owner stands in for the identity, same as
-    // myChallengeProgress. Expiry is checked here (not left to the table's TTL), same rule the
-    // NONE/direct resolvers apply in prod (ADR-0046 §4).
-    async myRewards(_: unknown, __: unknown, context: LocalContext) {
-      const result = await dynamoDb.send(
-        new QueryCommand({
-          TableName: 'customer-discounts',
-          KeyConditionExpression: 'OwnerId = :ownerId',
-          ExpressionAttributeValues: { ':ownerId': { S: context.owner.ownerId } },
-        }),
-      )
-
-      const now = Math.floor(Date.now() / 1000)
-      return (result.Items ?? [])
-        .map(raw => unmarshall(raw))
-        .filter(item => item.Status === 'Issued' && Number(item.ExpiresAt) > now)
-        .map(item => ({
-          id: item.DiscountId as string,
-          amount: Number(item.Amount),
-          status: item.Status as string,
-          expiresAt: new Date(Number(item.ExpiresAt) * 1000).toISOString(),
-          sourceRedemptionId: item.SourceRedemptionId as string,
-        }))
-    },
-
     // Mirrors the constants baked into the rewardConversion NONE resolver in prod
-    // (infra/constructs/reward-config.ts) and pricing-points-redeemed-consumer's Rewards__* env
-    // vars (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
-    // to read them from (ADR-0046 §8).
+    // (infra/constructs/reward-config.ts) and the Pricing Lambdas' Rewards__* env vars
+    // (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
+    // to read them from (ADR-0048 §3).
     async rewardConversion() {
-      return { pointsPerUnit: 100, currencyPerUnit: 10, expiryDays: 90 }
+      return { pointsPerUnit: 100, currencyPerUnit: 1 }
     },
   },
 
@@ -889,19 +1018,44 @@ const resolvers = {
       { input }: { input: Record<string, unknown> },
       context: LocalContext,
     ) {
-      // Checkout is Cognito-only in prod (resolver derives the owner from the token). Locally
-      // there is no Cognito, so we take the owner from the BFF-resolved context.
+      // Mirrors the checkoutBasket pipeline (loadCart → quote → checkout, ADR-0048 §4). Checkout is
+      // Cognito-only in prod (resolver derives the owner from the token). Locally there is no
+      // Cognito, so we take the owner from the BFF-resolved context.
       const ownerId = context.owner.ownerId
-      // Read before the checkout, which empties the cart.
-      const productIds = await cartProductIds(ownerId)
+      if (ownerId.startsWith('GUEST#')) throw unauthorized('checkoutBasket')
+
+      // loadCart: the saved cart, read before the checkout empties it.
+      const items = await cartItems(ownerId)
+      if (items.length === 0) {
+        throw createGraphQLError('There is no cart to check out.', { extensions: { errorType: 'BadRequest' } })
+      }
+      const productIds = [...new Set(items.map(i => i.ProductId))]
+
+      // quote: Pricing's total for this cart, points and payment choice, or PriceChanged /
+      // PointsAboveCap. The client's totalPrice is only compared, never charged.
+      const pointsToUse = Number(input.pointsToUse ?? 0)
+      const quote = await quoteBasket({
+        Items: items,
+        PointsToUse: pointsToUse,
+        ExpectedTotal: input.totalPrice,
+        PaymentMethod: input.paymentMethod,
+        Installments: input.installments,
+      })
+
+      // On AWS a missing balance only surfaces after checkout (Failed reservation → payment
+      // declined). Locally there's no event flow to decline the order, so refuse up front.
+      if (pointsToUse > 0 && (await pointsBalance(ownerId)) < pointsToUse) {
+        throw createGraphQLError('Not enough points for this order.', {
+          extensions: { errorType: 'InsufficientPoints' },
+        })
+      }
+
       const body = await invokeLambda<{ IsSuccess: boolean; OrderId: string | null }>('basket-checkout-basket', {
         BasketCheckoutDto: {
           OwnerId: ownerId,
           CustomerId: customerIdFromOwner(ownerId),
-          TotalPrice: input.totalPrice,
-          // Opaque pass-through, chosen beforehand via basketInstallmentPlan(discountId:) — never
-          // interpreted here (ADR-0046 §6).
-          DiscountId: input.discountId ?? null,
+          TotalPrice: quote.ChargedTotal,
+          PointsToUse: pointsToUse,
           ShippingAddress: {
             FirstName: input.firstName,
             LastName: input.lastName,
@@ -922,7 +1076,10 @@ const resolvers = {
           },
         },
       })
-      if (body.IsSuccess) await createEligibleReviews(customerIdFromOwner(ownerId), productIds)
+      if (body.IsSuccess) {
+        await createEligibleReviews(customerIdFromOwner(ownerId), productIds)
+        if (pointsToUse > 0 && body.OrderId) await redeemPointsForOrder(ownerId, body.OrderId, pointsToUse)
+      }
       return { isSuccess: body.IsSuccess, orderId: body.OrderId ?? null }
     },
 
@@ -1329,7 +1486,8 @@ const resolvers = {
       if (!existing.Item) throw unauthorized('createReview')
 
       const now = new Date().toISOString()
-      const createdAt = (unmarshall(existing.Item).CreatedAt as string | undefined) ?? now
+      const previous = unmarshall(existing.Item)
+      const createdAt = (previous.CreatedAt as string | undefined) ?? now
 
       try {
         await dynamoDb.send(
@@ -1359,6 +1517,15 @@ const resolvers = {
         if (err instanceof ConditionalCheckFailedException) throw unauthorized('createReview')
         throw err
       }
+
+      // On AWS the transition to Published emits ReviewCreatedEvent and
+      // challenges-review-created-consumer credits the points; locally EventBridge is best-effort,
+      // so the credit is simulated here, with the same transaction and the same once-per-product
+      // REVIEW#<productId> lock (SPEC-review-points). Legacy rows without Status already count as
+      // Published, so they never credit.
+      const wasPublished = previous.Status === undefined || previous.Status === 'Published'
+      if (!wasPublished) await creditReviewPoints(context.owner.ownerId, input.productId)
+
       return { id, userName }
     },
 
@@ -1443,24 +1610,6 @@ const resolvers = {
         hint: body.Hint,
         hintsRevealed: body.HintsRevealed,
         penaltyApplied: body.PenaltyApplied,
-      }
-    },
-
-    // Cognito-only in prod (ADR-0046 §2): the balance debit is a conditional TransactWriteItems,
-    // so this goes through the Challenges Lambda even locally rather than being reimplemented
-    // against DynamoDB here. No currency amount ever appears — Pricing converts asynchronously.
-    async redeemChallengePoints(
-      _: unknown,
-      { points }: { points: number },
-      context: LocalContext,
-    ) {
-      const body = await invokeLambda<{ RedemptionId: string; NewBalance: number }>(
-        'challenges-redeem-points',
-        { OwnerId: context.owner.ownerId, Points: points },
-      )
-      return {
-        redemptionId: body.RedemptionId,
-        newBalance: body.NewBalance,
       }
     },
   },

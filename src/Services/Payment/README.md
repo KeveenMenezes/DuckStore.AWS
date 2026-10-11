@@ -25,12 +25,29 @@ The two EventBridge icons on the diagram are the same bus — the round trip run
 4. Payment's own consumers apply the outcome to the `payments` table
 5. Ordering consumes that same outcome independently
 
+### When the checkout used points
+
+The payment must not reach the gateway before the points are actually reserved, or it could be
+authorized with a discount the customer didn't have
+([ADR-0048 §6](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md)):
+
+1. A checkout with `PointsToUse > 0` creates the payment `AwaitingPoints`, not `Pending` — the INSERT
+   publishes nothing. Challenges consumes the same `BasketCheckoutEvent` and reserves the points.
+2. `PointsReservedEvent` → `payment-points-reserved-consumer` moves it `AwaitingPoints → Pending`;
+   `PaymentRequestedRule` matches that MODIFY, and the cycle above continues from step 2.
+3. `PointsReservationFailedEvent` → `payment-points-reservation-failed-consumer` declines it
+   (`InsufficientPoints`); `PaymentDeclinedInsufficientPointsRule` publishes `PaymentDeclinedEvent`
+   so Ordering cancels the order, and Payment's own result consumer ignores it (no longer `Pending`).
+
+Both consumers **throw** when the payment does not exist yet — the two contexts consume the checkout
+in parallel, so the reservation can arrive first, and EventBridge retries.
+
 ## Data
 
 | Table | Key | Stream | Notes |
 |---|---|---|---|
-| `payments` | PK `Id`, GSI1 (ALL) | `NEW_AND_OLD_IMAGES` | Drives the CDC publisher |
-| `payment-processed-events` | PK `PK` | — | Idempotency inbox, written by all three Payment consumers |
+| `payments` | PK `Id`, GSI1 `ORDER#<orderId>` (ALL) | `NEW_AND_OLD_IMAGES` | Drives the CDC publisher; GSI1 finds the payment of an order |
+| `payment-processed-events` | PK `PK` | — | Idempotency inbox, written by all five Payment consumers |
 
 ## API surface (AppSync)
 
@@ -45,16 +62,19 @@ None. This context is reached only through events.
 | `payment-basket-checkout-consumer-rule` | `BasketCheckoutEvent` |
 | `payment-result-authorized-consumer-rule` | `PaymentAuthorizedEvent` |
 | `payment-result-declined-consumer-rule` | `PaymentDeclinedEvent` |
+| `payment-points-reserved-consumer-rule` | `PointsReservedEvent` (Challenges) |
+| `payment-points-reservation-failed-consumer-rule` | `PointsReservationFailedEvent` (Challenges) |
 | `paymentgateway-payment-requested-consumer-rule` | `PaymentRequestedEvent` |
 
 **Publishes**
 
-- `PaymentRequestedEvent` — via `payment-payments-stream-publisher` (CDC off `payments`)
+- `PaymentRequestedEvent` — via `payment-payments-stream-publisher` (CDC off `payments`), on INSERT
+  `Pending` or MODIFY `AwaitingPoints → Pending`
+- `PaymentDeclinedEvent` — the same publisher, on MODIFY `AwaitingPoints → Declined` (not enough points)
 - `PaymentAuthorizedEvent` · `PaymentDeclinedEvent` — from the gateway consumer
 
-Downstream, `PaymentAuthorizedEvent` is also consumed by Pricing, which burns the customer discount
-used at checkout ([ADR-0046](../../../docs/adr/0046-challenge-points-redeem-into-pricing-customer-discount.md)).
-Nothing subscribes to `PaymentDeclinedEvent` in Pricing — a decline leaves the coupon reusable.
+Downstream, `PaymentAuthorizedEvent` is also consumed by Challenges, which marks the order's reserved
+points `Used`; it carries `CustomerId` for that.
 
 ## Failure handling
 
@@ -74,4 +94,4 @@ dotnet test tests/Services/Payment/Payment.UnitTests/Payment.UnitTests.csproj
 [ADR-0005](../../../docs/adr/0005-remove-domain-events-cdc-via-dynamodb-streams.md) ·
 [ADR-0015](../../../docs/adr/0015-sqs-dlq-for-cdc-publishers-and-eventbridge-consumers.md) ·
 [ADR-0025](../../../docs/adr/0025-payment-bounded-context-simulated-gateway-cdc.md) ·
-[ADR-0046](../../../docs/adr/0046-challenge-points-redeem-into-pricing-customer-discount.md)
+[ADR-0048](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md)

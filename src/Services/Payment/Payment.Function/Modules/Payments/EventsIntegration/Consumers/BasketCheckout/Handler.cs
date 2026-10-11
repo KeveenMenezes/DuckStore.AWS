@@ -24,5 +24,5 @@ public class CreatePaymentHandler(IPaymentRepository paymentRepository)
                 command.Expiration,
                 command.Cvv,
                 command.PaymentMethod),
-            discountId: command.DiscountId);
+            awaitingPoints: command.PointsToUse > 0);
 }

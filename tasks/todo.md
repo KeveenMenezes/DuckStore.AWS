@@ -42,10 +42,18 @@
   - Arquivos: `app/my-points/page.tsx`, `features/points/components/points-history-table.tsx`, link em `app/my-profile`. Dependências: T6.
 
 ### Checkpoint 1 — points-ledger
-- [ ] `dotnet test tests/Services/Challenges/Challenges.UnitTests` verde; build e `pnpm build` limpos.
-- [ ] Deploy no AWS dev: login com **Google** e com **Amazon**, saldo no header, responder um desafio e o saldo e o histórico batem (critérios 1 a 7 do spec).
-- [ ] `adr-guardian` no diff da fase.
-- [ ] Revisão humana antes de seguir.
+- [x] `dotnet test tests/Services/Challenges/Challenges.UnitTests` verde; build e `pnpm build` limpos.
+- [x] Deploy no AWS dev: login com **Google** e com **Amazon**, saldo no header, responder um desafio e o saldo e o histórico batem (critérios 1 a 7 do spec). Validado em 11/10/2026; o login com **Amazon** foi confirmado por você:
+  - 1: login com Google e o saldo no header.
+  - 2: visitante sem saldo no header, e `/my-points` manda para o login.
+  - 3: acertar `java-001` levou o saldo de 15 a 115, com uma linha `+100`.
+  - 4: pelo teste `Apply_ShouldNotRecordALedgerCredit_WhenWrong` (não restou desafio aberto para errar no dev).
+  - 5: reenviar `cs-001` duas vezes não mudou o saldo nem criou linha.
+  - 6: `pageSize: 2` devolve as 2 mais novas com `nextToken`, e a página 2 continua.
+  - 7: header e `myChallengeProgress.score` iguais.
+  - O saldo é maior que a soma do histórico porque os pontos de antes do ledger não têm linha (sem backfill retroativo).
+- [x] `adr-guardian` no diff da fase. Rodado em 11/10/2026 sobre o PR #175 inteiro (fases 1 a 3): aprovado, sem violações.
+- [x] Revisão humana antes de seguir.
 
 ---
 
@@ -62,8 +70,12 @@
   - Arquivos: `Pages/Challenges/ChallengeList.razor`, `Services/ChallengeAdminService.cs`, `Services/Models.cs`, `Layout/NavMenu.razor` (ou equivalente), `Program.cs` (registro do serviço). Dependências: T8.
 
 ### Checkpoint 2 — challenge-points-admin
-- [ ] Critérios 1 a 6 do spec no AWS dev.
-- [ ] Revisão humana.
+- [x] Critérios 1 a 6 do spec no AWS dev.
+  - 1 e 2: edição no Blazor validada por você no PR #175.
+  - 3 e 4: o resolver altera só o item `PUBLIC` (`evaluate-code`), então o histórico e as tentativas antigas não mudam; o crédito novo usa o `Points` carregado (teste do T8).
+  - 5: no servidor, Admin com 0, −5 ou 1001 é recusado com "points must be an integer between 1 and 1000", e Admin com 150 gera o `UpdateItem`; o Blazor valida > 0.
+  - 6: cliente da loja recebeu `Unauthorized` no dev; Seller e API key recebem `Unauthorized` no `evaluate-code`.
+- [x] Revisão humana.
 
 ---
 
@@ -119,114 +131,122 @@
   - Arquivos: `features/reviews/services/*`, `components/reviews-section.tsx`, `components/review-form.tsx`, `components/my-review-card.tsx` (novo). Dependências: T18.
 
 ### Checkpoint 3 — review-eligibility
-- [ ] Testes de Review, Ordering e CatalogView verdes; `dotnet test --filter "FullyQualifiedName~Ordering.FunctionalTests"`.
-- [ ] AWS dev: critérios 1 a 9 do spec (o 7 conferindo o `ExpiresAt`).
-- [ ] `adr-guardian` no diff da fase. Revisão humana.
+- [x] Testes de Review, Ordering e CatalogView verdes; `dotnet test --filter "FullyQualifiedName~Ordering.FunctionalTests"` (2 testes).
+- [x] AWS dev: critérios 1 a 9 do spec (o 7 conferindo o `ExpiresAt`). Validado em 10 e 11/10/2026:
+  - 1, 4, 5 e 6: formulário depois da compra, publicar, editar, deletar e republicar.
+  - 2: quem não comprou não avalia (PR #175).
+  - 3: o pedido cancelado `296caeb4` não criou nem alterou review.
+  - 7: `ExpiresAt` exatamente 5 dias depois do delete (a remoção pelo TTL em si só acontece em 15/10).
+  - 8: as compras de 11/10 não alteraram a review já publicada.
+  - 9: o produto com linha `Eligible` mostra 0 reviews e média 0, e a linha não tem chave no GSI1.
+- [x] `adr-guardian` no diff da fase. Revisão humana. Aprovado em 11/10/2026, sem violações; o texto da ADR-0049 §6 sobre a regra do `ReviewDeletedEvent` foi corrigido para bater com o código.
 
 ---
 
 ## Fase 4 — `review-points` ([spec](../SPEC-review-points.md))
 
-- [ ] **T20: Consumer `challenges-review-created-consumer`** (M)
+- [x] **T20: Consumer `challenges-review-created-consumer`** (M)
   - Aceite: `PointsPolicy.ReviewCredit = 15`; `PointsTransaction.ReviewCredit` gera `REVIEW#<productId>`; uma transação com Put no ledger (`attribute_not_exists`) + `ADD Score 15`; falha condicional = no-op; um PROFILE inexistente é criado e lido sem erro; registrado no AppHost.
   - Verificar: testes do domínio, do handler e do mapper (`UserId` vazio rejeitado); teste do `PlayerProgress.Load` com PROFILE só com `Score`.
   - Arquivos: `Domain/PointsPolicy.cs`, `Domain/Entities/PointsTransaction.cs`, `Consumers/ReviewCreated/{Endpoint,Handler,Mapper}.cs`, `Data/DynamoPlayerProgressRepository.cs`, `src/AppHost/ChallengesExtensions.cs`. Dependências: T4, T15. Usar `cdc-integration-scaffold`.
 
-- [ ] **T21: CDK do consumer + aviso na SPA + `local.ts`** (S)
+- [x] **T21: CDK do consumer + aviso na SPA + `local.ts`** (S)
   - Aceite: regra `ReviewCreatedEvent` (a segunda, ao lado da do CatalogView), DLQ, alarme e grants; a SPA mostra "+15 pontos em instantes" na primeira publicação e invalida o saldo; o `local.ts` credita na primeira publicação.
   - Verificar: `cdk synth ChallengesStack`; `pnpm build`.
   - Arquivos: `infra/constructs/challenges-lambdas.ts`, `features/reviews/components/reviews-section.tsx`, `app/api/graphql/local.ts`. Dependências: T20.
 
 ### Checkpoint 4 — review-points
-- [ ] AWS dev: critérios 1 a 7 (publicar, editar, deletar e republicar, evento duplicado via replay da DLQ ou reenvio manual).
-- [ ] O histórico mostra "Avaliação +15". Revisão humana.
+- [x] AWS dev: critérios 1 a 7 (publicar, editar, deletar e republicar, evento duplicado via replay da DLQ ou reenvio manual). Validado em 10/10/2026: 1, 2, 3 e 6 (a republicação gerou um segundo `ReviewCreatedEvent`, e o consumer rodou 2 vezes e creditou uma). O 4 (TTL de 5 dias) e o 7 (sem crédito retroativo) ficam cobertos pela trava do ledger e pelos testes; o 5, pelo `review-eligibility`.
+- [x] O histórico mostra "Avaliação +15". Revisão humana.
 
 ---
 
 ## Fase 5 — `cart-points-redemption` ([spec](../SPEC-cart-points-redemption.md))
 
-- [ ] **T22: Pricing, conversão 100:1, teto de 20% e desconto de pontos** (M)
+- [x] **T22: Pricing, conversão 100:1, teto de 20% e desconto de pontos** (M)
   - Aceite: `RewardOptions` com `MaxDiscountPercent` (sem `ExpiryDays` para o resgate novo); `GetBasketInstallmentPlanQuery.PointsToUse`; `MaxRedeemablePoints` sobre o `Price` pós-campanha; `PointsAboveCapException` (BadRequest); o desconto é aplicado pelo parâmetro `customerDiscountAmount` que já existe; o resultado tem `MaxRedeemablePoints` e `PointsDiscount`; com `ExpectedTotal`/`PaymentMethod`/`Installments`, escolhe o total da forma de pagamento (`CashPrice` ou `InstallmentPlan[N].TotalValue`), compara em centavos e lança `PriceChangedException` (`ServerTotal`), ou devolve `ChargedTotal`; parcela N inexistente = BadRequest; `reward-config.ts` com 100, 1 e 20, e as env vars no `pricing-lambdas.ts`.
   - Verificar: testes (R$200 → 4000; R$0,99 → 19; acima do teto rejeita; o desconto entra depois da campanha; à vista e parcelado recalculados; total igual → `ChargedTotal`; diferente em 1 centavo → `PriceChanged`; parcela inexistente → BadRequest).
   - Arquivos: `Shared/Configuration/RewardOptions.cs`, `GetBasketInstallmentPlan/{Query,Handler,Endpoint}.cs`, `InstallmentCalculator.cs`, `Shared/Exceptions/{PointsAboveCap,PriceChanged}Exception.cs`, `infra/constructs/{reward-config,pricing-lambdas}.ts`. Pode chegar a 6 arquivos; se crescer, separar o `PriceChanged` em uma T22b. Dependências: T3.
 
-- [ ] **T23: Cotação GraphQL com `pointsToUse`** (S)
+- [x] **T23: Cotação GraphQL com `pointsToUse`** (S)
   - Aceite: `basketInstallmentPlan(items, pointsToUse)` com `maxRedeemablePoints` e `pointsDiscount` na resposta; `pointsToUse > 0` sem token = Unauthorized; `rewardConversion` sem `expiryDays`; o `local.ts` espelha (o `discountId` continua aceito até a T35).
   - Verificar: `cdk synth AppSyncStack`; consulta manual com e sem pontos.
   - Arquivos: `graphql/schema.graphql`, `Query.basketInstallmentPlan.js`, `infra/constructs/appsync-api.ts`, `api/queries/pricing.ts`, `app/api/graphql/local.ts`. Dependências: T22.
 
-- [ ] **T24: Contratos de evento (aditivo)** (S)
+- [x] **T24: Contratos de evento (aditivo)** (S)
   - Aceite: `BasketCheckoutEvent` + `PointsToUse` (**sem** campo em moeda — ADR-0048 §4); novos `PointsReservedEvent`, `PointsReservationFailedEvent` e `OrderCancelledEvent` no serializer context; o Basket repassa os campos novos do DTO ao evento. O `DiscountId` ainda **não** é removido.
   - Verificar: teste do Basket (campos chegam inalterados ao evento); `dotnet build` da solução.
   - Arquivos: `BuildingBlocks.Messaging/Events/{BasketCheckoutEvent,PointsReservedEvent,PointsReservationFailedEvent,OrderCancelledEvent}.cs`, `MessagingSerializerContext.cs`, `Basket.Function/.../Dtos/BasketCheckoutDto.cs` + `CheckoutBasket/Handler.cs`. Dependências: T22.
 
-- [ ] **T25: Pipeline `checkoutBasket` (`loadCart` → `quote` → `checkout`)** (M) ⚠ maior risco
+- [x] **T25: Pipeline `checkoutBasket` (`loadCart` → `quote` → `checkout`)** (M) ⚠ maior risco
   - Aceite: roda em **todo** checkout; usa os itens do carrinho salvo (`JSON.parse(Data)`); `quote` envia `expectedTotal`, `paymentMethod` e `installments` ao Pricing e repassa `PriceChanged`/`PointsAboveCap` com `errorType` e `serverTotal`; o Basket recebe `TotalPrice = chargedTotal` e `PointsToUse`; o JS só mapeia (nenhuma regra de preço no resolver — ADR-0009); `pipelineResolver()` ganha a variante com um data source por função.
   - Verificar: `cdk synth AppSyncStack`; no AWS dev: checkout normal OK, `totalPrice` adulterado → `PriceChanged`, preço alterado entre cotação e checkout → `PriceChanged`, pontos acima do teto → erro; `Ordering.FunctionalTests` verde.
   - Arquivos: `Mutation.checkoutBasket.js` + `.loadCart.js` + `.quote.js` + `.checkout.js`, `graphql/schema.graphql` (input `pointsToUse`), `infra/constructs/appsync-api.ts`. Dependências: T23, T24.
 
-- [ ] **T26: `local.ts` checkout com total do servidor e pontos** (S)
+- [x] **T26: `local.ts` checkout com total do servidor e pontos** (S)
   - Aceite: o checkout local recalcula, compara (`PriceChanged`), simula a reserva e o débito síncronos e grava `REDEMPTION#<orderId>` como `Used`.
   - Verificar: no Aspire, checkout com e sem pontos e com total adulterado.
   - Arquivos: `app/api/graphql/local.ts`. Dependências: T25.
 
-- [ ] **T27: Ordering publica `OrderCancelledEvent`** (S)
+- [x] **T27: Ordering publica `OrderCancelledEvent`** (S)
   - Aceite: `OrderCancelledRule` casa em MODIFY `Old.Status != Cancelled` e `New.Status == Cancelled` (de `Pending` ou `Completed`).
   - Verificar: testes da regra.
   - Arquivos: `Rules/OrderCancelledRule.cs`, registro da regra, teste. Dependências: T24.
 
-- [ ] **T28: Challenges reserva os pontos no `BasketCheckout`** (M)
+- [x] **T28: Challenges reserva os pontos no `BasketCheckout`** (M)
   - Aceite: `PointsTransaction.Reserve/Fail` (`Failed` guarda os pontos pedidos); com `PointsToUse > 0`, uma transação faz `ADD Score -pts` (condição `Score >= pts`) + Put `REDEMPTION#<orderId>` `Reserved` com `OrderId` (GSI1); se faltar saldo, Put `Failed`; checkout duplicado = no-op; `PointsToUse = 0` = ignora; consumer `challenges-basket-checkout-consumer` no AppHost.
   - Verificar: testes (saldo suficiente, insuficiente, duplicado, zero pontos).
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Consumers/BasketCheckout/{Endpoint,Handler,Mapper}.cs`, `Data/` (repositório do ledger), `src/AppHost/ChallengesExtensions.cs`. Dependências: T24, T3.
 
-- [ ] **T29: Publisher `challenges-points-transactions-stream-publisher`** (M)
+- [x] **T29: Publisher `challenges-points-transactions-stream-publisher`** (M)
   - Aceite: `PointsReservedRule` (INSERT `Reserved`) e `PointsReservationFailedRule` (INSERT `Failed`); sem moeda nos eventos; stream source no AppHost e no CDK, com DLQ `onFailure` alarmada (ADR-0015 §1); CDK do consumer da T28 (regra `BasketCheckoutEvent`, DLQ, alarme, grants).
   - Verificar: testes das regras; `cdk synth ChallengesStack`.
   - Arquivos: `Publishers/PointsTransactions/{Endpoint,PointsTransactionStreamImage}.cs`, `Rules/{PointsReservedRule,PointsReservationFailedRule}.cs`, `src/AppHost/ChallengesExtensions.cs`, `infra/constructs/challenges-lambdas.ts`. Dependências: T28. Usar `cdc-integration-scaffold`.
 
-- [ ] **T30: Payment, status `AwaitingPoints`** (M)
+- [x] **T30: Payment, status `AwaitingPoints`** (M)
   - Aceite: `PaymentStatus.AwaitingPoints`; checkout com pontos cria `AwaitingPoints`; `Payment.ConfirmPoints()` (→ `Pending`) e `Payment.RejectPoints()` (→ `Declined`, motivo `InsufficientPoints`); a `PaymentRequestedRule` também casa em MODIFY `AwaitingPoints→Pending`; a nova `PaymentDeclinedInsufficientPointsRule` publica `PaymentDeclinedEvent` em MODIFY `AwaitingPoints→Declined`; sem pontos, o comportamento não muda.
   - Verificar: testes (o INSERT `AwaitingPoints` não dispara `PaymentRequested`; as transições; a regra de recusa local; a regressão sem pontos).
   - Arquivos: `Domain/Enums/PaymentStatus.cs`, `Domain/Entities/Payment.cs`, `Consumers/BasketCheckout/{Command,Handler,Mapper}.cs`, `Rules/{PaymentRequestedRule,PaymentDeclinedInsufficientPointsRule}.cs`. Dependências: T24.
 
-- [ ] **T31: Payment consome `PointsReserved` e `PointsReservationFailed`** (M)
-  - Aceite: slice `Consumers/PointsReservation/` (Lambda `payment-points-reservation-consumer`) com dois `[LambdaFunction]`, no formato do `PaymentResult/`, chamando `ConfirmPoints`/`RejectPoints`; **pagamento não encontrado = exceção** (retry/DLQ), nunca no-op; idempotência pelo `payment-processed-events`; teste de que o `PaymentResult` do próprio Payment faz no-op ao receber o `PaymentDeclinedEvent` publicado pela T30; Lambdas no AppHost; CDK com duas regras, DLQ, alarme e grants.
+- [x] **T31: Payment consome `PointsReserved` e `PointsReservationFailed`** (M)
+  - Aceite: slice `Consumers/PointsReservation/` com dois `[LambdaFunction]` (Lambdas `payment-points-reserved-consumer` e `payment-points-reservation-failed-consumer`), no formato do `PaymentResult/`, chamando `ConfirmPoints`/`RejectPoints`; **pagamento não encontrado = exceção** (retry/DLQ), nunca no-op; idempotência pelo `payment-processed-events`; teste de que o `PaymentResult` do próprio Payment faz no-op ao receber o `PaymentDeclinedEvent` publicado pela T30; Lambdas no AppHost; CDK com duas regras, DLQ, alarme e grants.
   - Verificar: testes dos handlers; `cdk synth PaymentStack`.
   - Arquivos: `Consumers/PointsReservation/{Endpoint,Handler,Mapper}.cs`, `src/AppHost/PaymentExtensions.cs`, `infra/constructs/payment-lambdas.ts`. Dependências: T29, T30.
 
-- [ ] **T32: Challenges liquida o resgate (`Used`/`Released`/`Refunded`)** (M)
-  - Aceite: `challenges-payment-authorized-consumer` (`Reserved→Used`) e `challenges-order-cancelled-consumer` (`Reserved→Released` / `Used→Refunded` com `ADD Score +|pts|`; `Failed` = no-op); busca por GSI1 `OrderId`, e **linha não encontrada = exceção** (retry/DLQ, porque o GSI1 é eventualmente consistente); toda transição é condicional, e uma condição falhada sobre uma linha que existe é no-op; CDK com regras, DLQ e grants.
-  - Verificar: um teste por transição + evento duplicado + `Failed` no-op + linha ausente lança exceção.
+- [x] **T32: Challenges liquida o resgate (`Used`/`Released`/`Refunded`)** (M)
+  - Aceite: `challenges-payment-authorized-consumer` (`Reserved→Used`) e `challenges-order-cancelled-consumer` (`Reserved→Released` / `Used→Refunded` com `ADD Score +|pts|`; `Failed` = no-op); busca por `GetItem` consistente na chave da tabela base (`USER#<CustomerId>`), e linha não encontrada = pedido sem pontos = no-op (ADR-0048 §5, emendada); toda transição é condicional, e uma condição falhada sobre uma linha que existe é no-op; CDK com regras, DLQ e grants.
+  - Verificar: um teste por transição + evento duplicado + `Failed` no-op + linha ausente (pedido sem pontos) é no-op.
   - Arquivos: `Domain/Entities/PointsTransaction.cs`, `Consumers/{PaymentAuthorized,OrderCancelled}/*`, `src/AppHost/ChallengesExtensions.cs`, `infra/constructs/challenges-lambdas.ts`. Dependências: T27, T28.
 
-- [ ] **T33: SPA, pontos no carrinho e `PriceChanged`** (M)
+- [x] **T33: SPA, pontos no carrinho e `PriceChanged`** (M)
   - Aceite: `points-redeem-input` com máximo `min(saldo, maxRedeemablePoints)` e a conversão; cotação com debounce; o checkout envia `pointsToUse` e o `totalPrice` exibido; `PriceChanged` gera alerta inline + nova cotação + novo total destacado, sem reenviar; os pontos são ajustados se o teto cair; status de resgate no histórico (Aguardando pagamento, Usado, Estornado, Reembolsado, Falhou).
   - Verificar: `pnpm lint && pnpm build`; roteiro manual dos critérios 1 a 3, 6 e 14.
   - Arquivos: `features/cart/components/points-redeem-input.tsx`, `features/cart/hooks/*`, `features/checkout/services/checkout.service.ts`, `features/checkout/components/*` (resumo e alerta), `features/points/components/points-history-table.tsx`. Dependências: T23, T25.
 
 ### Checkpoint 5a — resgate funcionando (cupom ainda presente)
-- [ ] `dotnet test` (solução inteira) verde; `Ordering.FunctionalTests` verde.
-- [ ] AWS dev: critérios 1 a 8, 10, 11, 13 e 14 do spec; o 9 pelo teste unitário.
-- [ ] `adr-guardian` no diff da fase. Revisão humana antes da remoção.
+- [x] `dotnet test` (solução inteira) verde; `Ordering.FunctionalTests` verde.
+- [x] AWS dev: critérios 1 a 8, 10, 11, 13 e 14 do spec; o 9 pelo teste unitário. Validado em 10 e 11/10/2026; o 8 com o cartão de recusa simulada (`…0000`), e o 11 pelos testes e pelas DLQs vazias.
+- [x] `adr-guardian` no diff da fase. Revisão humana antes da remoção.
 
-- [ ] **T34: Remover o cupom do backend (Challenges + Pricing)** (M)
+- [x] **T34: Remover o cupom do backend (Challenges + Pricing)** (M)
   - Aceite: saem a feature `RedeemPoints`, `PlayerProgress.Redeem`/`MinimumRedeemablePoints`, `Redemption`/`REDEMPTION#` em `challenge-progress`, `PointsRedeemedRule`/`Event`, o módulo `Pricing/CustomerDiscounts` e o `DiscountId` no `GetBasketInstallmentPlan`; o registro de DI e o AppHost são limpos; os testes correspondentes são removidos ou ajustados.
   - Verificar: `dotnet build` + `dotnet test` (Challenges e Pricing).
   - Arquivos: diretórios removidos + `ServiceRegistration.cs` dos dois serviços + `src/AppHost/{Challenges,Pricing}Extensions.cs`. Dependências: Checkpoint 5a.
+  - Feito: as Lambdas `challenges-redeem-points`, `pricing-points-redeemed-consumer` e `pricing-payment-authorized-consumer` saíram do CDK aqui, e não na T35, para o CDK nunca apontar para um handler que não existe mais. Saíram também `PointsSpent`, `InsufficientPointsException`, `RewardOptions.ExpiryDays`/`ConvertToCurrency` e `REWARD_EXPIRY_DAYS`, que ficaram sem uso. O teste "desconto depois da campanha" foi portado do cupom para os pontos.
 
-- [ ] **T35: Remover o `DiscountId` e o schema de cupom** (M)
+- [x] **T35: Remover o `DiscountId` e o schema de cupom** (M)
   - Aceite: o `DiscountId` sai de `BasketCheckoutEvent`, `PaymentRequestedEvent`, `PaymentAuthorizedEvent`, do `Payment` e do PaymentGateway; saem `redeemChallengePoints`, `myRewards`, `CustomerDiscount` e `discountId` do schema, dos resolvers, do `local.ts` e da SPA (`GET_MY_REWARDS`); Lambdas e regras de CDK sem estado são removidas.
   - Verificar: `dotnet test` (solução); `cdk synth` nas stacks tocadas; `pnpm build`; `grep -ri "discountId\|myRewards\|redeemChallengePoints"` sem resultados fora de docs/ADRs.
   - Arquivos: eventos, `Payment.cs` e o consumer, o PaymentGateway, `graphql/**`, `infra/constructs/{appsync-api,pricing-lambdas,challenges-lambdas}.ts`, SPA. Pode passar de 5 arquivos, por ser uma remoção mecânica; se crescer, dividir por serviço. Dependências: T34.
+  - Feito: as Lambdas e regras de CDK do cupom já tinham saído na T34. O grep só acha a tabela `customer-discounts` (T36) e o parâmetro genérico `customerDiscountAmount` do `InstallmentCalculator`, que os pontos usam. Os diagramas (`docs/diagrams/*.svg`, `duckstore-process-flow.drawio`, `scripts/validate-diagrams.py`) ainda citam o `PointsRedeemedEvent` e ficam para o Checkpoint 5.
 
-- [ ] **T36: Remover recursos com estado do CDK** (S) ⚠ **perguntar antes**
+- [x] **T36: Remover recursos com estado do CDK** (S) ⚠ **perguntar antes** — aprovado em 10/10/2026; a tabela estava vazia no dev, e o `cdk diff` só mostrou a tabela, as duas Lambdas do cupom e as permissões delas
   - Aceite: a tabela `customer-discounts` é removida do `pricing-dynamodb.ts` depois de confirmar a `RemovalPolicy` e o descarte dos dados de dev com o humano.
   - Verificar: `cdk diff PricingStack` mostra só a remoção esperada.
   - Arquivos: `infra/constructs/pricing-dynamodb.ts`, `infra/stacks/pricing-stack.ts`. Dependências: T35 + aprovação explícita.
 
 ### Checkpoint 5 — Complete
-- [ ] Todos os critérios de aceite do negócio (tabela de cobertura do `SPEC.md`) validados no AWS dev.
-- [ ] `dotnet test` e `pnpm build` verdes; `cdk diff` revisado em todas as stacks tocadas.
-- [ ] READMEs dos contextos e diagramas atualizados (skills `readme-docs` e `architecture-diagrams`).
-- [ ] Pronto para PR contra `development`.
+- [x] Todos os critérios de aceite do negócio (tabela de cobertura do `SPEC.md`) validados no AWS dev.
+- [x] `dotnet test` e `pnpm build` verdes; `cdk diff` revisado em todas as stacks tocadas.
+- [x] READMEs dos contextos e diagramas atualizados (skills `readme-docs` e `architecture-diagrams`). READMEs e `CLAUDE.md` atualizados. Nos diagramas, as páginas Challenges, Pricing, Payment, Review, Ordering, Main e Business process foram redesenhadas, e o `validate-diagrams.py` passa nas 14 páginas.
+- [x] Pronto para PR contra `development` (PR #176, empilhado sobre o PR #175).

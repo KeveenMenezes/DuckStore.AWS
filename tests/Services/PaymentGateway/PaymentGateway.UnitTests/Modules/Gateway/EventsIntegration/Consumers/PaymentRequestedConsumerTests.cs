@@ -3,7 +3,7 @@
 public class PaymentRequestedConsumerTests
 {
     private static EventBridgeEvent<PaymentRequestedEvent> Event(
-        string cardNumber, decimal amount, string? discountId = null)
+        string cardNumber, decimal amount)
     {
         var paymentId = Guid.NewGuid();
         var orderId = Guid.NewGuid();
@@ -20,8 +20,7 @@ public class PaymentRequestedConsumerTests
                 CardNumber = cardNumber,
                 Expiration = "12/28",
                 Cvv = "123",
-                PaymentMethod = 2,
-                DiscountId = discountId
+                PaymentMethod = 2
             }
         };
     }
@@ -42,17 +41,17 @@ public class PaymentRequestedConsumerTests
     }
 
     [Fact]
-    public async Task PaymentRequestedConsumer_CarriesTheDiscountIdAndCustomerId_IntoTheAuthorizedEvent()
+    public async Task PaymentRequestedConsumer_CarriesTheCustomerId_IntoTheAuthorizedEvent()
     {
+        // Challenges' settlement keys the order's REDEMPTION# row off it (ADR-0048 §5).
         var publisher = new Mock<IEventPublisher>();
         var functions = new PaymentGateway.Function.Functions();
-        var evt = Event("4111111111111111", 100m, discountId: "discount-1");
+        var evt = Event("4111111111111111", 100m);
 
         await functions.PaymentRequestedConsumer(evt, publisher.Object);
 
         publisher.Verify(p => p.PublishAsync(
-            It.Is<PaymentAuthorizedEvent>(e =>
-                e.DiscountId == "discount-1" && e.CustomerId == evt.Detail.CustomerId),
+            It.Is<PaymentAuthorizedEvent>(e => e.CustomerId == evt.Detail.CustomerId),
             It.IsAny<CancellationToken>()),
             Times.Once);
     }

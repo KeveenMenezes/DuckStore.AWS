@@ -11,6 +11,7 @@ global using BuildingBlocks.Messaging.Events;
 global using BuildingBlocks.Messaging.Streams;
 global using BuildingBlocks.ServiceDefaults.Lambda.Behaviors;
 global using Challenges.Function.Modules.Progress.Data;
+global using Challenges.Function.Modules.Progress.Domain;
 global using Challenges.Function.Modules.Progress.Domain.Entities;
 global using Challenges.Function.Modules.Progress.Domain.Enums;
 global using Challenges.Function.Modules.Progress.Domain.ValueObjects;

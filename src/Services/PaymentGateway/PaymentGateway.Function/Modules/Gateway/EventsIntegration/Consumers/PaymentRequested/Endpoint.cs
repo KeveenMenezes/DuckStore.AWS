@@ -20,7 +20,6 @@ public partial class Functions
                 PaymentId = evt.Detail.PaymentId,
                 OrderId = evt.Detail.OrderId,
                 AuthorizationCode = detail,
-                DiscountId = evt.Detail.DiscountId,
                 CustomerId = evt.Detail.CustomerId
             });
         }
