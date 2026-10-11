@@ -138,8 +138,8 @@
   - Arquivos: `infra/constructs/challenges-lambdas.ts`, `features/reviews/components/reviews-section.tsx`, `app/api/graphql/local.ts`. Dependências: T20.
 
 ### Checkpoint 4 — review-points
-- [ ] AWS dev: critérios 1 a 7 (publicar, editar, deletar e republicar, evento duplicado via replay da DLQ ou reenvio manual).
-- [ ] O histórico mostra "Avaliação +15". Revisão humana.
+- [x] AWS dev: critérios 1 a 7 (publicar, editar, deletar e republicar, evento duplicado via replay da DLQ ou reenvio manual). Validado em 10/10/2026: 1, 2, 3 e 6 (a republicação gerou um segundo `ReviewCreatedEvent`, e o consumer rodou 2 vezes e creditou uma). O 4 (TTL de 5 dias) e o 7 (sem crédito retroativo) ficam cobertos pela trava do ledger e pelos testes; o 5, pelo `review-eligibility`.
+- [x] O histórico mostra "Avaliação +15". Revisão humana.
 
 ---
 
@@ -206,9 +206,9 @@
   - Arquivos: `features/cart/components/points-redeem-input.tsx`, `features/cart/hooks/*`, `features/checkout/services/checkout.service.ts`, `features/checkout/components/*` (resumo e alerta), `features/points/components/points-history-table.tsx`. Dependências: T23, T25.
 
 ### Checkpoint 5a — resgate funcionando (cupom ainda presente)
-- [ ] `dotnet test` (solução inteira) verde; `Ordering.FunctionalTests` verde.
-- [ ] AWS dev: critérios 1 a 8, 10, 11, 13 e 14 do spec; o 9 pelo teste unitário.
-- [ ] `adr-guardian` no diff da fase. Revisão humana antes da remoção.
+- [x] `dotnet test` (solução inteira) verde; `Ordering.FunctionalTests` verde.
+- [x] AWS dev: critérios 1 a 8, 10, 11, 13 e 14 do spec; o 9 pelo teste unitário. Validado em 10 e 11/10/2026; o 8 com o cartão de recusa simulada (`…0000`), e o 11 pelos testes e pelas DLQs vazias.
+- [x] `adr-guardian` no diff da fase. Revisão humana antes da remoção.
 
 - [x] **T34: Remover o cupom do backend (Challenges + Pricing)** (M)
   - Aceite: saem a feature `RedeemPoints`, `PlayerProgress.Redeem`/`MinimumRedeemablePoints`, `Redemption`/`REDEMPTION#` em `challenge-progress`, `PointsRedeemedRule`/`Event`, o módulo `Pricing/CustomerDiscounts` e o `DiscountId` no `GetBasketInstallmentPlan`; o registro de DI e o AppHost são limpos; os testes correspondentes são removidos ou ajustados.
@@ -229,6 +229,6 @@
 
 ### Checkpoint 5 — Complete
 - [ ] Todos os critérios de aceite do negócio (tabela de cobertura do `SPEC.md`) validados no AWS dev.
-- [ ] `dotnet test` e `pnpm build` verdes; `cdk diff` revisado em todas as stacks tocadas.
-- [ ] READMEs dos contextos e diagramas atualizados (skills `readme-docs` e `architecture-diagrams`).
-- [ ] Pronto para PR contra `development`.
+- [x] `dotnet test` e `pnpm build` verdes; `cdk diff` revisado em todas as stacks tocadas.
+- [ ] READMEs dos contextos e diagramas atualizados (skills `readme-docs` e `architecture-diagrams`). READMEs e `CLAUDE.md` feitos; os diagramas não, porque o `export-diagrams.sh` precisa do draw.io desktop, que não está instalado.
+- [x] Pronto para PR contra `development` (empilhado sobre o PR #175).
