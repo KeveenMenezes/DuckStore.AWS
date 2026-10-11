@@ -42,10 +42,18 @@
   - Arquivos: `app/my-points/page.tsx`, `features/points/components/points-history-table.tsx`, link em `app/my-profile`. Dependências: T6.
 
 ### Checkpoint 1 — points-ledger
-- [ ] `dotnet test tests/Services/Challenges/Challenges.UnitTests` verde; build e `pnpm build` limpos.
-- [ ] Deploy no AWS dev: login com **Google** e com **Amazon**, saldo no header, responder um desafio e o saldo e o histórico batem (critérios 1 a 7 do spec).
-- [ ] `adr-guardian` no diff da fase.
-- [ ] Revisão humana antes de seguir.
+- [x] `dotnet test tests/Services/Challenges/Challenges.UnitTests` verde; build e `pnpm build` limpos.
+- [ ] Deploy no AWS dev: login com **Google** e com **Amazon**, saldo no header, responder um desafio e o saldo e o histórico batem (critérios 1 a 7 do spec). Validado em 11/10/2026, menos o login com **Amazon**, que falta testar:
+  - 1: login com Google e o saldo no header.
+  - 2: visitante sem saldo no header, e `/my-points` manda para o login.
+  - 3: acertar `java-001` levou o saldo de 15 a 115, com uma linha `+100`.
+  - 4: pelo teste `Apply_ShouldNotRecordALedgerCredit_WhenWrong` (não restou desafio aberto para errar no dev).
+  - 5: reenviar `cs-001` duas vezes não mudou o saldo nem criou linha.
+  - 6: `pageSize: 2` devolve as 2 mais novas com `nextToken`, e a página 2 continua.
+  - 7: header e `myChallengeProgress.score` iguais.
+  - O saldo é maior que a soma do histórico porque os pontos de antes do ledger não têm linha (sem backfill retroativo).
+- [x] `adr-guardian` no diff da fase. Rodado em 11/10/2026 sobre o PR #175 inteiro (fases 1 a 3): aprovado, sem violações.
+- [x] Revisão humana antes de seguir.
 
 ---
 
@@ -62,8 +70,12 @@
   - Arquivos: `Pages/Challenges/ChallengeList.razor`, `Services/ChallengeAdminService.cs`, `Services/Models.cs`, `Layout/NavMenu.razor` (ou equivalente), `Program.cs` (registro do serviço). Dependências: T8.
 
 ### Checkpoint 2 — challenge-points-admin
-- [ ] Critérios 1 a 6 do spec no AWS dev.
-- [ ] Revisão humana.
+- [x] Critérios 1 a 6 do spec no AWS dev.
+  - 1 e 2: edição no Blazor validada por você no PR #175.
+  - 3 e 4: o resolver altera só o item `PUBLIC` (`evaluate-code`), então o histórico e as tentativas antigas não mudam; o crédito novo usa o `Points` carregado (teste do T8).
+  - 5: no servidor, Admin com 0, −5 ou 1001 é recusado com "points must be an integer between 1 and 1000", e Admin com 150 gera o `UpdateItem`; o Blazor valida > 0.
+  - 6: cliente da loja recebeu `Unauthorized` no dev; Seller e API key recebem `Unauthorized` no `evaluate-code`.
+- [x] Revisão humana.
 
 ---
 
@@ -119,9 +131,15 @@
   - Arquivos: `features/reviews/services/*`, `components/reviews-section.tsx`, `components/review-form.tsx`, `components/my-review-card.tsx` (novo). Dependências: T18.
 
 ### Checkpoint 3 — review-eligibility
-- [ ] Testes de Review, Ordering e CatalogView verdes; `dotnet test --filter "FullyQualifiedName~Ordering.FunctionalTests"`.
-- [ ] AWS dev: critérios 1 a 9 do spec (o 7 conferindo o `ExpiresAt`).
-- [ ] `adr-guardian` no diff da fase. Revisão humana.
+- [x] Testes de Review, Ordering e CatalogView verdes; `dotnet test --filter "FullyQualifiedName~Ordering.FunctionalTests"` (2 testes).
+- [x] AWS dev: critérios 1 a 9 do spec (o 7 conferindo o `ExpiresAt`). Validado em 10 e 11/10/2026:
+  - 1, 4, 5 e 6: formulário depois da compra, publicar, editar, deletar e republicar.
+  - 2: quem não comprou não avalia (PR #175).
+  - 3: o pedido cancelado `296caeb4` não criou nem alterou review.
+  - 7: `ExpiresAt` exatamente 5 dias depois do delete (a remoção pelo TTL em si só acontece em 15/10).
+  - 8: as compras de 11/10 não alteraram a review já publicada.
+  - 9: o produto com linha `Eligible` mostra 0 reviews e média 0, e a linha não tem chave no GSI1.
+- [x] `adr-guardian` no diff da fase. Revisão humana. Aprovado em 11/10/2026, sem violações; o texto da ADR-0049 §6 sobre a regra do `ReviewDeletedEvent` foi corrigido para bater com o código.
 
 ---
 
@@ -231,4 +249,4 @@
 - [ ] Todos os critérios de aceite do negócio (tabela de cobertura do `SPEC.md`) validados no AWS dev.
 - [x] `dotnet test` e `pnpm build` verdes; `cdk diff` revisado em todas as stacks tocadas.
 - [ ] READMEs dos contextos e diagramas atualizados (skills `readme-docs` e `architecture-diagrams`). READMEs e `CLAUDE.md` feitos; os diagramas não, porque o `export-diagrams.sh` precisa do draw.io desktop, que não está instalado.
-- [x] Pronto para PR contra `development` (empilhado sobre o PR #175).
+- [x] Pronto para PR contra `development` (PR #176, empilhado sobre o PR #175).
