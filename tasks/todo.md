@@ -222,7 +222,7 @@
   - Arquivos: eventos, `Payment.cs` e o consumer, o PaymentGateway, `graphql/**`, `infra/constructs/{appsync-api,pricing-lambdas,challenges-lambdas}.ts`, SPA. Pode passar de 5 arquivos, por ser uma remoção mecânica; se crescer, dividir por serviço. Dependências: T34.
   - Feito: as Lambdas e regras de CDK do cupom já tinham saído na T34. O grep só acha a tabela `customer-discounts` (T36) e o parâmetro genérico `customerDiscountAmount` do `InstallmentCalculator`, que os pontos usam. Os diagramas (`docs/diagrams/*.svg`, `duckstore-process-flow.drawio`, `scripts/validate-diagrams.py`) ainda citam o `PointsRedeemedEvent` e ficam para o Checkpoint 5.
 
-- [ ] **T36: Remover recursos com estado do CDK** (S) ⚠ **perguntar antes**
+- [x] **T36: Remover recursos com estado do CDK** (S) ⚠ **perguntar antes** — aprovado em 10/10/2026; a tabela estava vazia no dev, e o `cdk diff` só mostrou a tabela, as duas Lambdas do cupom e as permissões delas
   - Aceite: a tabela `customer-discounts` é removida do `pricing-dynamodb.ts` depois de confirmar a `RemovalPolicy` e o descarte dos dados de dev com o humano.
   - Verificar: `cdk diff PricingStack` mostra só a remoção esperada.
   - Arquivos: `infra/constructs/pricing-dynamodb.ts`, `infra/stacks/pricing-stack.ts`. Dependências: T35 + aprovação explícita.

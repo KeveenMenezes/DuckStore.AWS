@@ -37,9 +37,5 @@ export class PricingStack extends cdk.Stack {
       value: dynamoDB.gatewayCostsTable.tableName,
       exportName: `${this.stackName}-GatewayCostsTable`,
     });
-    new cdk.CfnOutput(this, 'CustomerDiscountsTableName', {
-      value: dynamoDB.customerDiscountsTable.tableName,
-      exportName: `${this.stackName}-CustomerDiscountsTable`,
-    });
   }
 }
