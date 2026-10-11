@@ -111,3 +111,23 @@ Shared code referenced across services — check here before adding cross-cuttin
 - Unit tests: xUnit + Moq + Moq.AutoMock, one project per service under `tests/Services/<Service>/<Service>.UnitTests` (plus `tests/BuildingBlocks/BuildingBlocks.UnitTests`). Tests target handlers directly, mocking repository/dependency interfaces.
 - Functional tests (`Ordering.FunctionalTests`): use `DistributedApplicationTestingBuilder` to spin up the real Aspire app graph (including containers) and exercise actual endpoints after waiting for resource health. Slower; require Docker.
 - Packages/versions are centrally pinned in `Directory.Packages.props` (central package management) — add package references there, not inline versions in `.csproj` files.
+
+## Delivering a feature from a spec and a plan
+
+When the repo has a spec (`SPEC.md` plus per-module `SPEC-<module>.md`) and a plan (`tasks/plan.md`, `tasks/todo.md`) and the user asks for it to be implemented, act as the **orchestrator** of every phase without the mode being restated. A practice exercise is different: there Claude mentors and the user writes the code.
+
+- **Subagents only where they pay off.** A track gets a subagent (`isolation: "worktree"`) when it is independent, substantial and worth the cold start — typically one service's slice, or a removal confined to a few services. Small or tightly coupled tasks run inline. The critical path and the shared contract files stay in the main session: `graphql/schema.graphql`, `infra/constructs/appsync-api.ts`, the SPA's `app/api/graphql/local.ts`, `BuildingBlocks.Messaging` event contracts and `MessagingSerializerContext`. At most about three tracks at once; merge them one at a time. The project agents (`cdc-integration-scaffold`, `appsync-resolver-scaffold`, `handler-test-backfill`) are for the tasks the plan points them at; `adr-guardian` runs on each phase's diff.
+- **Approvals grouped, but specific.** Each approval names the action and its impact; it covers only that action, and a change of scope means asking again.
+  - Dev deploys (`npx cdk deploy <Stacks> --exclusively`, `npx sst deploy --stage dev`) can be pre-approved for the named stacks. Production is never deployed from a session.
+  - A deploy that has to go in order is run by Claude in that order — e.g. the SPA before `AppSyncStack` when the schema drops an argument the old SPA still sends.
+  - Dropping a table or another AWS resource is asked per action, with evidence: the table is empty, and `aws cloudformation list-imports` shows no stack importing its exports.
+  - AWS SSO and site logins are steps only the user can do; ask for them together, once per phase.
+- **Technical checkpoints are not stopping points.** `dotnet build`, `dotnet test`, `pnpm build`/`pnpm lint`, `cdk synth`/`cdk diff`, `adr-guardian` and an approved dev deploy are run, not handed back. Stop for a failure without an obvious fix, spec ambiguity, an action no approval covers, or a step only the user can do.
+- **Done matches the change.** Always: tests and build pass, `tasks/todo.md` reflects reality, and the report says what was verified. When the change calls for it:
+  - this file's service description and the service README, when a service's events, tables or Lambdas change;
+  - an ADR, when the decision is cross-cutting;
+  - `docs/duckstore-process-flow.drawio` and its SVGs (`scripts/export-diagrams.sh`, then `scripts/validate-diagrams.py`), when the events, Lambdas or tables it draws change;
+  - a dev deploy and validation, when runtime or infra changes;
+  - a PR against `development`, when the work is meant to merge.
+  Say in one line why each conditional item was skipped.
+- **Stacked PRs.** After the base PR is merged into `development` (usually squash), and only then: fetch; confirm the merge; confirm the old base tip is an ancestor of the child branch and `git diff <old-base-tip> <merge-commit>` is empty or explained; keep local changes (`--autostash`). Then `git rebase --onto origin/development <old-base-tip> <branch>`, check the diff against `development` holds only the child's changes, and push with `--force-with-lease=<branch>:<pre-rebase-sha>`. If a check fails, stop and report.
