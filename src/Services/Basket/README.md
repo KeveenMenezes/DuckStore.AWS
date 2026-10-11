@@ -40,7 +40,7 @@ for discounts.
 |---|---|
 | `Query.basket` | Direct DynamoDB |
 | `Mutation.storeBasket` · `deleteBasket` | Direct DynamoDB |
-| `Mutation.checkoutBasket` | Lambda — `basket-checkout-basket` (also exposed via a Function URL, auth `NONE`) |
+| `Mutation.checkoutBasket` | Pipeline ([ADR-0048 §4](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md)): `loadCart` (direct `GetItem` on the saved cart) → `quote` (Pricing Lambda: cap, points and the total charged, or `PriceChanged`) → `checkout` (Lambda `basket-checkout-basket`, with Pricing's total; also exposed via a Function URL, auth `NONE`) |
 | `Mutation.mergeBasket` | Lambda — `basket-merge-basket` |
 
 ## Integration events
