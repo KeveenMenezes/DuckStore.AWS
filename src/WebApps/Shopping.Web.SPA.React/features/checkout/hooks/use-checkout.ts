@@ -39,7 +39,7 @@ export function useCheckout() {
   const { user, addOrder, refreshOrders } = useAuth()
 
   const [state, setState] = useState<CheckoutState>("form")
-  const [orderId, setOrderId] = useState("")
+  const [orderId, setOrderId] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
   const [formData, setFormData] = useState<CheckoutFormData>(EMPTY_FORM)
   const [errors, setErrors] = useState<CheckoutFieldErrors>({})
@@ -125,6 +125,7 @@ export function useCheckout() {
 
       if (user) {
         addOrder({
+          id: id ?? undefined,
           items: items.map((i) => ({
             name: i.product.name,
             imageId: i.product.imageId,

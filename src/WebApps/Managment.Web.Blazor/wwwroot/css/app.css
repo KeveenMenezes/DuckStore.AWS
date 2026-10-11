@@ -349,3 +349,11 @@ h1 {
     gap: 0.25rem;
     font-size: 0.85rem;
 }
+
+.inline-input {
+    width: 6rem;
+    padding: 0.3rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font: inherit;
+}

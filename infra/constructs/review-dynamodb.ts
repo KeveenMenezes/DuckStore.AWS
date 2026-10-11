@@ -19,6 +19,10 @@ export class ReviewDynamoDB extends Construct {
       partitionKey: { name: 'Id', type: dynamodb.AttributeType.STRING },
       billingMode: dynamodb.BillingMode.PAY_PER_REQUEST,
       stream: dynamodb.StreamViewType.NEW_AND_OLD_IMAGES,
+      // Only Deleted reviews carry ExpiresAt (epoch seconds, now + 5 days) — the row disappears
+      // after that and the customer can't review again without a new purchase. The TTL REMOVE
+      // reaches the stream but publishes nothing; the aggregate was adjusted on delete (ADR-0049).
+      timeToLiveAttribute: 'ExpiresAt',
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 

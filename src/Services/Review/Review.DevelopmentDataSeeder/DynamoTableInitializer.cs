@@ -23,8 +23,8 @@ public static class DynamoTableInitializer
                 AttributeDefinitions =
                 [
                     new AttributeDefinition("Id", ScalarAttributeType.S),
-                    new AttributeDefinition("GSI1PK", ScalarAttributeType.S),
-                    new AttributeDefinition("GSI1SK", ScalarAttributeType.S)
+                    new AttributeDefinition(ReviewSchema.Gsi1PkAttribute, ScalarAttributeType.S),
+                    new AttributeDefinition(ReviewSchema.Gsi1SkAttribute, ScalarAttributeType.S)
                 ],
                 KeySchema = [new KeySchemaElement("Id", KeyType.HASH)],
                 GlobalSecondaryIndexes =
@@ -36,8 +36,8 @@ public static class DynamoTableInitializer
                         IndexName = ReviewSchema.Gsi1Name,
                         KeySchema =
                         [
-                            new KeySchemaElement("GSI1PK", KeyType.HASH),
-                            new KeySchemaElement("GSI1SK", KeyType.RANGE)
+                            new KeySchemaElement(ReviewSchema.Gsi1PkAttribute, KeyType.HASH),
+                            new KeySchemaElement(ReviewSchema.Gsi1SkAttribute, KeyType.RANGE)
                         ],
                         Projection = new Projection { ProjectionType = ProjectionType.ALL }
                     }
@@ -58,6 +58,34 @@ public static class DynamoTableInitializer
         {
             // Table already exists — idempotent.
         }
+
+        // Outside the try: a table created before ADR-0049 also needs TTL turned on.
+        await EnableExpiresAtTtlAsync(dynamoDb);
+    }
+
+    // Deleted reviews carry ExpiresAt (epoch seconds); TTL removes the row 5 days after the
+    // delete (ADR-0049 §7). The TTL REMOVE reaches the stream but publishes nothing.
+    // Checked first instead of catching the "already enabled" error, so any other failure
+    // (wrong table, wrong attribute) still stops the seeder.
+    private static async Task EnableExpiresAtTtlAsync(IAmazonDynamoDB dynamoDb)
+    {
+        var current = await dynamoDb.DescribeTimeToLiveAsync(new DescribeTimeToLiveRequest
+        {
+            TableName = ReviewSchema.TableName
+        });
+
+        if (current.TimeToLiveDescription?.TimeToLiveStatus == TimeToLiveStatus.ENABLED)
+            return;
+
+        await dynamoDb.UpdateTimeToLiveAsync(new UpdateTimeToLiveRequest
+        {
+            TableName = ReviewSchema.TableName,
+            TimeToLiveSpecification = new TimeToLiveSpecification
+            {
+                Enabled = true,
+                AttributeName = ReviewSchema.ExpiresAtAttribute
+            }
+        });
     }
 
     private static async Task WaitUntilTableIsActiveAsync(IAmazonDynamoDB dynamoDb, string tableName)

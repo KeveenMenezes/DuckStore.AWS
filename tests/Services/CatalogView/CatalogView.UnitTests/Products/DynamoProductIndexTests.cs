@@ -206,6 +206,96 @@ public class DynamoProductIndexTests
     }
 
     [Fact]
+    public async Task ApplyRatingRemovalAsync_DecrementsCountSumAndBucket_FlooredAtZero()
+    {
+        UpdateItemRequest? conditionalRequest = null;
+        _dynamoDb
+            .Setup(d => d.UpdateItemAsync(
+                It.Is<UpdateItemRequest>(r => r.ConditionExpression != null),
+                It.IsAny<CancellationToken>()))
+            .Callback<UpdateItemRequest, CancellationToken>((r, _) => conditionalRequest = r)
+            .ReturnsAsync(new UpdateItemResponse());
+
+        _dynamoDb
+            .Setup(d => d.GetItemAsync(It.IsAny<GetItemRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetItemResponse());
+
+        await _index.ApplyRatingRemovalAsync("product-1", "event-4", rating: 4);
+
+        Assert.NotNull(conditionalRequest);
+        var values = conditionalRequest!.ExpressionAttributeValues;
+
+        Assert.Equal("-4", values[":ratingSumDelta"].N);
+        Assert.Equal("-1", values[":ratingCountDelta"].N);
+
+        var bucketPlaceholder = conditionalRequest.ExpressionAttributeNames
+            .Single(kvp => kvp.Value == "4").Key;
+        var bucketMatch = Regex.Match(
+            conditionalRequest.UpdateExpression,
+            $@"RatingDistribution\.{Regex.Escape(bucketPlaceholder)}\s+(:\w+)");
+        Assert.True(bucketMatch.Success, "Expected the withdrawn rating's bucket in the ADD.");
+        Assert.Equal("-1", values[bucketMatch.Groups[1].Value].N);
+
+        // Same idempotency marker as create/update, plus the zero floor on count and bucket.
+        Assert.Contains("LastRatingEventId <> :eventId", conditionalRequest.ConditionExpression);
+        Assert.Contains("RatingCount > :zero", conditionalRequest.ConditionExpression);
+        Assert.Contains($"RatingDistribution.{bucketPlaceholder} > :zero", conditionalRequest.ConditionExpression);
+        Assert.Equal("0", values[":zero"].N);
+    }
+
+    [Fact]
+    public async Task ApplyRatingRemovalAsync_RecomputesAverage_WhenApplied()
+    {
+        _dynamoDb
+            .Setup(d => d.UpdateItemAsync(
+                It.Is<UpdateItemRequest>(r => r.ConditionExpression != null),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UpdateItemResponse());
+
+        _dynamoDb
+            .Setup(d => d.GetItemAsync(It.IsAny<GetItemRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetItemResponse
+            {
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["RatingSum"] = new AttributeValue { N = "0" },
+                    ["RatingCount"] = new AttributeValue { N = "0" }
+                }
+            });
+
+        UpdateItemRequest? recomputeRequest = null;
+        _dynamoDb
+            .Setup(d => d.UpdateItemAsync(
+                It.Is<UpdateItemRequest>(r => r.ConditionExpression == null),
+                It.IsAny<CancellationToken>()))
+            .Callback<UpdateItemRequest, CancellationToken>((r, _) => recomputeRequest = r)
+            .ReturnsAsync(new UpdateItemResponse());
+
+        await _index.ApplyRatingRemovalAsync("product-1", "event-5", rating: 5);
+
+        Assert.NotNull(recomputeRequest);
+        Assert.Equal("0", recomputeRequest!.ExpressionAttributeValues[":average"].N);
+    }
+
+    [Fact]
+    public async Task ApplyRatingRemovalAsync_ReplayedOrAlreadyAtZero_IsANoOp()
+    {
+        // The condition fails both for a replayed eventId and for a count/bucket already at zero
+        // (ReviewDeleted delivered before its ReviewCreated — ADR-0049 Consequences).
+        _dynamoDb
+            .Setup(d => d.UpdateItemAsync(
+                It.Is<UpdateItemRequest>(r => r.ConditionExpression != null),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConditionalCheckFailedException("floor or replay"));
+
+        await _index.ApplyRatingRemovalAsync("product-1", "event-6", rating: 3);
+
+        _dynamoDb.Verify(
+            d => d.GetItemAsync(It.IsAny<GetItemRequest>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
     public async Task RenameCategoryAsync_UpdatesMatchingCategoryName_AcrossReturnedScanItems()
     {
         var scannedItem = new Dictionary<string, AttributeValue>

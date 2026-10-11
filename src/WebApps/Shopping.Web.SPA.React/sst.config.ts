@@ -7,8 +7,8 @@
  * See docs/adr/0020-migrate-spa-deploy-to-sst.md.
  *
  * On-demand ISR revalidation (CatalogViewProductSyncedEvent/CatalogViewProductDeletedEvent/
- * ReviewCreatedEvent/ReviewUpdatedEvent -> revalidateTag() -> invalidate the affected CloudFront
- * path) is still a custom Lambda (revalidator/index.mjs) subscribed to the existing
+ * ReviewCreatedEvent/ReviewUpdatedEvent/ReviewDeletedEvent -> revalidateTag() -> invalidate the
+ * affected CloudFront path) is still a custom Lambda (revalidator/index.mjs) subscribed to the existing
  * `duckstore-event-bus` — SST's Nextjs component only invalidates CloudFront
  * at deploy time, not on business events. The Lambda calls the SPA's single
  * generic, HMAC-signed webhook (app/api/webhooks/revalidate/route.ts) to
@@ -245,8 +245,8 @@ export default $config({
         // used for the products/products:{id} tags — replace the previous direct subscription to
         // Catalog/Pricing's upstream events. See the file header comment for why.
         //
-        // ReviewCreatedEvent/ReviewUpdatedEvent stay subscribed directly: the reviews:{id} tag
-        // covers the raw review list, which lives in Review's own store, not catalogview-products
+        // ReviewCreatedEvent/ReviewUpdatedEvent/ReviewDeletedEvent stay subscribed directly: the
+        // reviews:{id} tag covers the raw review list, which lives in Review's own store, not catalogview-products
         // (CatalogView only folds in the aggregate rating) — so there is no CatalogView event to
         // subscribe to instead, and no race to fix on this path (Review's own CDC event already
         // fires only after Review's write commits).
@@ -255,6 +255,7 @@ export default $config({
           "CatalogViewProductDeletedEvent",
           "ReviewCreatedEvent",
           "ReviewUpdatedEvent",
+          "ReviewDeletedEvent",
         ],
       },
     });

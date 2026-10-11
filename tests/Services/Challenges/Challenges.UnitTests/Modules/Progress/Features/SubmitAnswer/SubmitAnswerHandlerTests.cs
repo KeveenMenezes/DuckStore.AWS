@@ -97,6 +97,45 @@ public class SubmitAnswerHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldHandTheRepositoryALedgerCredit_ForTheEarnedPoints_WhenCorrect()
+    {
+        var saved = await HandleCapturingSavedDelta(selectedOption: 0, hintsRevealed: 2);
+
+        var credit = Assert.Single(saved.PointsTransactions);
+        Assert.Equal("CHALLENGE#py-001", credit.Id);
+        Assert.Equal(100 - 2 * Question.HintPenalty, credit.Points);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldHandTheRepositoryNoLedgerCredit_WhenWrong()
+    {
+        var saved = await HandleCapturingSavedDelta(selectedOption: 1, hintsRevealed: 0);
+
+        Assert.Empty(saved.PointsTransactions);
+    }
+
+    private async Task<PlayerProgress> HandleCapturingSavedDelta(int selectedOption, int hintsRevealed)
+    {
+        PlayerProgress? saved = null;
+        _questionRepository.Setup(r => r.GetForGradingAsync(It.IsAny<QuestionId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ValidQuestion());
+        _progressRepository
+            .Setup(r => r.GetHintsRevealedAsync(It.IsAny<OwnerId>(), It.IsAny<QuestionId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(hintsRevealed);
+        _progressRepository
+            .Setup(r => r.SaveAttemptAsync(It.IsAny<OwnerId>(), It.IsAny<PlayerProgress>(), It.IsAny<CancellationToken>()))
+            .Callback<OwnerId, PlayerProgress, CancellationToken>((_, delta, _) => saved = delta)
+            .ReturnsAsync((OwnerId _, PlayerProgress delta, CancellationToken _) => delta.Attempts.Single());
+        _progressRepository
+            .Setup(r => r.GetScoreAsync(It.IsAny<OwnerId>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(0);
+
+        await _handler.Handle(ValidCommand(selectedOption), CancellationToken.None);
+
+        return saved!;
+    }
+
+    [Fact]
     public async Task Handle_ShouldReturnTheOriginalStoredResult_OnReplay()
     {
         // SaveAttemptAsync is itself responsible for the idempotent replay (ADR-0045 §4) — from

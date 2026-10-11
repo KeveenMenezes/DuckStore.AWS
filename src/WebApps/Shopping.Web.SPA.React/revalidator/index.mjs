@@ -13,7 +13,8 @@ import { CloudFrontClient, CreateInvalidationCommand } from '@aws-sdk/client-clo
 // category rename) produces one of these two events, this also closes the previous gap where
 // price changes never triggered revalidation at all.
 //
-// Also consumes ReviewCreatedEvent / ReviewUpdatedEvent (ADR-0029) directly for the reviews:{id}
+// Also consumes ReviewCreatedEvent / ReviewUpdatedEvent (ADR-0029) and ReviewDeletedEvent
+// (ADR-0049 — a withdrawn review must leave the cached list) directly for the reviews:{id}
 // tag — the raw review list lives in Review's own store, not catalogview-products (CatalogView
 // only folds in the aggregate rating), so there is no CatalogView event for that data and no race
 // to fix on this path: Review's own CDC event already fires only after Review's write commits.
@@ -48,7 +49,11 @@ function tagsForEvent(event) {
   ) {
     return productId ? ['products', `products:${productId}`] : ['products']
   }
-  if (detailType === 'ReviewCreatedEvent' || detailType === 'ReviewUpdatedEvent') {
+  if (
+    detailType === 'ReviewCreatedEvent' ||
+    detailType === 'ReviewUpdatedEvent' ||
+    detailType === 'ReviewDeletedEvent'
+  ) {
     return productId ? [`reviews:${productId}`] : []
   }
   return []

@@ -21,7 +21,8 @@ public interface IPlayerProgressRepository
     // stay a mechanical translation with no scoring/streak logic of its own (that all lives in
     // PlayerProgress.Apply, per thin-handlers-rich-domain). A replay of an already-scored question
     // is not surfaced as an error: the stored attempt is re-read and returned instead of a fresh
-    // one being written twice.
+    // one being written twice. For a correct answer the same transaction also Puts the
+    // delta's PointsTransactions into the points ledger (ADR-0048 §2).
     Task<Attempt> SaveAttemptAsync(
         OwnerId ownerId, PlayerProgress delta, CancellationToken cancellationToken = default);
 

@@ -1,8 +1,8 @@
 import { gql, gqlPublic } from "@/api"
-import { GET_REVIEWS_BY_PRODUCT } from "@/api/queries/reviews"
-import { CREATE_REVIEW } from "@/api/mutations/review"
+import { GET_MY_REVIEW, GET_REVIEWS_BY_PRODUCT } from "@/api/queries/reviews"
+import { CREATE_REVIEW, DELETE_REVIEW } from "@/api/mutations/review"
 import type { GqlReview, GqlReviewPage, GqlCreateReviewResult, CreateReviewInput } from "@/graphql/types"
-import type { Review, ReviewPage } from "@/features/reviews/types/review.types"
+import type { MyReview, Review, ReviewPage } from "@/features/reviews/types/review.types"
 
 /** Anti-corruption boundary: translates the wire-shaped `GqlReview` into the domain `Review`. */
 function toReview(gql: GqlReview): Review {
@@ -48,6 +48,18 @@ export async function createReview(
 ): Promise<{ id: string; userName: string }> {
   const data = await gql<{ createReview: GqlCreateReviewResult }>(CREATE_REVIEW, { input })
   return data.createReview
+}
+
+// The caller's own review row (authenticated, client-side). null = the customer never bought the
+// product, so they can't review it (ADR-0049).
+export async function getMyReview(productId: string): Promise<MyReview | null> {
+  const data = await gql<{ myReview: GqlReview | null }>(GET_MY_REVIEW, { productId })
+  return data.myReview ? { ...toReview(data.myReview), status: data.myReview.status } : null
+}
+
+// Withdraws the caller's published review; the row stays Deleted (re-publishable) until its TTL.
+export async function deleteReview(productId: string): Promise<void> {
+  await gql<{ deleteReview: { id: string } }>(DELETE_REVIEW, { productId })
 }
 
 export function formatReviewDate(isoString: string): string {

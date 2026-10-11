@@ -12,6 +12,7 @@ export class ChallengesStack extends cdk.Stack {
     const lambdas = new ChallengesLambdas(this, 'ChallengesLambdas', {
       challengesTable: dynamoDB.challengesTable,
       challengeProgressTable: dynamoDB.challengeProgressTable,
+      pointsTransactionsTable: dynamoDB.pointsTransactionsTable,
     });
 
     new cdk.CfnOutput(this, 'ChallengesTableName', {

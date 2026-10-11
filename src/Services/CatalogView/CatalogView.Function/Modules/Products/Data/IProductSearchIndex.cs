@@ -22,6 +22,11 @@ public interface IProductSearchIndex
         string productId, string eventId, int oldRating, int newRating,
         CancellationToken cancellationToken = default);
 
+    // Withdraws a deleted review (ADR-0049 §6): RatingCount -1, RatingSum -rating and the rating's
+    // RatingDistribution bucket -1, under the same idempotency-marker guard, floored at zero.
+    Task ApplyRatingRemovalAsync(
+        string productId, string eventId, int rating, CancellationToken cancellationToken = default);
+
     // Partial merge of price and payment-highlight fields, all driven by Pricing's single
     // PriceChangedEvent (ADR-0026/ADR-0028) — one event, one merge. Naturally idempotent: every
     // field is an absolute value, not a delta.

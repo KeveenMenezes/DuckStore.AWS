@@ -3,7 +3,7 @@
 namespace Basket.Function;
 
 public record CheckoutBasketRequest(BasketCheckoutDto BasketCheckoutDto);
-public record CheckoutBasketResponse(bool IsSuccess);
+public record CheckoutBasketResponse(bool IsSuccess, Guid? OrderId);
 
 // Triggered via a Lambda Function URL. Marks a cart as checked out; talks directly to DynamoDB
 // (no cache). The DynamoDB Streams publisher on shopping-carts picks up the Checkout marker and
@@ -17,6 +17,6 @@ public partial class Functions
     {
         var command = new CheckoutBasketCommand(request.BasketCheckoutDto);
         var result = await sender.Send(command, CancellationToken.None);
-        return new CheckoutBasketResponse(result.IsSuccess);
+        return new CheckoutBasketResponse(result.IsSuccess, result.OrderId);
     }
 }

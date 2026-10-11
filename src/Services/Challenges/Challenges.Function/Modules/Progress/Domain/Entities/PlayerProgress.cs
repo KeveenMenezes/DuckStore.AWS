@@ -29,6 +29,12 @@ public class PlayerProgress : Aggregate<OwnerId>
     private readonly List<Redemption> _redemptions = [];
     public IReadOnlyList<Redemption> Redemptions => _redemptions.AsReadOnly();
 
+    // The ledger rows this delta must commit alongside its Score change (ADR-0048 §2). Like every
+    // other collection here it is delta-only: Load never fills it, because the ledger is read by
+    // AppSync's myPointsHistory and never rehydrated into the aggregate.
+    private readonly List<PointsTransaction> _pointsTransactions = [];
+    public IReadOnlyList<PointsTransaction> PointsTransactions => _pointsTransactions.AsReadOnly();
+
     public static PlayerProgress CreateEmpty(OwnerId ownerId) => new() { Id = ownerId };
 
     public Attempt Apply(AttemptResult result, string language)
@@ -43,6 +49,16 @@ public class PlayerProgress : Aggregate<OwnerId>
         if (result.IsCorrect)
         {
             Score += result.PointsEarned;
+
+            // Only when something was earned: Question.Grade floors the award at zero, and a
+            // zero-point credit moves no balance, so there is nothing for the ledger to explain
+            // (ChallengeCredit rejects it by design).
+            if (result.PointsEarned > 0)
+            {
+                _pointsTransactions.Add(
+                    PointsTransaction.ChallengeCredit(Id, result.QuestionId, result.PointsEarned, attempt.AnsweredAt));
+            }
+
             CorrectCount++;
             CurrentStreak++;
             _byLanguage[language] = _byLanguage.GetValueOrDefault(language) + 1;

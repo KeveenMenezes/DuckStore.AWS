@@ -151,6 +151,16 @@ type Review @aws_api_key @aws_cognito_user_pools {
   # Set on every write, including the first (ADR-0029) — distinct from createdAt once a customer
   # edits their existing review (same productId+userId upserts in place, createdAt unchanged).
   updatedAt: String!
+  # Rows without a stored Status (written before ADR-0049) are legacy = Published.
+  status: ReviewStatus!
+}
+
+# Review lifecycle (ADR-0049 §1). Only Published rows are in GSI1, so reviewsByProduct never
+# returns Eligible/Deleted; myReview returns any of the three.
+enum ReviewStatus {
+  Eligible
+  Published
+  Deleted
 }
 
 type ReviewPage @aws_api_key @aws_cognito_user_pools {
@@ -238,6 +248,39 @@ type RedeemChallengePointsResult @aws_cognito_user_pools {
   newBalance: Int!
 }
 
+# Points ledger (ADR-0048 §1). One row per movement of the balance; the balance itself stays on
+# ChallengeProgress.score (§2). `points` is signed — positive for credits, negative for
+# redemptions — and no row ever carries a currency amount (ADR-0046 §1). The status values beyond
+# Completed belong to the redemption state machine (ADR-0048 §5).
+enum PointsTransactionType {
+  ChallengeCredit
+  ReviewCredit
+  Redemption
+}
+
+enum PointsTransactionStatus {
+  Completed
+  Reserved
+  Used
+  Released
+  Failed
+  Refunded
+}
+
+type PointsTransaction @aws_cognito_user_pools {
+  id: ID!
+  type: PointsTransactionType!
+  status: PointsTransactionStatus!
+  points: Int!
+  createdAt: AWSDateTime!
+  orderId: ID
+}
+
+type PointsHistoryPage @aws_cognito_user_pools {
+  items: [PointsTransaction!]!
+  nextToken: String
+}
+
 type Category @aws_api_key @aws_cognito_user_pools {
   id: ID!
   name: String!
@@ -322,6 +365,9 @@ type StoreBasketResult @aws_api_key @aws_cognito_user_pools {
 
 type CheckoutResult {
   isSuccess: Boolean!
+  # The OrderId Basket mints at checkout and Ordering keys the order off of (ADR-0038) — the order
+  # number the customer sees. Null when there was no cart to check out.
+  orderId: ID
 }
 
 type DeleteBasketResult @aws_api_key @aws_cognito_user_pools {
@@ -512,6 +558,10 @@ type Query {
   # Direct DynamoDB resolver — public (API_KEY or Cognito)
   reviewsByProduct(productId: ID!, pageSize: Int, nextToken: String): ReviewPage! @aws_api_key @aws_cognito_user_pools
 
+  # Direct DynamoDB resolver — Cognito required; GetItem on productId#ctx.identity.sub, null when
+  # there's no row (never bought the product). Returns Eligible/Published/Deleted (ADR-0049 §4).
+  myReview(productId: ID!): Review @aws_cognito_user_pools
+
   # Direct DynamoDB resolver — public (API_KEY or Cognito); Query on GSI1 when language is given
   # (sparse — the ANSWER item is never indexed, ADR-0045 §2), Scan filtered to SK=PUBLIC otherwise
   # (mirrors the products/product pattern, ADR-0030).
@@ -528,6 +578,10 @@ type Query {
   # Direct DynamoDB resolver — Cognito required (guests play but don't score, ADR-0045 §7); one
   # Query on OwnerId returns PROFILE and every attempt in a single round trip.
   myChallengeProgress: ChallengeProgress!
+
+  # Direct DynamoDB resolver — Cognito required; Query on the points-transactions LSI1
+  # (OwnerId + CreatedAt), newest first, paginated (ADR-0048 §1). Owner comes from the token.
+  myPointsHistory(pageSize: Int, nextToken: String): PointsHistoryPage!
 
   # Direct DynamoDB resolver — Cognito required; Query on OwnerId filtered to Status=Issued and
   # not expired (ADR-0046 §4). Expiry is checked here, not left to the table's TTL.
@@ -596,10 +650,15 @@ type Mutation {
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
   deleteOrder(orderId: ID!): DeleteOrderResult! @aws_cognito_user_pools
 
-  # Direct DynamoDB pipeline resolver — Cognito required; upserts by (productId, ctx.identity.sub)
-  # so a customer has exactly one active review per product, and the key can't be spoofed via
-  # client input; CDC updates product rating (ADR-0011 for new reviews, ADR-0029 for edits)
+  # Direct DynamoDB pipeline resolver — Cognito required; keyed by (productId, ctx.identity.sub) so
+  # the key can't be spoofed via client input. Requires an existing row (the purchase gate, created
+  # Eligible on order completion) and publishes it via UpdateItem — never creates one (ADR-0049 §4);
+  # CDC updates product rating (ADR-0029, ADR-0049 §5)
   createReview(input: CreateReviewInput!): CreateReviewResult!
+
+  # Direct DynamoDB resolver — Cognito required; UpdateItem on productId#ctx.identity.sub,
+  # Published -> Deleted, drops it from GSI1 and sets a 5-day TTL (ADR-0049 §4)
+  deleteReview(productId: ID!): Review! @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito only (default auth); UpdateItem keyed by ctx.identity.sub (ADR-0017)
   updateProfile(input: UpdateProfileInput!): UserProfile!
@@ -617,4 +676,9 @@ type Mutation {
   # (ADR-0046 §2) — an invariant that belongs in the domain, not a resolver script. Spends points
   # only; what they convert to is decided later, asynchronously, in Pricing (ADR-0046 §1, §4).
   redeemChallengePoints(points: Int!): RedeemChallengePointsResult!
+
+  # Direct DynamoDB resolver — Cognito required; Admin group only (Seller excluded). Edits Points
+  # on the PUBLIC item only, so the new value applies to future answers; past attempts and the
+  # points ledger are untouched (ADR-0009, ADR-0045 §2).
+  updateChallengePoints(id: ID!, points: Int!): Challenge! @aws_cognito_user_pools
 }

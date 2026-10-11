@@ -42,7 +42,7 @@ public class DynamoPlayerProgressRepositoryTests
         var attempt = await _repository.SaveAttemptAsync(_ownerId, CorrectDelta(_ownerId));
 
         Assert.NotNull(captured);
-        Assert.Equal(2, captured!.TransactItems.Count);
+        Assert.Equal(3, captured!.TransactItems.Count);
 
         var attemptUpdate = captured.TransactItems[0].Update;
         Assert.Equal("ATTEMPT#py-001", attemptUpdate.Key["SK"].S);
@@ -56,6 +56,106 @@ public class DynamoPlayerProgressRepositoryTests
         Assert.Equal(ProgressSchema.LanguageAttribute("python"), profileUpdate.ExpressionAttributeNames["#lang"]);
 
         Assert.True(attempt.IsCorrect);
+        Assert.Equal(100, attempt.PointsEarned);
+    }
+
+    [Fact]
+    public async Task SaveAttemptAsync_ShouldPutTheLedgerCredit_InTheSameTransaction_WhenCorrect()
+    {
+        TransactWriteItemsRequest? captured = null;
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<TransactWriteItemsRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new TransactWriteItemsResponse());
+
+        await _repository.SaveAttemptAsync(_ownerId, CorrectDelta(_ownerId, hintsRevealed: 1));
+
+        // Attempt, balance and ledger row commit or fail together (ADR-0048 §2).
+        var put = captured!.TransactItems[2].Put;
+        Assert.NotNull(put);
+        Assert.Equal(PointsTransactionsSchema.TableName, put.TableName);
+        Assert.Equal("attribute_not_exists(TransactionId)", put.ConditionExpression);
+        Assert.Equal("USER#alice", put.Item["OwnerId"].S);
+        Assert.Equal("CHALLENGE#py-001", put.Item["TransactionId"].S);
+        Assert.Equal("ChallengeCredit", put.Item["Type"].S);
+        Assert.Equal("Completed", put.Item["Status"].S);
+        Assert.Equal("75", put.Item["Points"].N);
+        Assert.Equal("py-001", put.Item["SourceId"].S);
+        Assert.Equal(put.Item["CreatedAt"].S, put.Item["UpdatedAt"].S);
+        Assert.False(put.Item.ContainsKey("OrderId"));
+    }
+
+    [Fact]
+    public async Task SaveAttemptAsync_ShouldNotTouchTheLedger_WhenWrong()
+    {
+        TransactWriteItemsRequest? captured = null;
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<TransactWriteItemsRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new TransactWriteItemsResponse());
+
+        await _repository.SaveAttemptAsync(_ownerId, WrongDelta(_ownerId));
+
+        Assert.Equal(2, captured!.TransactItems.Count);
+        Assert.All(captured.TransactItems, i => Assert.Null(i.Put));
+    }
+
+    [Fact]
+    public async Task SaveAttemptAsync_ShouldNotTreatALedgerOnlyConflict_AsAReplay()
+    {
+        // The attempt condition passed (reason[0] is OK) and only the ledger row collided. That is
+        // not the idempotent re-submission of ADR-0045 §4 — swallowing it would hide a ledger that
+        // disagrees with the attempts — so it must surface, not be mapped to a stored attempt.
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TransactionCanceledException("cancelled")
+            {
+                CancellationReasons =
+                [
+                    new CancellationReason { Code = "None" },
+                    new CancellationReason { Code = "None" },
+                    new CancellationReason { Code = "ConditionalCheckFailed" }
+                ]
+            });
+
+        await Assert.ThrowsAsync<TransactionCanceledException>(
+            () => _repository.SaveAttemptAsync(_ownerId, CorrectDelta(_ownerId)));
+
+        _dynamoDb.Verify(
+            d => d.GetItemAsync(It.IsAny<GetItemRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveAttemptAsync_ShouldStillTreatAReplay_AsANoOp_NowThatTheTransactionHasThreeItems()
+    {
+        _dynamoDb
+            .Setup(d => d.TransactWriteItemsAsync(It.IsAny<TransactWriteItemsRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new TransactionCanceledException("cancelled")
+            {
+                CancellationReasons =
+                [
+                    new CancellationReason { Code = "ConditionalCheckFailed" },
+                    new CancellationReason { Code = "None" },
+                    new CancellationReason { Code = "ConditionalCheckFailed" }
+                ]
+            });
+        _dynamoDb
+            .Setup(d => d.GetItemAsync(It.IsAny<GetItemRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetItemResponse
+            {
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["OwnerId"] = new("USER#alice"),
+                    ["SK"] = new("ATTEMPT#py-001"),
+                    ["IsCorrect"] = new AttributeValue { BOOL = true },
+                    ["SelectedOption"] = new AttributeValue { N = "0" },
+                    ["PointsEarned"] = new AttributeValue { N = "100" },
+                    ["AnsweredAt"] = new(DateTime.UtcNow.ToString("O"))
+                }
+            });
+
+        var attempt = await _repository.SaveAttemptAsync(_ownerId, CorrectDelta(_ownerId));
+
         Assert.Equal(100, attempt.PointsEarned);
     }
 

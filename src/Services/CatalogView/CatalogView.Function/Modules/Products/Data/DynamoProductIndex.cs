@@ -251,6 +251,53 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
         }
     }
 
+    // Sibling to ApplyRatingAsync for the delete path (ADR-0049 §6). The condition also requires
+    // RatingCount and the rating's bucket to be positive, so the aggregate never goes below zero:
+    // a ReviewDeleted that arrives before its ReviewCreated is dropped as a no-op.
+    public async Task ApplyRatingRemovalAsync(
+        string productId, string eventId, int rating, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await dynamoDb.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = TableName,
+                    Key = new Dictionary<string, AttributeValue> { ["Id"] = new(productId) },
+                    UpdateExpression = @"
+                        ADD RatingSum :ratingSumDelta,
+                            RatingCount :ratingCountDelta,
+                            RatingDistribution.#bucket :minusOne
+                        SET LastRatingEventId = :eventId",
+                    ConditionExpression =
+                        "(attribute_not_exists(LastRatingEventId) OR LastRatingEventId <> :eventId) " +
+                        "AND RatingCount > :zero AND RatingDistribution.#bucket > :zero",
+                    ExpressionAttributeNames = new Dictionary<string, string>
+                    {
+                        ["#bucket"] = rating.ToString(CultureInfo.InvariantCulture)
+                    },
+                    ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                    {
+                        [":ratingSumDelta"] = new AttributeValue
+                        {
+                            N = (-rating).ToString(CultureInfo.InvariantCulture)
+                        },
+                        [":ratingCountDelta"] = new AttributeValue { N = "-1" },
+                        [":minusOne"] = new AttributeValue { N = "-1" },
+                        [":zero"] = new AttributeValue { N = "0" },
+                        [":eventId"] = new(eventId)
+                    }
+                },
+                cancellationToken);
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return;
+        }
+
+        await RecomputeAverageAsync(productId, cancellationToken);
+    }
+
     private async Task RecomputeAverageAsync(string productId, CancellationToken cancellationToken)
     {
         var response = await dynamoDb.GetItemAsync(

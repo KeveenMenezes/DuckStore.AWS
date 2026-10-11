@@ -27,6 +27,7 @@ public static class ServiceRegistration
 
         services.AddScoped<IReviewSyncStrategy, ReviewCreateStrategy>();
         services.AddScoped<IReviewSyncStrategy, ReviewUpdateStrategy>();
+        services.AddScoped<IReviewSyncStrategy, ReviewDeleteStrategy>();
         services.AddScoped<ReviewSyncDispatcher>();
 
         services.AddScoped<IPricingSyncStrategy, PriceChangedStrategy>();

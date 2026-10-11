@@ -1,8 +1,8 @@
 ﻿namespace CatalogView.Function;
 
 // Triggered by EventBridge. Groups every CatalogView consumer sourced from Review
-// (ReviewCreatedEvent, ReviewUpdatedEvent — ADR-0040) behind one Lambda, dispatching to the
-// owning ISyncStrategy by detail-type.
+// (ReviewCreatedEvent, ReviewUpdatedEvent, ReviewDeletedEvent — ADR-0040/ADR-0049) behind one
+// Lambda, dispatching to the owning ISyncStrategy by detail-type.
 public partial class Functions
 {
     [LambdaFunction]

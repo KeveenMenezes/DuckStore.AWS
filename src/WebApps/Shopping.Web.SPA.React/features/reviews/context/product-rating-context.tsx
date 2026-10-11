@@ -11,10 +11,14 @@ interface RatingSummary {
 interface ProductRatingContextType {
   summary: RatingSummary
   // Applies a brand-new review's rating to the summary — bumps the count, recomputes the
-  // average, and increments that rating's histogram bucket. There is no "previous rating" to
-  // account for here (that only applies to edits, which this app doesn't support yet) — this is
-  // purely additive, same shape as the backend's ApplyRatingAsync (not ApplyRatingUpdateAsync).
+  // average, and increments that rating's histogram bucket. Same shape as the backend's
+  // ApplyRatingAsync.
   recordNewReview: (rating: number) => void
+  // An edit moves the sum by the delta and one histogram bucket to another; the count stays
+  // (ApplyRatingUpdateAsync).
+  recordReviewEdit: (oldRating: number, newRating: number) => void
+  // A delete takes the rating back out, floored at zero (ApplyRatingRemovalAsync).
+  recordReviewRemoval: (rating: number) => void
 }
 
 const ProductRatingContext = createContext<ProductRatingContextType | null>(null)
@@ -50,7 +54,36 @@ export function ProductRatingProvider({
     })
   }, [])
 
-  const value = useMemo(() => ({ summary, recordNewReview }), [summary, recordNewReview])
+  const recordReviewEdit = useCallback((oldRating: number, newRating: number) => {
+    setSummary((prev) => {
+      if (prev.ratingCount === 0) return prev
+      const averageRating = (prev.averageRating * prev.ratingCount - oldRating + newRating) / prev.ratingCount
+      const ratingDistribution = {
+        ...prev.ratingDistribution,
+        [oldRating]: Math.max((prev.ratingDistribution[oldRating] ?? 0) - 1, 0),
+      }
+      ratingDistribution[newRating] = (ratingDistribution[newRating] ?? 0) + 1
+      return { ...prev, averageRating, ratingDistribution }
+    })
+  }, [])
+
+  const recordReviewRemoval = useCallback((rating: number) => {
+    setSummary((prev) => {
+      if (prev.ratingCount === 0) return prev
+      const ratingCount = prev.ratingCount - 1
+      const averageRating = ratingCount === 0 ? 0 : (prev.averageRating * prev.ratingCount - rating) / ratingCount
+      const ratingDistribution = {
+        ...prev.ratingDistribution,
+        [rating]: Math.max((prev.ratingDistribution[rating] ?? 0) - 1, 0),
+      }
+      return { averageRating, ratingCount, ratingDistribution }
+    })
+  }, [])
+
+  const value = useMemo(
+    () => ({ summary, recordNewReview, recordReviewEdit, recordReviewRemoval }),
+    [summary, recordNewReview, recordReviewEdit, recordReviewRemoval],
+  )
 
   return <ProductRatingContext.Provider value={value}>{children}</ProductRatingContext.Provider>
 }

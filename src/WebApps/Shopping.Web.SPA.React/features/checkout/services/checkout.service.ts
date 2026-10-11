@@ -39,13 +39,15 @@ export async function getBasketInstallmentPlan(
  * Submit the cart for checkout via GraphQL. Checkout is Cognito-only: the AppSync resolver
  * derives OwnerId (USER#<sub>) and CustomerId from the token, so the browser sends neither.
  * The cart is already persisted in DynamoDB by the CartProvider sync — no extra storeBasket call.
- * Returns a generated client-side order ID (the Ordering service creates the real order asynchronously).
+ * Returns the OrderId Basket minted for this checkout — the id Ordering creates the order under,
+ * asynchronously (ADR-0038). Null only if the server didn't return one; never a made-up id, since
+ * an order number that matches no order is worse than none.
  */
 export async function submitCheckout(
   formData: CheckoutFormData,
   totalPrice: number,
   discountId?: string,
-): Promise<string> {
+): Promise<string | null> {
   const nameParts = formData.name.trim().split(" ")
   const firstName = nameParts[0] ?? "Guest"
   const lastName = nameParts.slice(1).join(" ") || "-"
@@ -84,7 +86,7 @@ export async function submitCheckout(
     throw new Error("Checkout failed on the server. Please try again.")
   }
 
-  return crypto.randomUUID()
+  return data.checkoutBasket.orderId
 }
 
 /** Validate the checkout form, returning a map of field errors (empty when valid). */

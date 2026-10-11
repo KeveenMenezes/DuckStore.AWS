@@ -6,3 +6,9 @@ export const GET_REVIEWS_BY_PRODUCT = `
     }
   }
 `
+
+export const GET_MY_REVIEW = `
+  query GetMyReview($productId: ID!) {
+    myReview(productId: $productId) { id productId userName rating comment createdAt updatedAt status }
+  }
+`

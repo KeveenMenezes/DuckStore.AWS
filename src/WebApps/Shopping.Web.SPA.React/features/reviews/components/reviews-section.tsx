@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useRef, useState, useTransition } from "react"
+import { useCallback, useEffect, useRef, useState, useTransition } from "react"
 import {
   Dialog,
   DialogContent,
@@ -11,11 +11,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { ReviewList } from "@/features/reviews/components/review-list"
 import { ReviewForm } from "@/features/reviews/components/review-form"
+import { MyReviewCard } from "@/features/reviews/components/my-review-card"
 import { StarRatingDisplay } from "@/features/reviews/components/star-rating"
 import { RatingHistogram } from "@/features/reviews/components/rating-histogram"
 import { useProductRating } from "@/features/reviews/hooks/use-product-rating"
-import { getReviewsByProduct } from "@/features/reviews/services/reviews.service"
-import type { Review } from "@/features/reviews/types/review.types"
+import { getMyReview, getReviewsByProduct } from "@/features/reviews/services/reviews.service"
+import { useAuth } from "@/features/auth/hooks/use-auth"
+import type { MyReview, Review } from "@/features/reviews/types/review.types"
 
 interface ReviewsSectionProps {
   productId: string
@@ -24,7 +26,12 @@ interface ReviewsSectionProps {
 }
 
 export function ReviewsSection({ productId, initialReviews, initialNextToken }: ReviewsSectionProps) {
-  const { summary, recordNewReview } = useProductRating()
+  const { summary, recordNewReview, recordReviewEdit, recordReviewRemoval } = useProductRating()
+  const { user, isLoading: authLoading, loginWithCognito } = useAuth()
+  // The customer's own row: undefined while loading, null when they never bought the product.
+  // Fetched client-side because the page itself is ISR and identical for every visitor.
+  const [myReview, setMyReview] = useState<MyReview | null | undefined>(undefined)
+  const [editing, setEditing] = useState(false)
   const [reviews, setReviews] = useState<Review[]>(initialReviews)
   const [nextToken, setNextToken] = useState<string | null>(initialNextToken)
   const [isPending, startTransition] = useTransition()
@@ -39,10 +46,89 @@ export function ReviewsSection({ productId, initialReviews, initialNextToken }: 
     })
   }, [productId, nextToken])
 
-  const handleReviewCreated = (review: Review) => {
-    setReviews((prev) => [review, ...prev])
-    // Optimistic local summary (average/count/histogram) — real value converges via CDC on AWS.
-    recordNewReview(review.rating)
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    getMyReview(productId)
+      .then((review) => {
+        if (!cancelled) setMyReview(review)
+      })
+      .catch((error) => {
+        console.error(`Failed to fetch my review for product ${productId}`, error)
+        if (!cancelled) setMyReview(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [productId, user])
+
+  // Optimistic local list and summary (average/count/histogram) — the real values converge via
+  // CDC on AWS (ReviewCreated/ReviewUpdated/ReviewDeleted → CatalogView).
+  const handleReviewSubmitted = (result: { id: string; userName: string; rating: number; comment: string }) => {
+    if (!myReview) return
+    const published: MyReview = { ...myReview, ...result, status: "Published" }
+    if (myReview.status === "Published") {
+      setReviews((prev) => prev.map((r) => (r.id === published.id ? published : r)))
+      recordReviewEdit(myReview.rating, published.rating)
+    } else {
+      setReviews((prev) => [published, ...prev.filter((r) => r.id !== published.id)])
+      recordNewReview(published.rating)
+    }
+    setMyReview(published)
+    setEditing(false)
+  }
+
+  const handleReviewDeleted = () => {
+    if (!myReview) return
+    setReviews((prev) => prev.filter((r) => r.id !== myReview.id))
+    recordReviewRemoval(myReview.rating)
+    setMyReview({ ...myReview, status: "Deleted" })
+  }
+
+  const renderMyReview = () => {
+    if (authLoading) return null
+    if (!user) {
+      return (
+        <div className="rounded-lg border border-border bg-secondary/40 p-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            <button
+              type="button"
+              onClick={() => loginWithCognito(window.location.pathname)}
+              className="font-medium text-foreground underline underline-offset-2"
+            >
+              Sign in
+            </button>{" "}
+            to leave a review.
+          </p>
+        </div>
+      )
+    }
+    if (myReview === undefined) return null
+    if (myReview === null) {
+      return (
+        <div className="rounded-lg border border-border bg-secondary/40 p-4 text-center">
+          <p className="text-sm text-muted-foreground">Only customers who bought this product can review it.</p>
+        </div>
+      )
+    }
+    if (myReview.status === "Published" && !editing) {
+      return <MyReviewCard review={myReview} onEdit={() => setEditing(true)} onDeleted={handleReviewDeleted} />
+    }
+    if (myReview.status === "Published") {
+      return (
+        <ReviewForm
+          key="edit"
+          productId={productId}
+          mode="edit"
+          initialRating={myReview.rating}
+          initialComment={myReview.comment}
+          onSubmitted={handleReviewSubmitted}
+          onCancel={() => setEditing(false)}
+        />
+      )
+    }
+    // Eligible (bought, not reviewed yet) or Deleted (withdrawn, can publish again): empty form.
+    return <ReviewForm key="create" productId={productId} onSubmitted={handleReviewSubmitted} />
   }
 
   return (
@@ -65,7 +151,7 @@ export function ReviewsSection({ productId, initialReviews, initialNextToken }: 
         </div>
       </div>
 
-      <ReviewForm productId={productId} onReviewCreated={handleReviewCreated} />
+      {renderMyReview()}
 
       <div className="flex justify-center">
         <Dialog>

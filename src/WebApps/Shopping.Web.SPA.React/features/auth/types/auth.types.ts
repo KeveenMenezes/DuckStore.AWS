@@ -41,4 +41,5 @@ export interface Order {
 }
 
 /** Input shape for creating an order; server-managed fields are added by the service. */
-export type NewOrderInput = Omit<Order, "id" | "date" | "status">
+// id: the real OrderId from checkout, so the optimistic row matches the order Ordering creates.
+export type NewOrderInput = Omit<Order, "id" | "date" | "status"> & { id?: string }

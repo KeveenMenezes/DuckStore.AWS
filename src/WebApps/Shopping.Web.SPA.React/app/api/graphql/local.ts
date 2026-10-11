@@ -61,6 +61,8 @@ function marshalImages(images: ProductImageInput[]) {
 // resolved below as a passthrough (arbitrary JSON value in, same value out).
 const typeDefs =
   'scalar AWSJSON\n' +
+  // Built into AppSync too; ISO-8601 strings pass straight through, so no scalar class is needed.
+  'scalar AWSDateTime\n' +
   // The schema lives at the monorepo root (ADR-0033) — shared contract, not SPA code.
   // cwd is the SPA directory when Next.js runs, so reach up to the repo root.
   readFileSync(join(process.cwd(), '../../../graphql/schema.graphql'), 'utf-8')
@@ -170,6 +172,72 @@ function mapOrder(item: Record<string, unknown>) {
       quantity: Number(oi.Quantity ?? 0),
       price: Number(oi.Price ?? 0),
     })),
+  }
+}
+
+// reviews row → GraphQL Review, mirroring Query.myReview.js/Query.reviewsByProduct.js. An
+// Eligible row has no Rating/Comment/UserName yet, and a row without Status is legacy = Published
+// (ADR-0049 §1).
+function mapReview(item: Record<string, unknown>) {
+  return {
+    id: item.Id as string,
+    productId: item.ProductId as string,
+    userName: (item.UserName as string | undefined) ?? '',
+    rating: Number(item.Rating ?? 0),
+    comment: (item.Comment as string | undefined) ?? '',
+    createdAt: item.CreatedAt as string,
+    updatedAt: (item.UpdatedAt as string | undefined) ?? (item.CreatedAt as string),
+    status: (item.Status as string | undefined) ?? 'Published',
+  }
+}
+
+// AppSync's util.unauthorized() message, so the SPA sees the same error locally.
+function unauthorized(field: string, type: 'Query' | 'Mutation' = 'Mutation') {
+  return createGraphQLError(`Not Authorized to access ${field} on type ${type}`, {
+    extensions: { errorType: 'Unauthorized' },
+  })
+}
+
+const REVIEW_TTL_SECONDS = 5 * 24 * 60 * 60
+
+// Same ceiling as Mutation.updateChallengePoints.js (MAX_POINTS) and the Blazor ChallengePointsInput.
+const MAX_CHALLENGE_POINTS = 1000
+
+// Distinct product ids in the saved cart (Data is the .NET-serialized PascalCase JSON).
+async function cartProductIds(ownerId: string): Promise<string[]> {
+  const result = await dynamoDb.send(
+    new GetItemCommand({ TableName: 'shopping-carts', Key: { OwnerId: { S: ownerId } } }),
+  )
+  if (!result.Item) return []
+  const cart = JSON.parse(unmarshall(result.Item).Data as string) as { Items?: Array<{ ProductId: string }> }
+  return [...new Set((cart.Items ?? []).map(i => String(i.ProductId)))]
+}
+
+// Local stand-in for review-order-completed-consumer: EventBridge doesn't exist locally, so the
+// Ordering → OrderCompletedEvent → Review path never runs, and the checkout creates the Eligible
+// rows synchronously instead (ADR-0049 Mitigation). Same writes as the consumer: one conditional
+// PutItem per product, no Rating/Comment/GSI1 (sparse GSI1 keeps it out of reviewsByProduct), and
+// an existing row — Eligible, Published or Deleted — is left untouched.
+async function createEligibleReviews(userId: string, productIds: string[]) {
+  const createdAt = new Date().toISOString()
+  for (const productId of productIds) {
+    try {
+      await dynamoDb.send(
+        new PutItemCommand({
+          TableName: 'reviews',
+          Item: {
+            Id: { S: `${productId}#${userId}` },
+            ProductId: { S: productId },
+            UserId: { S: userId },
+            Status: { S: 'Eligible' },
+            CreatedAt: { S: createdAt },
+          },
+          ConditionExpression: 'attribute_not_exists(Id)',
+        }),
+      )
+    } catch (err) {
+      if (!(err instanceof ConditionalCheckFailedException)) throw err
+    }
   }
 }
 
@@ -543,24 +611,23 @@ const resolvers = {
         }),
       )
 
-      const items = (result.Items ?? []).map(raw => {
-        const item = unmarshall(raw)
-        return {
-          id: item.Id as string,
-          productId: item.ProductId as string,
-          userName: item.UserName as string,
-          rating: Number(item.Rating),
-          comment: item.Comment as string,
-          createdAt: item.CreatedAt as string,
-          updatedAt: item.UpdatedAt as string,
-        }
-      })
+      const items = (result.Items ?? []).map(raw => mapReview(unmarshall(raw)))
 
       const nextTokenOut = result.LastEvaluatedKey
         ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
         : null
 
       return { items, nextToken: nextTokenOut }
+    },
+
+    // Mirrors Query.myReview.js: GetItem on productId#<owner>; null when the customer never bought
+    // the product (no row). The owner stands in for ctx.identity.sub locally.
+    async myReview(_: unknown, { productId }: { productId: string }, context: LocalContext) {
+      const userId = customerIdFromOwner(context.owner.ownerId)
+      const result = await dynamoDb.send(
+        new GetItemCommand({ TableName: 'reviews', Key: { Id: { S: `${productId}#${userId}` } } }),
+      )
+      return result.Item ? mapReview(unmarshall(result.Item)) : null
     },
 
     async myProfile(_: unknown, __: unknown, context: LocalContext) {
@@ -705,6 +772,48 @@ const resolvers = {
       }
     },
 
+    // Mirrors Query.myPointsHistory.js (ADR-0048 §1): LSI1 Query, newest first, paginated. Cognito
+    // only in prod; locally the BFF-resolved owner stands in for the identity, so a visitor is
+    // rejected the way AppSync rejects a call without a user-pool token. Keep the page-size clamp
+    // and the createdAt trimming in sync with the resolver.
+    async myPointsHistory(
+      _: unknown,
+      { pageSize, nextToken }: { pageSize?: number; nextToken?: string },
+      context: LocalContext,
+    ) {
+      if (context.owner.ownerId.startsWith('GUEST#')) throw unauthorized('myPointsHistory', 'Query')
+
+      const result = await dynamoDb.send(
+        new QueryCommand({
+          TableName: 'points-transactions',
+          IndexName: 'LSI1',
+          KeyConditionExpression: 'OwnerId = :ownerId',
+          ExpressionAttributeValues: { ':ownerId': { S: context.owner.ownerId } },
+          ScanIndexForward: false,
+          Limit: Math.max(1, Math.min(pageSize ?? 20, 100)),
+          ...(nextToken
+            ? { ExclusiveStartKey: JSON.parse(Buffer.from(nextToken, 'base64').toString()) }
+            : {}),
+        }),
+      )
+
+      return {
+        items: (result.Items ?? [])
+          .map(raw => unmarshall(raw))
+          .map(item => ({
+            id: item.TransactionId as string,
+            type: item.Type as string,
+            status: item.Status as string,
+            points: Number(item.Points),
+            createdAt: `${(item.CreatedAt as string).slice(0, 23)}Z`,
+            orderId: (item.OrderId as string) ?? null,
+          })),
+        nextToken: result.LastEvaluatedKey
+          ? Buffer.from(JSON.stringify(result.LastEvaluatedKey)).toString('base64')
+          : null,
+      }
+    },
+
     // Cognito-only in prod; locally the BFF-resolved owner stands in for the identity, same as
     // myChallengeProgress. Expiry is checked here (not left to the table's TTL), same rule the
     // NONE/direct resolvers apply in prod (ADR-0046 §4).
@@ -783,7 +892,9 @@ const resolvers = {
       // Checkout is Cognito-only in prod (resolver derives the owner from the token). Locally
       // there is no Cognito, so we take the owner from the BFF-resolved context.
       const ownerId = context.owner.ownerId
-      const body = await invokeLambda<{ IsSuccess: boolean }>('basket-checkout-basket', {
+      // Read before the checkout, which empties the cart.
+      const productIds = await cartProductIds(ownerId)
+      const body = await invokeLambda<{ IsSuccess: boolean; OrderId: string | null }>('basket-checkout-basket', {
         BasketCheckoutDto: {
           OwnerId: ownerId,
           CustomerId: customerIdFromOwner(ownerId),
@@ -811,7 +922,8 @@ const resolvers = {
           },
         },
       })
-      return { isSuccess: body.IsSuccess }
+      if (body.IsSuccess) await createEligibleReviews(customerIdFromOwner(ownerId), productIds)
+      return { isSuccess: body.IsSuccess, orderId: body.OrderId ?? null }
     },
 
     async mergeBasket(
@@ -1035,6 +1147,39 @@ const resolvers = {
       }
     },
 
+    // Mirrors Mutation.updateChallengePoints.js (Admin-only in prod; no Cognito groups locally, same
+    // as the other admin mutations here): UpdateItem on the PUBLIC item only, so the new value
+    // applies to future answers; past attempts and the points ledger are untouched (ADR-0045 §2).
+    async updateChallengePoints(_: unknown, { id, points }: { id: string; points: number }) {
+      if (!Number.isInteger(points) || points <= 0 || points > MAX_CHALLENGE_POINTS) {
+        throw createGraphQLError(`points must be an integer between 1 and ${MAX_CHALLENGE_POINTS}`, {
+          extensions: { errorType: 'BadRequest' },
+        })
+      }
+      try {
+        const result = await dynamoDb.send(
+          new UpdateItemCommand({
+            TableName: 'challenges',
+            Key: { QuestionId: { S: id }, SK: { S: 'PUBLIC' } },
+            UpdateExpression: 'SET Points = :points, UpdatedAt = :now',
+            // Without this, UpdateItem would upsert a phantom PUBLIC item for an unknown id.
+            ConditionExpression: 'attribute_exists(QuestionId)',
+            ExpressionAttributeValues: {
+              ':points': { N: String(points) },
+              ':now': { S: new Date().toISOString() },
+            },
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
+        return mapChallenge(unmarshall(result.Attributes ?? {}))
+      } catch (err) {
+        if (err instanceof ConditionalCheckFailedException) {
+          throw createGraphQLError('Challenge not found', { extensions: { errorType: 'NOT_FOUND' } })
+        }
+        throw err
+      }
+    },
+
     async setNominalPrice(
       _: unknown,
       { productId, price, cost }: { productId: string; price: number; cost: number },
@@ -1161,13 +1306,14 @@ const resolvers = {
       return { isSuccess: true }
     },
 
-    // Upserts by composite Id `${productId}#${userId}` — the same key the AppSync JS pipeline
-    // resolver computes in production, since AppSync JS resolvers don't run locally (see
-    // CLAUDE.md). CreatedAt is preserved from the existing item on an edit so GSI1SK never moves;
-    // UpdatedAt is always refreshed. UserId comes from the BFF-resolved owner, not client input,
-    // mirroring the production resolver's ctx.identity.sub; UserName is a placeholder derived from
-    // the userId (there is no Cognito claim to read locally — same limitation as myProfile/local
-    // checkout).
+    // Mirrors the AppSync pipeline (Mutation.createReview.checkExisting.js → .upsert.js), since
+    // AppSync JS resolvers don't run locally. The row must already exist — created Eligible at
+    // purchase time (locally by checkoutBasket below) — so a customer who never bought the product
+    // gets Unauthorized (ADR-0049 §4). The write is an UpdateItem that publishes the row: Status =
+    // Published, GSI1 set (sparse index → visible in reviewsByProduct), ExpiresAt removed for a
+    // re-publish after a delete. CreatedAt is preserved so GSI1SK never moves. UserId comes from
+    // the BFF-resolved owner, mirroring ctx.identity.sub; UserName is a placeholder derived from
+    // the userId (no Cognito claim to read locally — same limitation as myProfile/local checkout).
     async createReview(
       _: unknown,
       { input }: { input: { productId: string; rating: number; comment: string } },
@@ -1180,27 +1326,78 @@ const resolvers = {
       const existing = await dynamoDb.send(
         new GetItemCommand({ TableName: 'reviews', Key: { Id: { S: id } } }),
       )
-      const createdAt = existing.Item ? unmarshall(existing.Item).CreatedAt as string : new Date().toISOString()
-      const updatedAt = new Date().toISOString()
+      if (!existing.Item) throw unauthorized('createReview')
 
-      await dynamoDb.send(
-        new PutItemCommand({
-          TableName: 'reviews',
-          Item: {
-            Id: { S: id },
-            ProductId: { S: input.productId },
-            UserId: { S: userId },
-            UserName: { S: userName },
-            Rating: { N: String(input.rating) },
-            Comment: { S: input.comment },
-            CreatedAt: { S: createdAt },
-            UpdatedAt: { S: updatedAt },
-            GSI1PK: { S: input.productId },
-            GSI1SK: { S: createdAt },
-          },
-        }),
-      )
+      const now = new Date().toISOString()
+      const createdAt = (unmarshall(existing.Item).CreatedAt as string | undefined) ?? now
+
+      try {
+        await dynamoDb.send(
+          new UpdateItemCommand({
+            TableName: 'reviews',
+            Key: { Id: { S: id } },
+            UpdateExpression:
+              'SET #status = :published, Rating = :rating, #comment = :comment, UserName = :userName, ' +
+              'UserId = :userId, CreatedAt = :createdAt, UpdatedAt = :updatedAt, ' +
+              'GSI1PK = :productId, GSI1SK = :createdAt REMOVE ExpiresAt',
+            ConditionExpression: 'attribute_exists(Id)',
+            ExpressionAttributeNames: { '#status': 'Status', '#comment': 'Comment' },
+            ExpressionAttributeValues: {
+              ':published': { S: 'Published' },
+              ':rating': { N: String(input.rating) },
+              ':comment': { S: input.comment },
+              ':userName': { S: userName },
+              ':userId': { S: userId },
+              ':createdAt': { S: createdAt },
+              ':updatedAt': { S: now },
+              ':productId': { S: input.productId },
+            },
+          }),
+        )
+      } catch (err) {
+        // The row expired (TTL) between the GetItem and the update.
+        if (err instanceof ConditionalCheckFailedException) throw unauthorized('createReview')
+        throw err
+      }
       return { id, userName }
+    },
+
+    // Mirrors Mutation.deleteReview.js: withdraws a Published (or legacy, Status-less) review —
+    // Status = Deleted, GSI1 removed (gone from reviewsByProduct) and ExpiresAt = now + 5 days, so
+    // the TTL erases the row and the customer can re-publish only until then (ADR-0049 §4, §7).
+    async deleteReview(_: unknown, { productId }: { productId: string }, context: LocalContext) {
+      const userId = customerIdFromOwner(context.owner.ownerId)
+      try {
+        const result = await dynamoDb.send(
+          new UpdateItemCommand({
+            TableName: 'reviews',
+            Key: { Id: { S: `${productId}#${userId}` } },
+            UpdateExpression:
+              'SET #status = :deleted, ExpiresAt = :expiresAt, UpdatedAt = :updatedAt REMOVE GSI1PK, GSI1SK',
+            // attribute_exists(Id) first: on a missing item attribute_not_exists(Status) is true,
+            // and the UpdateItem would create a Deleted row for a product never bought.
+            ConditionExpression:
+              'attribute_exists(Id) AND (#status = :published OR attribute_not_exists(#status))',
+            ExpressionAttributeNames: { '#status': 'Status' },
+            ExpressionAttributeValues: {
+              ':deleted': { S: 'Deleted' },
+              ':published': { S: 'Published' },
+              ':expiresAt': { N: String(Math.floor(Date.now() / 1000) + REVIEW_TTL_SECONDS) },
+              ':updatedAt': { S: new Date().toISOString() },
+            },
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
+        return mapReview(unmarshall(result.Attributes ?? {}))
+      } catch (err) {
+        // No row, or not Published: there is no public review of this customer to delete.
+        if (err instanceof ConditionalCheckFailedException) {
+          throw createGraphQLError('No published review to delete', {
+            extensions: { errorType: 'DynamoDB:ConditionalCheckFailedException' },
+          })
+        }
+        throw err
+      }
     },
 
     // Cognito-only in prod (ADR-0045 §3): grading happens server-side, so this still goes through

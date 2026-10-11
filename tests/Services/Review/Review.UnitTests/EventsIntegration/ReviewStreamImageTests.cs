@@ -1,4 +1,5 @@
 ﻿using Amazon.Lambda.DynamoDBEvents;
+using Review.Function.Modules.Reviews.Domain.Enums;
 using Review.Function.Modules.Reviews.EventsIntegration.Publishers;
 
 namespace Review.UnitTests.EventsIntegration;
@@ -66,5 +67,37 @@ public class ReviewStreamImageTests
         Assert.Equal(string.Empty, result.UserId);
         Assert.Equal(string.Empty, result.UserName);
         Assert.Equal(0, result.Rating);
+    }
+
+    [Fact]
+    public void From_ParsesStatus()
+    {
+        var image = new Dictionary<string, DynamoDBEvent.AttributeValue>
+        {
+            ["Id"] = new() { S = "some-id" },
+            ["Status"] = new() { S = "Eligible" }
+        };
+
+        var result = ReviewStreamImage.From(image);
+
+        Assert.NotNull(result);
+        Assert.Equal("Eligible", result.Status);
+        Assert.Equal(ReviewStatus.Eligible, result.EffectiveStatus);
+    }
+
+    [Fact]
+    public void From_LegacyImageWithoutStatus_IsEffectivelyPublished()
+    {
+        var image = new Dictionary<string, DynamoDBEvent.AttributeValue>
+        {
+            ["Id"] = new() { S = "some-id" },
+            ["Rating"] = new() { N = "4" }
+        };
+
+        var result = ReviewStreamImage.From(image);
+
+        Assert.NotNull(result);
+        Assert.Null(result.Status);
+        Assert.Equal(ReviewStatus.Published, result.EffectiveStatus);
     }
 }

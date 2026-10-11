@@ -73,6 +73,44 @@ public class PlayerProgressTests
     }
 
     [Fact]
+    public void Apply_ShouldRecordALedgerCredit_ForTheEarnedPoints_WhenCorrect()
+    {
+        var progress = Empty();
+
+        var attempt = progress.Apply(Correct(points: 75, hintsRevealed: 1), "python");
+
+        var credit = Assert.Single(progress.PointsTransactions);
+        Assert.Equal("CHALLENGE#py-001", credit.Id);
+        Assert.Equal(PointsTransactionType.ChallengeCredit, credit.Type);
+        Assert.Equal(75, credit.Points);
+        Assert.Equal(progress.Score, credit.Points);
+        Assert.Equal(progress.Id, credit.OwnerId);
+        Assert.Equal(attempt.AnsweredAt, credit.CreatedAt);
+    }
+
+    [Fact]
+    public void Apply_ShouldNotRecordALedgerCredit_WhenWrong()
+    {
+        var progress = Empty();
+
+        progress.Apply(Wrong(), "python");
+
+        Assert.Empty(progress.PointsTransactions);
+    }
+
+    [Fact]
+    public void Apply_ShouldNotRecordALedgerCredit_WhenCorrectButTheHintPenaltyConsumedEveryPoint()
+    {
+        // Question.Grade floors the award at zero. A zero credit moves no balance, so it has no
+        // ledger row to explain (and PointsTransaction.ChallengeCredit rejects it by design).
+        var progress = Empty();
+
+        progress.Apply(Correct(points: 0, hintsRevealed: 4), "python");
+
+        Assert.Empty(progress.PointsTransactions);
+    }
+
+    [Fact]
     public void Redeem_ShouldCarryTheNegativeScoreDelta_AndThePositivePointsSpentDelta()
     {
         var progress = Empty();

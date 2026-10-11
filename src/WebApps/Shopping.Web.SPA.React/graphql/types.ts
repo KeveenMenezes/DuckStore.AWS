@@ -65,6 +65,10 @@ export interface BasketInstallmentItemInput {
   quantity: number
 }
 
+// Review lifecycle (ADR-0049 §1): only Published rows are public; Eligible means "bought, not
+// reviewed yet" and Deleted means "withdrawn, can re-publish until the TTL removes the row".
+export type GqlReviewStatus = "Eligible" | "Published" | "Deleted"
+
 export interface GqlReview {
   id: string
   productId: string
@@ -73,6 +77,7 @@ export interface GqlReview {
   comment: string
   createdAt: string
   updatedAt: string
+  status: GqlReviewStatus
 }
 
 export interface GqlReviewPage {
@@ -125,6 +130,7 @@ export interface GqlStoreBasketResult {
 
 export interface GqlCheckoutResult {
   isSuccess: boolean
+  orderId: string | null
 }
 
 export interface GqlDeleteBasketResult {
@@ -288,6 +294,31 @@ export interface GqlRevealChallengeHintResult {
   hint: string
   hintsRevealed: number
   penaltyApplied: number
+}
+
+// Points ledger (ADR-0048 §1). `points` is signed: positive for credits, negative for redemptions.
+export type GqlPointsTransactionType = "ChallengeCredit" | "ReviewCredit" | "Redemption"
+
+export type GqlPointsTransactionStatus =
+  | "Completed"
+  | "Reserved"
+  | "Used"
+  | "Released"
+  | "Failed"
+  | "Refunded"
+
+export interface GqlPointsTransaction {
+  id: string
+  type: GqlPointsTransactionType
+  status: GqlPointsTransactionStatus
+  points: number
+  createdAt: string
+  orderId: string | null
+}
+
+export interface GqlPointsHistoryPage {
+  items: GqlPointsTransaction[]
+  nextToken: string | null
 }
 
 export interface GqlRedeemChallengePointsResult {

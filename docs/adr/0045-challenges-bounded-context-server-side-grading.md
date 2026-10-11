@@ -10,6 +10,8 @@ tags:
 **Accepted** — July 2026. Implemented: `Challenges.Function` (`src/Services/Challenges`), wired into
 the AppHost and its own CDK stack.
 
+**Amended** — October 2026: [ADR-0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) amends §1/§5 (redemption rows move to a new `points-transactions` ledger table) and §9 (`PointsRedeemedEvent` removed; `challenges-points-transactions-stream-publisher` added), and gives Challenges inbound consumers (ADR-0048 §8).
+
 Introduces a new bounded context. Companion to
 [ADR-0046](./0046-challenge-points-redeem-into-pricing-customer-discount.md), which turns the points
 this ADR produces into money and is the reason server-side grading is mandatory rather than merely

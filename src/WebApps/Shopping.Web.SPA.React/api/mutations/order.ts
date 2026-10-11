@@ -9,7 +9,7 @@ export const STORE_BASKET = `
 
 export const CHECKOUT_BASKET = `
   mutation CheckoutBasket($input: CheckoutInput!) {
-    checkoutBasket(input: $input) { isSuccess }
+    checkoutBasket(input: $input) { isSuccess orderId }
   }
 `
 

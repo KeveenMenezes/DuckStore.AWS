@@ -5,7 +5,9 @@ namespace Basket.Function.Modules.ShoppingCarts.Features.CheckoutBasket;
 public record CheckoutBasketCommand(BasketCheckoutDto BasketCheckoutDto)
     : ICommand<CheckoutBasketResult>;
 
-public record CheckoutBasketResult(bool IsSuccess);
+// OrderId is the id the checkout payload carries and Ordering keys the order off of (ADR-0038),
+// returned so the customer sees the real order number. Null when there was no cart to check out.
+public record CheckoutBasketResult(bool IsSuccess, Guid? OrderId = null);
 
 public class CheckoutBasketCommandValidator : IValidator<CheckoutBasketCommand>
 {

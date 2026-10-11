@@ -1,18 +1,19 @@
-﻿namespace Review.Function.Modules.Reviews.EventsIntegration.Publishers.Rules;
+﻿using Review.Function.Modules.Reviews.Domain.Enums;
 
-// Fires on an edit to an existing review (MODIFY — the composite Id from ADR-0029 means a
-// resubmission by the same customer for the same product overwrites the row instead of inserting
-// a new one) and publishes ReviewUpdated so CatalogView applies a rating delta: ratingCount stays
-// unchanged, ratingSum += (NewRating - OldRating) (ADR-0029, fulfilling the negative-delta support
-// ADR-0011's "Future Constraints" already anticipated).
+namespace Review.Function.Modules.Reviews.EventsIntegration.Publishers.Rules;
+
+// Fires on an edit of a review that stays Published (Published -> Published, legacy rows without
+// Status included — ADR-0049 §5) and publishes ReviewUpdated so CatalogView applies a rating delta:
+// ratingCount stays unchanged, ratingSum += (NewRating - OldRating) (ADR-0029).
 //
-// Matches unconditionally on MODIFY, even when the rating itself didn't change (a comment-only
-// edit) — this event is also what drives ISR revalidation of the product page's review list, so a
-// comment-only edit still needs to invalidate that cache. A zero rating delta is a harmless no-op
-// on the CatalogView side.
+// Matches even when the rating itself didn't change (a comment-only edit) — this event is also
+// what drives ISR revalidation of the product page's review list, so a comment-only edit still
+// needs to invalidate that cache. A zero rating delta is a harmless no-op on the CatalogView side.
 public sealed class ReviewUpdatedRule : IStreamRule<ReviewStreamImage>
 {
-    public bool Match(StreamContext<ReviewStreamImage> context) => context.EventName == "MODIFY";
+    public bool Match(StreamContext<ReviewStreamImage> context) =>
+        context.Old is { EffectiveStatus: ReviewStatus.Published }
+        && context.New is { EffectiveStatus: ReviewStatus.Published };
 
     public Task<PublishInstruction> BuildAsync(
         StreamContext<ReviewStreamImage> context, CancellationToken cancellationToken = default)
