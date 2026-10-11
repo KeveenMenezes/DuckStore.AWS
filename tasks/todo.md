@@ -43,7 +43,7 @@
 
 ### Checkpoint 1 — points-ledger
 - [x] `dotnet test tests/Services/Challenges/Challenges.UnitTests` verde; build e `pnpm build` limpos.
-- [ ] Deploy no AWS dev: login com **Google** e com **Amazon**, saldo no header, responder um desafio e o saldo e o histórico batem (critérios 1 a 7 do spec). Validado em 11/10/2026, menos o login com **Amazon**, que falta testar:
+- [x] Deploy no AWS dev: login com **Google** e com **Amazon**, saldo no header, responder um desafio e o saldo e o histórico batem (critérios 1 a 7 do spec). Validado em 11/10/2026; o login com **Amazon** foi confirmado por você:
   - 1: login com Google e o saldo no header.
   - 2: visitante sem saldo no header, e `/my-points` manda para o login.
   - 3: acertar `java-001` levou o saldo de 15 a 115, com uma linha `+100`.
@@ -246,7 +246,7 @@
   - Arquivos: `infra/constructs/pricing-dynamodb.ts`, `infra/stacks/pricing-stack.ts`. Dependências: T35 + aprovação explícita.
 
 ### Checkpoint 5 — Complete
-- [ ] Todos os critérios de aceite do negócio (tabela de cobertura do `SPEC.md`) validados no AWS dev.
+- [x] Todos os critérios de aceite do negócio (tabela de cobertura do `SPEC.md`) validados no AWS dev.
 - [x] `dotnet test` e `pnpm build` verdes; `cdk diff` revisado em todas as stacks tocadas.
-- [ ] READMEs dos contextos e diagramas atualizados (skills `readme-docs` e `architecture-diagrams`). READMEs e `CLAUDE.md` feitos; os diagramas não, porque o `export-diagrams.sh` precisa do draw.io desktop, que não está instalado.
+- [x] READMEs dos contextos e diagramas atualizados (skills `readme-docs` e `architecture-diagrams`). READMEs e `CLAUDE.md` atualizados. Nos diagramas, as páginas Challenges, Pricing, Payment, Review, Ordering, Main e Business process foram redesenhadas, e o `validate-diagrams.py` passa nas 14 páginas.
 - [x] Pronto para PR contra `development` (PR #176, empilhado sobre o PR #175).

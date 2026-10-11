@@ -36,7 +36,8 @@ EVENTS = ['CatalogViewProductSynced', 'CatalogViewProductDeleted', 'CatalogCateg
           'ProductDiscountChanged', 'ProductCreated', 'ProductUpdated', 'ProductDeleted',
           'ProductSynced', 'ReviewCreated', 'ReviewUpdated', 'BasketCheckout', 'PaymentAuthorized',
           'PaymentDeclined', 'PaymentRequested', 'PriceChanged', 'OrderCreated',
-          'ChallengeAnswered', 'PointsRedeemed']
+          'ChallengeAnswered', 'PointsReserved', 'PointsReservationFailed', 'OrderCompleted',
+          'OrderCancelled', 'ReviewDeleted']
 NOT_INTEGRATION_EVENTS = {'SQSEvent', 'DynamoDBEvent', 'S3Event'}
 # Cross-functional business-flow pages: no AWS resources, their own palette, and a canvas far wider
 # than the printable page on purpose. The AWS house style below does not apply to them - only the
@@ -126,6 +127,8 @@ def load_infra():
             tables[name.group(1)] = {'stream': sv.group(1) if sv else None,
                                      'ttl': bool(re.search(r'timeToLiveAttribute', body))}
     lambdas = set(re.findall(r"functionName:\s*'([^']+)'", blob))
+    # Helpers such as settlementConsumer(...) take the function name as a plain argument.
+    lambdas |= set(re.findall(r"'([a-z]+(?:-[a-z0-9]+)+-(?:consumer|publisher))'", blob))
     rules = set(re.findall(r"ruleName:\s*'([^']+)'", blob))
     events = set(re.findall(r"'([A-Z][A-Za-z]+Event)'", blob))
     sst = os.path.join(ROOT, 'src/WebApps/Shopping.Web.SPA.React/sst.config.ts')
