@@ -82,12 +82,12 @@
   - Arquivos: `tests/E2E/Inventory/Inventory.E2ETests/{.csproj,AssemblyInfo.cs,WarehousesUiTests.cs,WarehousesApiTests.cs,ManagementApp.cs}`, `DuckStore.slnx`
   - Depende de: T8, T9
 
-- [ ] **T11: Deploy no dev, grupo do StockKeeper e E2E verde** (M), *com as aprovações do plano*
+- [x] ****T11: Deploy no dev, grupo do StockKeeper e E2E verde** (M), *com as aprovações do plano* — feito (2026-10-12); `cdk diff` conferidos antes de cada deploy: Inventory = só a tabela; AppSync = grupo, data source (leitura + `PutItem`/`UpdateItem`), 5 resolvers e o schema só com acréscimos (comparado com o template implantado) + a renovação anual do `Expires` da API key que todo deploy faz; Management = só o bundle do site. Deploy local na ordem Inventory → AppSync → Management (credenciais SSO exportadas para o CDK, que não lê o perfil `login`; `appsettings.json` gerado como na workflow, idêntico ao implantado, e restaurado depois). `e2e-inventory-stockkeeper@duckstore.test` no grupo `StockKeeper`. **`Inventory.E2ETests` 12/12 na primeira execução; regressão `Checkout.E2ETests` 12/12**
   - Aceite: `cdk diff` mostrado e conferido, e então o deploy, nesta ordem: Inventory → AppSync → Management. `e2e-inventory-stockkeeper@duckstore.test` no grupo `StockKeeper` e o comentário "PENDING" atualizado no `e2e-inventory.env`. `Inventory.E2ETests` verde: critérios 1 a 8. A suíte do checkout continua verde, como regressão do AppSync.
   - Verificar: `source ~/.config/duckstore/e2e.env && source ~/.config/duckstore/e2e-inventory.env && dotnet test tests/E2E/Inventory/Inventory.E2ETests` e `dotnet test tests/E2E/Checkout/Checkout.E2ETests`.
   - Depende de: T10
 
-- [ ] **T12: Documentação** (S)
+- [x] ****T12: Documentação** (S) — feito (`d0610c4`); `CLAUDE.md`, `src/Services/Inventory/README.md`, linha no `README.md`, ADR-0052 com "As Built", página **Inventory** no `.drawio` + card na **Main** (11 contextos); validador 15 páginas sem achados; só `main.svg` e `inventory.svg` versionados (os outros SVGs re-exportados eram ruído do exportador e foram descartados)
   - Aceite: `CLAUDE.md` (Inventory na lista de serviços, `InventoryStack` no deploy, `StockKeeper` nos grupos), `src/Services/Inventory/README.md` e a ADR-0052 com o "como construído". Diagramas pela skill `architecture-diagrams`: página do Inventory se o validador ou a skill pedirem. Se não for criada, uma linha dizendo por quê.
   - Verificar: `python3 scripts/validate-diagrams.py` sem achados.
   - Arquivos: `CLAUDE.md`, `src/Services/Inventory/README.md`, `docs/adr/0052-*.md`, diagramas (se for o caso)
