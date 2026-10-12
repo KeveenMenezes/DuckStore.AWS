@@ -22,10 +22,6 @@ public static class BasketCheckoutEventDataTests
             },
             Payment = new BasketCheckoutPayment
             {
-                CardName = "John Doe",
-                CardNumber = "4111111111111111",
-                Expiration = "12/25",
-                Cvv = "123",
                 PaymentMethod = 1,
             },
             Items =

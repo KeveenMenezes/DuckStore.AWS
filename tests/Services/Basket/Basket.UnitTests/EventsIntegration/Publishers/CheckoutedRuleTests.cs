@@ -15,27 +15,35 @@ public class CheckoutedRuleTests
         new(eventName, null,
             newType is null ? null : new ShoppingCartStreamImage("USER#testuser", newType, checkoutData));
 
+    // The old pipeline marked the cart row (MODIFY); only the saga's CHECKOUT# INSERT publishes now.
     [Fact]
-    public void Match_ReturnsTrue_ForModifyOfCheckoutWithData() =>
-        Assert.True(_rule.Match(Context("MODIFY")));
+    public void Match_ReturnsFalse_ForModifyOfACartRow() =>
+        Assert.False(_rule.Match(Context("MODIFY")));
 
-    [Theory]
-    [InlineData("INSERT")]
-    [InlineData("REMOVE")]
-    public void Match_ReturnsFalse_ForNonModifyEvents(string eventName) =>
-        Assert.False(_rule.Match(Context(eventName)));
+    // The checkout saga inserts a CHECKOUT# record (ADR-0050 §4).
+    [Fact]
+    public void Match_ReturnsTrue_ForInsertOfACheckoutRecordWithData() =>
+        Assert.True(_rule.Match(Context("INSERT")));
+
+    [Fact]
+    public void Match_ReturnsFalse_ForRemoveEvents() =>
+        Assert.False(_rule.Match(Context("REMOVE")));
+
+    [Fact]
+    public void Match_ReturnsFalse_ForInsertOfAnOrdinaryCart() =>
+        Assert.False(_rule.Match(Context("INSERT", newType: string.Empty, checkoutData: null)));
 
     [Fact]
     public void Match_ReturnsFalse_WhenNewImageIsNotCheckout() =>
-        Assert.False(_rule.Match(Context("MODIFY", newType: "Active")));
+        Assert.False(_rule.Match(Context("INSERT", newType: "Active")));
 
     [Fact]
     public void Match_ReturnsFalse_WhenCheckoutDataIsMissing() =>
-        Assert.False(_rule.Match(Context("MODIFY", checkoutData: null)));
+        Assert.False(_rule.Match(Context("INSERT", checkoutData: null)));
 
     [Fact]
     public void Match_ReturnsFalse_WhenNewImageIsMissing() =>
-        Assert.False(_rule.Match(Context("MODIFY", newType: null)));
+        Assert.False(_rule.Match(Context("INSERT", newType: null)));
 
     [Fact]
     public async Task BuildAsync_ReturnsBasketCheckoutInstruction_FromEmbeddedCheckoutData()
@@ -43,7 +51,7 @@ public class CheckoutedRuleTests
         var checkoutEvent = new BasketCheckoutEvent { OwnerId = "USER#testuser", TotalPrice = 100.0m };
         var checkoutData = JsonSerializer.Serialize(checkoutEvent);
 
-        var instruction = await _rule.BuildAsync(Context("MODIFY", checkoutData: checkoutData));
+        var instruction = await _rule.BuildAsync(Context("INSERT", checkoutData: checkoutData));
 
         Assert.Equal(nameof(BasketCheckoutEvent), instruction.DetailType);
         var payload = Assert.IsType<BasketCheckoutEvent>(instruction.Payload);

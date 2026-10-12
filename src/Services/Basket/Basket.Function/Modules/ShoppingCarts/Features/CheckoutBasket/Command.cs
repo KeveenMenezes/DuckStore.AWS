@@ -2,12 +2,16 @@
 
 namespace Basket.Function.Modules.ShoppingCarts.Features.CheckoutBasket;
 
-public record CheckoutBasketCommand(BasketCheckoutDto BasketCheckoutDto)
+// Sent only by the checkout saga (ADR-0050 §2): CheckoutId names the attempt and CartVersion the cart
+// version Pricing quoted (ADR-0050 §3/§4).
+public record CheckoutBasketCommand(
+    BasketCheckoutDto BasketCheckoutDto, string? CheckoutId = null, string? CartVersion = null)
     : ICommand<CheckoutBasketResult>;
 
 // OrderId is the id the checkout payload carries and Ordering keys the order off of (ADR-0038),
 // returned so the customer sees the real order number. Null when there was no cart to check out.
-public record CheckoutBasketResult(bool IsSuccess, Guid? OrderId = null);
+// ErrorType is a typed refusal (CheckoutRefusals) the saga may compensate, returned as data.
+public record CheckoutBasketResult(bool IsSuccess, Guid? OrderId = null, string? ErrorType = null);
 
 public class CheckoutBasketCommandValidator : IValidator<CheckoutBasketCommand>
 {
@@ -39,6 +43,23 @@ public class CheckoutBasketCommandValidator : IValidator<CheckoutBasketCommand>
         if (string.IsNullOrWhiteSpace(shippingAddress?.EmailAddress))
         {
             yield return new(nameof(shippingAddress.EmailAddress), "EmailAddress is required");
+        }
+
+        // The saga names the attempt, derives the OrderId and builds the priced lines before calling
+        // Basket (ADR-0050 §3/§5).
+        if (string.IsNullOrWhiteSpace(instance.CheckoutId))
+        {
+            yield return new(nameof(instance.CheckoutId), "CheckoutId is required");
+        }
+
+        if (instance.BasketCheckoutDto.OrderId == Guid.Empty)
+        {
+            yield return new(nameof(instance.BasketCheckoutDto.OrderId), "OrderId is required");
+        }
+
+        if (instance.BasketCheckoutDto.Items is not { Count: > 0 })
+        {
+            yield return new(nameof(instance.BasketCheckoutDto.Items), "Items is required");
         }
     }
 }

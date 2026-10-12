@@ -1,5 +1,7 @@
 ﻿using BuildingBlocks.Core.Validation;
 using Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
+using Payment.Function.Modules.Payments.Features.RegisterPayment;
+using Payment.Function.Modules.Payments.Features.VoidPayment;
 namespace Payment.Function.Shared.Configuration;
 
 // Single DI composition for the whole service, shared by the [LambdaStartup] consumers, the
@@ -18,13 +20,13 @@ public static class ServiceRegistration
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
-        // Explicit, because there is no scanning left to discover them —
-        // the point of dropping FluentValidation (ADR-0042 §7).
-        services.AddScoped<IValidator<CreatePaymentCommand>, CreatePaymentCommandValidator>();
-
         // DynamoDB Local injects AWS_ENDPOINT_URL_DYNAMODB; the SDK resolves it on its own.
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
         services.AddScoped<IPaymentRepository, DynamoPaymentRepository>();
+
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<RegisterPaymentHandler>();
+        services.AddScoped<VoidPaymentHandler>();
 
         services.AddEventBridgeMessaging(configuration);
         services.AddIdempotentEventConsumer(ProcessedIntegrationEvent.TableName);

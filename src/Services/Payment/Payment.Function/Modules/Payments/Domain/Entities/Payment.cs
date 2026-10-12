@@ -31,10 +31,65 @@ public class Payment : Aggregate<PaymentId>
         };
     }
 
+    // Written by the checkout saga before the cart closes, keyed PaymentId = OrderId so a retry of
+    // the same checkout finds it (ADR-0050 §6). Registered never reaches the gateway; the checkout
+    // event promotes it, or the saga voids it when the cart changed.
+    public static Payment Register(PaymentId id, Guid orderId, Guid customerId, decimal amount, CardDetails card)
+    {
+        if (orderId == Guid.Empty)
+            throw new ArgumentException("OrderId is required.", nameof(orderId));
+        if (customerId == Guid.Empty)
+            throw new ArgumentException("CustomerId is required.", nameof(customerId));
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(amount);
+        ArgumentNullException.ThrowIfNull(card);
+
+        return new Payment
+        {
+            Id = id,
+            OrderId = orderId,
+            CustomerId = customerId,
+            Amount = amount,
+            Card = card,
+            Status = PaymentStatus.Registered,
+            CreatedAt = DateTime.UtcNow
+        };
+    }
+
+    // A repeated registration is a replay only while nothing happened to the payment since and the
+    // terms are the same; installments are part of the amount, the method part of the card.
+    public bool IsSameRegistration(decimal amount, CardDetails card) =>
+        Status == PaymentStatus.Registered && Amount == amount && Card == card;
+
+    // The cart closed: the payment moves on as a checkout-created one always did — waiting for the
+    // points reservation when the checkout used points. Voided moves on too: the caller only promotes
+    // on BasketCheckoutEvent, which proves the cart closed under this OrderId, so a void that raced
+    // that close (two executions of one attempt) must not leave the order unpaid. Any other status
+    // is a redelivery: no-op, returns false.
+    public bool Promote(bool awaitingPoints)
+    {
+        if (Status is not (PaymentStatus.Registered or PaymentStatus.Voided))
+            return false;
+
+        Status = awaitingPoints ? PaymentStatus.AwaitingPoints : PaymentStatus.Pending;
+        return true;
+    }
+
+    // The saga's compensation when the cart changed after registration. Returns false (no-op)
+    // unless Registered: a promoted payment belongs to a closed cart and must not be undone.
+    public bool Void()
+    {
+        if (Status != PaymentStatus.Registered)
+            return false;
+
+        Status = PaymentStatus.Voided;
+        return true;
+    }
+
     // The points were reserved: the payment goes on to the gateway (PaymentRequestedRule matches
     // this transition). A no-op once the payment left AwaitingPoints, so a redelivery is harmless.
     public void ConfirmPoints()
     {
+        EnsurePromoted();
         if (Status != PaymentStatus.AwaitingPoints)
             return;
 
@@ -45,11 +100,21 @@ public class Payment : Aggregate<PaymentId>
     // announces it so Ordering cancels the order.
     public void RejectPoints()
     {
+        EnsurePromoted();
         if (Status != PaymentStatus.AwaitingPoints)
             return;
 
         Status = PaymentStatus.Declined;
         DeclineReason = InsufficientPointsReason;
+    }
+
+    // Challenges reserves the points off the same checkout event that promotes a Registered payment,
+    // so its outcome can arrive first. Unlike any other status, Registered will still move to
+    // AwaitingPoints: the outcome must be retried, not dropped as a no-op (ADR-0050 §6).
+    private void EnsurePromoted()
+    {
+        if (Status == PaymentStatus.Registered)
+            throw new PaymentNotYetPromotedException(OrderId);
     }
 
     // Maps a Payment gateway's authorize/decline outcome onto the payment's own transition, so

@@ -21,6 +21,9 @@ public record BasketInstallmentPlanEntryResponse(int Count, decimal Value, decim
 public record QuoteRejectionResponse(
     string ErrorType, string Message, decimal? ServerTotal, int? MaxRedeemablePoints);
 
+// One cart line's unit price as Pricing allocates it (ADR-0050 §5) — what the order records.
+public record BasketLineResponse(Guid ProductId, int Quantity, decimal UnitPrice);
+
 public record GetBasketInstallmentPlanResponse(
     decimal TotalOriginalPrice,
     decimal Price,
@@ -30,10 +33,11 @@ public record GetBasketInstallmentPlanResponse(
     int MaxRedeemablePoints,
     decimal PointsDiscount,
     decimal? ChargedTotal,
-    QuoteRejectionResponse? Rejection = null);
+    QuoteRejectionResponse? Rejection = null,
+    IReadOnlyList<BasketLineResponse>? Lines = null);
 
 // AppSync Query resolver (Lambda-backed per ADR-0009 — a non-trivial calculation over the whole
-// cart, not a key lookup), and the quote step of the checkoutBasket pipeline (ADR-0048 §4).
+// cart, not a key lookup), and the Quote step of the checkout saga (ADR-0048 §4, ADR-0050).
 public partial class Functions
 {
     [LambdaFunction]
@@ -60,17 +64,29 @@ public partial class Functions
                     new BasketInstallmentPlanEntryResponse(e.Count, e.Value, e.TotalValue, e.HasInterest))],
                 result.MaxRedeemablePoints,
                 result.PointsDiscount,
-                result.ChargedTotal);
+                result.ChargedTotal,
+                Lines: [.. result.Lines.Select(l => new BasketLineResponse(l.ProductId, l.Quantity, l.UnitPrice))]);
         }
         catch (QuoteRejectedException ex)
         {
-            return new GetBasketInstallmentPlanResponse(
-                0m, 0m, 0m, 0, [], 0, 0m, null,
-                new QuoteRejectionResponse(
-                    ex.ErrorType,
-                    ex.Message,
-                    (ex as PriceChangedException)?.ServerTotal,
-                    (ex as PointsAboveCapException)?.MaxRedeemablePoints));
+            return Rejected(new QuoteRejectionResponse(
+                ex.ErrorType,
+                ex.Message,
+                (ex as PriceChangedException)?.ServerTotal,
+                (ex as PointsAboveCapException)?.MaxRedeemablePoints));
+        }
+        // Inputs a client can get wrong (its stored cart, the payment choice) are refusals too: a
+        // thrown error would reach the checkout saga as an ambiguous fault (ADR-0050 §8).
+        catch (PriceNotFoundException ex)
+        {
+            return Rejected(new QuoteRejectionResponse("ProductUnavailable", ex.Message, null, null));
+        }
+        catch (Exception ex) when (ex is BadRequestException or ValidationException)
+        {
+            return Rejected(new QuoteRejectionResponse("BadRequest", ex.Message, null, null));
         }
     }
+
+    private static GetBasketInstallmentPlanResponse Rejected(QuoteRejectionResponse rejection) =>
+        new(0m, 0m, 0m, 0, [], 0, 0m, null, rejection);
 }

@@ -27,6 +27,8 @@ export class PaymentLambdas extends Construct {
   public readonly paymentDeclinedConsumer: lambda.Function;
   public readonly pointsReservedConsumer: lambda.Function;
   public readonly pointsReservationFailedConsumer: lambda.Function;
+  public readonly registerPayment: lambda.Function;
+  public readonly voidPayment: lambda.Function;
 
   constructor(scope: Construct, id: string, props: PaymentLambdasProps) {
     super(scope, id);
@@ -52,8 +54,10 @@ export class PaymentLambdas extends Construct {
     //    Consumes BasketCheckoutEvent directly (not OrderCreatedEvent) so card data never
     //    has to be persisted or republished by Ordering — Ordering and Payment are
     //    independent, parallel consumers of the same event (ADR-0038).
-    //    Writes the new Payment (Status=Pending) + idempotency record atomically via
-    //    TransactWriteItems. EventBridge sets evt.Id as the idempotency key.
+    //    Promotes the payment the checkout saga registered (Registered -> Pending/AwaitingPoints,
+    //    ADR-0050 §6) or, for an event from the old checkout pipeline, creates it; the payment
+    //    write + idempotency record go atomically via TransactWriteItems. EventBridge sets evt.Id
+    //    as the idempotency key.
     this.basketCheckoutConsumer = new lambda.Function(
       this,
       'BasketCheckoutConsumer',
@@ -68,7 +72,7 @@ export class PaymentLambdas extends Construct {
         timeout: cdk.Duration.seconds(30),
         memorySize: DOTNET_MEMORY_MB,
         description:
-          'Consumes BasketCheckoutEvent and creates a Pending Payment idempotently (ADR-0025/0038)',
+          'Consumes BasketCheckoutEvent and promotes (or creates) the order\'s Payment idempotently (ADR-0025/0038/0050)',
         environment: {
           ANNOTATIONS_HANDLER: 'BasketCheckoutConsumer',
           EventBridge__BusName: eventBus.eventBusName,
@@ -76,7 +80,8 @@ export class PaymentLambdas extends Construct {
       },
     );
 
-    paymentsTable.grantWriteData(this.basketCheckoutConsumer);
+    // Read: the consistent GetItem of the registered payment it promotes.
+    paymentsTable.grantReadWriteData(this.basketCheckoutConsumer);
     processedEventsTable.grantWriteData(this.basketCheckoutConsumer);
 
     const basketCheckoutRule = new events.Rule(this, 'BasketCheckoutRule', {
@@ -103,8 +108,8 @@ export class PaymentLambdas extends Construct {
 
     // 2. payment-payments-stream-publisher
     //    Trigger: DynamoDB Streams on payments table (NEW_AND_OLD_IMAGES, CDC — ADR-0005/0019)
-    //    Rule-based publisher: PaymentRequestedRule emits PaymentRequestedEvent on INSERT of a
-    //    Pending payment.
+    //    Rule-based publisher: PaymentRequestedRule emits PaymentRequestedEvent when a payment
+    //    becomes Pending (INSERT, or MODIFY from Registered/AwaitingPoints — ADR-0050 §6).
     this.paymentRequestedPublisher = new lambda.Function(
       this,
       'PaymentRequestedPublisher',
@@ -253,6 +258,51 @@ export class PaymentLambdas extends Construct {
       'Applies PointsReservationFailedEvent to the order\'s Payment (AwaitingPoints -> Declined)',
       { paymentCode, eventBus, dlq, paymentsTable, processedEventsTable },
     );
+
+    // payment-register / payment-void
+    //   Trigger: synchronous invoke from the checkout-saga Express state machine only (ADR-0050 §2)
+    //   — no Function URL, no event source; the saga's invoke grant lives with the saga.
+    //   payment-register validates the card and writes the order's payment as Registered
+    //   (conditional Put, PaymentId = OrderId); payment-void is the saga's compensation on
+    //   CartChanged (Registered -> Voided). Both return refusals as data (ADR-0050 §10).
+    this.registerPayment = this.checkoutSagaStep(
+      'RegisterPayment', 'payment-register',
+      'Checkout saga step: validates the card and registers the order\'s payment (ADR-0050)',
+      paymentCode, paymentsTable,
+    );
+    this.voidPayment = this.checkoutSagaStep(
+      'VoidPayment', 'payment-void',
+      'Checkout saga compensation: voids the order\'s Registered payment (ADR-0050)',
+      paymentCode, paymentsTable,
+    );
+  }
+
+  private checkoutSagaStep(
+    id: string,
+    functionName: string,
+    description: string,
+    paymentCode: lambda.Code,
+    paymentsTable: dynamodb.ITable,
+  ): lambda.Function {
+    const fn = new lambda.Function(this, id, {
+      functionName,
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: paymentCode,
+      // Short: it sits on the saga's 25 s budget (ADR-0050 §1).
+      timeout: cdk.Duration.seconds(10),
+      memorySize: DOTNET_MEMORY_MB,
+      description,
+      environment: { ANNOTATIONS_HANDLER: id },
+    });
+
+    // Read covers the consistent GetItem on a replay or void; write the conditional Put.
+    paymentsTable.grantReadWriteData(fn);
+
+    return fn;
   }
 
   private pointsReservationConsumer(

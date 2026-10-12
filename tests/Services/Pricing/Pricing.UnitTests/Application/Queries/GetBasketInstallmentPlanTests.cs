@@ -301,4 +301,56 @@ public class GetBasketInstallmentPlanTests
 
         Assert.NotEmpty(result);
     }
+
+    [Fact]
+    public async Task Handle_ShouldPriceEachLineFromTheCampaignAllocation()
+    {
+        // Same cart as the proportional-discount case: price 100 split 50/50, the first half 20% off.
+        // Each line's unit price is its own share of the post-campaign price.
+        var discounted = Guid.NewGuid();
+        var fullPrice = Guid.NewGuid();
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                Price.Create(ProductId.Of(discounted), nominalPrice: 100m, cost: 50m),
+                Price.Create(ProductId.Of(fullPrice), nominalPrice: 100m, cost: 50m)
+            ]);
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+        ActiveCampaigns(new Dictionary<Guid, ActiveDiscount> { [discounted] = new(DiscountType.Percentage, 20m) });
+
+        var result = await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery(
+                [new BasketInstallmentItem(discounted, 1), new BasketInstallmentItem(fullPrice, 1)]),
+            CancellationToken.None);
+
+        Assert.Equal(
+            [new BasketLineDto(discounted, 1, 40m), new BasketLineDto(fullPrice, 1, 50m)],
+            result.Lines);
+        Assert.Equal(result.Price, result.Lines.Sum(l => l.UnitPrice * l.Quantity));
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPriceLinesPerUnit_RoundedToTheCent()
+    {
+        // 3 units sharing a cart price of 100: the unit price is 33.33, and the lines may differ from
+        // the cart price by the rounding of each unit (the order's total is the charged total).
+        var productId = Guid.NewGuid();
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 50m, cost: 100m / 3m)]);
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+
+        var result = await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 3)]),
+            CancellationToken.None);
+
+        var line = Assert.Single(result.Lines);
+        Assert.Equal(Math.Round(result.Price / 3m, 2, MidpointRounding.AwayFromZero), line.UnitPrice);
+        Assert.InRange(Math.Abs(result.Price - line.UnitPrice * 3), 0m, 0.015m);
+    }
 }

@@ -8,7 +8,8 @@
     "dev": "node scripts/ensure-session-table.mjs && next dev",
     "lint": "eslint .",
     "start": "next start",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "node --test --experimental-strip-types 'lib/**/*.test.ts'"
   },
   "dependencies": {
     "@aws-sdk/client-cloudfront": "^3.600.0",

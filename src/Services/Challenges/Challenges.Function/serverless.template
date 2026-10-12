@@ -1,7 +1,7 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Transform": "AWS::Serverless-2016-10-31",
-  "Description": "This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
+  "Description": "This template is partially managed by Amazon.Lambda.Annotations (v2.4.0.0).",
   "Resources": {
     "ChallengesFunctionFunctionsSubmitChallengeAnswerGenerated": {
       "Type": "AWS::Serverless::Function",
@@ -69,7 +69,7 @@
         }
       }
     },
-    "ChallengesFunctionFunctionsRedeemChallengePointsGenerated": {
+    "ChallengesFunctionFunctionsReviewCreatedConsumerGenerated": {
       "Type": "AWS::Serverless::Function",
       "Metadata": {
         "Tool": "Amazon.Lambda.Annotations"
@@ -86,7 +86,95 @@
         "Handler": "bootstrap",
         "Environment": {
           "Variables": {
-            "ANNOTATIONS_HANDLER": "RedeemChallengePoints"
+            "ANNOTATIONS_HANDLER": "ReviewCreatedConsumer"
+          }
+        }
+      }
+    },
+    "ChallengesFunctionFunctionsBasketCheckoutConsumerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "Runtime": "dotnet10",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "bootstrap",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "BasketCheckoutConsumer"
+          }
+        }
+      }
+    },
+    "ChallengesFunctionFunctionsChallengesPointsTransactionsStreamPublisherGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "Runtime": "dotnet10",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "bootstrap",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "ChallengesPointsTransactionsStreamPublisher"
+          }
+        }
+      }
+    },
+    "ChallengesFunctionFunctionsOrderCancelledConsumerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "Runtime": "dotnet10",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "bootstrap",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "OrderCancelledConsumer"
+          }
+        }
+      }
+    },
+    "ChallengesFunctionFunctionsPaymentAuthorizedConsumerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "Runtime": "dotnet10",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "bootstrap",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "PaymentAuthorizedConsumer"
           }
         }
       }

@@ -21,8 +21,13 @@ public class CardDetailsTests
     public void Of_ShouldThrow_WhenCvvIsTooLong()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() =>
-            CardDetails.Of("4111111111111111", "12/28", "1234", PaymentMethod.Credit));
+            CardDetails.Of("4111111111111111", "12/28", "12345", PaymentMethod.Credit));
     }
+
+    // Amex and some other brands use a 4-digit CVV (ADR-0050 §6).
+    [Fact]
+    public void Of_ShouldAcceptAFourDigitCvv() =>
+        Assert.Equal("1234", CardDetails.Of("4111111111111111", "12/28", "1234", PaymentMethod.Credit).Cvv);
 
     [Fact]
     public void Of_ShouldCreateCardDetails_ForCash_WithEmptyCardNumberAndCvv()

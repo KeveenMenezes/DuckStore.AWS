@@ -1,133 +1,42 @@
-﻿using BuildingBlocks.Core.Validation;
-#pragma warning disable CS8625 // Cannot convert null literal to non-nullable reference type.
-#pragma warning disable CS8600 // Converting null literal or possible null value to non-nullable type.
-#pragma warning disable CS8601 // Possible null reference assignment.
-#pragma warning disable CS8620 // Argument cannot be used for parameter due to differences in the nullability of reference types.
-
 using Basket.Function.Modules.ShoppingCarts.Data;
 using Basket.Function.Modules.ShoppingCarts.Domain.Dtos;
-using Basket.Function.Modules.ShoppingCarts.Domain.Entities;
-using Basket.Function.Modules.ShoppingCarts.Domain.ValueObjects;
 using Basket.Function.Modules.ShoppingCarts.Features.CheckoutBasket;
 
 namespace Basket.UnitTests;
 
+// The checkout payload and its validation. How the cart is closed (replay, CartChanged) is covered by
+// CheckoutBasketSagaCheckoutTests and Data/CloseCartTests.
 public class CheckoutBasketCommandHandlerTests
 {
-    private readonly AutoMocker _autoMocker;
-    private readonly Mock<IShoppingCartRepository> _basketRepositoryMock;
-    private readonly CheckoutBasketCommandValidator _validator;
-    private readonly CheckoutBasketCommandHandler _handler;
+    private const string CheckoutId = "7d0f5c3e-1a2b-4c3d-8e9f-0a1b2c3d4e5f";
 
-    public CheckoutBasketCommandHandlerTests()
+    private readonly Mock<IShoppingCartRepository> _repository = new();
+    private readonly CheckoutBasketCommandValidator _validator = new();
+
+    private static BasketCheckoutDto ValidDto() => new()
     {
-        _autoMocker = new AutoMocker();
-        _basketRepositoryMock = _autoMocker.GetMock<IShoppingCartRepository>();
-        _validator = new CheckoutBasketCommandValidator();
-        _handler = new CheckoutBasketCommandHandler(_basketRepositoryMock.Object);
-    }
+        OwnerId = "USER#testuser",
+        CustomerId = Guid.NewGuid(),
+        OrderId = Guid.NewGuid(),
+        TotalPrice = 189.99m,
+        ShippingAddress = ValidShippingAddress(),
+        Items = [new BasketCheckoutItemDto(Guid.NewGuid(), "Sample Product", null, 1, 189.99m)]
+    };
 
-    [Fact]
-    public async Task Handle_ShouldCheckoutBasketSuccessfully()
-    {
-        // Arrange
-        var basketCheckoutDto = new BasketCheckoutDto
-        {
-            OwnerId = "USER#testuser",
-            TotalPrice = 100.0m,
-            ShippingAddress = ValidShippingAddress()
-        };
-
-        var basket = ShoppingCart.Create(
-            "USER#testuser",
-            [ShoppingCartItem.Create(ProductId.Of(Guid.NewGuid()), "Sample Product", "https://example.com/img.jpg", "Red", 2, 50.0m)]);
-
-        _basketRepositoryMock.Setup(repo =>
-            repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(basket);
-
-        var command = new CheckoutBasketCommand(basketCheckoutDto);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.True(result.IsSuccess);
-
-        _basketRepositoryMock.Verify(repo =>
-            repo.MarkCheckoutAsync(
-                basketCheckoutDto.OwnerId,
-                It.Is<string>(json => json.Contains(basketCheckoutDto.OwnerId)),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
-
-        _basketRepositoryMock.Verify(repo =>
-            repo.DeleteBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()), Times.Once);
-    }
-
-    // The checkout screen shows this id as the order number, so it has to be the same OrderId the
-    // checkout payload carries — the one Ordering keys the order off of (ADR-0038).
-    [Fact]
-    public async Task Handle_ShouldReturnTheOrderIdWrittenToTheCheckoutPayload()
-    {
-        // Arrange
-        var basketCheckoutDto = new BasketCheckoutDto
-        {
-            OwnerId = "USER#testuser",
-            TotalPrice = 100.0m,
-            ShippingAddress = ValidShippingAddress()
-        };
-
-        var basket = ShoppingCart.Create(
-            "USER#testuser",
-            [ShoppingCartItem.Create(ProductId.Of(Guid.NewGuid()), "Sample Product", "https://example.com/img.jpg", "Red", 1, 100.0m)]);
-
-        _basketRepositoryMock.Setup(repo =>
-            repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(basket);
-
-        string? checkoutJson = null;
-        _basketRepositoryMock
-            .Setup(repo => repo.MarkCheckoutAsync(basketCheckoutDto.OwnerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Callback<string, string, CancellationToken>((_, json, _) => checkoutJson = json);
-
-        // Act
-        var result = await _handler.Handle(new CheckoutBasketCommand(basketCheckoutDto), CancellationToken.None);
-
-        // Assert
-        Assert.NotNull(result.OrderId);
-        Assert.NotEqual(Guid.Empty, result.OrderId);
-        Assert.NotNull(checkoutJson);
-        Assert.Contains(result.OrderId.Value.ToString(), checkoutJson);
-    }
-
-    // Basket is a pure passthrough for points (ADR-0026 "zero discount responsibility", ADR-0048
-    // §4): whatever the pipeline confirmed reaches BasketCheckoutEvent untouched — CheckoutedRule
-    // deserializes this very payload as the event.
     [Fact]
     public async Task Handle_ShouldCarryPointsToUseAndTotalPriceUnchanged_IntoTheCheckoutEvent()
     {
-        var basketCheckoutDto = new BasketCheckoutDto
-        {
-            OwnerId = "USER#testuser",
-            TotalPrice = 189.99m,
-            PointsToUse = 1000,
-            ShippingAddress = ValidShippingAddress()
-        };
-
-        _basketRepositoryMock.Setup(repo =>
-            repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(ShoppingCart.Create(
-                "USER#testuser",
-                [ShoppingCartItem.Create(ProductId.Of(Guid.NewGuid()), "Sample Product", null, "Red", 1, 199.99m)]));
-
+        var dto = ValidDto();
+        dto.PointsToUse = 1000;
         string? checkoutJson = null;
-        _basketRepositoryMock
-            .Setup(repo => repo.MarkCheckoutAsync(basketCheckoutDto.OwnerId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .Callback<string, string, CancellationToken>((_, json, _) => checkoutJson = json);
+        _repository
+            .Setup(r => r.CloseCartAsync(
+                dto.OwnerId, CheckoutId, "v1", dto.OrderId, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string?, Guid, string, CancellationToken>((_, _, _, _, json, _) => checkoutJson = json)
+            .ReturnsAsync(new CartCloseResult(CartCloseOutcome.Closed, dto.OrderId));
 
-        await _handler.Handle(new CheckoutBasketCommand(basketCheckoutDto), CancellationToken.None);
+        await new CheckoutBasketCommandHandler(_repository.Object)
+            .Handle(new CheckoutBasketCommand(dto, CheckoutId, "v1"), CancellationToken.None);
 
         var evt = System.Text.Json.JsonSerializer.Deserialize(
             checkoutJson!,
@@ -136,71 +45,32 @@ public class CheckoutBasketCommandHandlerTests
         Assert.NotNull(evt);
         Assert.Equal(1000, evt!.PointsToUse);
         Assert.Equal(189.99m, evt.TotalPrice);
-    }
-
-    [Fact]
-    public async Task Handle_ShouldReturnFailure_WhenBasketDoesNotExist()
-    {
-        // Arrange
-        var basketCheckoutDto = new BasketCheckoutDto
-        {
-            OwnerId = "USER#testuser",
-            TotalPrice = 100.0m,
-            ShippingAddress = ValidShippingAddress()
-        };
-
-        _basketRepositoryMock
-            .Setup(repo =>
-                repo.TryGetBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((ShoppingCart)null);
-
-        var command = new CheckoutBasketCommand(basketCheckoutDto);
-
-        // Act
-        var result = await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        Assert.NotNull(result);
-        Assert.False(result.IsSuccess);
-        Assert.Null(result.OrderId);
-
-        _basketRepositoryMock.Verify(repo =>
-            repo.MarkCheckoutAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
-            Times.Never);
-
-        _basketRepositoryMock.Verify(repo =>
-            repo.DeleteBasket(basketCheckoutDto.OwnerId, It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(dto.OrderId, evt.OrderId);
     }
 
     [Fact]
     public void Validator_ShouldNotHaveErrors_WhenCommandIsValid()
     {
-        // Arrange
-        var command = new CheckoutBasketCommand(new BasketCheckoutDto
-        {
-            OwnerId = "USER#testuser",
-            TotalPrice = 100.0m,
-            ShippingAddress = ValidShippingAddress()
-        });
+        var result = _validator.Validate(new CheckoutBasketCommand(ValidDto(), CheckoutId, "v1")).ToList();
 
-        // Act
-        var result = _validator.Validate(command).ToList();
-
-        // Assert
         Assert.Empty(result);
     }
 
     [Fact]
     public void Validator_ShouldHaveErrors_WhenCommandIsInvalid()
     {
-        // Arrange
-        var command = new CheckoutBasketCommand(null);
+        var result = _validator.Validate(new CheckoutBasketCommand(null!, CheckoutId)).ToList();
 
-        // Act
-        var result = _validator.Validate(command).ToList();
-
-        // Assert
         Assert.Contains(result, f => f.PropertyName == "BasketCheckoutDto" && f.ErrorMessage == "BasketCheckoutDto can't be null");
+    }
+
+    // Only the checkout saga calls Basket, and it always sends the attempt's id (ADR-0050 §2/§3).
+    [Fact]
+    public void Validator_ShouldRequireACheckoutId()
+    {
+        var result = _validator.Validate(new CheckoutBasketCommand(ValidDto(), CheckoutId: null)).ToList();
+
+        Assert.Contains(result, f => f.PropertyName == "CheckoutId");
     }
 
     // Ordering's Address.Of rejects a blank AddressLine/EmailAddress. That rejection lands in
@@ -211,21 +81,11 @@ public class CheckoutBasketCommandHandlerTests
     [InlineData(null)]
     public void Validator_ShouldHaveError_WhenAddressLineIsBlank(string? addressLine)
     {
-        // Arrange
-        var shippingAddress = ValidShippingAddress();
-        shippingAddress.AddressLine = addressLine;
+        var dto = ValidDto();
+        dto.ShippingAddress.AddressLine = addressLine!;
 
-        var command = new CheckoutBasketCommand(new BasketCheckoutDto
-        {
-            OwnerId = "USER#testuser",
-            TotalPrice = 100.0m,
-            ShippingAddress = shippingAddress
-        });
+        var result = _validator.Validate(new CheckoutBasketCommand(dto, CheckoutId)).ToList();
 
-        // Act
-        var result = _validator.Validate(command).ToList();
-
-        // Assert
         Assert.Contains(result, f => f.PropertyName == "AddressLine" && f.ErrorMessage == "AddressLine is required");
     }
 
@@ -235,21 +95,11 @@ public class CheckoutBasketCommandHandlerTests
     [InlineData(null)]
     public void Validator_ShouldHaveError_WhenEmailAddressIsBlank(string? emailAddress)
     {
-        // Arrange
-        var shippingAddress = ValidShippingAddress();
-        shippingAddress.EmailAddress = emailAddress;
+        var dto = ValidDto();
+        dto.ShippingAddress.EmailAddress = emailAddress!;
 
-        var command = new CheckoutBasketCommand(new BasketCheckoutDto
-        {
-            OwnerId = "USER#testuser",
-            TotalPrice = 100.0m,
-            ShippingAddress = shippingAddress
-        });
+        var result = _validator.Validate(new CheckoutBasketCommand(dto, CheckoutId)).ToList();
 
-        // Act
-        var result = _validator.Validate(command).ToList();
-
-        // Assert
         Assert.Contains(result, f => f.PropertyName == "EmailAddress" && f.ErrorMessage == "EmailAddress is required");
     }
 

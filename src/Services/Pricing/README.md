@@ -26,15 +26,22 @@ price and every installment are recomputed over the net total. Above the cap the
 the points after checkout — and Challenges never sees money.
 
 **The total charged is Pricing's** ([ADR-0048 §4](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md)).
-The same query is the `quote` step of the `checkoutBasket` AppSync pipeline: with `ExpectedTotal`,
+The same query is the `Quote` step of the `checkout-saga` behind `checkoutBasket`
+([ADR-0050](../../../docs/adr/0050-checkout-step-functions-express-saga.md)): with `ExpectedTotal`,
 `PaymentMethod` and `Installments` it picks the total for that payment choice and rejects a client
-total that differs by even a cent (`PriceChanged`, with `ServerTotal`). Both rejections come back as
-data (`Rejection`) so the resolver can raise a typed GraphQL error.
+total that differs by even a cent (`PriceChanged`, with `ServerTotal`). It also returns `Lines`: each
+cart line's share of the post-campaign card price per unit, before points and rounded to the cent —
+the prices the order records instead of whatever the client stored in its cart. The per-line split is
+`CartDiscountAllocation.LineValuesFrom`, the same policy as the cart-level reduction (ADR-0043).
+
+Every rejection comes back as data (`Rejection`), never as a Lambda error, so the saga can tell a
+refusal from a fault: `PointsAboveCap`, `PriceChanged`, `BadRequest` (a quantity, points value or
+installment count the client got wrong) and `ProductUnavailable` (a product with no price).
 
 **Basket never calls Pricing** — neither synchronously nor asynchronously
 ([ADR-0026](../../../docs/adr/0026-pricing-bounded-context-price-and-campaign-ownership.md), which
-superseded ADR-0012 and moved discount ownership out of Basket entirely). The checkout pipeline
-calls Pricing from AppSync, before Basket.
+superseded ADR-0012 and moved discount ownership out of Basket entirely). The checkout saga calls
+Pricing before Basket and hands Basket the priced lines.
 
 The old reward coupon (`CustomerDiscounts`, [ADR-0046](../../../docs/adr/0046-challenge-points-redeem-into-pricing-customer-discount.md))
 was removed when in-cart points replaced it.
@@ -68,7 +75,7 @@ Expiry is checked **at read time** and is authoritative; TTL only sweeps dead ro
 | `Mutation.setGatewayCost` | Direct DynamoDB |
 | `Query.rewardConversion` | **NONE (local) resolver** — values baked in at synth time from `reward-config.ts`, no backend call |
 | `Query.installmentPlanFor` · `basketInstallmentPlan` | Lambda ([ADR-0009](../../../docs/adr/0009-appsync-resolver-selection-direct-first-lambda-for-complex-logic.md) escalation); `pointsToUse > 0` is Cognito-only |
-| `Mutation.checkoutBasket` (step `quote`) | Lambda — `pricing-get-basket-installment-plan` in the checkout pipeline |
+| `Mutation.checkoutBasket` (saga step `Quote`) | Lambda — `pricing-get-basket-installment-plan`, invoked by the `checkout-saga` |
 | `Mutation.createCampaign` · `endCampaign` | Lambda — transactional fan-out |
 
 ## Integration events
@@ -106,4 +113,5 @@ dotnet test tests/Services/Pricing/Pricing.UnitTests/Pricing.UnitTests.csproj
 [ADR-0043](../../../docs/adr/0043-cart-discount-allocation-policy.md) ·
 [ADR-0044](../../../docs/adr/0044-campaign-cdc-product-discounts-stream-and-ttl.md) ·
 [ADR-0046](../../../docs/adr/0046-challenge-points-redeem-into-pricing-customer-discount.md) ·
-[ADR-0048](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md)
+[ADR-0048](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md) ·
+[ADR-0050](../../../docs/adr/0050-checkout-step-functions-express-saga.md)

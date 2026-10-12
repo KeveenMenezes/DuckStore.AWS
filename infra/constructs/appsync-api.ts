@@ -24,15 +24,19 @@ export interface AppSyncApiProps {
   // Express saga behind createProductWithPrice (ADR-0032), invoked synchronously via
   // an HTTP datasource calling states:StartSyncExecution.
   readonly productCreateSaga: sfn.IStateMachine;
+  // Express saga behind checkoutBasket (ADR-0050), invoked the same way.
+  readonly checkoutSaga: sfn.IStateMachine;
 }
 
 export class AppSyncApi extends Construct {
   public readonly api: appsync.GraphqlApi;
   private readonly productCreateSaga: sfn.IStateMachine;
+  private readonly checkoutSaga: sfn.IStateMachine;
 
   constructor(scope: Construct, id: string, props: AppSyncApiProps) {
     super(scope, id);
     this.productCreateSaga = props.productCreateSaga;
+    this.checkoutSaga = props.checkoutSaga;
 
     // GraphQL API — three auth modes:
     //   Default:    Shopping Cognito user pool (customers, required for mutations +
@@ -112,7 +116,8 @@ export class AppSyncApi extends Construct {
   // `ctx.stash`/`ctx.prev.result`; the top-level `${typeName}.${fieldName}.js` file is just the
   // pipeline's own pass-through request/response (returns `ctx.prev.result`). A step given as a
   // file name runs against `dataSource`; one given as `{ file, dataSource }` runs against its own —
-  // an orchestration pipeline whose steps call different services (checkoutBasket, ADR-0048 §4).
+  // an orchestration pipeline whose steps call different services (checkoutBasket used it until
+  // ADR-0050 moved it to a saga).
   private pipelineResolver(
     dataSource: appsync.BaseDataSource | undefined,
     id: string,
@@ -254,7 +259,6 @@ export class AppSyncApi extends Construct {
     pointsTransactionsTable.grantReadData(pointsTransactionsDs);
 
     // Lambda data sources — imported by function name (no CF coupling)
-    const checkoutFn = lambda.Function.fromFunctionName(this, 'CheckoutFn', 'basket-checkout-basket');
     const mergeBasketFn = lambda.Function.fromFunctionName(this, 'MergeBasketFn', 'basket-merge-basket');
     const createCampaignFn = lambda.Function.fromFunctionName(
       this, 'CreateCampaignFn', 'pricing-create-campaign',
@@ -276,7 +280,6 @@ export class AppSyncApi extends Construct {
       this, 'RevealChallengeHintFn', 'challenges-reveal-hint',
     );
     // addLambdaDataSource automatically grants lambda:InvokeFunction to the DS role
-    const checkoutDs = api.addLambdaDataSource('CheckoutDS', checkoutFn);
     const mergeBasketDs = api.addLambdaDataSource('MergeBasketDS', mergeBasketFn);
     const createCampaignDs = api.addLambdaDataSource('CreateCampaignDS', createCampaignFn);
     const endCampaignDs = api.addLambdaDataSource('EndCampaignDS', endCampaignFn);
@@ -309,6 +312,7 @@ export class AppSyncApi extends Construct {
       },
     });
     this.productCreateSaga.grantStartSyncExecution(sfnDs);
+    this.checkoutSaga.grantStartSyncExecution(sfnDs);
 
     // Resolvers — one JS file per (typeName, fieldName) pair
 
@@ -366,15 +370,13 @@ export class AppSyncApi extends Construct {
     // checkoutBasket/mergeBasket are Cognito-only (see ADR-0016). storeBasket is a direct
     // DynamoDB PutItem resolver (ADR-0009).
     this.resolver(cartsDs, 'StoreBasketResolver', 'Mutation', 'storeBasket', 'basket');
-    // Pipeline (ADR-0048 §4): saved cart → Pricing quote (cap + charged total, or PriceChanged) →
-    // Basket checkout with the server's total. Same construct id as the unit resolver it replaces,
-    // so CloudFormation updates the resolver in place instead of creating a second one for the
-    // same field.
-    this.pipelineResolver(undefined, 'CheckoutBasketResolver', 'Mutation', 'checkoutBasket', 'basket', [
-      { file: 'Mutation.checkoutBasket.loadCart.js', dataSource: cartsDs },
-      { file: 'Mutation.checkoutBasket.quote.js', dataSource: getBasketInstallmentPlanDs },
-      { file: 'Mutation.checkoutBasket.checkout.js', dataSource: checkoutDs },
-    ]);
+    // HTTP resolver → checkout-saga Express state machine (ADR-0050), replacing the ADR-0048 §4
+    // pipeline. Same construct id as the pipeline resolver it replaces, so CloudFormation updates
+    // the resolver in place instead of creating a second one for the same field.
+    this.resolver(
+      sfnDs, 'CheckoutBasketResolver', 'Mutation', 'checkoutBasket', 'basket',
+      { __STATE_MACHINE_ARN__: this.checkoutSaga.stateMachineArn },
+    );
     this.resolver(mergeBasketDs, 'MergeBasketResolver', 'Mutation', 'mergeBasket', 'basket');
     this.resolver(cartsDs, 'DeleteBasketResolver', 'Mutation', 'deleteBasket', 'basket');
     this.pipelineResolver(reviewsDs, 'CreateReviewResolver', 'Mutation', 'createReview', 'reviews', [

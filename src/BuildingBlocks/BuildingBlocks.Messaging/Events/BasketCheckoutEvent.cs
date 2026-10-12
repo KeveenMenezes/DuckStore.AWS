@@ -33,12 +33,10 @@ public record BasketCheckoutAddress
     public string ZipCode { get; set; } = default!;
 }
 
+// How the customer chose to pay, never the card: card data reaches only Payment, registered by the
+// checkout saga before the cart closes (ADR-0050 §7).
 public record BasketCheckoutPayment
 {
-    public string CardName { get; set; } = default!;
-    public string CardNumber { get; set; } = default!;
-    public string Expiration { get; set; } = default!;
-    public string Cvv { get; set; } = default!;
     public int PaymentMethod { get; set; }
     public int Installments { get; set; }
 }

@@ -70,6 +70,21 @@ public static class PaymentExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
+        // Checkout saga steps (ADR-0050 §6): invoked by local.ts's saga emulation, never by an event.
+        builder.AddAWSLambdaFunction<Projects.Payment_Function>(
+                "payment-register",
+                lambdaHandler: LambdaHandler("Payment.Function", "RegisterPayment"))
+            .WaitForCompletion(paymentMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
+        builder.AddAWSLambdaFunction<Projects.Payment_Function>(
+                "payment-void",
+                lambdaHandler: LambdaHandler("Payment.Function", "VoidPayment"))
+            .WaitForCompletion(paymentMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
         builder.AddAWSLambdaFunction<Projects.PaymentGateway_Function>(
                 "paymentgateway-payment-requested-consumer",
                 lambdaHandler: LambdaHandler("PaymentGateway.Function", "PaymentRequestedConsumer"))

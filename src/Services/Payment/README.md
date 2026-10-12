@@ -11,7 +11,10 @@ owns the payment record, and **PaymentGateway**, the simulated external processo
 
 ## Responsibilities
 
-- **Payment** owns `payments`, creating a record from checkout and applying the gateway's outcome.
+- **Payment** owns `payments`: it registers the payment during the checkout saga (validating the
+  card), promotes it when the checkout event arrives, and applies the gateway's outcome. It is the only
+  context that ever holds card data
+  ([ADR-0050](../../../docs/adr/0050-checkout-step-functions-express-saga.md)).
 - **PaymentGateway** ([`../PaymentGateway`](../PaymentGateway)) decides authorize/decline. It is
   stateless: in the CDK it receives only `eventBus.grantPutEventsTo(...)` and **no DynamoDB grant**.
 
@@ -19,11 +22,22 @@ owns the payment record, and **PaymentGateway**, the simulated external processo
 
 The two EventBridge icons on the diagram are the same bus — the round trip runs through it.
 
-1. `BasketCheckoutEvent` → creates the `Payment` (Ordering consumes the same event in parallel)
-2. CDC publishes `PaymentRequestedEvent`
-3. The gateway decides and publishes `PaymentAuthorizedEvent` / `PaymentDeclinedEvent`
-4. Payment's own consumers apply the outcome to the `payments` table
-5. Ordering consumes that same outcome independently
+1. During the checkout, the `checkout-saga` invokes `payment-register`: the card is validated (Luhn,
+   expiry, CVV — cash needs none) and the payment is written `Registered`, keyed by
+   `PaymentId = OrderId`. An invalid card is refused on the checkout screen (`InvalidCard`). A
+   `Registered` payment never reaches the gateway; if the cart changed before it closed, the saga
+   invokes `payment-void` (`Registered → Voided`)
+2. `BasketCheckoutEvent` → `payment-basket-checkout-consumer` promotes the payment to `Pending`
+   (Ordering consumes the same event in parallel)
+3. CDC publishes `PaymentRequestedEvent`
+4. The gateway decides and publishes `PaymentAuthorizedEvent` / `PaymentDeclinedEvent`
+5. Payment's own consumers apply the outcome to the `payments` table
+6. Ordering consumes that same outcome independently
+
+A repeated registration for the same order succeeds only while the payment is still `Registered` with
+the same amount and card; anything else is refused with `CheckoutRetryRequired`. The promotion also
+accepts a `Voided` payment: the checkout event proves the cart closed under that order, so a void that
+raced a successful close of the same attempt must not leave the order unpaid.
 
 ### When the checkout used points
 
@@ -31,16 +45,16 @@ The payment must not reach the gateway before the points are actually reserved, 
 authorized with a discount the customer didn't have
 ([ADR-0048 §6](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md)):
 
-1. A checkout with `PointsToUse > 0` creates the payment `AwaitingPoints`, not `Pending` — the INSERT
+1. A checkout with `PointsToUse > 0` promotes the payment to `AwaitingPoints`, not `Pending` — which
    publishes nothing. Challenges consumes the same `BasketCheckoutEvent` and reserves the points.
 2. `PointsReservedEvent` → `payment-points-reserved-consumer` moves it `AwaitingPoints → Pending`;
-   `PaymentRequestedRule` matches that MODIFY, and the cycle above continues from step 2.
+   `PaymentRequestedRule` matches that MODIFY, and the cycle above continues from step 3.
 3. `PointsReservationFailedEvent` → `payment-points-reservation-failed-consumer` declines it
    (`InsufficientPoints`); `PaymentDeclinedInsufficientPointsRule` publishes `PaymentDeclinedEvent`
    so Ordering cancels the order, and Payment's own result consumer ignores it (no longer `Pending`).
 
-Both consumers **throw** when the payment does not exist yet — the two contexts consume the checkout
-in parallel, so the reservation can arrive first, and EventBridge retries.
+Both consumers **throw** while the payment is not yet promoted (still `Registered`) — the two contexts
+consume the checkout in parallel, so the reservation can arrive first, and EventBridge retries.
 
 ## Data
 
@@ -51,7 +65,9 @@ in parallel, so the reservation can arrive first, and EventBridge retries.
 
 ## API surface (AppSync)
 
-None. This context is reached only through events.
+None directly. `payment-register` and `payment-void` are invoked only by the `checkout-saga` behind
+`Mutation.checkoutBasket` (no Function URL, no event source); everything else is reached through
+events.
 
 ## Integration events
 
@@ -68,8 +84,8 @@ None. This context is reached only through events.
 
 **Publishes**
 
-- `PaymentRequestedEvent` — via `payment-payments-stream-publisher` (CDC off `payments`), on INSERT
-  `Pending` or MODIFY `AwaitingPoints → Pending`
+- `PaymentRequestedEvent` — via `payment-payments-stream-publisher` (CDC off `payments`), on the
+  MODIFY into `Pending` from `Registered`, `Voided` or `AwaitingPoints`
 - `PaymentDeclinedEvent` — the same publisher, on MODIFY `AwaitingPoints → Declined` (not enough points)
 - `PaymentAuthorizedEvent` · `PaymentDeclinedEvent` — from the gateway consumer
 
@@ -89,9 +105,13 @@ dotnet run --project src/AppHost/AppHost.csproj
 dotnet test tests/Services/Payment/Payment.UnitTests/Payment.UnitTests.csproj
 ```
 
+The checkout flow end to end, against a deployed environment, is covered by
+[`tests/E2E/Checkout`](../../../tests/E2E/README.md).
+
 ## Related ADRs
 
 [ADR-0005](../../../docs/adr/0005-remove-domain-events-cdc-via-dynamodb-streams.md) ·
 [ADR-0015](../../../docs/adr/0015-sqs-dlq-for-cdc-publishers-and-eventbridge-consumers.md) ·
 [ADR-0025](../../../docs/adr/0025-payment-bounded-context-simulated-gateway-cdc.md) ·
-[ADR-0048](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md)
+[ADR-0048](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md) ·
+[ADR-0050](../../../docs/adr/0050-checkout-step-functions-express-saga.md)

@@ -420,9 +420,14 @@ input ShoppingCartInput {
 }
 
 input CheckoutInput {
-  # The total the customer confirmed on screen — never the amount charged. The checkout pipeline
+  # One id per checkout attempt, minted by the SPA when the checkout opens and kept across retries
+  # of that attempt: a retry with the same id returns the same orderId instead of a second order.
+  # Renewed after a success or a typed refusal, never after InternalError or a network failure
+  # (ADR-0050 §3).
+  checkoutId: ID!
+  # The total the customer confirmed on screen — never the amount charged. The checkout saga
   # recomputes the total in Pricing for the saved cart, pointsToUse and the payment choice, and
-  # fails with errorType PriceChanged (errorInfo.serverTotal) when it differs (ADR-0048 §4).
+  # fails with errorType PriceChanged (errorInfo.serverTotal) when it differs (ADR-0048 §4, ADR-0050).
   totalPrice: Float!
   firstName: String!
   lastName: String!
@@ -440,6 +445,9 @@ input CheckoutInput {
   installments: Int!
   # Points to use on this order, 0/omitted for none. Capped by Pricing (PointsAboveCap), reserved
   # against the balance by Challenges after checkout (ADR-0048 §4, §5).
+  # Other refusals the checkout raises (ADR-0050 §8): BadRequest (no cart), ProductUnavailable
+  # (errorInfo.productIds), InvalidCard (errorInfo.field), CheckoutRetryRequired, CartChanged;
+  # InternalError for anything that is not a refusal.
   pointsToUse: Int
 }
 
@@ -584,10 +592,10 @@ type Mutation {
   # ownerId (ADR-0009, ADR-0016)
   storeBasket(ownerId: String!, input: ShoppingCartInput!): StoreBasketResult! @aws_api_key @aws_cognito_user_pools
 
-  # Pipeline resolver — Cognito ONLY (login required, which triggers the merge): loads the saved
-  # cart, has Pricing quote it (cap + charged total), then checks out through the Basket Lambda
-  # with the server's total. Injects ctx.identity.sub as CustomerId and USER#<sub> as OwnerId
-  # (ADR-0009, ADR-0016, ADR-0048 §4)
+  # HTTP resolver → checkout-saga Express state machine — Cognito ONLY (login required, which
+  # triggers the merge): loads the saved cart, names its lines from Catalog, has Pricing quote it
+  # (cap + charged total + per-line prices), registers the payment and closes the cart atomically.
+  # The owner is USER#<ctx.identity.sub>, never a client value (ADR-0016, ADR-0048 §4, ADR-0050)
   checkoutBasket(input: CheckoutInput!): CheckoutResult!
 
   # Direct DynamoDB resolver — Cognito OR API_KEY (guest via BFF); resolver derives/validates ownerId
