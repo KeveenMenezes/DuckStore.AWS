@@ -592,10 +592,10 @@ type Mutation {
   # ownerId (ADR-0009, ADR-0016)
   storeBasket(ownerId: String!, input: ShoppingCartInput!): StoreBasketResult! @aws_api_key @aws_cognito_user_pools
 
-  # Pipeline resolver — Cognito ONLY (login required, which triggers the merge): loads the saved
-  # cart, has Pricing quote it (cap + charged total), then checks out through the Basket Lambda
-  # with the server's total. Injects ctx.identity.sub as CustomerId and USER#<sub> as OwnerId
-  # (ADR-0009, ADR-0016, ADR-0048 §4)
+  # HTTP resolver → checkout-saga Express state machine — Cognito ONLY (login required, which
+  # triggers the merge): loads the saved cart, names its lines from Catalog, has Pricing quote it
+  # (cap + charged total + per-line prices), registers the payment and closes the cart atomically.
+  # The owner is USER#<ctx.identity.sub>, never a client value (ADR-0016, ADR-0048 §4, ADR-0050)
   checkoutBasket(input: CheckoutInput!): CheckoutResult!
 
   # Direct DynamoDB resolver — Cognito OR API_KEY (guest via BFF); resolver derives/validates ownerId

@@ -73,7 +73,7 @@
   - Verificar: `npx cdk synth AppSyncStack`; `cdk diff` com a troca do resolver; `grep -rn checkoutBasket.loadCart` vazio.
   - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/basket/mutations/Mutation.checkoutBasket*.js`, `infra/constructs/appsync-api.ts`, `src/WebApps/Shopping.Web.SPA.React/graphql/types.ts`, `docs/adr/0009-*.md`. Dependências: T11.
 
-- [x] **T13: `local.ts` e SPA no contrato novo** (M) — código feito; `local.ts` imita a saga passo a passo (derivação em `lib/checkout-order-id.ts`, 3 vetores da ADR verificados com `node --experimental-strip-types`), SPA com `checkoutId` por tentativa (renova em sucesso ou recusa tipada, mantém em `InternalError`/rede) e tratamento de `CartChanged`/`ProductUnavailable`/`InvalidCard`/`CheckoutRetryRequired`/`InternalError`; `typecheck` ok, `lint` sem erro novo. **Pendente para o checkpoint 1:** os cenários manuais no Aspire e o `pnpm build` (o SSG de `/` precisa de backend GraphQL; o CI só roda lint + typecheck)
+- [x] **T13: `local.ts` e SPA no contrato novo** (M) — código feito; `local.ts` imita a saga passo a passo (derivação em `lib/checkout-order-id.ts`, 3 vetores da ADR verificados com `node --experimental-strip-types`), SPA com `checkoutId` por tentativa (renova em sucesso ou recusa tipada, mantém em `InternalError`/rede) e tratamento de `CartChanged`/`ProductUnavailable`/`InvalidCard`/`CheckoutRetryRequired`/`InternalError`; `typecheck` ok, `lint` sem erro novo. **Validação local feita (Aspire + SPA local + Lambdas reais no emulador, sessão de teste no DynamoDB Local):** 8 cenários verdes — caminho feliz com o `OrderId` derivado, replay com o mesmo `checkoutId`, carrinho já fechado (`BadRequest`), `PriceChanged` com `serverTotal`, `InvalidCard` no `CardNumber`, `checkoutId` inválido, endereço em branco, dinheiro sem cartão; e o estado gravado conferido (registro `CHECKOUT#` com nome do Catalog e preço do Pricing no lugar dos valores forjados, sem cartão; pagamento `Registered` com `Id = OrderId`). Para subir as Lambdas localmente foi preciso contornar um problema **pré-existente** do ambiente (ver nota no fim deste arquivo). **Pendente para o checkpoint 1:** o `pnpm build` (o SSG de `/` precisa de backend GraphQL; o CI só roda lint + typecheck)
   - Aceite: o `local.ts` imita a saga passo a passo (mesma derivação, mesmos `errorType`, register/void pelo emulador); o SPA gera o `checkoutId` ao abrir o checkout e o mantém nos retries, renovando só depois de sucesso ou de recusa tipada (`InternalError`/rede mantêm o id); `CartChanged`/`ProductUnavailable` recotam e pedem confirmação, e `InvalidCard` marca o campo do cartão.
   - Verificar: `pnpm lint && pnpm typecheck && pnpm build`; no Aspire: checkout feliz, duplo clique (um pedido), carrinho alterado em outra aba (`CartChanged`) e cartão inválido (`InvalidCard`).
   - Arquivos: `app/api/graphql/local.ts`, `features/checkout/{hooks/use-checkout.ts,services/checkout.service.ts,components/*}`. Dependências: T12.
@@ -199,3 +199,15 @@
 - [ ] `adr-guardian` e `code-reviewer`.
 - [ ] Deploy no dev (Ordering, Payment, Challenges, AppSync, SPA) e critérios 1 a 11 do spec, com a inspeção de uma execução autorizada e de uma recusada no console.
 - [ ] PR da fase 3.
+
+---
+
+## Nota: dev local quebrado antes desta iniciativa (fora do escopo)
+
+Nenhuma Lambda sobe no Aspire hoje (todas ficam `Finished`). Duas causas, as duas no wrapper que o `Aspire.Hosting.AWS` 13.6.0 gera em `$TMPDIR` para cada função:
+
+1. O wrapper referencia `Amazon.Lambda.RuntimeSupport` 2.0.0, e as funções usam 2.2.0 (bump do Dependabot, #107): NU1605 (downgrade), tratado como erro, e o wrapper não compila.
+2. No macOS, `$TMPDIR` (`/var/folders/...`) é link simbólico para `/private/var/folders/...`; os caminhos relativos das `BuildingBlocks` resolvidos a partir do wrapper apontam para fora do repositório.
+
+Contorno usado na validação (local, sem mudar o repositório): compilar cada wrapper pelo caminho real com `dotnet build /private/var/folders/.../Wrapper<X>.csproj -p:NoWarn=NU1605` e reiniciar o recurso com `aspire resource <nome> start`. Correção definitiva a decidir com o usuário (ex.: rodar o AppHost com `TMPDIR` apontando para um caminho sem link simbólico e alinhar a versão do `RuntimeSupport` com a do wrapper).
+
