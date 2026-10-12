@@ -1,0 +1,65 @@
+name: Deploy Inventory CDK Stack
+
+on:
+  push:
+    branches: [development]
+    paths:
+      - 'infra/**'
+      - 'src/Services/Inventory/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  NODE_VERSION: '24'
+
+jobs:
+  deploy:
+    name: Deploy CDK
+    # Tables only for now (ADR-0052): no Lambda artifact to publish, so no .NET/arm64 toolchain.
+    # When Inventory.Function arrives (SPEC-inventory.md, module 2), copy the .NET setup and the
+    # arm64 runner from deploy-challenges-cdk.yml (ADR-0042 §8).
+    runs-on: ubuntu-latest
+    environment: development
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: infra/package-lock.json
+
+      - name: Install CDK dependencies
+        working-directory: infra
+        run: npm ci
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy Inventory CDK stack
+        working-directory: infra
+        run: |
+          # --exclusively keeps the other stacks' assets from bundling (see deploy-challenges-cdk.yml).
+          npx cdk deploy DuckStoreInventoryStack \
+            --exclusively \
+            --require-approval never
+
+      - name: Deployment summary
+        run: |
+          echo "## Inventory CDK Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Stack** | DuckStoreInventoryStack |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Region** | ${{ env.AWS_REGION }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Commit** | ${{ github.sha }} |" >> $GITHUB_STEP_SUMMARY

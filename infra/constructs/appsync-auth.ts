@@ -226,6 +226,12 @@ exports.handler = async (event) => {
       groupName: 'Admin',
       description: 'Admins with full access to orders and management',
     });
+    // Warehouses and stock (ADR-0052 §3). Admin can do everything a StockKeeper can; Seller can't.
+    new cognito.CfnUserPoolGroup(this, 'StockKeeperGroup', {
+      userPoolId: this.managementUserPool.userPoolId,
+      groupName: 'StockKeeper',
+      description: 'Stock keepers who manage warehouses and stock',
+    });
 
     const managementDomain = this.managementUserPool.addDomain('ManagementDomain', {
       cognitoDomain: { domainPrefix: 'duckstore-management' },
