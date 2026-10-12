@@ -58,7 +58,8 @@ Usuários: o **StockKeeper** e o **Admin** operam o estoque no Blazor. O **Selle
 - **Nova ADR (0052):** bounded context Inventory. Dono do saldo por polo, ledger de movimentos, alocação por prioridade e ciclo reserva/baixa/liberação. A 0050 é a saga do checkout e a 0051 está reservada para a orquestração do pedido (`SPEC-checkout.md` §5). Ela é escrita no módulo 1, que cria o contexto, e emendada nos seguintes.
 - **ADR-0050 (emenda, módulo 4):** estados `ReserveStock`/`ReleaseStock` na `checkout-saga`, o `errorType` `OutOfStock` no contrato do §8 e o orçamento de timeout recalculado.
 - **ADR-0051 (emenda, módulo 4):** passos `CommitStock`/`ReleaseStock` na `order-saga` e a reserva órfã no reconciliador.
-- **ADR-0040 (módulo 3):** o CatalogView ganha um terceiro produtor, com dispatcher e estratégia próprios (`Consumers/InventorySync/`, `IInventorySyncStrategy`).
+- **ADR-0040 (módulo 3):** o CatalogView ganha um terceiro produtor. Começa com um handler 1:1 enquanto houver um único evento, e passa a ter dispatcher e estratégia próprios (`Consumers/InventorySync/`, `IInventorySyncStrategy`) quando surgir o segundo.
+- **ADR-0032 (emenda, módulo 3):** a saga `createProductWithPrice` perde o `stock` do input e do mapeamento da task.
 - **ADR-0009:** cadastros e consultas são resolvers diretos. Entrada, ajuste e transferência são classificadas no spec do módulo 2. A reserva não é resolver: é uma Lambda invocada só pela saga (ADR-0050 §2).
 
 ## 3. Mapa de módulos

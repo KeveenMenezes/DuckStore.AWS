@@ -84,7 +84,7 @@ Ordem de build (linear): `checkout-saga` → `checkout-points-reservation` → `
 | **0048 §6** (emenda) | 2 | Reserva de pontos síncrona e fim do `AwaitingPoints` |
 | **0051** (nova) | 3 | Orquestração para a transação do pedido, coreografia para avisos. Emenda as ADRs 0004/0005 (o evento deixa de ser o caminho entre os passos do pedido), 0025 (gateway síncrono pelo Payment) e 0048 §5 (liquidação de pontos pela saga) |
 
-O `SPEC-inventory.md` usa 0050 e 0051 no rascunho. Ele é renumerado quando for retomado.
+O `SPEC-inventory.md` foi renumerado e usa a 0052 (ADR do Inventory).
 
 ## 6. Fora do escopo
 

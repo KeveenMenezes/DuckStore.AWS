@@ -23,7 +23,7 @@ Criar o bounded context **Inventory** com o cadastro de **polos** (armazéns) e 
 
 ### Tabela `inventory-warehouses`
 
-Dona: Inventory. PK `WarehouseId` (S), sem SK, sem índices e sem streams. As configurações (billing, removal policy, PITR) são as mesmas das demais tabelas (`infra/constructs/challenges-dynamodb.ts`). O stream entra no módulo 3, se o total da loja precisar reagir à inativação de um polo.
+Dona: Inventory. PK `WarehouseId` (S), sem SK, sem índices e sem streams. As configurações são as mesmas das demais tabelas (`infra/constructs/challenges-dynamodb.ts`): `PAY_PER_REQUEST`, `RemovalPolicy.DESTROY` e sem PITR. O stream entra no módulo 3, se o total da loja precisar reagir à inativação de um polo.
 
 | Item | `WarehouseId` | Atributos |
 |---|---|---|
@@ -77,13 +77,13 @@ setWarehouseActive(id: ID!, active: Boolean!): Warehouse! @aws_cognito_user_pool
 
 ### Resolvers (todos diretos, ADR-0009)
 
-Nenhum dos quatro critérios de escalação se aplica. São um item (mais a guarda do próprio código) numa tabela, sem chamada a outro serviço, e toda validação cabe no resolver.
+Nenhum dos quatro critérios de escalação se aplica (a ADR-0052 §4 responde um por um). O critério 4 não vale porque a guarda `CODE#` não é um aggregate root: é o índice de unicidade do próprio polo, na mesma tabela, com condições estáticas. O critério 1 não vale porque a unicidade vem da escrita condicional, não de uma leitura antes. Será o primeiro `TransactWriteItems` **direto** do repositório. O `warehouses` segue o precedente do `orders` (`Scan` com filtro de `#Type`).
 
 | Campo | Operação | Detalhe |
 |---|---|---|
-| `createWarehouse` | `TransactWriteItems` (polo + guarda) | Normaliza: `trim`, código e UF em maiúsculas, CEP sem hífen. Nasce `Active = true`. A resposta é montada a partir do item gravado, porque a transação não devolve itens. Cancelamento pela guarda → `WarehouseCodeTaken` |
+| `createWarehouse` | `TransactWriteItems` (polo + guarda, cada item com `table: 'inventory-warehouses'` literal) | Normaliza: `trim`, código e UF em maiúsculas, CEP sem hífen. Nasce `Active = true`. A resposta é montada a partir do item gravado, porque a transação não devolve itens. `DynamoDB:TransactionCanceledException` com `cancellationReasons[1].type = ConditionalCheckFailed` → `WarehouseCodeTaken`. Com `TransactionConflict` (duas criações no mesmo instante) → `TransactionConflict`, retentável. Qualquer outro erro é repassado |
 | `updateWarehouse` | `UpdateItem` `ALL_NEW` | `SET` nome, endereço, prioridade, `UpdatedAt`, `UpdatedBy`. Condição `attribute_exists(WarehouseId) AND #Type = :warehouse` → `NotFound` |
-| `setWarehouseActive` | `UpdateItem` `ALL_NEW` | `SET Active`. Mesma condição e mesmo `NotFound` |
+| `setWarehouseActive` | `UpdateItem` `ALL_NEW` | `SET Active, UpdatedAt, UpdatedBy`. Mesma condição e mesmo `NotFound` |
 | `warehouses` | `Scan` com filtro `#Type = :warehouse` | A ordenação (prioridade, depois código) é feita no `response`. Sem paginação: a premissa é que haverá dezenas de polos, não milhares |
 | `warehouse` | `GetItem` | `null` se não existe ou se `Type ≠ Warehouse` (um id `CODE#...` nunca vira polo) |
 
@@ -100,7 +100,7 @@ Todo `request` começa pela checagem de grupo, como em `Mutation.updateChallenge
 | `zipCode` | 8 dígitos depois de remover `-` |
 | `priority` | inteiro 1–999 |
 
-Erros: `util.error(msg, 'BadRequest', null, { field })`, `'WarehouseCodeTaken'`, `'NotFound'`. Os campos `field` usam o nome do GraphQL (`address.zipCode`, por exemplo).
+Erros: `util.error(msg, 'BadRequest', null, { field })`, `'WarehouseCodeTaken'`, `'TransactionConflict'`, `'NotFound'` (PascalCase de propósito, como `BadRequest` e os erros do checkout, e não o `NOT_FOUND` antigo do `updateChallengePoints`). Os campos `field` usam o nome do GraphQL (`address.zipCode`, por exemplo).
 
 ### Cognito
 
@@ -122,7 +122,7 @@ Erros: `util.error(msg, 'BadRequest', null, { field })`, `'WarehouseCodeTaken'`,
 ### Infra
 
 - `infra/constructs/inventory-dynamodb.ts` + `infra/stacks/inventory-stack.ts` (`DuckStoreInventoryStack`), registrado em `infra/bin/app.ts`. Ainda sem `inventory-lambdas.ts`: não há Lambda neste módulo.
-- `infra/constructs/appsync-api.ts`: `Table.fromTableName('inventory-warehouses')` (nome fixo, nunca `Fn.importValue`), um data source e os cinco resolvers.
+- `infra/constructs/appsync-api.ts`: `Table.fromTableName('inventory-warehouses')` (nome fixo, nunca `Fn.importValue`) e um data source que nasce somente leitura (`dynamoDbDataSource`), com o grant explícito de `dynamodb:PutItem` e `dynamodb:UpdateItem` nessa tabela e nada além (como o `challengesAdminDs`). Mais os cinco resolvers.
 - `.github/workflows/deploy-inventory-cdk.yml`: só `cdk deploy DuckStoreInventoryStack` (sem publicar artefato .NET, porque ainda não há função), com gatilho em `infra/**` e `src/Services/Inventory/**`. O passo de publicação entra no módulo 2.
 - Ordem de deploy no dev: `DuckStoreInventoryStack` antes de `DuckStoreAppSyncStack` (os resolvers referenciam a tabela pelo nome).
 
@@ -215,12 +215,12 @@ No Blazor, seguir `Pages/Products/` (form compartilhado, serviço por contexto, 
 ## Testes
 
 - **Unit (SPA `lib`):** `warehouse-validation.test.ts`, com um caso por regra da tabela de validação, incluindo os de borda: código com 2 e com 20 caracteres, `alpha` normalizado, CEP com hífen aceito, UF minúscula aceita, prioridade 0 e 1000 rejeitadas.
-- **Resolver (APPSYNC_JS real, sem deploy):** `aws appsync evaluate-code` nos cinco resolvers. `request` com Seller, Customer e sem grupo (todos `Unauthorized`). Um `BadRequest` por campo (os mesmos casos do unit test, que pegam divergência entre as duas cópias). `response` de `createWarehouse` com a transação cancelada pela guarda (`WarehouseCodeTaken`). `response` de `update`/`setActive` com `ConditionalCheckFailed` (`NotFound`). `warehouses` ignorando a guarda e ordenando por prioridade e código.
+- **Resolver (APPSYNC_JS real, sem deploy):** `aws appsync evaluate-code` nos cinco resolvers. `request` com Seller, Customer e sem grupo (todos `Unauthorized`). Um `BadRequest` por campo (os mesmos casos do unit test, que pegam divergência entre as duas cópias). `response` de `createWarehouse` com a transação cancelada pela guarda (`WarehouseCodeTaken`) e por `TransactionConflict` (erro retentável). `response` de `update`/`setActive` com `ConditionalCheckFailed` (`NotFound`). `warehouses` ignorando a guarda e ordenando por prioridade e código.
 - **Infra:** `cdk synth` dos dois stacks limpo. O `cdk diff` no dev mostra a tabela, o grupo, o data source e os resolvers, e nada além disso.
 - **E2E (Playwright, AWS dev):** nova suíte `tests/E2E/Inventory/Inventory.E2ETests`, no padrão do `Checkout.E2ETests` (xUnit + Playwright .NET, `[E2EFact]`, pulada sem as variáveis de ambiente). O `E2E.Infrastructure` ganha um `ManagementSession`, que faz o login no Blazor pelo managed login do pool de gestão, como o `StorefrontSession` faz na loja. Cobre os critérios 1 a 8:
   - **UI:** menu Warehouses para StockKeeper e Admin, e ausente para o Seller. Criar, editar, inativar e reativar. O erro por campo no formulário.
   - **API:** com o access token da sessão do Blazor, chama o AppSync direto para os erros (`WarehouseCodeTaken`, `BadRequest` por campo, `NotFound`) e para o `Unauthorized` do Seller. O `Unauthorized` do cliente sai do `StorefrontSession` existente (`e2e-checkout@duckstore.test`), pela `/api/graphql` da loja.
-  - Os polos criados pelos testes usam código com prefixo `E2E-` e um sufixo aleatório, porque não há delete: a suíte os inativa no fim, e eles ficam como histórico no dev.
+  - Os polos criados pelos testes usam código `E2E-` + sufixo aleatório de até 16 letras maiúsculas e dígitos (dentro da regra de 2–20 caracteres), porque não há delete: a suíte os inativa no fim, e eles ficam como histórico no dev.
 - **Manual local:** critérios 2 a 7 e 9 no Aspire.
 - Não há unit test .NET: este módulo não tem lógica .NET além do seeder. A validação de UI é feita pela suíte Playwright, não por ferramenta de navegador do agente.
 
