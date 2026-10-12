@@ -1,4 +1,5 @@
 ﻿using BuildingBlocks.Core.Validation;
+using Payment.Function.Modules.Payments.Domain.Services;
 
 namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
 
@@ -35,7 +36,7 @@ public class CreatePaymentCommandValidator : IValidator<CreatePaymentCommand>
         }
 
         // Cash orders carry no card, so the Luhn check only applies to the other methods.
-        if (instance.PaymentMethod != PaymentMethod.Cash && !IsValidCardNumber(instance.CardNumber))
+        if (instance.PaymentMethod != PaymentMethod.Cash && !Luhn.IsValid(instance.CardNumber))
         {
             yield return new(nameof(instance.CardNumber), "Invalid card number");
         }
@@ -44,46 +45,5 @@ public class CreatePaymentCommandValidator : IValidator<CreatePaymentCommand>
         {
             yield return new(nameof(instance.PaymentMethod), "Invalid payment method");
         }
-    }
-
-    // Luhn checksum — the same rule FluentValidation's CreditCard() applied.
-    private static bool IsValidCardNumber(string? cardNumber)
-    {
-        if (string.IsNullOrWhiteSpace(cardNumber))
-        {
-            return false;
-        }
-
-        var sum = 0;
-        var even = false;
-
-        for (var i = cardNumber.Length - 1; i >= 0; i--)
-        {
-            var c = cardNumber[i];
-            if (c is ' ' or '-')
-            {
-                continue;
-            }
-
-            if (!char.IsDigit(c))
-            {
-                return false;
-            }
-
-            var digit = c - '0';
-            if (even)
-            {
-                digit *= 2;
-                if (digit > 9)
-                {
-                    digit -= 9;
-                }
-            }
-
-            sum += digit;
-            even = !even;
-        }
-
-        return sum % 10 == 0;
     }
 }
