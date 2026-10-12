@@ -4,7 +4,7 @@
 >
 > | Ordem | Módulo | Spec |
 > |---|---|---|
-> | 1 | `inventory-warehouses` | [`SPEC-inventory-warehouses.md`](./SPEC-inventory-warehouses.md) (aprovado; plano em [`tasks/inventory/`](./tasks/inventory/plan.md)) |
+> | 1 | `inventory-warehouses` | [`SPEC-inventory-warehouses.md`](./SPEC-inventory-warehouses.md) (**implementado**, no dev, PR [#182](https://github.com/KeveenMenezes/DuckStore.AWS/pull/182); plano em [`tasks/inventory/`](./tasks/inventory/plan.md)) |
 > | 2 | `inventory-movements` | `SPEC-inventory-movements.md` (a escrever) |
 > | 3 | `catalog-stock-handoff` | `SPEC-catalog-stock-handoff.md` (a escrever) |
 > | 4 | `checkout-stock-reservation` | `SPEC-checkout-stock-reservation.md` (a escrever, depois do `order-saga`) |
