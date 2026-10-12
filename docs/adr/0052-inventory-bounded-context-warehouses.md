@@ -196,6 +196,17 @@ Recorded here so later work starts from it, not decided in detail:
 
 ---
 
+## As Built (module 1)
+
+- Verified on the real APPSYNC_JS runtime with `aws appsync evaluate-code` (86 cases,
+  `scripts/inventory/evaluate-resolvers.mjs`), against the local BFF (`scripts/inventory/local-api-checks.mjs`)
+  and on dev by `tests/E2E/Inventory/Inventory.E2ETests` (12 tests: StockKeeper, Admin, Seller, customer).
+- APPSYNC_JS refuses a comparator for `Array.prototype.sort` (no function may be passed as an
+  argument) and silently ignored a named one during evaluation, so `warehouses` sorts on a string key
+  (zero-padded priority, then code). Future resolvers that need an order should do the same.
+
+---
+
 ## Applies To
 
 - `infra/constructs/inventory-dynamodb.ts`, `infra/stacks/inventory-stack.ts`, `infra/bin/app.ts`

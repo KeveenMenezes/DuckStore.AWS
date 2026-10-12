@@ -4,7 +4,7 @@
             <root>
                 <mxCell id="0"/>
                 <mxCell id="1" parent="0"/>
-                <mxCell id="m-title" value="DuckStore — AWS Serverless Architecture&lt;br&gt;&lt;font style=&quot;font-size:14px;font-weight:normal;color:#5A6C86&quot;&gt;System overview · 10 bounded contexts · async via EventBridge (ADR-0004) and CDC through DynamoDB Streams (ADR-0005) · &lt;b&gt;per-resource detail lives on each context page&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;fontSize=26;fontStyle=1;fontColor=#232F3E;whiteSpace=wrap;" parent="1" vertex="1">
+                <mxCell id="m-title" value="DuckStore — AWS Serverless Architecture&lt;br&gt;&lt;font style=&quot;font-size:14px;font-weight:normal;color:#5A6C86&quot;&gt;System overview · 11 bounded contexts · async via EventBridge (ADR-0004) and CDC through DynamoDB Streams (ADR-0005) · &lt;b&gt;per-resource detail lives on each context page&lt;/b&gt;&lt;/font&gt;" style="text;html=1;align=left;verticalAlign=middle;fontSize=26;fontStyle=1;fontColor=#232F3E;whiteSpace=wrap;" parent="1" vertex="1">
                     <mxGeometry x="60" y="25" width="1800" height="70" as="geometry"/>
                 </mxCell>
                 <mxCell id="m-legend" value="&lt;b&gt;Legend&lt;/b&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color=&quot;#232F3E&quot;&gt;━━&lt;/font&gt; Synchronous request (client → AppSync → data)&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color=&quot;#8C4FFF&quot;&gt;━━&lt;/font&gt; Orchestration — saga (Step Functions)&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color=&quot;#1A7F5A&quot;&gt;━━&lt;/font&gt; Integration event (CDC → EventBridge → consumer)&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color=&quot;#C0392B&quot;&gt;━━&lt;/font&gt; Failure and alert&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color=&quot;#879196&quot;&gt;╌╌&lt;/font&gt; Support / authentication" style="text;html=1;align=left;verticalAlign=middle;fontSize=13;fontColor=#232F3E;whiteSpace=wrap;rounded=1;arcSize=6;strokeColor=#AAB7B8;fillColor=#F7F8F8;spacing=12;" parent="1" vertex="1">
@@ -60,6 +60,9 @@
                 </mxCell>
                 <mxCell id="m-c-payment" value="&lt;b&gt;Payment&lt;/b&gt; &lt;font style=&quot;font-size:11px;color:#5A6C86&quot;&gt;— PaymentStack&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px;color:#232F3E&quot;&gt;payments · + PaymentGateway (stateless)&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#116045&quot;&gt;▲ publishes PaymentRequestedEvent · PaymentAuthorizedEvent / PaymentDeclinedEvent&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:10px;color:#116045&quot;&gt;▼ consumes BasketCheckoutEvent · PointsReservedEvent · PointsReservationFailedEvent&lt;/font&gt;" style="rounded=1;arcSize=6;dashed=1;dashPattern=8 5;strokeColor=#ED7100;strokeWidth=2;fillColor=#FFF8F2;verticalAlign=top;align=left;spacingLeft=12;spacingTop=10;fontColor=#B25600;fontSize=13;fontStyle=0;html=1;whiteSpace=wrap;" parent="1" vertex="1">
                     <mxGeometry x="940" y="1060" width="380" height="190" as="geometry"/>
+                </mxCell>
+                <mxCell id="m-c-inventory" parent="1" style="rounded=1;arcSize=6;dashed=1;dashPattern=8 5;strokeColor=#ED7100;strokeWidth=2;fillColor=#FFF8F2;verticalAlign=top;align=left;spacingLeft=12;spacingTop=10;fontColor=#B25600;fontSize=13;fontStyle=0;html=1;whiteSpace=wrap;" value='&lt;b&gt;Inventory&lt;/b&gt; &lt;font style="font-size:11px;color:#5A6C86"&gt;— InventoryStack&lt;/font&gt;&lt;br&gt;&lt;font style="font-size:11px;color:#232F3E"&gt;inventory-warehouses — direct resolvers, no Lambda yet · StockKeeper / Admin&lt;/font&gt;' vertex="1">
+                    <mxGeometry height="190" width="380" x="1780" y="300" as="geometry" />
                 </mxCell>
                 <mxCell id="m-c-user" value="&lt;b&gt;User&lt;/b&gt; &lt;font style=&quot;font-size:11px;color:#5A6C86&quot;&gt;— UserStack&lt;/font&gt;&lt;br&gt;&lt;font style=&quot;font-size:11px;color:#232F3E&quot;&gt;user-profiles — direct resolvers, no Lambda&lt;/font&gt;" style="rounded=1;arcSize=6;dashed=1;dashPattern=8 5;strokeColor=#ED7100;strokeWidth=2;fillColor=#FFF8F2;verticalAlign=top;align=left;spacingLeft=12;spacingTop=10;fontColor=#B25600;fontSize=13;fontStyle=0;html=1;whiteSpace=wrap;" parent="1" vertex="1">
                     <mxGeometry x="1360" y="1060" width="380" height="190" as="geometry"/>
@@ -3343,6 +3346,65 @@
                 </mxCell>
                 <mxCell id="che-inbox-dlql" value="&lt;b&gt;rule DLQ + onFailure&lt;/b&gt;" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;labelBackgroundColor=#FFFFFF;" vertex="1" connectable="0" parent="che-inbox-dlq">
                     <mxGeometry relative="1" as="geometry" x="-0.1"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+    <diagram id="inV3ntoryWarehouse01" name="Inventory">
+        <mxGraphModel dx="2918" dy="1193" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1600" pageHeight="880" math="0" shadow="0">
+            <root>
+                <mxCell id="0" />
+                <mxCell id="1" parent="0" />
+                <mxCell id="i-title" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=20;fontStyle=1;fontColor=#232F3E;whiteSpace=wrap;" value='Inventory — warehouses and stock&lt;br&gt;&lt;font style="font-size:13px;font-weight:normal;color:#5A6C86"&gt;InventoryStack (ADR-0052) · module 1 of SPEC-inventory.md: the warehouses (polos) and the StockKeeper group; balances, movements and sales come next&lt;/font&gt;' vertex="1">
+                    <mxGeometry height="65" width="1200" x="60" y="25" as="geometry" />
+                </mxCell>
+                <mxCell id="i-legend" parent="1" style="text;html=1;align=left;verticalAlign=middle;fontSize=12;fontColor=#232F3E;whiteSpace=wrap;rounded=1;arcSize=6;strokeColor=#AAB7B8;fillColor=#F7F8F8;spacing=12;" value='&lt;b&gt;Legend&lt;/b&gt;&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color="#232F3E"&gt;━━&lt;/font&gt; Synchronous request via AppSync&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;font color="#879196"&gt;╌╌&lt;/font&gt; Authentication / identity&amp;nbsp;&amp;nbsp;&amp;nbsp;&amp;nbsp; &lt;b&gt;This context has no Lambda, stream, DLQ or integration event yet.&lt;/b&gt;' vertex="1">
+                    <mxGeometry height="60" width="1480" x="60" y="780" as="geometry" />
+                </mxCell>
+                <mxCell id="i-cloud" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];outlineConnect=0;gradientColor=none;html=1;whiteSpace=wrap;fontSize=13;fontStyle=1;container=1;pointerEvents=0;collapsible=0;recursiveResize=0;shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_aws_cloud;strokeColor=#232F3E;fillColor=none;verticalAlign=top;align=left;spacingLeft=30;fontColor=#232F3E;dashed=0;" value="AWS Cloud" vertex="1">
+                    <mxGeometry height="640" width="1480" x="60" y="110" as="geometry" />
+                </mxCell>
+                <mxCell id="i-box" parent="i-cloud" style="rounded=1;arcSize=4;dashed=1;dashPattern=8 5;strokeColor=#ED7100;strokeWidth=2;fillColor=#FFF8F2;verticalAlign=top;align=left;spacingLeft=12;spacingTop=8;fontColor=#B25600;fontSize=13;fontStyle=1;html=1;whiteSpace=wrap;" value='InventoryStack — resources it owns &lt;font style="font-size:11px;font-weight:normal"&gt;· a single table&lt;/font&gt;' vertex="1">
+                    <mxGeometry height="290" width="480" x="780" y="130" as="geometry" />
+                </mxCell>
+                <mxCell id="i-blazor" parent="i-cloud" style="sketch=0;outlineConnect=0;fontColor=#232F3E;gradientColor=none;fillColor=#232F3D;strokeColor=none;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;fontStyle=0;aspect=fixed;pointerEvents=1;shape=mxgraph.aws4.client;" value='&lt;b&gt;Management app&lt;/b&gt;&lt;br&gt;&lt;font style="font-size:10px"&gt;Blazor WASM · Warehouses pages&lt;br&gt;StockKeeper / Admin&lt;/font&gt;' vertex="1">
+                    <mxGeometry height="76" width="78" x="60" y="210" as="geometry" />
+                </mxCell>
+                <mxCell id="i-cognito" parent="i-cloud" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#DD344C;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.cognito;" value='&lt;b&gt;Cognito&lt;/b&gt;&lt;br&gt;&lt;font style="font-size:10px"&gt;duckstore-management-users&lt;br&gt;groups StockKeeper · Admin · Seller&lt;/font&gt;' vertex="1">
+                    <mxGeometry height="78" width="78" x="360" y="420" as="geometry" />
+                </mxCell>
+                <mxCell id="i-appsync" parent="i-cloud" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#E7157B;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.appsync;" value='&lt;b&gt;AppSync&lt;/b&gt;&lt;br&gt;&lt;font style="font-size:10px"&gt;duckstore-api&lt;/font&gt;' vertex="1">
+                    <mxGeometry height="78" width="78" x="360" y="210" as="geometry" />
+                </mxCell>
+                <mxCell id="i-table" parent="i-cloud" style="sketch=0;points=[[0,0,0],[0.25,0,0],[0.5,0,0],[0.75,0,0],[1,0,0],[0,1,0],[0.25,1,0],[0.5,1,0],[0.75,1,0],[1,1,0],[0,0.25,0],[0,0.5,0],[0,0.75,0],[1,0.25,0],[1,0.5,0],[1,0.75,0]];outlineConnect=0;fontColor=#232F3E;fillColor=#C925D1;strokeColor=#ffffff;dashed=0;verticalLabelPosition=bottom;verticalAlign=top;align=center;html=1;fontSize=11;aspect=fixed;shape=mxgraph.aws4.resourceIcon;resIcon=mxgraph.aws4.dynamodb;" value='&lt;b&gt;inventory-warehouses&lt;/b&gt;&lt;br&gt;&lt;font style="font-size:10px"&gt;PK WarehouseId&lt;br&gt;warehouse + CODE#&amp;lt;code&amp;gt; guard&lt;br&gt;PAY_PER_REQUEST&lt;br&gt;&lt;b&gt;no stream · no TTL&lt;/b&gt;&lt;/font&gt;' vertex="1">
+                    <mxGeometry height="78" width="78" x="980" y="210" as="geometry" />
+                </mxCell>
+                <mxCell id="i-note" parent="i-cloud" style="text;html=1;align=left;verticalAlign=top;fontSize=11;fontColor=#5A6C86;whiteSpace=wrap;rounded=1;arcSize=8;strokeColor=#AAB7B8;fillColor=#FFFFFF;spacing=10;dashed=1;" value="&lt;b&gt;Unique codes without a read.&lt;/b&gt; createWarehouse writes the warehouse and its CODE#&amp;lt;code&amp;gt; guard in one TransactWriteItems, both attribute_not_exists — a taken code cancels the whole write (WarehouseCodeTaken). Codes are immutable and warehouses are deactivated, never deleted, so guards are never removed (ADR-0052 §2).&lt;br&gt;&lt;br&gt;&lt;b&gt;The group check is the first line of every resolver.&lt;/b&gt; StockKeeper and Admin read and write; a Seller or a customer token gets Unauthorized, reads included (ADR-0052 §3).&lt;br&gt;&lt;br&gt;&lt;b&gt;No stream yet.&lt;/b&gt; Nothing reacts to a warehouse change until the storefront total does (SPEC-inventory.md, module 3)." vertex="1">
+                    <mxGeometry height="160" width="740" x="600" y="450" as="geometry" />
+                </mxCell>
+                <mxCell id="ie0" edge="1" parent="1" source="i-blazor" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#232F3E;strokeWidth=2;endArrow=blockThin;endFill=1;fontSize=11;labelBackgroundColor=#FFFFFF;flowAnimation=1;" target="i-appsync">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="ie0l" connectable="0" parent="ie0" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;labelBackgroundColor=#FFFFFF;" value="GraphQL direct (Bearer)" vertex="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="0" as="offset" />
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ie1" edge="1" parent="1" source="i-appsync" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#232F3E;strokeWidth=2;endArrow=blockThin;endFill=1;fontSize=11;labelBackgroundColor=#FFFFFF;flowAnimation=1;" target="i-table">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="ie1l" connectable="0" parent="ie1" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;labelBackgroundColor=#FFFFFF;" value="&lt;b&gt;Direct DynamoDB resolvers&lt;/b&gt;&lt;br&gt;Query: warehouses (Scan, Type filter) · warehouse&lt;br&gt;Mutation: createWarehouse (TransactWriteItems)&lt;br&gt;updateWarehouse · setWarehouseActive (UpdateItem)" vertex="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="-100" as="offset" />
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="ie2" edge="1" parent="1" source="i-cognito" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#879196;strokeWidth=2;dashed=1;endArrow=blockThin;endFill=1;fontSize=11;fontColor=#5A6C86;labelBackgroundColor=#FFFFFF;flowAnimation=1;" target="i-appsync">
+                    <mxGeometry relative="1" as="geometry" />
+                </mxCell>
+                <mxCell id="ie2l" connectable="0" parent="ie2" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];fontSize=11;labelBackgroundColor=#FFFFFF;" value="authorizes and supplies the groups" vertex="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <mxPoint x="5" as="offset" />
+                    </mxGeometry>
                 </mxCell>
             </root>
         </mxGraphModel>
