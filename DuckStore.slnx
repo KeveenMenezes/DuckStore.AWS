@@ -61,6 +61,12 @@
   <Folder Name="/tests/BuildingBlocks/">
     <Project Path="tests/BuildingBlocks/BuildingBlocks.UnitTests/BuildingBlocks.UnitTests.csproj" />
   </Folder>
+  <Folder Name="/tests/E2E/">
+    <Project Path="tests/E2E/E2E.Infrastructure/E2E.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/E2E/Checkout/">
+    <Project Path="tests/E2E/Checkout/Checkout.E2ETests/Checkout.E2ETests.csproj" />
+  </Folder>
   <Folder Name="/tests/Services/" />
   <Folder Name="/tests/Services/Basket/">
     <Project Path="tests/Services/Basket/Basket.UnitTests/Basket.UnitTests.csproj" />
