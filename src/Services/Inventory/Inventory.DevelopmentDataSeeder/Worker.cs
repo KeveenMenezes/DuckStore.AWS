@@ -76,9 +76,10 @@ public class Worker(
                 ],
             }, ct);
         }
-        catch (TransactionCanceledException)
+        catch (TransactionCanceledException ex)
+            when (ex.CancellationReasons.All(reason => reason.Code is "None" or "ConditionalCheckFailed"))
         {
-            // Already seeded.
+            // Already seeded. Any other cancellation reason (a conflict, a validation error) is real.
         }
     }
 

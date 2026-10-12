@@ -21,8 +21,15 @@ export function request(ctx) {
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
 
-  // APPSYNC_JS rejects a comparator (no function may be passed as an argument), so sort a string
-  // key instead: priority zero-padded to 3 digits (1-999), then code, then id for uniqueness.
+  // One Scan page holds about a thousand warehouses (1 MB). Past that the list would be cut short
+  // and sorted only within the page, so say so instead of returning it silently (ADR-0052 §4).
+  if (ctx.result.nextToken) {
+    util.appendError('The warehouse list is larger than one Scan page and was truncated', 'Truncated')
+  }
+
+  // Array.prototype.sort takes no comparator in APPSYNC_JS (an inline one fails its linter; a named
+  // one was silently ignored), so sort a string key instead: priority zero-padded to 3 digits
+  // (1-999), then code, then id for uniqueness.
   const byKey = {}
   const keys = []
   for (const item of ctx.result.items ?? []) {

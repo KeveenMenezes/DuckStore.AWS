@@ -7,7 +7,7 @@ import { util } from '@aws-appsync/utils'
 //
 // Validation rules: the same as Mutation.updateWarehouse.js (APPSYNC_JS can't share modules), mirrored
 // by local.ts (lib/warehouse-validation.ts, with tests) and the Blazor WarehouseForm. Change all four.
-// No loops or regex literals: APPSYNC_JS supports neither reliably, hence the explicit checks.
+// Patterns go through util.matches rather than regex literals; Number.isInteger doesn't exist here.
 const TABLE = 'inventory-warehouses'
 const STATES = [
   'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS', 'MG', 'PA',

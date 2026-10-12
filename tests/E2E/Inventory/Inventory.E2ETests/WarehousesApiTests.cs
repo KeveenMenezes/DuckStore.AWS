@@ -21,6 +21,9 @@ public sealed class StockKeeperApiTests(StockKeeperSession session) : IClassFixt
 
             // Lowercase is the same code once normalized (criterion 3).
             var again = await _api.CreateAsync(WarehouseApi.Input(code.ToLowerInvariant(), priority: 7));
+            // Should the guard ever fail, don't leave a second active warehouse behind.
+            if (again.Data?["createWarehouse"]?["id"] is { } duplicateId)
+                await _api.SetActiveAsync((string)duplicateId!, false);
             Assert.Equal("WarehouseCodeTaken", again.ErrorType);
             Assert.Equal("code", (string?)again.ErrorInfo?["field"]);
         }

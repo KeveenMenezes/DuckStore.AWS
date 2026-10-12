@@ -201,9 +201,10 @@ Recorded here so later work starts from it, not decided in detail:
 - Verified on the real APPSYNC_JS runtime with `aws appsync evaluate-code` (86 cases,
   `scripts/inventory/evaluate-resolvers.mjs`), against the local BFF (`scripts/inventory/local-api-checks.mjs`)
   and on dev by `tests/E2E/Inventory/Inventory.E2ETests` (12 tests: StockKeeper, Admin, Seller, customer).
-- APPSYNC_JS refuses a comparator for `Array.prototype.sort` (no function may be passed as an
-  argument) and silently ignored a named one during evaluation, so `warehouses` sorts on a string key
-  (zero-padded priority, then code). Future resolvers that need an order should do the same.
+- `Array.prototype.sort` takes no comparator in APPSYNC_JS: an inline one fails the runtime's
+  `no-function-passing` lint, and a named one was silently ignored during evaluation (callbacks to
+  `map`/`some` are fine). `warehouses` therefore sorts on a string key (zero-padded priority, then
+  code). Future resolvers that need an order should do the same.
 
 ---
 

@@ -42,7 +42,17 @@ else
         serverError = null;
         try
         {
-            var created = await Warehouses.CreateWarehouseAsync(model);
+            // TransactionConflict means another create of the same code raced this one; the retry
+            // then sees the guard and fails as WarehouseCodeTaken, or succeeds (ADR-0052 §2).
+            Warehouse created;
+            try
+            {
+                created = await Warehouses.CreateWarehouseAsync(model);
+            }
+            catch (GraphQLException ex) when (ex.ErrorType == "TransactionConflict")
+            {
+                created = await Warehouses.CreateWarehouseAsync(model);
+            }
             Navigation.NavigateTo($"warehouses?saved={Uri.EscapeDataString(created.Code)}");
         }
         catch (GraphQLException ex) when (ex.ErrorField is not null)

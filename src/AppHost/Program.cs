@@ -48,7 +48,7 @@ builder.AddCatalogViewLambdas(dynamoDb, catalogSeeder, reviewSeeder, pricingSeed
 
 builder.AddChallengesServices(dynamoDb);
 
-builder.AddInventoryServices(dynamoDb);
+var inventorySeeder = builder.AddInventoryServices(dynamoDb);
 
 // Apps
 builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")
@@ -57,6 +57,8 @@ builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React",
     .WaitFor(basketResources.CheckoutBasket)
     .WaitFor(basketResources.MergeBasket)
     .WaitFor(userResources)
+    // local.ts serves the warehouse fields straight from inventory-warehouses (ADR-0052 §5).
+    .WaitForCompletion(inventorySeeder)
     .WithReference(dynamoDb)
     .WithEnvironment(ctx =>
     {

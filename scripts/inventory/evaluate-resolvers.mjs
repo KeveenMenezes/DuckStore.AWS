@@ -23,7 +23,11 @@ function evaluate(code, fn, context) {
     '--code', `file://${code}`, '--context', `file://${file}`, '--function', fn, '--output', 'json'])
   const json = JSON.parse(out.toString())
   if (json.error?.codeErrors?.length) throw new Error(JSON.stringify(json.error))
-  return { error: json.error?.message, result: json.evaluationResult ? JSON.parse(json.evaluationResult) : undefined }
+  return {
+    error: json.error?.message,
+    result: json.evaluationResult ? JSON.parse(json.evaluationResult) : undefined,
+    outErrors: json.outErrors ? JSON.parse(json.outErrors) : [],
+  }
 }
 
 const results = []
@@ -162,6 +166,11 @@ const cancelled = (reasons) => ({ identity: admin, arguments: {}, stash: { item:
   // The filter runs in DynamoDB; the response sees only warehouses.
   const r = evaluate(LIST, 'response', { identity: keeper, arguments: {}, result: { items: items.filter((i) => i.Type === 'Warehouse') } })
   check('warehouses: sorted by priority, then code', r, JSON.stringify(r.result?.map((w) => w.code)) === '["ALPHA","ZULU","BETA","KILO"]')
+  const truncated = evaluate(LIST, 'response', { identity: keeper, arguments: {}, result: { items: [items[0]], nextToken: 'more' } })
+  check('warehouses: a second Scan page is reported as Truncated, with the first page returned', truncated,
+    truncated.result?.length === 1 && truncated.outErrors.some((e) => e.type === 'Truncated'))
+  const whole = evaluate(LIST, 'response', { identity: keeper, arguments: {}, result: { items: [items[0]] } })
+  check('warehouses: one page, no error', whole, whole.outErrors.length === 0)
   const g = evaluate(GET, 'response', { identity: keeper, arguments: { id: 'CODE#ALPHA' }, result: items.find((i) => i.Type === 'CodeGuard') })
   check('warehouse: a guard reads as null', g, g.result === null)
   const missing = evaluate(GET, 'response', { identity: keeper, arguments: { id: 'nope' }, result: null })

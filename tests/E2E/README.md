@@ -47,6 +47,11 @@ source ~/.config/duckstore/e2e.env && source ~/.config/duckstore/e2e-inventory.e
 dotnet test tests/E2E/Inventory/Inventory.E2ETests
 ```
 
+**Trace files hold live tokens.** With `E2E_TRACE_DIR` set, a trace records the app's own network
+calls, including the Blazor app's `Authorization: Bearer` headers for a staff user (the suites' direct
+API calls go through a separate request context and are not recorded). Keep trace zips local; never
+attach or upload them.
+
 The Inventory suite creates warehouses with an `E2E-` code and deactivates them at the end of each test;
 warehouses are never deleted (ADR-0052 §2), so they stay on dev as inactive history.
 

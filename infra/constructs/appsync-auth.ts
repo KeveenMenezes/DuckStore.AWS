@@ -200,9 +200,9 @@ exports.handler = async (event) => {
 
     this.shoppingHostedUiUrl = `https://${shoppingDomain.domainName}.auth.${cdk.Stack.of(this).region}.amazoncognito.com`;
 
-    // Management pool — staff (Admin/Seller), Blazor WASM app. Login-only: no
+    // Management pool — staff (Admin/Seller/StockKeeper), Blazor WASM app. Login-only: no
     // self-signup, no social federation. Accounts are provisioned manually via the
-    // AWS Console/CLI (AdminCreateUser) — group membership (Admin/Seller) is what
+    // AWS Console/CLI (AdminCreateUser) — group membership (Admin/Seller/StockKeeper) is what
     // actually authorizes operations, enforced in the AppSync resolvers, not here.
     this.managementUserPool = new cognito.UserPool(this, 'ManagementUserPool', {
       userPoolName: 'duckstore-management-users',

@@ -219,8 +219,8 @@ const WAREHOUSES_TABLE = 'inventory-warehouses'
 
 function mapWarehouse(item: Record<string, unknown>) {
   return {
-    id: item.WarehouseId,
-    code: item.Code,
+    id: item.WarehouseId as string,
+    code: item.Code as string,
     name: item.Name,
     address: {
       street: item.Street,
@@ -266,7 +266,7 @@ function warehouseNotFound() {
   return createGraphQLError('Warehouse not found', { extensions: { errorType: 'NotFound' } })
 }
 
-// Locally there is no Cognito, so the author of a change is the BFF-resolved owner.
+// Locally there is no Cognito identity to record, so UpdatedBy is a fixed marker.
 const LOCAL_WAREHOUSE_AUTHOR = 'local-dev'
 
 // The saved cart's lines as Pricing quotes them — the checkout pipeline's loadCart step (Data is
@@ -1036,6 +1036,10 @@ const resolvers = {
     // (infra/constructs/reward-config.ts) and the Pricing Lambdas' Rewards__* env vars
     // (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
     // to read them from (ADR-0048 §3).
+    async rewardConversion() {
+      return { pointsPerUnit: 100, currencyPerUnit: 1 }
+    },
+
     // Mirrors Query.warehouses.js (StockKeeper/Admin in prod; no Cognito groups locally).
     async warehouses() {
       const result = await dynamoDb.send(
@@ -1046,9 +1050,14 @@ const resolvers = {
           ExpressionAttributeValues: { ':warehouse': { S: 'Warehouse' } },
         }),
       )
+      if (result.LastEvaluatedKey) {
+        throw createGraphQLError('The warehouse list is larger than one Scan page and was truncated', {
+          extensions: { errorType: 'Truncated' },
+        })
+      }
       return (result.Items ?? [])
         .map(item => mapWarehouse(unmarshall(item)))
-        .sort((a, b) => a.priority - b.priority || String(a.code).localeCompare(String(b.code)))
+        .sort((a, b) => a.priority - b.priority || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
     },
 
     // Mirrors Query.warehouse.js: null for an unknown id or a CODE# guard.
@@ -1058,10 +1067,6 @@ const resolvers = {
       )
       const item = result.Item ? unmarshall(result.Item) : null
       return item?.Type === 'Warehouse' ? mapWarehouse(item) : null
-    },
-
-    async rewardConversion() {
-      return { pointsPerUnit: 100, currencyPerUnit: 1 }
     },
   },
 

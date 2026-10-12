@@ -14,6 +14,8 @@ public abstract class ManagementSession : IAsyncLifetime
 {
     private IPlaywright? _playwright;
     private IBrowser? _browser;
+    private IAPIRequestContext? _api;
+    private bool _tracing;
 
     public ManagementSettings Settings { get; private set; } = null!;
     public ManagementUser User { get; private set; } = null!;
@@ -43,18 +45,26 @@ public abstract class ManagementSession : IAsyncLifetime
             BaseURL = settings.ManagementUrl.ToString(),
             ViewportSize = new() { Width = 1366, Height = 900 },
         });
+        // API calls go through their own request context, outside the browser context's trace, so the
+        // bearer tokens they carry are not recorded (the app's own AppSync calls still are — see
+        // tests/E2E/README.md on handling trace files).
+        _api = await _playwright.APIRequest.NewContextAsync();
         GraphQLEndpoint = await ReadGraphQLEndpointAsync();
         await SignInAsync();
 
         // Started after sign-in on purpose: a trace records the values typed into fields, and the
         // test user's password must never end up in a trace file.
         if (settings.TraceDirectory is not null)
+        {
             await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = false });
+            _tracing = true;
+        }
     }
 
     public async Task DisposeAsync()
     {
-        if (Settings?.TraceDirectory is { } directory && Context is not null)
+        // Only when tracing actually started: a sign-in failure must surface as itself.
+        if (_tracing && Settings.TraceDirectory is { } directory)
         {
             Directory.CreateDirectory(directory);
             await Context.Tracing.StopAsync(new()
@@ -63,6 +73,8 @@ public abstract class ManagementSession : IAsyncLifetime
             });
         }
 
+        if (_api is not null)
+            await _api.DisposeAsync();
         if (_browser is not null)
             await _browser.DisposeAsync();
         _playwright?.Dispose();
@@ -96,7 +108,7 @@ public abstract class ManagementSession : IAsyncLifetime
             }
             """) ?? throw new InvalidOperationException("No access token in the management app's session storage.");
 
-        var response = await Context.APIRequest.PostAsync(GraphQLEndpoint.ToString(), new()
+        var response = await _api!.PostAsync(GraphQLEndpoint.ToString(), new()
         {
             DataObject = new { query, variables },
             Headers = new Dictionary<string, string>
@@ -115,7 +127,7 @@ public abstract class ManagementSession : IAsyncLifetime
     // The deployed app's own runtime config (the deploy workflow bakes the AppSync endpoint into it).
     private async Task<Uri> ReadGraphQLEndpointAsync()
     {
-        var response = await Context.APIRequest.GetAsync("appsettings.json");
+        var response = await _api!.GetAsync(new Uri(Settings.ManagementUrl, "appsettings.json").ToString());
         var config = JsonNode.Parse(await response.TextAsync())!;
         return new Uri((string?)config["GraphQL"]?["Endpoint"]
             ?? throw new InvalidOperationException("appsettings.json has no GraphQL:Endpoint."));

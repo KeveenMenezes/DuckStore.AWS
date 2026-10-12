@@ -72,8 +72,8 @@ public sealed class WarehouseAdminService(GraphQLClient gql)
     {
         var input = new
         {
-            code = model.Code,
-            name = model.Name,
+            code = model.Code.Trim(),
+            name = model.Name.Trim(),
             address = AddressOf(model),
             priority = model.Priority,
         };
@@ -86,7 +86,7 @@ public sealed class WarehouseAdminService(GraphQLClient gql)
         var input = new
         {
             id,
-            name = model.Name,
+            name = model.Name.Trim(),
             address = AddressOf(model),
             priority = model.Priority,
         };
@@ -102,13 +102,13 @@ public sealed class WarehouseAdminService(GraphQLClient gql)
 
     private static object AddressOf(WarehouseFormModel model) => new
     {
-        street = model.Street,
-        number = model.Number,
-        complement = string.IsNullOrWhiteSpace(model.Complement) ? null : model.Complement,
-        district = model.District,
-        city = model.City,
+        street = model.Street.Trim(),
+        number = model.Number.Trim(),
+        complement = string.IsNullOrWhiteSpace(model.Complement) ? null : model.Complement.Trim(),
+        district = model.District.Trim(),
+        city = model.City.Trim(),
         state = model.State,
-        zipCode = model.ZipCode,
+        zipCode = model.ZipCode.Trim(),
     };
 
     private sealed record WarehousesData(List<Warehouse> Warehouses);
