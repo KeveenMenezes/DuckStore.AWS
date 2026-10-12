@@ -35,10 +35,12 @@ public sealed class StorefrontSession : IAsyncLifetime
             BaseURL = settings.BaseUrl.ToString(),
             ViewportSize = new() { Width = 1366, Height = 900 },
         });
+        await SignInAsync();
+
+        // Started after sign-in on purpose: a trace records the values typed into fields, and the
+        // test user's password must never end up in a trace file.
         if (settings.TraceDirectory is not null)
             await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = false });
-
-        await SignInAsync();
     }
 
     public async Task DisposeAsync()
