@@ -188,7 +188,9 @@ export class CheckoutSaga extends Construct {
         RefuseEmptyCart: refusal('"BadRequest"', '"There is no cart to check out."'),
         RefuseCartTooLarge: refusal('"BadRequest"', '"A cart can hold at most 100 different products."'),
 
-        // Name and main image come from Catalog, never from the cart (ADR-0050 §5).
+        // Name and main image come from Catalog, never from the cart (ADR-0050 §5). The AWS SDK
+        // integration spells DynamoDB's multi-letter types the SDK v2 way — a boolean is `Bool`, not the
+        // API's `BOOL` (single-letter S, N, L, M are unchanged) — so IsMain is read as `Bool`.
         CatalogLines: {
           Type: 'Task',
           Resource: 'arn:aws:states:::aws-sdk:dynamodb:batchGetItem',
@@ -206,7 +208,7 @@ export class CheckoutSaga extends Construct {
             catalog:
               `{% $merge(${asArray(
                 `$map(${asArray(`$lookup($states.result.Responses, '${productsTable.tableName}')`)}, function($p) { ` +
-                  '{ $p.Id.S: { "name": $p.Name.S, "imageId": $p.Images.L[M.IsMain.BOOL = true][0].M.ImageId.S } } })',
+                  '{ $p.Id.S: { "name": $p.Name.S, "imageId": $p.Images.L[M.IsMain.Bool = true][0].M.ImageId.S } } })',
               )}) %}`,
             unprocessedKeys: '{% $count($keys($states.result.UnprocessedKeys)) %}',
           },

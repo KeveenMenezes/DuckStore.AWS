@@ -8,16 +8,21 @@ public sealed class Storefront(StorefrontSession session)
     public const string ValidCard = "4111111111111111";
     public const string InvalidLuhnCard = "4111111111111112";
 
-    public sealed record Product(string Id, string Name);
+    // MainImageId is null for products created before the image pipeline (ADR-0034).
+    public sealed record Product(string Id, string Name, string? MainImageId);
 
     public sealed record CartLine(Product Product, int Quantity);
 
     public async Task<IReadOnlyList<Product>> ProductsAsync(int count)
     {
-        var response = await session.GraphQLAsync("query { products(pageSize: 20) { items { id name } } }");
+        var response = await session.GraphQLAsync(
+            "query { products(pageSize: 20) { items { id name images { imageId isMain } } } }");
         Assert.False(response.HasErrors, response.ToString());
         var products = response.Data!["products"]!["items"]!.AsArray()
-            .Select(p => new Product((string)p!["id"]!, (string)p["name"]!))
+            .Select(p => new Product(
+                (string)p!["id"]!,
+                (string)p["name"]!,
+                p["images"]!.AsArray().Where(i => (bool)i!["isMain"]!).Select(i => (string?)i!["imageId"]).FirstOrDefault()))
             .Take(count)
             .ToList();
         Assert.True(products.Count == count, $"The environment needs at least {count} products.");
@@ -87,7 +92,7 @@ public sealed class Storefront(StorefrontSession session)
             "mutation($input: CheckoutInput!) { checkoutBasket(input: $input) { isSuccess orderId } }",
             new { input });
 
-    public sealed record OrderLine(string ProductId, string ProductName, int Quantity, decimal Price);
+    public sealed record OrderLine(string ProductId, string ProductName, string? ImageId, int Quantity, decimal Price);
 
     // The order is written by Ordering off BasketCheckoutEvent (EventBridge), a few seconds after the
     // checkout returns: poll the customer's orders until it shows up.
@@ -97,14 +102,15 @@ public sealed class Storefront(StorefrontSession session)
         while (true)
         {
             var response = await session.GraphQLAsync(
-                "query { ordersByCustomer(customerId: \"me\") { items { id orderItems { productId productName quantity price } } } }");
+                "query { ordersByCustomer(customerId: \"me\") { items { id orderItems { productId productName imageId quantity price } } } }");
             Assert.False(response.HasErrors, response.ToString());
             var order = response.Data!["ordersByCustomer"]!["items"]!.AsArray()
                 .FirstOrDefault(o => (string?)o!["id"] == orderId);
             if (order is not null)
             {
                 return order["orderItems"]!.AsArray()
-                    .Select(i => new OrderLine((string)i!["productId"]!, (string)i["productName"]!, (int)i["quantity"]!, (decimal)i["price"]!))
+                    .Select(i => new OrderLine(
+                        (string)i!["productId"]!, (string)i["productName"]!, (string?)i["imageId"], (int)i["quantity"]!, (decimal)i["price"]!))
                     .ToList();
             }
 

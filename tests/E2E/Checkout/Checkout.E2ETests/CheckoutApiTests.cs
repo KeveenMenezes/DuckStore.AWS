@@ -57,6 +57,8 @@ public sealed class CheckoutApiTests(StorefrontSession session) : IClassFixture<
         {
             var ordered = Assert.Single(orderLines, o => o.ProductId == line.Product.Id);
             Assert.Equal(line.Product.Name, ordered.ProductName);
+            // The main image comes from Catalog too — "My orders" renders it from this key.
+            Assert.Equal(line.Product.MainImageId, ordered.ImageId);
             Assert.Equal(line.Quantity, ordered.Quantity);
             Assert.True(ordered.Price > 0.01m, $"{line.Product.Name} was ordered at the client's price {ordered.Price}");
         }
