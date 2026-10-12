@@ -12,7 +12,7 @@ const UUID = '^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a
 const PAYMENT_METHODS = [1, 2, 3] // Debit, Credit, Cash
 
 function validate(input) {
-  if (input.checkoutId != null && !util.matches(UUID, input.checkoutId)) {
+  if (!util.matches(UUID, input.checkoutId)) {
     util.error('checkoutId must be a UUID.', 'BadRequest')
   }
   // Ordering's Address rejects a blank address line or email, after the cart is gone.
@@ -30,8 +30,7 @@ export function request(ctx) {
   const sagaInput = {
     ownerId: `USER#${ctx.identity.sub}`,
     customerId: ctx.identity.sub,
-    // Optional while the SPA rolls out (ADR-0050 §3); the saga mints one when it is absent.
-    checkoutId: input.checkoutId ?? null,
+    checkoutId: input.checkoutId,
     input,
   }
 

@@ -423,8 +423,8 @@ input CheckoutInput {
   # One id per checkout attempt, minted by the SPA when the checkout opens and kept across retries
   # of that attempt: a retry with the same id returns the same orderId instead of a second order.
   # Renewed after a success or a typed refusal, never after InternalError or a network failure
-  # (ADR-0050 §3). Optional only while the SPA rolls out.
-  checkoutId: ID
+  # (ADR-0050 §3).
+  checkoutId: ID!
   # The total the customer confirmed on screen — never the amount charged. The checkout saga
   # recomputes the total in Pricing for the saved cart, pointsToUse and the payment choice, and
   # fails with errorType PriceChanged (errorInfo.serverTotal) when it differs (ADR-0048 §4, ADR-0050).

@@ -2,8 +2,8 @@
 
 namespace Basket.Function.Modules.ShoppingCarts.Features.CheckoutBasket;
 
-// CheckoutId/CartVersion come from the checkout saga (ADR-0050 §4); without a CheckoutId this is the
-// old pipeline's checkout, accepted only while the saga rolls out (ADR-0050 §3).
+// Sent only by the checkout saga (ADR-0050 §2): CheckoutId names the attempt and CartVersion the cart
+// version Pricing quoted (ADR-0050 §3/§4).
 public record CheckoutBasketCommand(
     BasketCheckoutDto BasketCheckoutDto, string? CheckoutId = null, string? CartVersion = null)
     : ICommand<CheckoutBasketResult>;
@@ -45,18 +45,21 @@ public class CheckoutBasketCommandValidator : IValidator<CheckoutBasketCommand>
             yield return new(nameof(shippingAddress.EmailAddress), "EmailAddress is required");
         }
 
-        // The saga derives the OrderId and builds the priced lines before calling Basket (ADR-0050 §3/§5).
-        if (instance.CheckoutId is not null)
+        // The saga names the attempt, derives the OrderId and builds the priced lines before calling
+        // Basket (ADR-0050 §3/§5).
+        if (string.IsNullOrWhiteSpace(instance.CheckoutId))
         {
-            if (instance.BasketCheckoutDto.OrderId == Guid.Empty)
-            {
-                yield return new(nameof(instance.BasketCheckoutDto.OrderId), "OrderId is required");
-            }
+            yield return new(nameof(instance.CheckoutId), "CheckoutId is required");
+        }
 
-            if (instance.BasketCheckoutDto.Items is not { Count: > 0 })
-            {
-                yield return new(nameof(instance.BasketCheckoutDto.Items), "Items is required");
-            }
+        if (instance.BasketCheckoutDto.OrderId == Guid.Empty)
+        {
+            yield return new(nameof(instance.BasketCheckoutDto.OrderId), "OrderId is required");
+        }
+
+        if (instance.BasketCheckoutDto.Items is not { Count: > 0 })
+        {
+            yield return new(nameof(instance.BasketCheckoutDto.Items), "Items is required");
         }
     }
 }

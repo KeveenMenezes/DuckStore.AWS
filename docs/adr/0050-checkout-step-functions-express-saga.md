@@ -134,10 +134,9 @@ steps deduplicate on their own. Test vectors (binding for every implementation; 
 | `USER#3f1c2a9e-0b7d-4c55-9a51-2e6f0d8b7c41` | `11111111-2222-4333-8444-555555555555` | `380fc694-11be-8fed-9b71-c8cd6859df73` |
 | `USER#a0b1c2d3-e4f5-4a6b-8c7d-9e0f1a2b3c4d` | `7d0f5c3e-1a2b-4c3d-8e9f-0a1b2c3d4e5f` | `12fda24d-fa69-3cc3-a8f1-688b94844ce3` |
 
-**End state:** `checkoutId: ID!`, and Basket MUST NOT mint `OrderId`. **Transition:** while the SPA and
-the schema roll out, `checkoutId` is optional; without it the saga uses `$uuid()` as the `checkoutId`
-(no replay protection), and Basket still accepts the old request shape from the old pipeline. Both
-end when the saga is live; the MUSTs of this section bind from then on.
+`checkoutId` is required (`ID!`), and Basket MUST NOT mint `OrderId`. During the rollout the field was optional
+(the saga minted one when absent) and Basket still accepted the old pipeline's request; both were
+removed once the saga was live on dev.
 
 ### 4. The cart closes in one conditional transaction
 
@@ -187,15 +186,17 @@ count changes the amount whenever it matters). Anything else — `Voided`, alrea
 promoted or decided, or different terms (a `checkoutId` reused after its `CHECKOUT#` record expired) —
 is the typed refusal `CheckoutRetryRequired`, and the SPA renews the `checkoutId`.
 
-`Registered` MUST NOT trigger the gateway. `PaymentRequestedRule` matches `Registered → Pending` and
-the existing `AwaitingPoints → Pending`, and keeps matching INSERT `Pending` while the legacy create
-path exists (§3 transition). `payment-void` moves `Registered → Voided` and is a no-op otherwise.
+`Registered` MUST NOT trigger the gateway. `PaymentRequestedRule` matches the MODIFYs into `Pending`
+from `Registered`, from `Voided` (see below) and the existing one from `AwaitingPoints`; it no longer
+matches an INSERT, which only the removed legacy create path produced. `payment-void` moves
+`Registered → Voided` and is a no-op otherwise.
 Promotion accepts `Voided` as well: `BasketCheckoutEvent` proves the cart closed under that `OrderId`,
 so a void from one execution that raced a successful close by another execution of the same attempt
 must not leave the order unpaid.
 
 `payment-basket-checkout-consumer` stops creating payments: it promotes the order's `Registered`
-payment to `Pending`, or to `AwaitingPoints` when `PointsToUse > 0`. The points-reservation consumers
+payment to `Pending`, or to `AwaitingPoints` when `PointsToUse > 0`, and throws (retry, then DLQ) when
+no payment was registered. The points-reservation consumers
 MUST treat a payment still in `Registered` as not ready and **throw** (EventBridge retry, then DLQ),
 exactly as they already do for a missing payment — otherwise a `PointsReservedEvent` that arrives
 before the promotion is silently dropped and the payment waits in `AwaitingPoints` forever.
@@ -203,9 +204,7 @@ before the promotion is silently dropped and the payment waits in `AwaitingPoint
 ### 7. Card data leaves the event and Basket, and stays out of logs
 
 `BasketCheckoutEvent`/`BasketCheckoutDto` drop `CardName`, `CardNumber`, `Expiration` and `Cvv`;
-`PaymentMethod` and `Installments` stay. During the §3 transition the fields still exist and the saga
-sends them blank, because the Payment consumer's legacy create path reads them; they are removed when
-the transition ends. Card data MUST NOT be on `BasketCheckoutEvent`, MUST NOT be
+`PaymentMethod` and `Installments` stay. Card data MUST NOT be on `BasketCheckoutEvent`, MUST NOT be
 stored by Basket or Ordering, and MUST NOT be written to any log:
 
 - `checkout-saga` logs at `ERROR` with `includeExecutionData: false`, and its output carries no card
@@ -328,7 +327,7 @@ sequenceDiagram
   keeps the overhead small.
 - The client retries with the same `checkoutId` and gets the same `orderId`; a retry that can no longer
   be honored is refused with `CheckoutRetryRequired` instead of producing a broken order.
-- The shape changes ship tolerant first and the old shapes are removed only after the saga is live (§3).
+- The shape changes shipped tolerant first; the old shapes were removed only after the saga was live (§3).
 - A `Registered` payment never reaches the gateway, so an orphan is inert.
 - §3's test vectors pin `local.ts` to the same formula.
 

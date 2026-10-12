@@ -1031,7 +1031,7 @@ const resolvers = {
 
       // The resolver's input checks (Mutation.checkoutBasket.js), refused before the saga runs.
       const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
-      if (input.checkoutId != null && !UUID.test(String(input.checkoutId))) {
+      if (!UUID.test(String(input.checkoutId ?? ''))) {
         throw refusal('BadRequest', 'checkoutId must be a UUID.')
       }
       if (!String(input.addressLine ?? '').trim()) throw refusal('BadRequest', 'An address is required.')
@@ -1039,7 +1039,7 @@ const resolvers = {
       if (![1, 2, 3].includes(Number(input.paymentMethod))) throw refusal('BadRequest', 'Unknown payment method.')
       if (Number(input.installments) < 1) throw refusal('BadRequest', 'installments must be at least 1.')
 
-      const checkoutId = (input.checkoutId as string | null | undefined) || randomUUID()
+      const checkoutId = String(input.checkoutId)
       const orderId = checkoutOrderId(ownerId, checkoutId)
 
       // LoadCheckoutRecord: a replay of this attempt answers with the order it already created.
@@ -1151,10 +1151,6 @@ const resolvers = {
             },
             // No card: it was registered with Payment above.
             Payment: {
-              CardName: '',
-              CardNumber: '',
-              Expiration: '',
-              Cvv: '',
               PaymentMethod: input.paymentMethod,
               Installments: input.installments,
             },

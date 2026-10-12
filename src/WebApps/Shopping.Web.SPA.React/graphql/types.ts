@@ -211,7 +211,7 @@ export interface ShoppingCartInput {
 
 export interface CheckoutInput {
   // One per checkout attempt, kept across its retries (ADR-0050 §3).
-  checkoutId?: string | null
+  checkoutId: string
   totalPrice: number
   firstName: string
   lastName: string

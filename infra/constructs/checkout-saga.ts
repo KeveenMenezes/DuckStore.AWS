@@ -27,7 +27,7 @@ import { importAlertsTopic } from './context-dlq';
 // means exactly "something broke" and is alarmed directly.
 //
 // Input contract (built by Mutation.checkoutBasket.js from the Cognito token and CheckoutInput):
-//   { ownerId: "USER#<sub>", customerId: "<sub>", checkoutId: string | null, input: CheckoutInput }
+//   { ownerId: "USER#<sub>", customerId: "<sub>", checkoutId: string, input: CheckoutInput }
 // The card travels in `input` as far as RegisterPayment; it never reaches the output, and the logs
 // carry no execution data (ADR-0050 §7).
 //
@@ -103,14 +103,12 @@ export class CheckoutSaga extends Construct {
       TimeoutSeconds: EXECUTION_TIMEOUT_SECONDS,
       StartAt: 'ReadInput',
       States: {
-        // Without a checkoutId (only while the SPA rolls out, ADR-0050 §3) the attempt gets a fresh
-        // one: it still checks out, it just can't be replayed.
         ReadInput: {
           Type: 'Pass',
           Assign: {
             ownerId: '{% $states.input.ownerId %}',
             customerId: '{% $states.input.customerId %}',
-            checkoutId: '{% $states.input.checkoutId ? $states.input.checkoutId : $uuid() %}',
+            checkoutId: '{% $states.input.checkoutId %}',
             checkoutInput: '{% $states.input.input %}',
           },
           Next: 'DeriveOrderId',
@@ -333,13 +331,8 @@ export class CheckoutSaga extends Construct {
                   State: '{% $checkoutInput.state %}',
                   ZipCode: '{% $checkoutInput.zipCode %}',
                 },
-                // No card: it was registered with Payment above (ADR-0050 §7). The DTO's card fields
-                // stay empty until the tolerant shape is removed.
+                // No card: it was registered with Payment above (ADR-0050 §7).
                 Payment: {
-                  CardName: '',
-                  CardNumber: '',
-                  Expiration: '',
-                  Cvv: '',
                   PaymentMethod: '{% $checkoutInput.paymentMethod %}',
                   Installments: '{% $checkoutInput.installments %}',
                 },

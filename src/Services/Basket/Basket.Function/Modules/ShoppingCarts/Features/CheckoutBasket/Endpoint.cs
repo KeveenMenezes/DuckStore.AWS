@@ -4,8 +4,7 @@ namespace Basket.Function;
 
 // From the checkout saga (ADR-0050 §4): CheckoutId and CartVersion select the atomic, idempotent
 // close, and BasketCheckoutDto already carries the saga-derived OrderId and the lines priced by
-// Pricing and named by Catalog. Without CheckoutId it is the old pipeline's request, accepted only
-// while the saga rolls out (ADR-0050 §3).
+// Pricing and named by Catalog.
 public record CheckoutBasketRequest(
     BasketCheckoutDto BasketCheckoutDto, string? CheckoutId = null, string? CartVersion = null);
 

@@ -20,10 +20,6 @@ public static class ServiceRegistration
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
-        // Explicit, because there is no scanning left to discover them —
-        // the point of dropping FluentValidation (ADR-0042 §7).
-        services.AddScoped<IValidator<CreatePaymentCommand>, CreatePaymentCommandValidator>();
-
         // DynamoDB Local injects AWS_ENDPOINT_URL_DYNAMODB; the SDK resolves it on its own.
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
         services.AddScoped<IPaymentRepository, DynamoPaymentRepository>();

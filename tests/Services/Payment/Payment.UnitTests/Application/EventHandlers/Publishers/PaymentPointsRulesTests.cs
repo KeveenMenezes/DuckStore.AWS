@@ -43,9 +43,10 @@ public class PaymentPointsRulesTests
     public void Requested_ShouldNotMatch_OtherModifies(string oldStatus, string newStatus) =>
         Assert.False(_requested.Match(Context("MODIFY", oldStatus, newStatus)));
 
+    // Only the old checkout pipeline inserted Pending payments (ADR-0050 §6).
     [Fact]
-    public void Requested_ShouldStillMatch_TheInsertOfAPendingPayment() =>
-        Assert.True(_requested.Match(Context("INSERT", null, "Pending")));
+    public void Requested_ShouldNotMatch_TheInsertOfAPendingPayment() =>
+        Assert.False(_requested.Match(Context("INSERT", null, "Pending")));
 
     [Fact]
     public void Declined_ShouldMatch_TheRejectionOfThePoints() =>

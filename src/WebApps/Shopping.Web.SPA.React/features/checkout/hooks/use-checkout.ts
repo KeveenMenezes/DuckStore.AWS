@@ -204,7 +204,8 @@ export function useCheckout() {
 
     setState("processing")
     try {
-      const id = await submitCheckout(formData, chargedTotal, pointsToUse, checkoutIdRef.current ?? undefined)
+      checkoutIdRef.current ??= createCheckoutId()
+      const id = await submitCheckout(formData, chargedTotal, pointsToUse, checkoutIdRef.current)
       checkoutIdRef.current = createCheckoutId()
       setOrderId(id)
       setPriceChangedTotal(null)

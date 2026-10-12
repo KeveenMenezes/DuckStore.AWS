@@ -1,40 +1,31 @@
-﻿namespace Payment.UnitTests.Application.EventHandlers.Integration;
+namespace Payment.UnitTests.Application.EventHandlers.Integration;
 
 public class BasketCheckoutMapperTests
 {
-    [Fact]
-    public void ToCreatePaymentCommand_ShouldMapFields_WhenEventIsValid()
-    {
-        var basketCheckoutEvent = BasketCheckoutEventDataTests.CreateValidBasketCheckoutEvent();
-
-        var command = BasketCheckoutMapper.ToCreatePaymentCommand(basketCheckoutEvent);
-
-        Assert.Equal(basketCheckoutEvent.OrderId, command.OrderId);
-        Assert.Equal(basketCheckoutEvent.CustomerId, command.CustomerId);
-        Assert.Equal(basketCheckoutEvent.Payment.CardNumber, command.CardNumber);
-        Assert.Equal(basketCheckoutEvent.TotalPrice, command.Amount);
-    }
-
     [Theory]
-    [InlineData(0, false)]
-    [InlineData(1000, true)]
-    public async Task ToCreatePaymentCommand_ShouldAwaitPoints_OnlyWhenTheCheckoutUsedThem(int pointsToUse, bool awaiting)
+    [InlineData(0)]
+    [InlineData(1000)]
+    public void ToPromotePaymentCommand_ShouldCarryTheOrderAndThePoints(int pointsToUse)
     {
         var basketCheckoutEvent = BasketCheckoutEventDataTests.CreateValidBasketCheckoutEvent() with
         {
             PointsToUse = pointsToUse
         };
-        var repository = new Mock<IPaymentRepository>();
-        Payment.Function.Modules.Payments.Domain.Entities.Payment? created = null;
-        repository
-            .Setup(r => r.AddAsync(It.IsAny<Payment.Function.Modules.Payments.Domain.Entities.Payment>(), It.IsAny<CancellationToken>()))
-            .Callback<Payment.Function.Modules.Payments.Domain.Entities.Payment, CancellationToken>((p, _) => created = p)
-            .Returns(Task.CompletedTask);
 
-        var command = BasketCheckoutMapper.ToCreatePaymentCommand(basketCheckoutEvent);
-        await new CreatePaymentHandler(repository.Object).Handle(command, CancellationToken.None);
+        var command = BasketCheckoutMapper.ToPromotePaymentCommand(basketCheckoutEvent);
 
+        Assert.Equal(basketCheckoutEvent.OrderId, command.OrderId);
         Assert.Equal(pointsToUse, command.PointsToUse);
-        Assert.Equal(awaiting ? PaymentStatus.AwaitingPoints : PaymentStatus.Pending, created!.Status);
+    }
+
+    [Fact]
+    public void ToPromotePaymentCommand_ShouldThrow_WhenTheEventHasNoOrderId()
+    {
+        var basketCheckoutEvent = BasketCheckoutEventDataTests.CreateValidBasketCheckoutEvent() with
+        {
+            OrderId = Guid.Empty
+        };
+
+        Assert.Throws<ArgumentException>(() => BasketCheckoutMapper.ToPromotePaymentCommand(basketCheckoutEvent));
     }
 }

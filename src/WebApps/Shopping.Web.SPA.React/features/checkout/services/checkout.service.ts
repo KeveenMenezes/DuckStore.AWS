@@ -67,9 +67,9 @@ export async function submitCheckout(
   // The total the customer sees and confirms — chargedTotalFor() over the current quote. The
   // server recomputes it and rejects a mismatch with errorType "PriceChanged" (ADR-0048 §4).
   totalPrice: number,
-  pointsToUse = 0,
+  pointsToUse: number,
   // One per checkout attempt, the same on every retry of it (ADR-0050 §3).
-  checkoutId?: string,
+  checkoutId: string,
 ): Promise<string | null> {
   const nameParts = formData.name.trim().split(" ")
   const firstName = nameParts[0] ?? "Guest"

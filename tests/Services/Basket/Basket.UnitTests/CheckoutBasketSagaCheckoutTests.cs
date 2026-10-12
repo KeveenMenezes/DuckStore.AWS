@@ -58,8 +58,6 @@ public class CheckoutBasketSagaCheckoutTests
                 It.IsAny<CancellationToken>()),
             Times.Once);
         _repository.Verify(r => r.TryGetBasket(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-        _repository.Verify(r => r.MarkCheckoutAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-        _repository.Verify(r => r.DeleteBasket(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

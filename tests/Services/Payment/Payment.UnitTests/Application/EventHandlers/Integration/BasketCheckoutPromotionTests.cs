@@ -3,20 +3,19 @@ using PaymentEntity = Payment.Function.Modules.Payments.Domain.Entities.Payment;
 
 namespace Payment.UnitTests.Application.EventHandlers.Integration;
 
-// payment-basket-checkout-consumer promotes the payment the checkout saga registered, and keeps the
-// legacy create path while the old checkout pipeline still publishes the event (ADR-0050 §3/§6).
+// payment-basket-checkout-consumer promotes the payment the checkout saga registered (ADR-0050 §6).
 public class BasketCheckoutPromotionTests
 {
     private readonly Mock<IPaymentRepository> _paymentRepository = new();
 
-    private CreatePaymentCommand Command(int pointsToUse = 0) =>
-        BasketCheckoutMapper.ToCreatePaymentCommand(
+    private static PromotePaymentCommand Command(int pointsToUse = 0) =>
+        BasketCheckoutMapper.ToPromotePaymentCommand(
             BasketCheckoutEventDataTests.CreateValidBasketCheckoutEvent() with { PointsToUse = pointsToUse });
 
-    private PaymentEntity GivenARegisteredPayment(CreatePaymentCommand command)
+    private PaymentEntity GivenARegisteredPayment(PromotePaymentCommand command)
     {
         var payment = PaymentEntity.Register(
-            PaymentId.Of(command.OrderId), command.OrderId, command.CustomerId, command.Amount,
+            PaymentId.Of(command.OrderId), command.OrderId, Guid.NewGuid(), 100m,
             PaymentDataTests.CreateCardDetails());
         _paymentRepository
             .Setup(r => r.GetByIdAsync(command.OrderId, It.IsAny<CancellationToken>()))
@@ -35,7 +34,7 @@ public class BasketCheckoutPromotionTests
         var command = Command(pointsToUse);
         GivenARegisteredPayment(command);
 
-        var put = SinglePut(await CreatePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command));
+        var put = SinglePut(await PromotePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command));
 
         Assert.Equal(command.OrderId.ToString(), put.Item["Id"].S);
         Assert.Equal(promoted, put.Item["Status"].S);
@@ -45,22 +44,18 @@ public class BasketCheckoutPromotionTests
         Assert.Equal("Registered", put.ExpressionAttributeValues[":expectedStatus"].S);
     }
 
-    [Theory]
-    [InlineData(0, "Pending")]
-    [InlineData(1000, "AwaitingPoints")]
-    public async Task ShouldCreateThePayment_AsToday_WhenNoneWasRegistered(int pointsToUse, string status)
+    // Every checkout registers the payment before the cart closes, so a missing one is retried
+    // (and lands in the DLQ if it never appears) rather than created from the event.
+    [Fact]
+    public async Task ShouldThrow_WhenNoPaymentWasRegistered()
     {
-        var command = Command(pointsToUse);
+        var command = Command();
         _paymentRepository
             .Setup(r => r.GetByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((PaymentEntity?)null);
 
-        var put = SinglePut(await CreatePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command));
-
-        Assert.Equal(status, put.Item["Status"].S);
-        Assert.Equal(command.OrderId.ToString(), put.Item["OrderId"].S);
-        Assert.Equal(command.CardNumber, put.Item["Card"].M["CardNumber"].S);
-        Assert.Null(put.ConditionExpression);
+        await Assert.ThrowsAsync<PaymentForOrderNotFoundException>(() =>
+            PromotePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command));
     }
 
     // Already promoted (a redelivery the inbox didn't catch): only the inbox is written.
@@ -70,7 +65,7 @@ public class BasketCheckoutPromotionTests
         var command = Command();
         GivenARegisteredPayment(command).Promote(awaitingPoints: false);
 
-        var writes = await CreatePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command);
+        var writes = await PromotePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command);
 
         Assert.Empty(writes);
     }
@@ -84,7 +79,7 @@ public class BasketCheckoutPromotionTests
         var command = Command();
         GivenARegisteredPayment(command).Void();
 
-        var put = SinglePut(await CreatePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command));
+        var put = SinglePut(await PromotePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command));
 
         Assert.Equal("Pending", put.Item["Status"].S);
         Assert.Equal("Voided", put.ExpressionAttributeValues[":expectedStatus"].S);

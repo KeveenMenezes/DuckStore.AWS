@@ -36,12 +36,9 @@ public class BasketCheckoutAddressDto
     public string ZipCode { get; set; } = null!;
 }
 
+// No card: Basket never sees it (ADR-0050 §7).
 public class BasketCheckoutPaymentDto
 {
-    public string CardName { get; set; } = null!;
-    public string CardNumber { get; set; } = null!;
-    public string Expiration { get; set; } = null!;
-    public string Cvv { get; set; } = null!;
     public int PaymentMethod { get; set; }
     public int Installments { get; set; }
 }

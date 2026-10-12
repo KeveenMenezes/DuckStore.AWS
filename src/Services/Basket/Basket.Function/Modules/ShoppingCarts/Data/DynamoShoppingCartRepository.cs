@@ -38,31 +38,6 @@ public class DynamoShoppingCartRepository(IAmazonDynamoDB dynamoDb)
         return cart;
     }
 
-    public Task DeleteBasket(string ownerId, CancellationToken cancellationToken) =>
-        dynamoDb.DeleteItemAsync(
-            new DeleteItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue> { ["OwnerId"] = new(ownerId) }
-            },
-            cancellationToken);
-
-    public Task MarkCheckoutAsync(string ownerId, string checkoutDataJson, CancellationToken cancellationToken) =>
-        dynamoDb.UpdateItemAsync(
-            new UpdateItemRequest
-            {
-                TableName = TableName,
-                Key = new Dictionary<string, AttributeValue> { ["OwnerId"] = new(ownerId) },
-                UpdateExpression = "SET #T = :type, CheckoutData = :data",
-                ExpressionAttributeNames = new Dictionary<string, string> { ["#T"] = "Type" },
-                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
-                {
-                    [":type"] = new("Checkout"),
-                    [":data"] = new(checkoutDataJson)
-                }
-            },
-            cancellationToken);
-
     public async Task<CartCloseResult> CloseCartAsync(
         string ownerId, string checkoutId, string? cartVersion, Guid orderId, string checkoutDataJson,
         CancellationToken cancellationToken)

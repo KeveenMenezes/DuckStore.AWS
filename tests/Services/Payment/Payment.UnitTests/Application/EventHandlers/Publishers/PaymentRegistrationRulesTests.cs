@@ -26,6 +26,12 @@ public class PaymentRegistrationRulesTests
     public void Requested_ShouldMatch_ThePromotionOfARegisteredPayment() =>
         Assert.True(_requested.Match(Context("MODIFY", "Registered", "Pending")));
 
+    // The checkout event promotes a payment whose void raced a successful close of the same attempt:
+    // it must reach the gateway like any other promotion (ADR-0050 §6).
+    [Fact]
+    public void Requested_ShouldMatch_ThePromotionOfAVoidedPayment() =>
+        Assert.True(_requested.Match(Context("MODIFY", "Voided", "Pending")));
+
     public static TheoryData<string, string?, string> NeverRequested => new()
     {
         { "INSERT", null, "Registered" },
