@@ -3,9 +3,20 @@ using Microsoft.Playwright;
 namespace Checkout.E2ETests;
 
 // The checkout as a customer goes through it in the browser.
-public sealed class CheckoutUiTests(StorefrontSession session) : IClassFixture<StorefrontSession>
+public sealed class CheckoutUiTests(StorefrontSession session) : IClassFixture<StorefrontSession>, IAsyncLifetime
 {
     private readonly Storefront _storefront = new(session);
+    private readonly List<IPage> _pages = [];
+
+    public Task InitializeAsync() => Task.CompletedTask;
+
+    // A page left open keeps syncing its cart to the server (the SPA empties it after an order) and
+    // would overwrite the cart the next test stores: every test closes the pages it opened.
+    public async Task DisposeAsync()
+    {
+        foreach (var page in _pages)
+            await page.CloseAsync();
+    }
 
     private async Task<IPage> CheckoutPageWithACartAsync()
     {
@@ -13,6 +24,7 @@ public sealed class CheckoutUiTests(StorefrontSession session) : IClassFixture<S
         await _storefront.StoreCartAsync([new(products[0], 1)]);
 
         var page = await session.NewPageAsync();
+        _pages.Add(page);
         await page.GotoAsync("checkout");
         // The SPA hydrates the cart from the server and quotes it before enabling the button.
         await Assertions.Expect(page.GetByRole(AriaRole.Button, new() { NameRegex = new("^Confirm Order") }))
