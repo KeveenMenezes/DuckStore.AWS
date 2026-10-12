@@ -26,12 +26,12 @@ public sealed class Storefront(StorefrontSession session)
 
     // storeBasket declares $ownerId but the BFF injects it from the session, as for the browser.
     // The price and name sent here are deliberately not the real ones: the checkout must ignore them.
-    public async Task StoreCartAsync(IEnumerable<CartLine> lines)
+    public async Task StoreCartAsync(IEnumerable<CartLine> lines, string? forgedNameForFirstLine = null)
     {
-        var items = lines.Select(l => new
+        var items = lines.Select((l, index) => new
         {
             productId = l.Product.Id,
-            productName = l.Product.Name,
+            productName = index == 0 && forgedNameForFirstLine is not null ? forgedNameForFirstLine : l.Product.Name,
             price = 0.01m,
             quantity = l.Quantity,
         });
@@ -86,6 +86,33 @@ public sealed class Storefront(StorefrontSession session)
         session.GraphQLAsync(
             "mutation($input: CheckoutInput!) { checkoutBasket(input: $input) { isSuccess orderId } }",
             new { input });
+
+    public sealed record OrderLine(string ProductId, string ProductName, int Quantity, decimal Price);
+
+    // The order is written by Ordering off BasketCheckoutEvent (EventBridge), a few seconds after the
+    // checkout returns: poll the customer's orders until it shows up.
+    public async Task<IReadOnlyList<OrderLine>> OrderLinesAsync(string orderId, TimeSpan timeout)
+    {
+        var deadline = DateTime.UtcNow + timeout;
+        while (true)
+        {
+            var response = await session.GraphQLAsync(
+                "query { ordersByCustomer(customerId: \"me\") { items { id orderItems { productId productName quantity price } } } }");
+            Assert.False(response.HasErrors, response.ToString());
+            var order = response.Data!["ordersByCustomer"]!["items"]!.AsArray()
+                .FirstOrDefault(o => (string?)o!["id"] == orderId);
+            if (order is not null)
+            {
+                return order["orderItems"]!.AsArray()
+                    .Select(i => new OrderLine((string)i!["productId"]!, (string)i["productName"]!, (int)i["quantity"]!, (decimal)i["price"]!))
+                    .ToList();
+            }
+
+            if (DateTime.UtcNow > deadline)
+                throw new TimeoutException($"Order {orderId} did not appear within {timeout}.");
+            await Task.Delay(1_000);
+        }
+    }
 
     public static string OrderIdOf(GraphQLResponse response)
     {

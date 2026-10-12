@@ -29,6 +29,40 @@ public sealed class CheckoutApiTests(StorefrontSession session) : IClassFixture<
     }
 
     [E2EFact]
+    public async Task ConcurrentSubmitsOfOneAttempt_ResolveToOneOrder()
+    {
+        // A double click: two requests of the same attempt racing through the saga (ADR-0050 §3/§4).
+        var lines = await FreshCartAsync();
+        var input = Storefront.CheckoutInput(await _storefront.QuoteAsync(lines), Guid.NewGuid().ToString());
+
+        var responses = await Task.WhenAll(_storefront.CheckoutAsync(input), _storefront.CheckoutAsync(input));
+
+        Assert.Equal(Storefront.OrderIdOf(responses[0]), Storefront.OrderIdOf(responses[1]));
+    }
+
+    [E2EFact]
+    public async Task OrderLines_ComeFromCatalogAndPricing_NotFromTheClientsCart()
+    {
+        // The cart was stored with a 0.01 price and, for the first line, a forged name (ADR-0050 §5).
+        var products = await _storefront.ProductsAsync(2);
+        var lines = new List<Storefront.CartLine> { new(products[0], 2), new(products[1], 1) };
+        await _storefront.StoreCartAsync(lines, forgedNameForFirstLine: "FORGED NAME");
+        var orderId = Storefront.OrderIdOf(await _storefront.CheckoutAsync(
+            Storefront.CheckoutInput(await _storefront.QuoteAsync(lines), Guid.NewGuid().ToString())));
+
+        var orderLines = await _storefront.OrderLinesAsync(orderId, TimeSpan.FromSeconds(30));
+
+        Assert.Equal(2, orderLines.Count);
+        foreach (var line in lines)
+        {
+            var ordered = Assert.Single(orderLines, o => o.ProductId == line.Product.Id);
+            Assert.Equal(line.Product.Name, ordered.ProductName);
+            Assert.Equal(line.Quantity, ordered.Quantity);
+            Assert.True(ordered.Price > 0.01m, $"{line.Product.Name} was ordered at the client's price {ordered.Price}");
+        }
+    }
+
+    [E2EFact]
     public async Task Checkout_OfACartAlreadyClosed_IsRefusedAsBadRequest()
     {
         var lines = await FreshCartAsync();
