@@ -156,8 +156,7 @@ export class AppSyncApi extends Construct {
 
   // Resolver organization: `graphql/resolvers/` is split by domain (basket, products, categories,
   // pricing, orders, reviews, user, challenges, inventory — matching the bounded contexts in
-  // `src/Services/*`), and each
-  // domain folder is split into `queries/`/`mutations/`. The `domain` string passed to
+  // `src/Services/*`), and each domain folder is split into `queries/`/`mutations/`. The `domain` string passed to
   // `this.resolver(...)`/`this.pipelineResolver(...)` below is what points at that folder — keep
   // resolvers grouped in the same order here so the two stay easy to cross-reference.
   private addDataSources() {

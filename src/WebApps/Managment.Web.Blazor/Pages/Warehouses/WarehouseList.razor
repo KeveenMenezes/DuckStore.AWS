@@ -1,0 +1,124 @@
+@page "/warehouses"
+@attribute [Authorize]
+@inject WarehouseAdminService Warehouses
+
+<PageTitle>Warehouses — DuckStore Management</PageTitle>
+
+<div class="page-header">
+    <h1>Warehouses</h1>
+    @if (canManage)
+    {
+        <a class="btn btn-primary" href="warehouses/new">New warehouse</a>
+    }
+</div>
+
+@if (!canManage)
+{
+    <p class="muted">Only the StockKeeper and Admin groups can manage warehouses.</p>
+}
+else
+{
+    <p class="muted">Warehouses are deactivated, never deleted. Lower priority serves a sale first.</p>
+
+    @if (Saved is not null)
+    {
+        <div class="banner banner-success">Warehouse @Saved saved</div>
+    }
+    @if (error is not null)
+    {
+        <div class="banner banner-error">@error</div>
+    }
+
+    @if (items is null)
+    {
+        <p class="muted">Loading warehouses...</p>
+    }
+    else if (items.Count == 0)
+    {
+        <p class="muted">No warehouses yet.</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>City</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var warehouse in items)
+                {
+                    <tr data-code="@warehouse.Code">
+                        <td>@warehouse.Code</td>
+                        <td>@warehouse.Name</td>
+                        <td>@warehouse.Address.City/@warehouse.Address.State</td>
+                        <td>@warehouse.Priority</td>
+                        <td class="warehouse-status">@(warehouse.Active ? "Active" : "Inactive")</td>
+                        <td class="row-actions">
+                            <a class="btn btn-secondary" href="warehouses/@warehouse.Id/edit">Edit</a>
+                            <button class="btn @(warehouse.Active ? "btn-danger" : "btn-secondary")"
+                                    disabled="@(togglingId is not null)" @onclick="() => ToggleAsync(warehouse)">
+                                @(togglingId == warehouse.Id ? "Saving..." : warehouse.Active ? "Deactivate" : "Activate")
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    // Code of the warehouse just created or updated, set by the form pages on redirect.
+    [SupplyParameterFromQuery(Name = "saved")]
+    public string? Saved { get; set; }
+
+    private bool canManage;
+    private List<Warehouse>? items;
+    private string? error;
+    private string? togglingId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        canManage = CognitoGroups.CanManageStock((await AuthenticationState).User);
+        if (!canManage)
+            return;
+
+        try
+        {
+            items = await Warehouses.GetWarehousesAsync();
+        }
+        catch (Exception ex)
+        {
+            items = [];
+            error = $"Failed to load warehouses: {ex.Message}";
+        }
+    }
+
+    private async Task ToggleAsync(Warehouse warehouse)
+    {
+        togglingId = warehouse.Id;
+        error = null;
+        try
+        {
+            var updated = await Warehouses.SetActiveAsync(warehouse.Id, !warehouse.Active);
+            items![items.IndexOf(warehouse)] = updated;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to update {warehouse.Code}: {ex.Message}";
+        }
+        finally
+        {
+            togglingId = null;
+        }
+    }
+}

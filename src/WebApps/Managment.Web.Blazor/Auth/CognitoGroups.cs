@@ -14,6 +14,10 @@ public static class CognitoGroups
 {
     public const string ClaimType = "cognito:groups";
     public const string Admin = "Admin";
+    public const string StockKeeper = "StockKeeper";
+
+    // Warehouses and stock (ADR-0052 §3): StockKeeper, and Admin, who can do everything it can.
+    public static bool CanManageStock(ClaimsPrincipal user) => Contains(user, Admin) || Contains(user, StockKeeper);
 
     public static bool Contains(ClaimsPrincipal user, string group) =>
         user.FindAll(ClaimType).Any(claim => ClaimHolds(claim.Value, group));

@@ -154,3 +154,81 @@ public static class ChallengePointsInput
         return true;
     }
 }
+
+// Read model — mirrors the Warehouse type in graphql/schema.graphql (ADR-0052 §2).
+public sealed record Warehouse(
+    string Id,
+    string Code,
+    string Name,
+    WarehouseAddress Address,
+    int Priority,
+    bool Active,
+    string CreatedAt,
+    string UpdatedAt);
+
+public sealed record WarehouseAddress(
+    string Street,
+    string Number,
+    string? Complement,
+    string District,
+    string City,
+    string State,
+    string ZipCode);
+
+// Form model — the writable fields of CreateWarehouseInput/UpdateWarehouseInput (Code only on
+// create: it is immutable). The rules mirror the resolvers (graphql/resolvers/inventory) and
+// lib/warehouse-validation.ts in the SPA; the resolvers stay the authority, these only spare a
+// round trip. Change all of them together.
+public sealed class WarehouseFormModel
+{
+    public static readonly string[] States =
+    [
+        "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA", "MT", "MS", "MG", "PA",
+        "PB", "PR", "PE", "PI", "RJ", "RN", "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+    ];
+
+    [Required, RegularExpression("^ *[A-Za-z0-9][A-Za-z0-9-]{1,19} *$",
+        ErrorMessage = "Code must be 2-20 characters: letters, digits or hyphens, starting with a letter or digit.")]
+    public string Code { get; set; } = string.Empty;
+
+    [Required, StringLength(80)]
+    public string Name { get; set; } = string.Empty;
+
+    [Required, StringLength(120)]
+    public string Street { get; set; } = string.Empty;
+
+    [Required, StringLength(10)]
+    public string Number { get; set; } = string.Empty;
+
+    [StringLength(60)]
+    public string? Complement { get; set; }
+
+    [Required, StringLength(60)]
+    public string District { get; set; } = string.Empty;
+
+    [Required, StringLength(60)]
+    public string City { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Select a state.")]
+    public string State { get; set; } = string.Empty;
+
+    [Required, RegularExpression("^ *-*([0-9]-*){8} *$", ErrorMessage = "Zip code must have 8 digits (00000-000).")]
+    public string ZipCode { get; set; } = string.Empty;
+
+    [Range(1, 999, ErrorMessage = "Priority must be between 1 and 999.")]
+    public int Priority { get; set; } = 1;
+
+    public static WarehouseFormModel From(Warehouse warehouse) => new()
+    {
+        Code = warehouse.Code,
+        Name = warehouse.Name,
+        Street = warehouse.Address.Street,
+        Number = warehouse.Address.Number,
+        Complement = warehouse.Address.Complement,
+        District = warehouse.Address.District,
+        City = warehouse.Address.City,
+        State = warehouse.Address.State,
+        ZipCode = warehouse.Address.ZipCode,
+        Priority = warehouse.Priority,
+    };
+}

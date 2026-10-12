@@ -7,6 +7,13 @@
             <NavLink class="nav-item" href="products">Products</NavLink>
             <NavLink class="nav-item" href="campaigns">Discounts</NavLink>
             <NavLink class="nav-item" href="challenges">Challenges</NavLink>
+            <AuthorizeView>
+                @* Same gate as the resolvers (ADR-0052 §3); a Seller never sees it. *@
+                @if (CognitoGroups.CanManageStock(context.User))
+                {
+                    <NavLink class="nav-item" href="warehouses">Warehouses</NavLink>
+                }
+            </AuthorizeView>
         </nav>
     </aside>
     <div class="main-area">

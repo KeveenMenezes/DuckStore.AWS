@@ -1,0 +1,106 @@
+@* Shared by WarehouseCreate and WarehouseEdit. The code is editable only on create (it is
+   immutable, ADR-0052 §2). ServerError shows a resolver error next to the field it names
+   (errorInfo.field), on top of the client-side DataAnnotations. *@
+<EditForm Model="Model" OnValidSubmit="OnValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="form-field">
+        <label for="code">Code</label>
+        <InputText id="code" @bind-Value="Model.Code" disabled="@(!IsNew)" placeholder="ALPHA" />
+        <ValidationMessage For="() => Model.Code" />
+        @ServerMessage("code")
+    </div>
+
+    <div class="form-field">
+        <label for="name">Name</label>
+        <InputText id="name" @bind-Value="Model.Name" />
+        <ValidationMessage For="() => Model.Name" />
+        @ServerMessage("name")
+    </div>
+
+    <div class="form-field">
+        <label for="street">Street</label>
+        <InputText id="street" @bind-Value="Model.Street" />
+        <ValidationMessage For="() => Model.Street" />
+        @ServerMessage("address.street")
+    </div>
+
+    <div class="form-field">
+        <label for="number">Number</label>
+        <InputText id="number" @bind-Value="Model.Number" />
+        <ValidationMessage For="() => Model.Number" />
+        @ServerMessage("address.number")
+    </div>
+
+    <div class="form-field">
+        <label for="complement">Complement</label>
+        <InputText id="complement" @bind-Value="Model.Complement" />
+        <ValidationMessage For="() => Model.Complement" />
+        @ServerMessage("address.complement")
+    </div>
+
+    <div class="form-field">
+        <label for="district">District</label>
+        <InputText id="district" @bind-Value="Model.District" />
+        <ValidationMessage For="() => Model.District" />
+        @ServerMessage("address.district")
+    </div>
+
+    <div class="form-field">
+        <label for="city">City</label>
+        <InputText id="city" @bind-Value="Model.City" />
+        <ValidationMessage For="() => Model.City" />
+        @ServerMessage("address.city")
+    </div>
+
+    <div class="form-field">
+        <label for="state">State</label>
+        <InputSelect id="state" @bind-Value="Model.State">
+            <option value="">Select...</option>
+            @foreach (var state in WarehouseFormModel.States)
+            {
+                <option value="@state">@state</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => Model.State" />
+        @ServerMessage("address.state")
+    </div>
+
+    <div class="form-field">
+        <label for="zipCode">Zip code (CEP)</label>
+        <InputText id="zipCode" @bind-Value="Model.ZipCode" placeholder="00000-000" />
+        <ValidationMessage For="() => Model.ZipCode" />
+        @ServerMessage("address.zipCode")
+    </div>
+
+    <div class="form-field">
+        <label for="priority">Priority</label>
+        <InputNumber id="priority" @bind-Value="Model.Priority" min="1" max="999" />
+        <p class="muted">Lower serves a sale first.</p>
+        <ValidationMessage For="() => Model.Priority" />
+        @ServerMessage("priority")
+    </div>
+
+    <div class="form-actions">
+        <a class="btn btn-secondary" href="warehouses">Cancel</a>
+        <button class="btn btn-primary" type="submit" disabled="@Busy">
+            @(Busy ? "Saving..." : SubmitLabel)
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    [Parameter, EditorRequired] public WarehouseFormModel Model { get; set; } = default!;
+    [Parameter, EditorRequired] public EventCallback OnValidSubmit { get; set; }
+    [Parameter] public bool IsNew { get; set; }
+    [Parameter] public string SubmitLabel { get; set; } = "Save";
+    [Parameter] public bool Busy { get; set; }
+
+    // (field, message) of the last server-side input error, e.g. ("address.zipCode", "...").
+    [Parameter] public (string Field, string Message)? ServerError { get; set; }
+
+    private RenderFragment? ServerMessage(string field) =>
+        ServerError is { } error && error.Field == field
+            ? @<div class="validation-message server-error" data-field="@field">@error.Message</div>
+            : null;
+}
