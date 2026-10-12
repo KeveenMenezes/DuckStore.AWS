@@ -37,7 +37,7 @@ public record GetBasketInstallmentPlanResponse(
     IReadOnlyList<BasketLineResponse>? Lines = null);
 
 // AppSync Query resolver (Lambda-backed per ADR-0009 — a non-trivial calculation over the whole
-// cart, not a key lookup), and the quote step of the checkoutBasket pipeline (ADR-0048 §4).
+// cart, not a key lookup), and the Quote step of the checkout saga (ADR-0048 §4, ADR-0050).
 public partial class Functions
 {
     [LambdaFunction]

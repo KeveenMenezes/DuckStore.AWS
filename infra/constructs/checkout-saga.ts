@@ -32,12 +32,13 @@ import { importAlertsTopic } from './context-dlq';
 // carry no execution data (ADR-0050 §7).
 //
 // Timeout budget (ADR-0050 §1): each Lambda task allows 2 attempts of 2 s with a 1 s interval (5 s),
-// each DynamoDB read one 2 s attempt. Slowest paths: every Lambda retried and failing = 6 + 3 × 5 =
-// 21 s; a CartChanged followed by a fully retried void = 6 + 5 + 5 + 2 + 5 = 23 s — both under the
-// 25 s execution timeout, itself under AppSync's 30 s, so every failure lands in a Catch.
+// each DynamoDB read one 1 s attempt (3 s for the three reads). Slowest paths: every Lambda retried
+// and failing = 3 + 3 × 5 = 18 s; a Checkout that times out once and then returns CartChanged,
+// followed by a fully retried void = 3 + 5 + 5 + 5 + 5 = 23 s — both under the 25 s execution
+// timeout, itself under AppSync's 30 s, so every failure lands in a Catch.
 
 const LAMBDA_TIMEOUT_SECONDS = 2;
-const DYNAMODB_TIMEOUT_SECONDS = 2;
+const DYNAMODB_TIMEOUT_SECONDS = 1;
 const EXECUTION_TIMEOUT_SECONDS = 25;
 
 // Errors that mean "the call didn't happen or failed before the function ran" — safe to retry on

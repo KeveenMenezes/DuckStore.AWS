@@ -292,7 +292,7 @@ export class PaymentLambdas extends Construct {
       // provided.al2023 runs the file named `bootstrap`; this value is inert.
       handler: 'bootstrap',
       code: paymentCode,
-      // Short: it sits on the saga's 20 s budget (ADR-0050 §1).
+      // Short: it sits on the saga's 25 s budget (ADR-0050 §1).
       timeout: cdk.Duration.seconds(10),
       memorySize: DOTNET_MEMORY_MB,
       description,

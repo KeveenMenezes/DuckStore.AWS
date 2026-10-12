@@ -79,8 +79,9 @@ slowest path, the sum over every state of `TimeoutSeconds × (1 + MaxAttempts)` 
 including `VoidPayment`'s retries — MUST stay under the execution timeout, so every failure lands in a
 `Catch` and a compensation is never cut off. An execution-level `TIMED_OUT` (which no `Catch` sees) is
 mapped to `InternalError` by the resolver. As built: Lambda tasks allow 2 attempts of 2 s with a 1 s
-interval (5 s), DynamoDB reads one 2 s attempt; the slowest paths take 21 s (every Lambda retried and
-failing) and 23 s (a `CartChanged` followed by a fully retried void). The definition is plain JSONata
+interval (5 s), DynamoDB reads one 1 s attempt; the slowest paths take 18 s (every Lambda retried and
+failing) and 23 s (a `Checkout` that times out once and then returns `CartChanged`, followed by a fully
+retried void). The definition is plain JSONata
 ASL, so each expression can be checked with `aws stepfunctions test-state`. It lives in `infra/constructs/checkout-saga.ts`, instantiated by `AppSyncStack` next
 to `product-create-saga`.
 
@@ -123,8 +124,9 @@ OrderId = GUID( first 32 hex chars of SHA-256( "<ownerId>#<checkoutId>" ) )   fo
 
 The owner is part of the input, so a client-chosen `checkoutId` can never collide with another
 customer's order. Two executions of the same attempt derive the same `OrderId`, which is what lets later
-steps deduplicate on their own. Test vectors (binding for every implementation; pinned by tests in the
-saga and in `local.ts`):
+steps deduplicate on their own. Test vectors (binding for every implementation; pinned by a unit test of
+`local.ts`'s copy, `lib/checkout-order-id.test.ts`, and checked against the deployed saga's
+`DeriveOrderId` state with `aws stepfunctions test-state`):
 
 | `ownerId` | `checkoutId` | `OrderId` |
 |---|---|---|
@@ -180,7 +182,8 @@ digit CVV; cash needs none) and writes the payment with a **new status `Register
 (`InvalidCard`), not a Lambda error.
 
 A repeated registration for the same `OrderId` succeeds **only** if the stored payment is still
-`Registered` with the same amount, method and installments. Anything else — `Voided`, already
+`Registered` with the same amount and the same card (payment method included; a different installment
+count changes the amount whenever it matters). Anything else — `Voided`, already
 promoted or decided, or different terms (a `checkoutId` reused after its `CHECKOUT#` record expired) —
 is the typed refusal `CheckoutRetryRequired`, and the SPA renews the `checkoutId`.
 
@@ -197,7 +200,9 @@ before the promotion is silently dropped and the payment waits in `AwaitingPoint
 ### 7. Card data leaves the event and Basket, and stays out of logs
 
 `BasketCheckoutEvent`/`BasketCheckoutDto` drop `CardName`, `CardNumber`, `Expiration` and `Cvv`;
-`PaymentMethod` and `Installments` stay. Card data MUST NOT be on `BasketCheckoutEvent`, MUST NOT be
+`PaymentMethod` and `Installments` stay. During the §3 transition the fields still exist and the saga
+sends them blank, because the Payment consumer's legacy create path reads them; they are removed when
+the transition ends. Card data MUST NOT be on `BasketCheckoutEvent`, MUST NOT be
 stored by Basket or Ordering, and MUST NOT be written to any log:
 
 - `checkout-saga` logs at `ERROR` with `includeExecutionData: false`, and its output carries no card
@@ -239,6 +244,8 @@ with no log parsing.
 There is no Step Functions locally. `local.ts` emulates the saga step by step against DynamoDB Local
 and the Aspire Lambda emulator, using the same `OrderId` formula (checked against §3's vectors) and
 raising the same `errorType`s — the same arrangement ADR-0032 §6 uses for `createProductWithPrice`.
+The one local-only addition is `InsufficientPoints`, a balance check that stands in for the
+asynchronous points reservation, which has no event flow locally.
 
 ### 10. Step contracts
 
@@ -267,7 +274,7 @@ sequenceDiagram
     SPA->>AppSync: checkoutBasket(input, checkoutId)
     AppSync->>SFN: StartSyncExecution (owner from token)
     SFN->>SFN: DeriveOrderId
-    SFN->>Cart: BatchGetItem (consistent) — CHECKOUT# record, cart
+    SFN->>Cart: GetItem (consistent) — CHECKOUT# record, then cart
     alt CHECKOUT# exists
         SFN-->>AppSync: SUCCEEDED { orderId } (replay)
     end

@@ -84,9 +84,9 @@ export class BasketLambdas extends Construct {
     // graphql/resolvers/basket/mutations/Mutation.storeBasket.js.
 
     // 2. basket-checkout-basket  (Invoke — CheckoutBasket command)
-    //    Talks directly to DynamoDB (no cache).
-    //    Writes a Checkout marker to the cart item; the stream publisher picks it
-    //    up and publishes BasketCheckoutEvent (CDC pattern, ADR-0005).
+    //    Invoked only by the checkout saga (ADR-0050 §2). Talks directly to DynamoDB (no cache).
+    //    Inserts a CHECKOUT# record and deletes the cart in one transaction; the stream
+    //    publisher picks the record up and publishes BasketCheckoutEvent (CDC pattern, ADR-0005).
     this.checkoutBasket = new lambda.Function(this, 'CheckoutBasket', {
       functionName: 'basket-checkout-basket',
       // X-Ray active tracing so the trace AppSync starts continues into the Lambda (ADR-0022).
@@ -99,7 +99,7 @@ export class BasketLambdas extends Construct {
       timeout: cdk.Duration.seconds(30),
       memorySize: DOTNET_MEMORY_MB,
       description:
-        'Marks a cart as checked out; DynamoDB Streams CDC publishes BasketCheckoutEvent',
+        'Closes a cart for the checkout saga; DynamoDB Streams CDC publishes BasketCheckoutEvent',
       environment: { ANNOTATIONS_HANDLER: 'CheckoutBasket' },
     });
 

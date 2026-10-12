@@ -7,7 +7,7 @@ public record BasketInstallmentItem(Guid ProductId, int Quantity);
 // PointsToUse is the in-cart redemption (ADR-0048 §3): capped here, never checked against the
 // balance — Pricing doesn't know it (ADR-0046 §1). The resolver only sends it for a signed-in
 // customer; basketInstallmentPlan itself stays public for guests. ExpectedTotal/PaymentMethod/Installments come
-// only from the checkout pipeline: with them, the quote also picks the total charged for that
+// only from the checkout saga: with them, the quote also picks the total charged for that
 // payment choice and refuses it if it differs from what the customer confirmed (ADR-0048 §4).
 // PaymentMethod follows Ordering's enum: Debit = 1, Credit = 2, Cash = 3.
 public record GetBasketInstallmentPlanQuery(
