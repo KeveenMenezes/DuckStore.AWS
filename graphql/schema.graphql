@@ -86,12 +86,18 @@ type InstallmentPlan @aws_api_key @aws_cognito_user_pools {
 # Cart-level equivalent of InstallmentPlan: every item's Cost/NominalPrice is summed first (the
 # whole cart is billed as a single checkout transaction) and run through the same cost-floor
 # calculation, so a mixed-margin cart resolves to one unified plan instead of N per-product ones.
+#
+# With pointsToUse, price/cashPrice/installments are already net of pointsDiscount (ADR-0048 §3).
+# maxRedeemablePoints is this cart's cap (20% of the post-campaign price, in points) whatever
+# pointsToUse was — the customer's balance is a separate, client-side limit.
 type BasketInstallmentPlan @aws_api_key @aws_cognito_user_pools {
   totalOriginalPrice: Float!
   price: Float!
   cashPrice: Float!
   maxInstallmentsWithoutInterest: Int!
   installments: [InstallmentOption!]!
+  maxRedeemablePoints: Int!
+  pointsDiscount: Float!
 }
 
 type Campaign @aws_cognito_user_pools {
@@ -112,23 +118,12 @@ type CampaignPage @aws_cognito_user_pools {
   nextToken: String
 }
 
-# A customer-scoped reward minted from a Challenges points redemption (ADR-0046 §4) — distinct
-# from Campaign, which is product-scoped. Amount is decided in Pricing alone; Challenges never
-# knows a currency value (ADR-0046 §1).
-type CustomerDiscount @aws_cognito_user_pools {
-  id: ID!
-  amount: Float!
-  status: String!
-  expiresAt: String!
-  sourceRedemptionId: ID!
-}
-
-# The current points -> currency rate, so the SPA can show "500 points -> R$50" before the
-# customer redeems (ADR-0046 §1, §8). A fixed v1 constant, not a tier catalogue.
+# The current points -> currency rate, so the SPA can show "500 points = R$5" before the customer
+# uses them (ADR-0046 §1, ADR-0048 §3). A fixed v1 constant, not a tier catalogue. Points
+# never expire (SPEC.md), so there is no expiry here.
 type RewardConversion @aws_cognito_user_pools {
   pointsPerUnit: Int!
   currencyPerUnit: Float!
-  expiryDays: Int!
 }
 
 # One payment-gateway provider's operating costs (ADR-0028): a flat fee per transaction, a
@@ -238,14 +233,6 @@ type RevealChallengeHintResult @aws_cognito_user_pools {
   hint: String!
   hintsRevealed: Int!
   penaltyApplied: Int!
-}
-
-# Challenges owns the balance only — no currency field, ever (ADR-0046 §1). The resulting
-# customer-discounts row (in Pricing) appears asynchronously off the PointsRedeemedEvent this
-# redemption triggers, not synchronously in this response.
-type RedeemChallengePointsResult @aws_cognito_user_pools {
-  redemptionId: ID!
-  newBalance: Int!
 }
 
 # Points ledger (ADR-0048 §1). One row per movement of the balance; the balance itself stays on
@@ -433,6 +420,14 @@ input ShoppingCartInput {
 }
 
 input CheckoutInput {
+  # One id per checkout attempt, minted by the SPA when the checkout opens and kept across retries
+  # of that attempt: a retry with the same id returns the same orderId instead of a second order.
+  # Renewed after a success or a typed refusal, never after InternalError or a network failure
+  # (ADR-0050 §3).
+  checkoutId: ID!
+  # The total the customer confirmed on screen — never the amount charged. The checkout saga
+  # recomputes the total in Pricing for the saved cart, pointsToUse and the payment choice, and
+  # fails with errorType PriceChanged (errorInfo.serverTotal) when it differs (ADR-0048 §4, ADR-0050).
   totalPrice: Float!
   firstName: String!
   lastName: String!
@@ -448,9 +443,12 @@ input CheckoutInput {
   cvv: String
   paymentMethod: Int!
   installments: Int!
-  # Opaque pass-through, chosen by the customer beforehand via basketInstallmentPlan(discountId:)
-  # (ADR-0046 §5, §6) — Basket never validates or interprets it. Null/omitted when no coupon.
-  discountId: ID
+  # Points to use on this order, 0/omitted for none. Capped by Pricing (PointsAboveCap), reserved
+  # against the balance by Challenges after checkout (ADR-0048 §4, §5).
+  # Other refusals the checkout raises (ADR-0050 §8): BadRequest (no cart), ProductUnavailable
+  # (errorInfo.productIds), InvalidCard (errorInfo.field), CheckoutRetryRequired, CartChanged;
+  # InternalError for anything that is not a refusal.
+  pointsToUse: Int
 }
 
 input BasketInstallmentItemInput {
@@ -532,11 +530,12 @@ type Query {
 
   # Lambda resolver — public (API_KEY or Cognito); sums cost/originalPrice across every cart item
   # first, then runs the same InstallmentCalculator over the whole cart as one transaction (ADR-0009).
-  # discountId is optional and Cognito-only (ADR-0046 §5): the resolver rejects it unless
-  # ctx.identity is present, and applies it after campaign allocation, floored at zero.
+  # pointsToUse > 0 is Cognito-only (ADR-0048 §3): the resolver rejects it unless ctx.identity is
+  # present, and the points come off after campaign allocation. Above the cap it fails with
+  # errorType PointsAboveCap (errorInfo.maxRedeemablePoints), never trimmed.
   basketInstallmentPlan(
     items: [BasketInstallmentItemInput!]!
-    discountId: ID
+    pointsToUse: Int
   ): BasketInstallmentPlan @aws_api_key @aws_cognito_user_pools
 
   # Direct DynamoDB resolver — Cognito required; Admin group only (enforced in resolver)
@@ -583,12 +582,8 @@ type Query {
   # (OwnerId + CreatedAt), newest first, paginated (ADR-0048 §1). Owner comes from the token.
   myPointsHistory(pageSize: Int, nextToken: String): PointsHistoryPage!
 
-  # Direct DynamoDB resolver — Cognito required; Query on OwnerId filtered to Status=Issued and
-  # not expired (ADR-0046 §4). Expiry is checked here, not left to the table's TTL.
-  myRewards: [CustomerDiscount!]!
-
   # NONE (local) resolver — Cognito required; values baked in at deploy time, not read from
-  # Pricing's runtime config (ADR-0046 §8).
+  # Pricing's runtime config (ADR-0048 §3).
   rewardConversion: RewardConversion!
 }
 
@@ -597,8 +592,10 @@ type Mutation {
   # ownerId (ADR-0009, ADR-0016)
   storeBasket(ownerId: String!, input: ShoppingCartInput!): StoreBasketResult! @aws_api_key @aws_cognito_user_pools
 
-  # Lambda resolver — Cognito ONLY (login required, which triggers the merge); resolver injects
-  # ctx.identity.sub as CustomerId and USER#<sub> as OwnerId (ADR-0009, ADR-0016)
+  # HTTP resolver → checkout-saga Express state machine — Cognito ONLY (login required, which
+  # triggers the merge): loads the saved cart, names its lines from Catalog, has Pricing quote it
+  # (cap + charged total + per-line prices), registers the payment and closes the cart atomically.
+  # The owner is USER#<ctx.identity.sub>, never a client value (ADR-0016, ADR-0048 §4, ADR-0050)
   checkoutBasket(input: CheckoutInput!): CheckoutResult!
 
   # Direct DynamoDB resolver — Cognito OR API_KEY (guest via BFF); resolver derives/validates ownerId
@@ -671,11 +668,6 @@ type Mutation {
   # Lambda resolver — Cognito required; the hint penalty is a conditional write that gates the
   # response (ADR-0045 §6, §8) — an invariant that belongs in the domain, not a resolver script.
   revealChallengeHint(challengeId: ID!): RevealChallengeHintResult!
-
-  # Lambda resolver — Cognito required; the balance debit is a conditional TransactWriteItems
-  # (ADR-0046 §2) — an invariant that belongs in the domain, not a resolver script. Spends points
-  # only; what they convert to is decided later, asynchronously, in Pricing (ADR-0046 §1, §4).
-  redeemChallengePoints(points: Int!): RedeemChallengePointsResult!
 
   # Direct DynamoDB resolver — Cognito required; Admin group only (Seller excluded). Edits Points
   # on the PUBLIC item only, so the new value applies to future answers; past attempts and the

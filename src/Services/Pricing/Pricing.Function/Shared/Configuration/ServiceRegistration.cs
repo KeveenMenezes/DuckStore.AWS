@@ -36,7 +36,6 @@ public static class ServiceRegistration
         services.AddScoped<IPriceRepository, DynamoPriceRepository>();
         services.AddScoped<ICampaignRepository, DynamoCampaignRepository>();
         services.AddScoped<IGatewayCostRepository, DynamoGatewayCostRepository>();
-        services.AddScoped<ICustomerDiscountRepository, DynamoCustomerDiscountRepository>();
         // Shared by both CDC stream publishers — a price write and a campaign write need the same
         // recomputed payment highlights (ADR-0044).
         services.AddScoped<PricingHighlights>();

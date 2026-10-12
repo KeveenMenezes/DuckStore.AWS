@@ -12,32 +12,42 @@ public class PaymentRequestedRuleTests
         _rule = autoMocker.CreateInstance<PaymentRequestedRule>();
     }
 
+    // Every payment is registered by the checkout saga and promoted by the checkout event, so the
+    // gateway is asked on the MODIFY Registered → Pending (ADR-0050 §6).
     private static StreamContext<PaymentStreamImage> Context(
-        string eventName, string? newType = "Payment", string? newStatus = "Pending", Guid? id = null) =>
-        new(eventName, null,
-            newType is null ? null : new PaymentStreamImage(id ?? Guid.NewGuid(), newType, newStatus ?? string.Empty));
+        string eventName, string? newType = "Payment", string? newStatus = "Pending", Guid? id = null,
+        string? oldStatus = "Registered")
+    {
+        var paymentId = id ?? Guid.NewGuid();
+        return new(eventName,
+            oldStatus is null ? null : new PaymentStreamImage(paymentId, "Payment", oldStatus),
+            newType is null ? null : new PaymentStreamImage(paymentId, newType, newStatus ?? string.Empty));
+    }
 
     [Fact]
-    public void Match_ReturnsTrue_ForInsertOfPendingPayment() =>
-        Assert.True(_rule.Match(Context("INSERT")));
+    public void Match_ReturnsTrue_ForThePromotionOfARegisteredPayment() =>
+        Assert.True(_rule.Match(Context("MODIFY")));
 
-    [Theory]
-    [InlineData("MODIFY")]
-    [InlineData("REMOVE")]
-    public void Match_ReturnsFalse_ForNonInsertEvents(string eventName) =>
-        Assert.False(_rule.Match(Context(eventName)));
+    // Only the old checkout pipeline inserted Pending payments.
+    [Fact]
+    public void Match_ReturnsFalse_ForTheInsertOfAPendingPayment() =>
+        Assert.False(_rule.Match(Context("INSERT", oldStatus: null)));
+
+    [Fact]
+    public void Match_ReturnsFalse_ForRemoveEvents() =>
+        Assert.False(_rule.Match(Context("REMOVE")));
 
     [Fact]
     public void Match_ReturnsFalse_WhenNewImageIsNotAPayment() =>
-        Assert.False(_rule.Match(Context("INSERT", newType: "Order")));
+        Assert.False(_rule.Match(Context("MODIFY", newType: "Order")));
 
     [Fact]
     public void Match_ReturnsFalse_WhenPaymentIsNotPending() =>
-        Assert.False(_rule.Match(Context("INSERT", newStatus: "Authorized")));
+        Assert.False(_rule.Match(Context("MODIFY", newStatus: "Authorized")));
 
     [Fact]
     public void Match_ReturnsFalse_WhenNewImageIsMissing() =>
-        Assert.False(_rule.Match(Context("INSERT", newType: null)));
+        Assert.False(_rule.Match(Context("MODIFY", newType: null)));
 
     [Fact]
     public async Task BuildAsync_ReturnsPaymentRequestedInstruction_ForTheRehydratedPayment()
@@ -47,25 +57,11 @@ public class PaymentRequestedRuleTests
             .Setup(repo => repo.GetByIdAsync(payment.Id.Value, It.IsAny<CancellationToken>()))
             .ReturnsAsync(payment);
 
-        var instruction = await _rule.BuildAsync(Context("INSERT", id: payment.Id.Value));
+        var instruction = await _rule.BuildAsync(Context("MODIFY", id: payment.Id.Value));
 
         Assert.Equal(nameof(PaymentRequestedEvent), instruction.DetailType);
         var payload = Assert.IsType<PaymentRequestedEvent>(instruction.Payload);
         Assert.Equal(payment.Id.Value, payload.PaymentId);
         Assert.Equal(payment.OrderId, payload.OrderId);
-    }
-
-    [Fact]
-    public async Task BuildAsync_ShouldCarryTheDiscountId_WhenTheRehydratedPaymentHasOne()
-    {
-        var payment = PaymentDataTests.CreatePendingPayment(discountId: "discount-1");
-        _paymentRepository
-            .Setup(repo => repo.GetByIdAsync(payment.Id.Value, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(payment);
-
-        var instruction = await _rule.BuildAsync(Context("INSERT", id: payment.Id.Value));
-
-        var payload = Assert.IsType<PaymentRequestedEvent>(instruction.Payload);
-        Assert.Equal("discount-1", payload.DiscountId);
     }
 }

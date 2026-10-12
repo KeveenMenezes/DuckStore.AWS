@@ -1,9 +1,9 @@
 ﻿namespace Challenges.Function.Modules.Progress.EventsIntegration.Publishers;
 
 // The subset of a persisted "challenge-progress" item the publisher rules reason about, projected
-// from a DynamoDB Streams image. One shape covers every SK kind (PROFILE, ATTEMPT#, REDEMPTION#)
-// since a single rule dispatcher runs against the whole table's stream; each rule only reads the
-// fields relevant to the row kind it matches on.
+// from a DynamoDB Streams image. One shape covers every SK kind (PROFILE, ATTEMPT#) since a single
+// rule dispatcher runs against the whole table's stream; each rule only reads the fields relevant
+// to the row kind it matches on.
 //
 // IsCorrect is nullable, not a plain bool: null means "not yet answered" (either no ATTEMPT row at
 // all, or one that exists only as a hint-tracking placeholder — RevealHintAsync upserts
@@ -17,8 +17,7 @@ public sealed record ProgressStreamImage(
     bool? IsCorrect,
     int SelectedOption,
     int HintsRevealed,
-    int PointsEarned,
-    int PointsSpent)
+    int PointsEarned)
 {
     public static ProgressStreamImage? From(Dictionary<string, DynamoDBEvent.AttributeValue>? image)
     {
@@ -37,9 +36,6 @@ public sealed record ProgressStreamImage(
                 : 0,
             image.TryGetValue("PointsEarned", out var pointsEarned) && !string.IsNullOrEmpty(pointsEarned.N)
                 ? int.Parse(pointsEarned.N, CultureInfo.InvariantCulture)
-                : 0,
-            image.TryGetValue("PointsSpent", out var pointsSpent) && !string.IsNullOrEmpty(pointsSpent.N)
-                ? int.Parse(pointsSpent.N, CultureInfo.InvariantCulture)
                 : 0);
     }
 }

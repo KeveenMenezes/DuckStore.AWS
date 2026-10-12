@@ -1,5 +1,7 @@
 ﻿using BuildingBlocks.Core.Validation;
 using Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
+using Payment.Function.Modules.Payments.Features.RegisterPayment;
+using Payment.Function.Modules.Payments.Features.VoidPayment;
 namespace Payment.Function.Shared.Configuration;
 
 // Single DI composition for the whole service, shared by the [LambdaStartup] consumers, the
@@ -18,13 +20,13 @@ public static class ServiceRegistration
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
         services.AddScoped(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
 
-        // Explicit, because there is no scanning left to discover them —
-        // the point of dropping FluentValidation (ADR-0042 §7).
-        services.AddScoped<IValidator<CreatePaymentCommand>, CreatePaymentCommandValidator>();
-
         // DynamoDB Local injects AWS_ENDPOINT_URL_DYNAMODB; the SDK resolves it on its own.
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
         services.AddScoped<IPaymentRepository, DynamoPaymentRepository>();
+
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<RegisterPaymentHandler>();
+        services.AddScoped<VoidPaymentHandler>();
 
         services.AddEventBridgeMessaging(configuration);
         services.AddIdempotentEventConsumer(ProcessedIntegrationEvent.TableName);
@@ -32,6 +34,7 @@ public static class ServiceRegistration
         // Stream-publisher rules + dispatcher (see ADR-0019). Scoped so a rule can depend on the
         // scoped repository; add a rule per state-change the Payments module needs to publish.
         services.AddScoped<IStreamRule<PaymentStreamImage>, PaymentRequestedRule>();
+        services.AddScoped<IStreamRule<PaymentStreamImage>, PaymentDeclinedInsufficientPointsRule>();
         services.AddScoped<StreamRuleDispatcher<PaymentStreamImage>>();
 
         return services;

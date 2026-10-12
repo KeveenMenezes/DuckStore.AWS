@@ -12,6 +12,14 @@ export function createOrderId(): string {
   return `CDK-${timePart}-${randomPart}`
 }
 
+/**
+ * Generate the id of one checkout attempt (ADR-0050 §3): kept across retries of that attempt so the
+ * server returns the same order instead of creating a second one.
+ */
+export function createCheckoutId(): string {
+  return crypto.randomUUID()
+}
+
 /** Generate a user id, e.g. `user_lxyz12`. */
 export function createUserId(): string {
   return `user_${Date.now().toString(36)}`

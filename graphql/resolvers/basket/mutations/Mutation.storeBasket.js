@@ -37,6 +37,9 @@ export function request(ctx) {
   const attributeValues = {
     OwnerId: ownerId,
     Data: JSON.stringify({ OwnerId: ownerId, Items: items, TotalPrice: totalPrice }),
+    // A fresh token on every write: the checkout saga closes the cart only while its Version is
+    // still the one Pricing quoted (ADR-0050 §4). MergeAsync (Basket.Function) does the same.
+    Version: util.autoId(),
   }
 
   // Only guest carts expire; user carts omit ExpiresAt so DynamoDB TTL never touches them.

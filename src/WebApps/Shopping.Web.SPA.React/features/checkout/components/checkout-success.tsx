@@ -19,7 +19,7 @@ export function CheckoutSuccess({ orderId }: { orderId: string | null }) {
           <CardContent className="flex flex-col items-center gap-2 p-6">
             <Package className="h-6 w-6 text-primary" />
             <span className="text-sm text-muted-foreground">Order number</span>
-            <span className="font-mono text-lg font-bold text-primary">{orderId}</span>
+            <span data-testid="order-number" className="font-mono text-lg font-bold text-primary">{orderId}</span>
           </CardContent>
         </Card>
       )}

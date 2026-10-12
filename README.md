@@ -91,7 +91,7 @@ Captured from the live environment at
 | Product detail | Code challenges |
 |---|---|
 | [![Product detail](./docs/img/screenshots/product-detail.png)](https://duckstore.dev.keveenmenezes.com) | [![Challenges](./docs/img/screenshots/challenges.png)](https://duckstore.dev.keveenmenezes.com/challenges) |
-| Price, installment plan, stock and the aggregated rating histogram — one read, no fan-out across services. | Server-side graded challenges: the answer key is structurally unreachable from the public read path, and points redeem into a customer-scoped Pricing discount. |
+| Price, installment plan, stock and the aggregated rating histogram — one read, no fan-out across services. | Server-side graded challenges: the answer key is structurally unreachable from the public read path. Points earned from challenges and reviews go into a ledger and are used in the cart, up to 20% of the order. |
 
 <details>
 <summary><strong>Cart</strong> — guest baskets work without signing in</summary>
@@ -321,7 +321,7 @@ way down.
   ([ADR-0026](./docs/adr/0026-pricing-bounded-context-price-and-campaign-ownership.md)) is what
   forced Basket to have *zero* discount logic — a boundary correction, not a refactor.
 - **Ubiquitous language** is visible in the code: `ShoppingCart`, `Order`, `Campaign`,
-  `CustomerDiscount`, `PlayerProgress`, `AnswerKey`. Integration events are named after the
+  `PointsTransaction`, `PlayerProgress`, `AnswerKey`. Integration events are named after the
   **domain occurrence**, never after the mechanics of the change
   ([ADR-0031](./docs/adr/0031-cdc-events-named-after-domain-occurrence-no-changetype-discriminator.md))
   — `PaymentAuthorized`, not `PaymentRowUpdated`.

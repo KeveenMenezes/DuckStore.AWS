@@ -7,7 +7,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import { Construct } from 'constructs';
-import { REWARD_CURRENCY_PER_UNIT, REWARD_EXPIRY_DAYS, REWARD_POINTS_PER_UNIT } from './reward-config';
+import { REWARD_CURRENCY_PER_UNIT, REWARD_POINTS_PER_UNIT } from './reward-config';
 
 // The GraphQL contract lives at the repo root (ADR-0033) — shared infrastructure, not
 // SPA code: the CDK deploys it to AppSync, the SPA's local yoga backend executes it in
@@ -24,15 +24,19 @@ export interface AppSyncApiProps {
   // Express saga behind createProductWithPrice (ADR-0032), invoked synchronously via
   // an HTTP datasource calling states:StartSyncExecution.
   readonly productCreateSaga: sfn.IStateMachine;
+  // Express saga behind checkoutBasket (ADR-0050), invoked the same way.
+  readonly checkoutSaga: sfn.IStateMachine;
 }
 
 export class AppSyncApi extends Construct {
   public readonly api: appsync.GraphqlApi;
   private readonly productCreateSaga: sfn.IStateMachine;
+  private readonly checkoutSaga: sfn.IStateMachine;
 
   constructor(scope: Construct, id: string, props: AppSyncApiProps) {
     super(scope, id);
     this.productCreateSaga = props.productCreateSaga;
+    this.checkoutSaga = props.checkoutSaga;
 
     // GraphQL API — three auth modes:
     //   Default:    Shopping Cognito user pool (customers, required for mutations +
@@ -107,33 +111,39 @@ export class AppSyncApi extends Construct {
     });
   }
 
-  // Pipeline resolver (ADR-0029) — this repo's first: every other resolver here is a single-step
-  // unit resolver against one data source. `steps` are the intermediate AppSync Functions (each its
-  // own request/response, e.g. `Mutation.createReview.checkExisting.js`), run in order and sharing
+  // Pipeline resolver (ADR-0029). `steps` are the intermediate AppSync Functions (each its own
+  // request/response, e.g. `Mutation.createReview.checkExisting.js`), run in order and sharing
   // `ctx.stash`/`ctx.prev.result`; the top-level `${typeName}.${fieldName}.js` file is just the
-  // pipeline's own pass-through request/response (returns `ctx.prev.result`).
+  // pipeline's own pass-through request/response (returns `ctx.prev.result`). A step given as a
+  // file name runs against `dataSource`; one given as `{ file, dataSource }` runs against its own —
+  // an orchestration pipeline whose steps call different services (checkoutBasket used it until
+  // ADR-0050 moved it to a saga).
   private pipelineResolver(
-    dataSource: appsync.BaseDataSource,
+    dataSource: appsync.BaseDataSource | undefined,
     id: string,
     typeName: string,
     fieldName: string,
     domain: string,
-    steps: string[],
+    steps: Array<string | { file: string; dataSource: appsync.BaseDataSource }>,
   ) {
     const runtime = appsync.FunctionRuntime.JS_1_0_0;
     const readResolverCode = (fileName: string) =>
       appsync.Code.fromInline(readFileSync(this.resolverPath(domain, typeName, fileName), 'utf-8'));
 
-    const functions = steps.map(
-      (fileName, index) =>
-        new appsync.AppsyncFunction(this, `${id}Fn${index}`, {
-          api: this.api,
-          dataSource,
-          name: `${id}Fn${index}`,
-          runtime,
-          code: readResolverCode(fileName),
-        }),
-    );
+    const functions = steps.map((step, index) => {
+      const { file, dataSource: stepDataSource } =
+        typeof step === 'string' ? { file: step, dataSource } : step;
+      if (!stepDataSource) {
+        throw new Error(`Pipeline step ${file} of ${id} has no data source.`);
+      }
+      return new appsync.AppsyncFunction(this, `${id}Fn${index}`, {
+        api: this.api,
+        dataSource: stepDataSource,
+        name: `${id}Fn${index}`,
+        runtime,
+        code: readResolverCode(file),
+      });
+    });
 
     this.api.createResolver(id, {
       typeName,
@@ -202,10 +212,6 @@ export class AppSyncApi extends Construct {
       tableName: 'points-transactions',
       grantIndexPermissions: true,
     });
-    // Customer-scoped reward (ADR-0046 §4) — no GSI, myRewards queries the base table by OwnerId.
-    const customerDiscountsTable = dynamodb.Table.fromTableName(
-      this, 'CustomerDiscountsTable', 'customer-discounts',
-    );
 
     const productsDs = this.dynamoDbDataSource('ProductsDS', productsTable);
     const categoriesDs = this.dynamoDbDataSource('CategoriesDS', categoriesTable);
@@ -226,7 +232,6 @@ export class AppSyncApi extends Construct {
     // item only" is enforced by the resolver's hard-coded SK (ADR-0045 §2).
     const challengesAdminDs = this.dynamoDbDataSource('ChallengesAdminDS', challengesTable);
     const challengeProgressDs = this.dynamoDbDataSource('ChallengeProgressDS', challengeProgressTable);
-    const customerDiscountsDs = this.dynamoDbDataSource('CustomerDiscountsDS', customerDiscountsTable);
     const pointsTransactionsDs = this.dynamoDbDataSource('PointsTransactionsDS', pointsTransactionsTable);
     // NONE (local) data source — rewardConversion has no backend call, values are baked in below.
     const rewardConversionDs = api.addNoneDataSource('RewardConversionDS');
@@ -251,11 +256,9 @@ export class AppSyncApi extends Construct {
     // the public ChallengesDS.
     challengesTable.grant(challengesAdminDs, 'dynamodb:UpdateItem');
     challengeProgressTable.grantReadData(challengeProgressDs);
-    customerDiscountsTable.grantReadData(customerDiscountsDs);
     pointsTransactionsTable.grantReadData(pointsTransactionsDs);
 
     // Lambda data sources — imported by function name (no CF coupling)
-    const checkoutFn = lambda.Function.fromFunctionName(this, 'CheckoutFn', 'basket-checkout-basket');
     const mergeBasketFn = lambda.Function.fromFunctionName(this, 'MergeBasketFn', 'basket-merge-basket');
     const createCampaignFn = lambda.Function.fromFunctionName(
       this, 'CreateCampaignFn', 'pricing-create-campaign',
@@ -276,11 +279,7 @@ export class AppSyncApi extends Construct {
     const revealChallengeHintFn = lambda.Function.fromFunctionName(
       this, 'RevealChallengeHintFn', 'challenges-reveal-hint',
     );
-    const redeemChallengePointsFn = lambda.Function.fromFunctionName(
-      this, 'RedeemChallengePointsFn', 'challenges-redeem-points',
-    );
     // addLambdaDataSource automatically grants lambda:InvokeFunction to the DS role
-    const checkoutDs = api.addLambdaDataSource('CheckoutDS', checkoutFn);
     const mergeBasketDs = api.addLambdaDataSource('MergeBasketDS', mergeBasketFn);
     const createCampaignDs = api.addLambdaDataSource('CreateCampaignDS', createCampaignFn);
     const endCampaignDs = api.addLambdaDataSource('EndCampaignDS', endCampaignFn);
@@ -301,10 +300,6 @@ export class AppSyncApi extends Construct {
       'RevealChallengeHintDS',
       revealChallengeHintFn,
     );
-    const redeemChallengePointsDs = api.addLambdaDataSource(
-      'RedeemChallengePointsDS',
-      redeemChallengePointsFn,
-    );
 
     // HTTP data source — Step Functions StartSyncExecution (ADR-0032)
     // The sync-states.<region> endpoint is the dedicated StartSyncExecution endpoint —
@@ -317,6 +312,7 @@ export class AppSyncApi extends Construct {
       },
     });
     this.productCreateSaga.grantStartSyncExecution(sfnDs);
+    this.checkoutSaga.grantStartSyncExecution(sfnDs);
 
     // Resolvers — one JS file per (typeName, fieldName) pair
 
@@ -349,16 +345,12 @@ export class AppSyncApi extends Construct {
     this.resolver(orderingDs, 'OrdersByCustomerResolver', 'Query', 'ordersByCustomer', 'orders');
     // Direct DynamoDB GetItem on productId#sub — the caller's own review row (ADR-0049 §4).
     this.resolver(reviewsDs, 'MyReviewResolver', 'Query', 'myReview', 'reviews');
-    // Direct DynamoDB resolver — Cognito only; Query on OwnerId filtered to Status=Issued and not
-    // expired (ADR-0046 §4).
-    this.resolver(customerDiscountsDs, 'MyRewardsResolver', 'Query', 'myRewards', 'pricing');
-    // NONE resolver — Cognito only; values baked in at synth time (ADR-0046 §8).
+    // NONE resolver — Cognito only; values baked in at synth time (ADR-0048 §3).
     this.resolver(
       rewardConversionDs, 'RewardConversionResolver', 'Query', 'rewardConversion', 'pricing',
       {
         __REWARD_POINTS_PER_UNIT__: REWARD_POINTS_PER_UNIT.toString(),
         __REWARD_CURRENCY_PER_UNIT__: REWARD_CURRENCY_PER_UNIT.toString(),
-        __REWARD_EXPIRY_DAYS__: REWARD_EXPIRY_DAYS.toString(),
       },
     );
 
@@ -378,7 +370,13 @@ export class AppSyncApi extends Construct {
     // checkoutBasket/mergeBasket are Cognito-only (see ADR-0016). storeBasket is a direct
     // DynamoDB PutItem resolver (ADR-0009).
     this.resolver(cartsDs, 'StoreBasketResolver', 'Mutation', 'storeBasket', 'basket');
-    this.resolver(checkoutDs, 'CheckoutBasketResolver', 'Mutation', 'checkoutBasket', 'basket');
+    // HTTP resolver → checkout-saga Express state machine (ADR-0050), replacing the ADR-0048 §4
+    // pipeline. Same construct id as the pipeline resolver it replaces, so CloudFormation updates
+    // the resolver in place instead of creating a second one for the same field.
+    this.resolver(
+      sfnDs, 'CheckoutBasketResolver', 'Mutation', 'checkoutBasket', 'basket',
+      { __STATE_MACHINE_ARN__: this.checkoutSaga.stateMachineArn },
+    );
     this.resolver(mergeBasketDs, 'MergeBasketResolver', 'Mutation', 'mergeBasket', 'basket');
     this.resolver(cartsDs, 'DeleteBasketResolver', 'Mutation', 'deleteBasket', 'basket');
     this.pipelineResolver(reviewsDs, 'CreateReviewResolver', 'Mutation', 'createReview', 'reviews', [
@@ -424,9 +422,6 @@ export class AppSyncApi extends Construct {
     );
     this.resolver(
       revealChallengeHintDs, 'RevealChallengeHintResolver', 'Mutation', 'revealChallengeHint', 'challenges',
-    );
-    this.resolver(
-      redeemChallengePointsDs, 'RedeemChallengePointsResolver', 'Mutation', 'redeemChallengePoints', 'challenges',
     );
 
     // Admin-only direct DynamoDB UpdateItem on the PUBLIC item (ADR-0009) — no Lambda: one item,

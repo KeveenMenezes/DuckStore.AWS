@@ -14,7 +14,7 @@ import { useScore } from "@/features/challenges/hooks/use-score"
  */
 export function usePointsBalance() {
   const { user } = useAuth()
-  const { score, isLoading } = useScore()
+  const { score, isLoading, refresh } = useScore()
 
-  return { balance: score, isAuthenticated: user !== null, isLoading }
+  return { balance: score, isAuthenticated: user !== null, isLoading, refresh }
 }

@@ -1,14 +1,24 @@
 ﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Publishers.Rules;
 
-// Publishes PaymentRequestedEvent when a new, still-pending payment row lands in the table. The
-// aggregate is rehydrated from the repository (a domain abstraction — not AWS infrastructure);
+// Publishes PaymentRequestedEvent when a payment becomes Pending: on the MODIFY Registered → Pending
+// when the checkout event promotes a payment the checkout saga registered (ADR-0050 §6) — or
+// Voided → Pending when a void raced a successful close of the same attempt — on the
+// MODIFY AwaitingPoints → Pending once Challenges reserved the checkout's points (ADR-0048 §6).
+// Registered and Voided never match, so they never reach the gateway.
+// The aggregate is rehydrated from the repository (a domain abstraction — not AWS infrastructure);
 // the rule never references EventBridge and only returns a generic PublishInstruction.
 public sealed class PaymentRequestedRule(IPaymentRepository payments) : IStreamRule<PaymentStreamImage>
 {
+    private static readonly string Pending = nameof(PaymentStatus.Pending);
+    private static readonly string AwaitingPoints = nameof(PaymentStatus.AwaitingPoints);
+    private static readonly string Registered = nameof(PaymentStatus.Registered);
+    private static readonly string Voided = nameof(PaymentStatus.Voided);
+
     public bool Match(StreamContext<PaymentStreamImage> context) =>
-        context.EventName == "INSERT" &&
-        context.New?.Type == "Payment" &&
-        context.New?.Status == "Pending";
+        context.New is { Type: "Payment" } next
+        && next.Status == Pending
+        && context.EventName == "MODIFY"
+        && (context.Old?.Status == AwaitingPoints || context.Old?.Status == Registered || context.Old?.Status == Voided);
 
     public async Task<PublishInstruction> BuildAsync(
         StreamContext<PaymentStreamImage> context, CancellationToken cancellationToken = default)
@@ -27,7 +37,6 @@ public sealed class PaymentRequestedRule(IPaymentRepository payments) : IStreamR
         CardNumber = payment.Card.CardNumber,
         Expiration = payment.Card.Expiration,
         Cvv = payment.Card.Cvv,
-        PaymentMethod = (int)payment.Card.PaymentMethod,
-        DiscountId = payment.DiscountId
+        PaymentMethod = (int)payment.Card.PaymentMethod
     };
 }

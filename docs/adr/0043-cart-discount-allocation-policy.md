@@ -11,6 +11,8 @@ tags:
 **Accepted** — July 2026. Implemented: `GetBasketInstallmentPlanHandler` injects `ICampaignRepository`
 and applies the allocation rule below.
 
+**Extended** — October 2026 (proposed): [ADR-0050](./0050-checkout-step-functions-express-saga.md) §5 exposes the per-line split of the post-campaign price on the quote; the allocation rule is unchanged.
+
 This ADR does not supersede an existing record. It closes a gap left open between
 [ADR-0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md) (campaigns discount
 individual products) and [ADR-0028](./0028-gateway-cost-table-and-payment-highlights.md) (a cart is

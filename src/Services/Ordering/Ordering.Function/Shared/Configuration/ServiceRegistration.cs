@@ -33,6 +33,7 @@ public static class ServiceRegistration
         // scoped repository; add a rule per state-change the Orders module needs to publish.
         services.AddScoped<IStreamRule<OrderStreamImage>, OrderCreatedRule>();
         services.AddScoped<IStreamRule<OrderStreamImage>, OrderCompletedRule>();
+        services.AddScoped<IStreamRule<OrderStreamImage>, OrderCancelledRule>();
         services.AddScoped<StreamRuleDispatcher<OrderStreamImage>>();
 
         return services;

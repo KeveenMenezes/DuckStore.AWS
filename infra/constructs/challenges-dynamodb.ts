@@ -30,12 +30,11 @@ export class ChallengesDynamoDB extends Construct {
       projectionType: dynamodb.ProjectionType.ALL,
     });
 
-    // PK=OwnerId, SK=PROFILE|ATTEMPT#<questionId>|REDEMPTION#<id> (ADR-0045 §5, REDEMPTION# from
-    // CH-11). No GSI — myChallengeProgress and every write are scoped to a single OwnerId
-    // partition. NEW_AND_OLD_IMAGES drives challenges-progress-stream-publisher (ADR-0045 §7): the
-    // rule dispatcher diffs Old/New to detect the IsCorrect null→set transition (an attempt row can
-    // be pre-created by a hint reveal before it's ever answered) and the REDEMPTION# insert
-    // (ADR-0046 §3).
+    // PK=OwnerId, SK=PROFILE|ATTEMPT#<questionId> (ADR-0045 §5); redemptions live in the points
+    // ledger below (ADR-0048). No GSI — myChallengeProgress and every write are scoped to a single
+    // OwnerId partition. NEW_AND_OLD_IMAGES drives challenges-progress-stream-publisher
+    // (ADR-0045 §7): the rule dispatcher diffs Old/New to detect the IsCorrect null→set transition
+    // (an attempt row can be pre-created by a hint reveal before it's ever answered).
     this.challengeProgressTable = new dynamodb.Table(this, 'ChallengeProgressTable', {
       tableName: 'challenge-progress',
       partitionKey: { name: 'OwnerId', type: dynamodb.AttributeType.STRING },

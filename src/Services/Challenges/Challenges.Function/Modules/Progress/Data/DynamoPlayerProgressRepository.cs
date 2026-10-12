@@ -161,10 +161,47 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
         }
     }
 
-    public async Task<Redemption> RedeemPointsAsync(
-        OwnerId ownerId, PlayerProgress delta, CancellationToken cancellationToken = default)
+    public async Task<bool> CreditAsync(PointsTransaction credit, CancellationToken cancellationToken = default)
     {
-        var redemption = delta.Redemptions.Single();
+        var ledgerPut = BuildLedgerPut(credit);
+
+        var balanceUpdate = new TransactWriteItem
+        {
+            Update = new Update
+            {
+                TableName = TableName,
+                Key = Key(credit.OwnerId.Value, ProgressSchema.ProfileSortKey),
+                UpdateExpression = "ADD Score :points",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":points"] = new AttributeValue { N = credit.Points.ToString(CultureInfo.InvariantCulture) }
+                }
+            }
+        };
+
+        var transactItems = new List<TransactWriteItem> { ledgerPut, balanceUpdate };
+
+        try
+        {
+            await dynamoDb.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }, cancellationToken);
+
+            return true;
+        }
+        catch (TransactionCanceledException ex)
+            when (ConditionFailedOn(ex, transactItems.IndexOf(ledgerPut)))
+        {
+            // Already credited: the ledger row is the lock, and the balance update was cancelled
+            // with it.
+            return false;
+        }
+    }
+
+    public async Task<PointsReservationOutcome> ReservePointsAsync(
+        OwnerId ownerId, Guid orderId, int points, CancellationToken cancellationToken = default)
+    {
+        var now = DateTime.UtcNow;
+        var reservation = PointsTransaction.Reserve(ownerId, orderId, points, now);
 
         var balanceUpdate = new TransactWriteItem
         {
@@ -172,62 +209,183 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
             {
                 TableName = TableName,
                 Key = Key(ownerId.Value, ProgressSchema.ProfileSortKey),
-                // The only guard on the balance invariant (ADR-0046 §2) — enforced by the
-                // database, not by a load-then-check in the handler, so concurrent redemptions
-                // can't both pass.
-                ConditionExpression = "Score >= :pts",
-                UpdateExpression = "ADD Score :scoreDelta, PointsSpent :pts",
+                // The balance guard, enforced by the database so concurrent checkouts can't both
+                // pass. A missing PROFILE fails it too: no profile, no points.
+                ConditionExpression = "Score >= :points",
+                UpdateExpression = "ADD Score :debit",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
-                    [":pts"] = new AttributeValue
-                    {
-                        N = redemption.Points.ToString(CultureInfo.InvariantCulture)
-                    },
-                    [":scoreDelta"] = new AttributeValue
-                    {
-                        N = delta.Score.ToString(CultureInfo.InvariantCulture)
-                    }
+                    [":points"] = new AttributeValue { N = points.ToString(CultureInfo.InvariantCulture) },
+                    [":debit"] = new AttributeValue { N = reservation.Points.ToString(CultureInfo.InvariantCulture) }
                 }
             }
         };
-
-        var redemptionPut = new TransactWriteItem
-        {
-            Put = new Put
-            {
-                TableName = TableName,
-                Item = new Dictionary<string, AttributeValue>
-                {
-                    ["OwnerId"] = new(ownerId.Value),
-                    ["SK"] = new(ProgressSchema.RedemptionSortKey(redemption.Id)),
-                    ["PointsSpent"] = new AttributeValue
-                    {
-                        N = redemption.Points.ToString(CultureInfo.InvariantCulture)
-                    },
-                    ["RedeemedAt"] = new(redemption.RedeemedAt.ToString("O"))
-                },
-                // A fresh Guid per Redemption.Create — this can only fail on an astronomically
-                // unlikely id collision, never a legitimate replay (unlike SaveAttemptAsync,
-                // there is no client-supplied idempotency key to collide on here). Deliberately
-                // *not* mapped to InsufficientPointsException below: a collision here means the
-                // customer had the points all along, and telling them otherwise would be a lie.
-                ConditionExpression = "attribute_not_exists(SK)"
-            }
-        };
-
-        var transactItems = new List<TransactWriteItem> { balanceUpdate, redemptionPut };
+        var ledgerPut = BuildLedgerPut(reservation);
+        var transactItems = new List<TransactWriteItem> { balanceUpdate, ledgerPut };
 
         try
         {
             await dynamoDb.TransactWriteItemsAsync(
                 new TransactWriteItemsRequest { TransactItems = transactItems }, cancellationToken);
 
-            return redemption;
+            return PointsReservationOutcome.Reserved;
+        }
+        catch (TransactionCanceledException ex)
+            when (ConditionFailedOn(ex, transactItems.IndexOf(ledgerPut)))
+        {
+            // Checked first: on a redelivery the balance condition may fail too (the points were
+            // already debited), but the existing row is what makes it a replay.
+            return PointsReservationOutcome.AlreadyProcessed;
         }
         catch (TransactionCanceledException ex)
             when (ConditionFailedOn(ex, transactItems.IndexOf(balanceUpdate)))
         {
-            throw new InsufficientPointsException(redemption.Points);
+            return await PutFailedReservationAsync(
+                PointsTransaction.Fail(ownerId, orderId, points, now), cancellationToken);
+        }
+    }
+
+    public async Task<PointsTransaction?> GetRedemptionAsync(
+        OwnerId ownerId, Guid orderId, CancellationToken cancellationToken = default)
+    {
+        var response = await dynamoDb.GetItemAsync(
+            new GetItemRequest
+            {
+                TableName = PointsTransactionsSchema.TableName,
+                Key = new Dictionary<string, AttributeValue>
+                {
+                    [PointsTransactionsSchema.PartitionKey] = new(ownerId.Value),
+                    [PointsTransactionsSchema.SortKey] = new(PointsTransactionsSchema.RedemptionTransactionId(orderId))
+                },
+                ConsistentRead = true
+            },
+            cancellationToken);
+
+        if (response.Item is not { Count: > 0 } item)
+        {
+            return null;
+        }
+
+        return PointsTransaction.Load(
+            ownerId,
+            item[PointsTransactionsSchema.SortKey].S,
+            Enum.Parse<PointsTransactionType>(item["Type"].S),
+            Enum.Parse<PointsTransactionStatus>(item["Status"].S),
+            int.Parse(item["Points"].N, CultureInfo.InvariantCulture),
+            item["SourceId"].S,
+            item.TryGetValue(PointsTransactionsSchema.OrderIdAttribute, out var order) ? order.S : null,
+            DateTime.Parse(item[PointsTransactionsSchema.CreatedAtAttribute].S, null, DateTimeStyles.RoundtripKind),
+            DateTime.Parse(item["UpdatedAt"].S, null, DateTimeStyles.RoundtripKind));
+    }
+
+    public async Task<bool> SaveSettlementAsync(PointsTransaction settled, CancellationToken cancellationToken = default)
+    {
+        var from = settled.PreviousStatus
+            ?? throw new InvalidOperationException($"Points transaction \"{settled.Id}\" has no settlement to save.");
+
+        var statusUpdate = new Update
+        {
+            TableName = PointsTransactionsSchema.TableName,
+            Key = new Dictionary<string, AttributeValue>
+            {
+                [PointsTransactionsSchema.PartitionKey] = new(settled.OwnerId.Value),
+                [PointsTransactionsSchema.SortKey] = new(settled.Id)
+            },
+            // Only from the exact status the settlement starts from (ADR-0048 §5).
+            ConditionExpression = "#status = :from",
+            UpdateExpression = "SET #status = :to, UpdatedAt = :updatedAt",
+            ExpressionAttributeNames = new Dictionary<string, string> { ["#status"] = "Status" },
+            ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+            {
+                [":from"] = new(from.ToString()),
+                [":to"] = new(settled.Status.ToString()),
+                [":updatedAt"] = new(settled.UpdatedAt.ToString("O"))
+            }
+        };
+
+        return settled.PointsToReturn == 0
+            ? await UpdateStatusAsync(statusUpdate, cancellationToken)
+            : await UpdateStatusAndReturnPointsAsync(statusUpdate, settled, cancellationToken);
+    }
+
+    private async Task<bool> UpdateStatusAsync(Update statusUpdate, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await dynamoDb.UpdateItemAsync(
+                new UpdateItemRequest
+                {
+                    TableName = statusUpdate.TableName,
+                    Key = statusUpdate.Key,
+                    ConditionExpression = statusUpdate.ConditionExpression,
+                    UpdateExpression = statusUpdate.UpdateExpression,
+                    ExpressionAttributeNames = statusUpdate.ExpressionAttributeNames,
+                    ExpressionAttributeValues = statusUpdate.ExpressionAttributeValues
+                },
+                cancellationToken);
+
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    // Status and balance move together or not at all: a returned point is never lost or given
+    // twice (ADR-0048 §2).
+    private async Task<bool> UpdateStatusAndReturnPointsAsync(
+        Update statusUpdate, PointsTransaction settled, CancellationToken cancellationToken)
+    {
+        var ledgerUpdate = new TransactWriteItem { Update = statusUpdate };
+        var balanceUpdate = new TransactWriteItem
+        {
+            Update = new Update
+            {
+                TableName = TableName,
+                Key = Key(settled.OwnerId.Value, ProgressSchema.ProfileSortKey),
+                UpdateExpression = "ADD Score :points",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":points"] = new AttributeValue { N = settled.PointsToReturn.ToString(CultureInfo.InvariantCulture) }
+                }
+            }
+        };
+        var transactItems = new List<TransactWriteItem> { ledgerUpdate, balanceUpdate };
+
+        try
+        {
+            await dynamoDb.TransactWriteItemsAsync(
+                new TransactWriteItemsRequest { TransactItems = transactItems }, cancellationToken);
+
+            return true;
+        }
+        catch (TransactionCanceledException ex) when (ConditionFailedOn(ex, transactItems.IndexOf(ledgerUpdate)))
+        {
+            return false;
+        }
+    }
+
+    private async Task<PointsReservationOutcome> PutFailedReservationAsync(
+        PointsTransaction failure, CancellationToken cancellationToken)
+    {
+        var put = BuildLedgerPut(failure).Put;
+        try
+        {
+            await dynamoDb.PutItemAsync(
+                new PutItemRequest
+                {
+                    TableName = put.TableName,
+                    Item = put.Item,
+                    ConditionExpression = put.ConditionExpression
+                },
+                cancellationToken);
+
+            return PointsReservationOutcome.Failed;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return PointsReservationOutcome.AlreadyProcessed;
         }
     }
 
@@ -251,29 +409,39 @@ public class DynamoPlayerProgressRepository(IAmazonDynamoDB dynamoDb) : IPlayerP
             : 0;
     }
 
-    private static TransactWriteItem BuildLedgerPut(PointsTransaction transaction) =>
-        new()
+    private static TransactWriteItem BuildLedgerPut(PointsTransaction transaction)
+    {
+        var item = new Dictionary<string, AttributeValue>
+        {
+            [PointsTransactionsSchema.PartitionKey] = new(transaction.OwnerId.Value),
+            [PointsTransactionsSchema.SortKey] = new(transaction.Id),
+            ["Type"] = new(transaction.Type.ToString()),
+            ["Status"] = new(transaction.Status.ToString()),
+            ["Points"] = new AttributeValue { N = transaction.Points.ToString(CultureInfo.InvariantCulture) },
+            ["SourceId"] = new(transaction.SourceId),
+            // "O" is fixed-width ISO-8601, so LSI1 (ordered by this attribute) sorts
+            // chronologically as a plain string.
+            [PointsTransactionsSchema.CreatedAtAttribute] = new(transaction.CreatedAt!.Value.ToString("O")),
+            ["UpdatedAt"] = new(transaction.UpdatedAt.ToString("O"))
+        };
+
+        // Only redemptions carry it, which is what keeps GSI1 sparse (ADR-0048 §1).
+        if (transaction.OrderId is not null)
+        {
+            item[PointsTransactionsSchema.OrderIdAttribute] = new(transaction.OrderId);
+        }
+
+        return new TransactWriteItem
         {
             Put = new Put
             {
                 TableName = PointsTransactionsSchema.TableName,
-                Item = new Dictionary<string, AttributeValue>
-                {
-                    [PointsTransactionsSchema.PartitionKey] = new(transaction.OwnerId.Value),
-                    [PointsTransactionsSchema.SortKey] = new(transaction.Id),
-                    ["Type"] = new(transaction.Type.ToString()),
-                    ["Status"] = new(transaction.Status.ToString()),
-                    ["Points"] = new AttributeValue { N = transaction.Points.ToString(CultureInfo.InvariantCulture) },
-                    ["SourceId"] = new(transaction.SourceId),
-                    // "O" is fixed-width ISO-8601, so LSI1 (ordered by this attribute) sorts
-                    // chronologically as a plain string.
-                    [PointsTransactionsSchema.CreatedAtAttribute] = new(transaction.CreatedAt!.Value.ToString("O")),
-                    ["UpdatedAt"] = new(transaction.UpdatedAt.ToString("O"))
-                },
+                Item = item,
                 // The deterministic TransactionId IS the idempotency key (ADR-0048 §1).
                 ConditionExpression = $"attribute_not_exists({PointsTransactionsSchema.SortKey})"
             }
         };
+    }
 
     // Every field on `delta` (a PlayerProgress.CreateEmpty shell with exactly one Apply call) IS
     // the amount to ADD/SET — no scoring/streak decision is made here, only a mechanical

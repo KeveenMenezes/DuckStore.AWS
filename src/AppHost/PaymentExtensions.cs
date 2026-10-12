@@ -53,6 +53,38 @@ public static class PaymentExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
+        // Challenges' points reservation outcome for a checkout that used points:
+        // AwaitingPoints -> Pending / Declined (ADR-0048 §6). Locally EventBridge is best-effort,
+        // so these only run when invoked directly.
+        builder.AddAWSLambdaFunction<Projects.Payment_Function>(
+                "payment-points-reserved-consumer",
+                lambdaHandler: LambdaHandler("Payment.Function", "PointsReservedConsumer"))
+            .WaitForCompletion(paymentMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
+        builder.AddAWSLambdaFunction<Projects.Payment_Function>(
+                "payment-points-reservation-failed-consumer",
+                lambdaHandler: LambdaHandler("Payment.Function", "PointsReservationFailedConsumer"))
+            .WaitForCompletion(paymentMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
+        // Checkout saga steps (ADR-0050 §6): invoked by local.ts's saga emulation, never by an event.
+        builder.AddAWSLambdaFunction<Projects.Payment_Function>(
+                "payment-register",
+                lambdaHandler: LambdaHandler("Payment.Function", "RegisterPayment"))
+            .WaitForCompletion(paymentMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
+        builder.AddAWSLambdaFunction<Projects.Payment_Function>(
+                "payment-void",
+                lambdaHandler: LambdaHandler("Payment.Function", "VoidPayment"))
+            .WaitForCompletion(paymentMigration)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
         builder.AddAWSLambdaFunction<Projects.PaymentGateway_Function>(
                 "paymentgateway-payment-requested-consumer",
                 lambdaHandler: LambdaHandler("PaymentGateway.Function", "PaymentRequestedConsumer"))

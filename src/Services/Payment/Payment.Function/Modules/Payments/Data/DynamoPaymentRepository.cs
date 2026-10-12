@@ -19,11 +19,32 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
             new GetItemRequest
             {
                 TableName = TableName,
-                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) }
+                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) },
+                ConsistentRead = true
             },
             cancellationToken);
 
         return response.Item is { Count: > 0 } ? MapPayment(response.Item) : null;
+    }
+
+    public async Task<PaymentEntity?> GetByOrderIdAsync(Guid orderId, CancellationToken cancellationToken = default)
+    {
+        var response = await dynamoDb.QueryAsync(
+            new QueryRequest
+            {
+                TableName = TableName,
+                IndexName = Gsi1Name,
+                KeyConditionExpression = "GSI1PK = :pk",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":pk"] = new(OrderGsiPk(orderId))
+                },
+                Limit = 1
+            },
+            cancellationToken);
+
+        // GSI1 projects ALL attributes, so the index item maps like a base-table item.
+        return response.Items is [var item, ..] ? MapPayment(item) : null;
     }
 
     public Task AddAsync(PaymentEntity payment, CancellationToken cancellationToken = default) =>
@@ -31,8 +52,74 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
             new PutItemRequest { TableName = TableName, Item = ToItem(payment) },
             cancellationToken);
 
+    public async Task<bool> TryAddAsync(PaymentEntity payment, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await dynamoDb.PutItemAsync(
+                new PutItemRequest
+                {
+                    TableName = TableName,
+                    Item = ToItem(payment),
+                    ConditionExpression = "attribute_not_exists(Id)"
+                },
+                cancellationToken);
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> ReplaceIfStatusAsync(
+        PaymentEntity payment, PaymentStatus expectedStatus, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await dynamoDb.PutItemAsync(
+                new PutItemRequest
+                {
+                    TableName = TableName,
+                    Item = ToItem(payment),
+                    ConditionExpression = StatusCondition,
+                    ExpressionAttributeNames = StatusConditionNames,
+                    ExpressionAttributeValues = StatusConditionValues(expectedStatus)
+                },
+                cancellationToken);
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    // Status is a DynamoDB reserved word, hence the #status alias.
+    private const string StatusCondition = "#status = :expectedStatus";
+
+    private static Dictionary<string, string> StatusConditionNames => new() { ["#status"] = "Status" };
+
+    private static Dictionary<string, AttributeValue> StatusConditionValues(PaymentStatus expectedStatus) =>
+        new() { [":expectedStatus"] = new(expectedStatus.ToString()) };
+
     internal static TransactWriteItem ToTransactWriteItem(PaymentEntity payment) =>
         new() { Put = new Put { TableName = TableName, Item = ToItem(payment) } };
+
+    // The same Put, applied only while the stored payment is still in expectedStatus; otherwise the
+    // whole transaction (inbox record included) is cancelled and the event is retried.
+    internal static TransactWriteItem ToTransactWriteItem(PaymentEntity payment, PaymentStatus expectedStatus) =>
+        new()
+        {
+            Put = new Put
+            {
+                TableName = TableName,
+                Item = ToItem(payment),
+                ConditionExpression = StatusCondition,
+                ExpressionAttributeNames = StatusConditionNames,
+                ExpressionAttributeValues = StatusConditionValues(expectedStatus)
+            }
+        };
 
     public async Task<bool> AnyAsync(CancellationToken cancellationToken = default)
     {
@@ -76,9 +163,6 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
         if (payment.DeclineReason is not null)
             item["DeclineReason"] = new AttributeValue(payment.DeclineReason);
 
-        if (payment.DiscountId is not null)
-            item["DiscountId"] = new AttributeValue(payment.DiscountId);
-
         return item;
     }
 
@@ -101,8 +185,7 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
             Enum.Parse<PaymentStatus>(item["Status"].S),
             item.TryGetValue("AuthorizationCode", out var authCode) ? authCode.S : null,
             item.TryGetValue("DeclineReason", out var declineReason) ? declineReason.S : null,
-            DateTime.Parse(item["CreatedAt"].S, null, DateTimeStyles.RoundtripKind),
-            discountId: item.TryGetValue("DiscountId", out var discountId) ? discountId.S : null);
+            DateTime.Parse(item["CreatedAt"].S, null, DateTimeStyles.RoundtripKind));
     }
 
     private static string OrderGsiPk(Guid orderId) => $"ORDER#{orderId}";

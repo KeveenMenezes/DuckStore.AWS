@@ -1,15 +1,10 @@
-﻿namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
+namespace Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
 
 public static class BasketCheckoutMapper
 {
-    public static CreatePaymentCommand ToCreatePaymentCommand(BasketCheckoutEvent message) =>
-        new(
-            OrderId: message.OrderId,
-            CustomerId: message.CustomerId,
-            Amount: message.TotalPrice,
-            CardNumber: message.Payment.CardNumber,
-            Expiration: message.Payment.Expiration,
-            Cvv: message.Payment.Cvv,
-            PaymentMethod: (PaymentMethod)message.Payment.PaymentMethod,
-            DiscountId: message.DiscountId);
+    // A malformed payload throws, so EventBridge retries it into the DLQ.
+    public static PromotePaymentCommand ToPromotePaymentCommand(BasketCheckoutEvent message) =>
+        message.OrderId == Guid.Empty
+            ? throw new ArgumentException("BasketCheckoutEvent carries no OrderId.", nameof(message))
+            : new PromotePaymentCommand(message.OrderId, message.PointsToUse);
 }

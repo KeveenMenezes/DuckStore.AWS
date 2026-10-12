@@ -7,6 +7,12 @@ public sealed record DiscountedCartLine(decimal UnitNominalPrice, int Quantity, 
     public decimal NominalValue => UnitNominalPrice * Quantity;
 }
 
+// Any line of a cart, with or without a campaign — what LineValuesFrom splits the cart price across.
+public sealed record CartLine(decimal UnitNominalPrice, int Quantity, DiscountValue? Discount)
+{
+    public decimal NominalValue => UnitNominalPrice * Quantity;
+}
+
 // A cart is billed as a single transaction (ADR-0028: the gateway's flat fee is charged once per
 // checkout, not once per item), but campaigns discount individual products. Something therefore has
 // to decide how much of the cart's one price each discounted product is entitled to take off — and
@@ -50,5 +56,30 @@ public static class CartDiscountAllocation
         }
 
         return reduction;
+    }
+
+    // The same policy, line by line: each line's share of the cart price, less its own discount.
+    // The values add up to cartPrice minus TotalReductionFrom, so the per-line prices an order records
+    // (ADR-0050 §5) and the cart total the customer is charged come from one allocation, not two.
+    public static IReadOnlyList<decimal> LineValuesFrom(
+        decimal cartPrice, decimal cartNominalValue, IReadOnlyList<CartLine> lines)
+    {
+        if (cartPrice <= 0 || cartNominalValue <= 0)
+        {
+            return [.. lines.Select(_ => 0m)];
+        }
+
+        return [.. lines.Select(line =>
+        {
+            if (line.Quantity <= 0)
+            {
+                return 0m;
+            }
+
+            var lineShare = cartPrice * (line.NominalValue / cartNominalValue);
+            return line.Discount is null
+                ? lineShare
+                : line.Discount.ApplyTo(lineShare / line.Quantity) * line.Quantity;
+        })];
     }
 }

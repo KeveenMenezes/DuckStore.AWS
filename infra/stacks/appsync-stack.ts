@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import { AppSyncAuth } from '../constructs/appsync-auth';
 import { AppSyncApi } from '../constructs/appsync-api';
 import { ProductCreateSaga } from '../constructs/product-create-saga';
+import { CheckoutSaga } from '../constructs/checkout-saga';
 
 export interface AppSyncStackProps extends cdk.StackProps {
   readonly spaBaseUrls: string[];
@@ -47,10 +48,19 @@ export class AppSyncStack extends cdk.Stack {
 
     const productCreateSaga = new ProductCreateSaga(this, 'ProductCreateSaga');
 
+    // Function names are the fixed physical names set in each service's own stack (see infra/bin/app.ts).
+    const checkoutSaga = new CheckoutSaga(this, 'CheckoutSaga', {
+      quoteFunctionName: 'pricing-get-basket-installment-plan',
+      registerPaymentFunctionName: 'payment-register',
+      voidPaymentFunctionName: 'payment-void',
+      checkoutFunctionName: 'basket-checkout-basket',
+    });
+
     const appsync = new AppSyncApi(this, 'AppSyncApi', {
       shoppingUserPool: auth.shoppingUserPool,
       managementUserPool: auth.managementUserPool,
       productCreateSaga: productCreateSaga.stateMachine,
+      checkoutSaga: checkoutSaga.stateMachine,
     });
 
     new cdk.CfnOutput(this, 'ApiUrl', {

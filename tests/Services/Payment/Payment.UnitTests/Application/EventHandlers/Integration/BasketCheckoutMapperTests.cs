@@ -1,30 +1,31 @@
-﻿namespace Payment.UnitTests.Application.EventHandlers.Integration;
+namespace Payment.UnitTests.Application.EventHandlers.Integration;
 
 public class BasketCheckoutMapperTests
 {
-    [Fact]
-    public void ToCreatePaymentCommand_ShouldMapFields_WhenEventIsValid()
-    {
-        var basketCheckoutEvent = BasketCheckoutEventDataTests.CreateValidBasketCheckoutEvent();
-
-        var command = BasketCheckoutMapper.ToCreatePaymentCommand(basketCheckoutEvent);
-
-        Assert.Equal(basketCheckoutEvent.OrderId, command.OrderId);
-        Assert.Equal(basketCheckoutEvent.CustomerId, command.CustomerId);
-        Assert.Equal(basketCheckoutEvent.Payment.CardNumber, command.CardNumber);
-        Assert.Equal(basketCheckoutEvent.TotalPrice, command.Amount);
-    }
-
-    [Fact]
-    public void ToCreatePaymentCommand_ShouldCarryTheDiscountId_WhenACouponWasApplied()
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1000)]
+    public void ToPromotePaymentCommand_ShouldCarryTheOrderAndThePoints(int pointsToUse)
     {
         var basketCheckoutEvent = BasketCheckoutEventDataTests.CreateValidBasketCheckoutEvent() with
         {
-            DiscountId = "discount-1"
+            PointsToUse = pointsToUse
         };
 
-        var command = BasketCheckoutMapper.ToCreatePaymentCommand(basketCheckoutEvent);
+        var command = BasketCheckoutMapper.ToPromotePaymentCommand(basketCheckoutEvent);
 
-        Assert.Equal("discount-1", command.DiscountId);
+        Assert.Equal(basketCheckoutEvent.OrderId, command.OrderId);
+        Assert.Equal(pointsToUse, command.PointsToUse);
+    }
+
+    [Fact]
+    public void ToPromotePaymentCommand_ShouldThrow_WhenTheEventHasNoOrderId()
+    {
+        var basketCheckoutEvent = BasketCheckoutEventDataTests.CreateValidBasketCheckoutEvent() with
+        {
+            OrderId = Guid.Empty
+        };
+
+        Assert.Throws<ArgumentException>(() => BasketCheckoutMapper.ToPromotePaymentCommand(basketCheckoutEvent));
     }
 }

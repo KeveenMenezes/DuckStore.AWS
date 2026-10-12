@@ -2,9 +2,6 @@
 using Pricing.Function.Modules.Campaigns.Data;
 using Pricing.Function.Modules.Campaigns.Domain.Enums;
 using Pricing.Function.Modules.Campaigns.Domain.ValueObjects;
-using Pricing.Function.Modules.CustomerDiscounts.Data;
-using Pricing.Function.Modules.CustomerDiscounts.Domain.Entities;
-using Pricing.Function.Modules.CustomerDiscounts.Domain.Enums;
 using Pricing.Function.Modules.GatewayCosts.Data;
 using Pricing.Function.Modules.GatewayCosts.Domain.Entities;
 using Pricing.Function.Modules.GatewayCosts.Domain.ValueObjects;
@@ -24,7 +21,6 @@ public class GetBasketInstallmentPlanTests
     private readonly Mock<IPriceRepository> _priceRepository;
     private readonly Mock<IGatewayCostRepository> _gatewayCostRepository;
     private readonly Mock<ICampaignRepository> _campaignRepository;
-    private readonly Mock<ICustomerDiscountRepository> _customerDiscountRepository;
     private readonly GetBasketInstallmentPlanQueryValidator _validator;
 
     public GetBasketInstallmentPlanTests()
@@ -33,7 +29,6 @@ public class GetBasketInstallmentPlanTests
         _priceRepository = _autoMocker.GetMock<IPriceRepository>();
         _gatewayCostRepository = _autoMocker.GetMock<IGatewayCostRepository>();
         _campaignRepository = _autoMocker.GetMock<ICampaignRepository>();
-        _customerDiscountRepository = _autoMocker.GetMock<ICustomerDiscountRepository>();
         NoActiveCampaigns();
         _validator = new GetBasketInstallmentPlanQueryValidator();
     }
@@ -59,8 +54,8 @@ public class GetBasketInstallmentPlanTests
 
     private GetBasketInstallmentPlanHandler CreateHandler() =>
         new(_priceRepository.Object, _gatewayCostRepository.Object, _campaignRepository.Object,
-            _customerDiscountRepository.Object,
-            new InstallmentOptions { ActiveProvider = "Simulated", MinMarginPercent = 0m });
+            new InstallmentOptions { ActiveProvider = "Simulated", MinMarginPercent = 0m },
+            new RewardOptions());
 
     [Fact]
     public async Task Handle_ShouldFindAUnifiedPlan_DistinctFromEitherItemsOwnPlan_WhenCartMixesMargins()
@@ -291,200 +286,6 @@ public class GetBasketInstallmentPlanTests
     }
 
     [Fact]
-    public async Task Handle_ShouldSubtractTheCustomerDiscount_AfterTheCampaignAllocation()
-    {
-        // Same setup as Handle_ShouldDiscountOnlyTheDiscountedItemsShareOfTheCart: campaign brings
-        // the cart to 90, then a 30-currency customer discount comes off that resulting total.
-        var discounted = Guid.NewGuid();
-        var fullPrice = Guid.NewGuid();
-        _priceRepository
-            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-            [
-                Price.Create(ProductId.Of(discounted), nominalPrice: 100m, cost: 50m),
-                Price.Create(ProductId.Of(fullPrice), nominalPrice: 100m, cost: 50m)
-            ]);
-        _gatewayCostRepository
-            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SimulatedGatewayCost());
-        ActiveCampaigns(new Dictionary<Guid, ActiveDiscount>
-        {
-            [discounted] = new(DiscountType.Percentage, 20m)
-        });
-        _customerDiscountRepository
-            .Setup(r => r.GetAsync("USER#alice", "discount-1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CustomerDiscount.Load(
-                "discount-1", "USER#alice", 30m, CustomerDiscountStatus.Issued,
-                DateTime.UtcNow.AddDays(1), "redemption-1"));
-
-        var result = await CreateHandler().Handle(
-            new GetBasketInstallmentPlanQuery(
-                [new BasketInstallmentItem(discounted, 1), new BasketInstallmentItem(fullPrice, 1)],
-                OwnerId: "USER#alice", DiscountId: "discount-1"),
-            CancellationToken.None);
-
-        Assert.Equal(60m, result.Price); // 90 (post-campaign) - 30
-        Assert.Equal(200m, result.TotalOriginalPrice); // sticker price is never discounted
-    }
-
-    [Fact]
-    public async Task Handle_ShouldSubtractTheCustomerDiscount_FromTheCashPriceToo()
-    {
-        // A campaign discount marks down the sticker price and deliberately leaves cashPrice (which
-        // is cost-floor-derived) alone. A customer discount is a fixed currency coupon the customer
-        // paid points for, so it has to be worth the same however they pay — otherwise paying à
-        // vista silently forfeits the reward, and cashPrice can end up above price.
-        var productId = Guid.NewGuid();
-        _priceRepository
-            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 200m, cost: 100m)]);
-        _gatewayCostRepository
-            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SimulatedGatewayCost());
-        _customerDiscountRepository
-            .Setup(r => r.GetAsync("USER#alice", "discount-1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CustomerDiscount.Load(
-                "discount-1", "USER#alice", 30m, CustomerDiscountStatus.Issued,
-                DateTime.UtcNow.AddDays(1), "redemption-1"));
-
-        var undiscounted = await CreateHandler().Handle(
-            new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 1)]),
-            CancellationToken.None);
-
-        var discounted = await CreateHandler().Handle(
-            new GetBasketInstallmentPlanQuery(
-                [new BasketInstallmentItem(productId, 1)], OwnerId: "USER#alice", DiscountId: "discount-1"),
-            CancellationToken.None);
-
-        Assert.Equal(undiscounted.CashPrice - 30m, discounted.CashPrice);
-        Assert.Equal(undiscounted.Price - 30m, discounted.Price);
-        Assert.True(discounted.CashPrice <= discounted.Price);
-    }
-
-    [Fact]
-    public async Task Handle_ShouldFloorTheDiscountedCashPrice_AtZero_NeverNegative()
-    {
-        var productId = Guid.NewGuid();
-        _priceRepository
-            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 50m, cost: 50m)]);
-        _gatewayCostRepository
-            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SimulatedGatewayCost());
-        _customerDiscountRepository
-            .Setup(r => r.GetAsync("USER#alice", "discount-1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CustomerDiscount.Load(
-                "discount-1", "USER#alice", 500m, CustomerDiscountStatus.Issued,
-                DateTime.UtcNow.AddDays(1), "redemption-1"));
-
-        var result = await CreateHandler().Handle(
-            new GetBasketInstallmentPlanQuery(
-                [new BasketInstallmentItem(productId, 1)], OwnerId: "USER#alice", DiscountId: "discount-1"),
-            CancellationToken.None);
-
-        Assert.Equal(0m, result.CashPrice);
-    }
-
-    [Fact]
-    public async Task Handle_ShouldFloorTheCustomerDiscount_AtZero_NeverNegative()
-    {
-        var productId = Guid.NewGuid();
-        _priceRepository
-            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 50m, cost: 50m)]);
-        _gatewayCostRepository
-            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SimulatedGatewayCost());
-        _customerDiscountRepository
-            .Setup(r => r.GetAsync("USER#alice", "discount-1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CustomerDiscount.Load(
-                "discount-1", "USER#alice", 500m, CustomerDiscountStatus.Issued,
-                DateTime.UtcNow.AddDays(1), "redemption-1"));
-
-        var result = await CreateHandler().Handle(
-            new GetBasketInstallmentPlanQuery(
-                [new BasketInstallmentItem(productId, 1)], OwnerId: "USER#alice", DiscountId: "discount-1"),
-            CancellationToken.None);
-
-        Assert.Equal(0m, result.Price);
-    }
-
-    [Fact]
-    public async Task Handle_ShouldReject_WhenTheDiscountBelongsToADifferentOwner()
-    {
-        var productId = Guid.NewGuid();
-        _priceRepository
-            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 100m, cost: 50m)]);
-        _gatewayCostRepository
-            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SimulatedGatewayCost());
-        _customerDiscountRepository
-            .Setup(r => r.GetAsync("USER#mallory", "discount-1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CustomerDiscount.Load(
-                "discount-1", "USER#alice", 30m, CustomerDiscountStatus.Issued,
-                DateTime.UtcNow.AddDays(1), "redemption-1"));
-
-        await Assert.ThrowsAsync<CustomerDiscountNotRedeemableException>(
-            async () => await CreateHandler().Handle(
-                new GetBasketInstallmentPlanQuery(
-                    [new BasketInstallmentItem(productId, 1)], OwnerId: "USER#mallory", DiscountId: "discount-1"),
-                CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task Handle_ShouldReject_WhenTheDiscountIsExpired_EvenIfStatusIsStillIssued()
-    {
-        var productId = Guid.NewGuid();
-        _priceRepository
-            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 100m, cost: 50m)]);
-        _gatewayCostRepository
-            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SimulatedGatewayCost());
-        _customerDiscountRepository
-            .Setup(r => r.GetAsync("USER#alice", "discount-1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CustomerDiscount.Load(
-                "discount-1", "USER#alice", 30m, CustomerDiscountStatus.Issued,
-                DateTime.UtcNow.AddDays(-1), "redemption-1"));
-
-        await Assert.ThrowsAsync<CustomerDiscountNotRedeemableException>(
-            async () => await CreateHandler().Handle(
-                new GetBasketInstallmentPlanQuery(
-                    [new BasketInstallmentItem(productId, 1)], OwnerId: "USER#alice", DiscountId: "discount-1"),
-                CancellationToken.None));
-    }
-
-    [Fact]
-    public async Task Handle_ShouldNotQueryCustomerDiscounts_WhenNoDiscountIdIsGiven()
-    {
-        var productId = Guid.NewGuid();
-        _priceRepository
-            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 100m, cost: 50m)]);
-        _gatewayCostRepository
-            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(SimulatedGatewayCost());
-
-        await CreateHandler().Handle(
-            new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 1)]),
-            CancellationToken.None);
-
-        _customerDiscountRepository.Verify(
-            r => r.GetAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [Fact]
-    public void Validator_ShouldHaveError_WhenDiscountIdIsGiven_WithoutAnOwnerId()
-    {
-        var result = _validator.Validate(
-            new GetBasketInstallmentPlanQuery(
-                [new BasketInstallmentItem(Guid.NewGuid(), 1)], DiscountId: "discount-1")).ToList();
-
-        Assert.Contains(result, f => f.PropertyName == "OwnerId");
-    }
-
-    [Fact]
     public void Validator_ShouldHaveError_WhenItemsIsEmpty()
     {
         var result = _validator.Validate(new GetBasketInstallmentPlanQuery([])).ToList();
@@ -499,5 +300,57 @@ public class GetBasketInstallmentPlanTests
             new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(Guid.NewGuid(), 0)])).ToList();
 
         Assert.NotEmpty(result);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPriceEachLineFromTheCampaignAllocation()
+    {
+        // Same cart as the proportional-discount case: price 100 split 50/50, the first half 20% off.
+        // Each line's unit price is its own share of the post-campaign price.
+        var discounted = Guid.NewGuid();
+        var fullPrice = Guid.NewGuid();
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                Price.Create(ProductId.Of(discounted), nominalPrice: 100m, cost: 50m),
+                Price.Create(ProductId.Of(fullPrice), nominalPrice: 100m, cost: 50m)
+            ]);
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+        ActiveCampaigns(new Dictionary<Guid, ActiveDiscount> { [discounted] = new(DiscountType.Percentage, 20m) });
+
+        var result = await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery(
+                [new BasketInstallmentItem(discounted, 1), new BasketInstallmentItem(fullPrice, 1)]),
+            CancellationToken.None);
+
+        Assert.Equal(
+            [new BasketLineDto(discounted, 1, 40m), new BasketLineDto(fullPrice, 1, 50m)],
+            result.Lines);
+        Assert.Equal(result.Price, result.Lines.Sum(l => l.UnitPrice * l.Quantity));
+    }
+
+    [Fact]
+    public async Task Handle_ShouldPriceLinesPerUnit_RoundedToTheCent()
+    {
+        // 3 units sharing a cart price of 100: the unit price is 33.33, and the lines may differ from
+        // the cart price by the rounding of each unit (the order's total is the charged total).
+        var productId = Guid.NewGuid();
+        _priceRepository
+            .Setup(r => r.GetByProductIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Price.Create(ProductId.Of(productId), nominalPrice: 50m, cost: 100m / 3m)]);
+        _gatewayCostRepository
+            .Setup(r => r.GetByProviderAsync("Simulated", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(SimulatedGatewayCost());
+
+        var result = await CreateHandler().Handle(
+            new GetBasketInstallmentPlanQuery([new BasketInstallmentItem(productId, 3)]),
+            CancellationToken.None);
+
+        var line = Assert.Single(result.Lines);
+        Assert.Equal(Math.Round(result.Price / 3m, 2, MidpointRounding.AwayFromZero), line.UnitPrice);
+        Assert.InRange(Math.Abs(result.Price - line.UnitPrice * 3), 0m, 0.015m);
     }
 }

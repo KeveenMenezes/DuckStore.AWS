@@ -58,6 +58,10 @@ export interface GqlBasketInstallmentPlan {
   cashPrice: number
   maxInstallmentsWithoutInterest: number
   installments: GqlInstallmentOption[]
+  /** This cart's cap in points (20% of the post-campaign price), whatever pointsToUse was. */
+  maxRedeemablePoints: number
+  /** Currency taken off by pointsToUse; price/cashPrice/installments are already net of it. */
+  pointsDiscount: number
 }
 
 export interface BasketInstallmentItemInput {
@@ -206,6 +210,8 @@ export interface ShoppingCartInput {
 }
 
 export interface CheckoutInput {
+  // One per checkout attempt, kept across its retries (ADR-0050 §3).
+  checkoutId: string
   totalPrice: number
   firstName: string
   lastName: string
@@ -221,6 +227,7 @@ export interface CheckoutInput {
   cvv?: string | null
   paymentMethod: number
   installments: number
+  pointsToUse?: number | null
 }
 
 export interface CreateReviewInput {
@@ -321,23 +328,7 @@ export interface GqlPointsHistoryPage {
   nextToken: string | null
 }
 
-export interface GqlRedeemChallengePointsResult {
-  redemptionId: string
-  newBalance: number
-}
-
-// A customer-scoped reward minted from a Challenges points redemption (ADR-0046 §4) — distinct
-// from a campaign discount, which is product-scoped.
-export interface GqlCustomerDiscount {
-  id: string
-  amount: number
-  status: string
-  expiresAt: string
-  sourceRedemptionId: string
-}
-
 export interface GqlRewardConversion {
   pointsPerUnit: number
   currencyPerUnit: number
-  expiryDays: number
 }

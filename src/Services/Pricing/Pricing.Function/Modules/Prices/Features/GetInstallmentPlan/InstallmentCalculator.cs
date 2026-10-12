@@ -15,7 +15,10 @@ public sealed record PricingBreakdown(
     decimal MaxInstallmentValue,
     IReadOnlyList<InstallmentPlanEntry> InstallmentPlan);
 
-public sealed record CartPricingBreakdown(decimal TotalOriginalPrice, PricingBreakdown Breakdown);
+// LineUnitPrices follows the order of the items passed in: each line's share of the post-campaign
+// card price per unit, before any customer (points) discount (ADR-0050 §5).
+public sealed record CartPricingBreakdown(
+    decimal TotalOriginalPrice, PricingBreakdown Breakdown, IReadOnlyList<decimal> LineUnitPrices);
 
 // Pure calculation, no I/O. Replaces the old flat "margin over sale price" walk with a cost-floor
 // model: the merchant's minimum acceptable net (Cost + MinMarginPercent) drives both the à vista
@@ -73,7 +76,8 @@ public static class InstallmentCalculator
                 discounted, totalOriginalPrice, customerDiscountAmount.Value, gatewayCost, valueTiers);
         }
 
-        return new CartPricingBreakdown(totalOriginalPrice, discounted);
+        return new CartPricingBreakdown(
+            totalOriginalPrice, discounted, LineUnitPrices(breakdown.Price, totalOriginalPrice, items));
     }
 
     // Subtracted from the cart's resulting price, floored at zero (ADR-0046 §5) — never allocated
@@ -83,8 +87,8 @@ public static class InstallmentCalculator
     //
     // Unlike ApplyDiscount/ApplyCartDiscounts, this one *does* move cashPrice. A campaign discount
     // is a markdown on the sticker price, which cashPrice (cost-floor-derived) never tracked; a
-    // customer discount is a fixed currency coupon the customer paid points for, and it has to be
-    // worth the same however they pay. Leaving cashPrice alone would both hide the reward from
+    // customer discount is a fixed currency amount the customer paid points for (ADR-0048 §3), and
+    // it has to be worth the same however they pay. Leaving cashPrice alone would both hide the reward from
     // anyone paying à vista and let cashPrice exceed price.
     private static PricingBreakdown ApplyCustomerDiscount(
         PricingBreakdown breakdown, decimal totalOriginalPrice, decimal customerDiscountAmount,
@@ -98,6 +102,18 @@ public static class InstallmentCalculator
 
         return new PricingBreakdown(
             discountedPrice, discountedCashPrice, maxInstallmentsWithoutInterest, maxInstallmentValue, plan);
+    }
+
+    // Allocated from the same pre-campaign cart price ApplyCartDiscounts reduces, so the lines and the
+    // post-campaign price agree up to the per-unit rounding to the cent.
+    private static IReadOnlyList<decimal> LineUnitPrices(
+        decimal cartPrice, decimal totalOriginalPrice,
+        IReadOnlyList<(Price Price, int Quantity, DiscountValue? Discount)> items)
+    {
+        var lines = items.Select(i => new CartLine(i.Price.NominalPrice, i.Quantity, i.Discount)).ToList();
+        var values = CartDiscountAllocation.LineValuesFrom(cartPrice, totalOriginalPrice, lines);
+
+        return [.. items.Select((item, index) => item.Quantity > 0 ? Round(values[index] / item.Quantity) : 0m)];
     }
 
     // How much a discounted product may take off a cart billed as one transaction is a business

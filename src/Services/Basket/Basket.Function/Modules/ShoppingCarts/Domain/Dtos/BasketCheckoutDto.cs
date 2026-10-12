@@ -9,12 +9,13 @@ public class BasketCheckoutDto
     public Guid CustomerId { get; set; }
     public decimal TotalPrice { get; init; }
 
-    // Generated server-side by CheckoutBasketCommandHandler, not supplied by the client (ADR-0038).
+    // Derived by the checkout saga from (owner, checkoutId) — never supplied by the client (ADR-0050 §3).
+    // Only the old pipeline's request, while it still exists, has the handler mint it.
     public Guid OrderId { get; set; }
 
-    // Opaque pass-through, chosen by the customer in the cart (ADR-0046 §6) — Basket never
-    // validates or interprets it, the same as TotalPrice/the card fields. Null when no coupon.
-    public string? DiscountId { get; set; }
+    // Points used in the cart, as confirmed by the checkout saga's Pricing quote (ADR-0048 §4).
+    // Passed through to BasketCheckoutEvent untouched — Basket never validates or interprets it.
+    public int PointsToUse { get; set; }
 
     public BasketCheckoutAddressDto ShippingAddress { get; set; } = new();
     public BasketCheckoutPaymentDto Payment { get; set; } = new();
@@ -35,12 +36,9 @@ public class BasketCheckoutAddressDto
     public string ZipCode { get; set; } = null!;
 }
 
+// No card: Basket never sees it (ADR-0050 §7).
 public class BasketCheckoutPaymentDto
 {
-    public string CardName { get; set; } = null!;
-    public string CardNumber { get; set; } = null!;
-    public string Expiration { get; set; } = null!;
-    public string Cvv { get; set; } = null!;
     public int PaymentMethod { get; set; }
     public int Installments { get; set; }
 }

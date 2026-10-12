@@ -11,10 +11,11 @@ public record BasketCheckoutEvent : IntegrationEvent
     // aggregates key off the same value instead of each minting their own.
     public Guid OrderId { get; set; }
 
-    // Opaque pass-through, chosen by the customer in the cart and carried verbatim to Payment
-    // (ADR-0046 §6) — Basket never validates, interprets or computes anything about it, the same
-    // way it never interprets TotalPrice or the card fields below. Null when no coupon was applied.
-    public string? DiscountId { get; set; }
+    // How many points the customer used in the cart, 0 for none (ADR-0048 §4). A quantity only —
+    // never a currency amount: the points discount is already inside TotalPrice (the total Pricing
+    // charged), and Challenges consumes this event and must never see money (ADR-0046 §1).
+    // Basket passes it through without validating or interpreting it.
+    public int PointsToUse { get; set; }
 
     public BasketCheckoutAddress ShippingAddress { get; set; } = new();
     public BasketCheckoutPayment Payment { get; set; } = new();
@@ -32,12 +33,10 @@ public record BasketCheckoutAddress
     public string ZipCode { get; set; } = default!;
 }
 
+// How the customer chose to pay, never the card: card data reaches only Payment, registered by the
+// checkout saga before the cart closes (ADR-0050 §7).
 public record BasketCheckoutPayment
 {
-    public string CardName { get; set; } = default!;
-    public string CardNumber { get; set; } = default!;
-    public string Expiration { get; set; } = default!;
-    public string Cvv { get; set; } = default!;
     public int PaymentMethod { get; set; }
     public int Installments { get; set; }
 }
