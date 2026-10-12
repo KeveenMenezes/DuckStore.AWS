@@ -1,6 +1,6 @@
 ---
 tags:
-  - status/proposed
+  - status/accepted
   - domain/inventory
   - domain/catalog
   - domain/appsync
@@ -9,7 +9,7 @@ tags:
 # ADR-0052: Inventory Bounded Context — Stock per Warehouse, Owned by the StockKeeper
 
 ## Status
-**Proposed** — October 2026
+**Accepted** — October 2026 (PR to `development`, branch `feat/inventory-warehouses`). Implemented in module 1 (`inventory-warehouses`).
 
 Specified by [SPEC-inventory-warehouses.md](../../SPEC-inventory-warehouses.md), module 1 of
 [SPEC-inventory.md](../../SPEC-inventory.md). The later modules of that map amend this record
@@ -198,7 +198,7 @@ Recorded here so later work starts from it, not decided in detail:
 
 ## As Built (module 1)
 
-- Verified on the real APPSYNC_JS runtime with `aws appsync evaluate-code` (86 cases,
+- Verified on the real APPSYNC_JS runtime with `aws appsync evaluate-code` (88 cases,
   `scripts/inventory/evaluate-resolvers.mjs`), against the local BFF (`scripts/inventory/local-api-checks.mjs`)
   and on dev by `tests/E2E/Inventory/Inventory.E2ETests` (12 tests: StockKeeper, Admin, Seller, customer).
 - `Array.prototype.sort` takes no comparator in APPSYNC_JS: an inline one fails the runtime's
