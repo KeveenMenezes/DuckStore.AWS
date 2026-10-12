@@ -94,7 +94,7 @@
 - [x] Testes de Basket, Payment e Pricing verdes; `cdk synth` limpo; `pnpm build` verde (o build do SST contra o dev).
 - [x] `adr-guardian` e `code-reviewer` sobre o diff da fase (achados aplicados: orçamento de timeout, corrida void × close, recusas em vez de `InternalError` para entrada do cliente, defesas para deploy fora de ordem).
 - [x] Deploy no dev (Pricing, Payment, Basket, AppSync, SPA) e validação dos critérios 1 a 11 do spec, incluindo um caso manual por `errorType` (`PriceChanged`, `PointsAboveCap`, `CartChanged`, `ProductUnavailable`, `InvalidCard`, `BadRequest`) e a latência contra o baseline da T0.
-- [ ] PR da fase 1 (título e resumo mostrados antes).
+- [x] PR da fase 1 (título e resumo mostrados antes): [#179](https://github.com/KeveenMenezes/DuckStore.AWS/pull/179).
 
 ## Fase 2 — `checkout-points-reservation` ([spec](../SPEC-checkout-points-reservation.md))
 
