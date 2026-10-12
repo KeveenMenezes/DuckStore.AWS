@@ -23,7 +23,7 @@
   - Verificar: `npx cdk diff BasketStack` mostra só a remoção do `AWS::Lambda::Url`, da permissão e do output; `grep -rn CheckoutBasketUrl infra/` vazio.
   - Arquivos: `infra/constructs/basket-lambdas.ts`, `infra/stacks/basket-stack.ts`. Dependências: T1.
 
-- [ ] **T3: Pricing devolve `Lines` na cotação** (S)
+- [x] **T3: Pricing devolve `Lines` na cotação** (S) — feito; `CartDiscountAllocation.LineValuesFrom` (mesma política de `TotalReductionFrom`, testado que as duas concordam), `CartPricingBreakdown.LineUnitPrices`, linhas tiradas antes da recotação com pontos; 7 testes novos, 125 verdes
   - Aceite: `GetBasketInstallmentPlanResponse.Lines: [{ ProductId, Quantity, UnitPrice }]` com o preço unitário pós-campanha (alocação ADR-0043); `UnitPrice` = parte da linha no preço pós-campanha ÷ quantidade, arredondado ao centavo (Σ pode diferir pelo arredondamento, no máximo meio centavo por unidade — ADR-0050 §5); a alocação por linha mora no `CartDiscountAllocation` e concorda com `TotalReductionFrom`; a query `basketInstallmentPlan` não muda.
   - Verificar: `dotnet test tests/Services/Pricing/Pricing.UnitTests` com casos de 1 item, vários itens com campanha e arredondamento.
   - Arquivos: `Modules/Prices/Features/GetBasketInstallmentPlan/{Endpoint,Handler,Query}.cs`, domain service de alocação, testes. Dependências: T1.

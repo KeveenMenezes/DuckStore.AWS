@@ -54,6 +54,11 @@ public class GetBasketInstallmentPlanHandler(
         // (ADR-0048 §3). The points discount then goes through the cart-level, after-campaign
         // customer-discount path, which also recomputes the cash price and every installment over
         // the net total (ADR-0046 §5).
+        // Taken before the points re-quote below: line prices are pre-points by definition (ADR-0050 §5).
+        var lines = query.Items
+            .Select((item, index) => new BasketLineDto(item.ProductId, item.Quantity, cartPlan.LineUnitPrices[index]))
+            .ToList();
+
         var maxRedeemablePoints = rewardOptions.MaxRedeemablePoints(cartPlan.Breakdown.Price);
         if (query.PointsToUse > maxRedeemablePoints)
         {
@@ -82,7 +87,8 @@ public class GetBasketInstallmentPlanHandler(
                 .ToList(),
             maxRedeemablePoints,
             pointsDiscount,
-            chargedTotal);
+            chargedTotal,
+            lines);
     }
 
     // The total charged for the customer's payment choice, the same figure the cart shows them:

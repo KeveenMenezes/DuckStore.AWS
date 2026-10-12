@@ -20,6 +20,10 @@ public record GetBasketInstallmentPlanQuery(
 
 public record InstallmentPlanEntryDto(int Count, decimal Value, decimal TotalValue, bool HasInterest);
 
+// One cart line priced by Pricing: its share of the post-campaign card price per unit, before points
+// (ADR-0050 §5). The checkout saga records it on the order instead of the client's cart price.
+public record BasketLineDto(Guid ProductId, int Quantity, decimal UnitPrice);
+
 // Price/CashPrice/InstallmentPlan are already net of PointsDiscount. MaxRedeemablePoints is the cap
 // for this cart whatever PointsToUse was. ChargedTotal is set only when ExpectedTotal was given.
 public record GetBasketInstallmentPlanResult(
@@ -30,7 +34,11 @@ public record GetBasketInstallmentPlanResult(
     IReadOnlyList<InstallmentPlanEntryDto> InstallmentPlan,
     int MaxRedeemablePoints = 0,
     decimal PointsDiscount = 0m,
-    decimal? ChargedTotal = null);
+    decimal? ChargedTotal = null,
+    IReadOnlyList<BasketLineDto>? Lines = null)
+{
+    public IReadOnlyList<BasketLineDto> Lines { get; init; } = Lines ?? [];
+}
 
 public class GetBasketInstallmentPlanQueryValidator : IValidator<GetBasketInstallmentPlanQuery>
 {

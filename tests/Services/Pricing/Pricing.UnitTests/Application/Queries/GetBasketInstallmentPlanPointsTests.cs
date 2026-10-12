@@ -120,6 +120,20 @@ public class GetBasketInstallmentPlanPointsTests
     }
 
     [Fact]
+    public async Task Handle_ShouldPriceTheLinesBeforeThePointsDiscount()
+    {
+        // Points are a cart-level discount (ADR-0048 §3): they never reach the per-line prices an
+        // order records, which would put a points-derived amount into Basket's contract (ADR-0050 §5).
+        CartCosting(cost: 200m, nominalPrice: 250m);
+        var withoutPoints = await Quote();
+
+        var result = await Quote(pointsToUse: 1000);
+
+        Assert.Equal(withoutPoints.Lines, result.Lines);
+        Assert.Equal(200m, Assert.Single(result.Lines).UnitPrice);
+    }
+
+    [Fact]
     public async Task Handle_ShouldSubtractThePointsDiscount_AfterTheCampaignAllocation()
     {
         // Two R$100 products, one 20% off: the campaign allocation brings the cart to 90, and the
