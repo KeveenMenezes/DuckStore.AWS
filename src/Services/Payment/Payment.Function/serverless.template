@@ -1,7 +1,7 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Transform": "AWS::Serverless-2016-10-31",
-  "Description": "This template is partially managed by Amazon.Lambda.Annotations (v1.8.0.0).",
+  "Description": "This template is partially managed by Amazon.Lambda.Annotations (v2.4.0.0).",
   "Resources": {
     "PaymentFunctionFunctionsPaymentAuthorizedConsumerGenerated": {
       "Type": "AWS::Serverless::Function",
@@ -89,6 +89,50 @@
         "CodeUri": ".",
         "Handler": "bootstrap",
         "Runtime": "dotnet10"
+      }
+    },
+    "PaymentFunctionFunctionsPointsReservedConsumerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "Runtime": "dotnet10",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "bootstrap",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "PointsReservedConsumer"
+          }
+        }
+      }
+    },
+    "PaymentFunctionFunctionsPointsReservationFailedConsumerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "Runtime": "dotnet10",
+        "CodeUri": ".",
+        "MemorySize": 512,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaBasicExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "bootstrap",
+        "Environment": {
+          "Variables": {
+            "ANNOTATIONS_HANDLER": "PointsReservationFailedConsumer"
+          }
+        }
       }
     }
   }
