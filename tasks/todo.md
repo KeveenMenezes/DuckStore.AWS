@@ -28,7 +28,7 @@
   - Verificar: `dotnet test tests/Services/Pricing/Pricing.UnitTests` com casos de 1 item, vários itens com campanha e arredondamento.
   - Arquivos: `Modules/Prices/Features/GetBasketInstallmentPlan/{Endpoint,Handler,Query}.cs`, domain service de alocação, testes. Dependências: T1.
 
-- [ ] **T4: Contratos da saga (tipos e nomes)** (S)
+- [x] **T4: Contratos da saga (tipos e nomes)** (S) — feito; `CheckoutBasketRequest` com `CheckoutId`/`CartVersion` opcionais (fora do DTO, para não vazar no evento) e `CheckoutBasketResponse.ErrorType`; `RegisterPayment*`/`VoidPayment*` no Payment, registrados no serializer AOT, com `ToString` redigido e teste; ADR-0050 §10 com a tabela de contratos. As linhas e o `OrderId` da saga viajam no próprio `BasketCheckoutDto` (`Items`, `OrderId`). Replay do registro compara valor + `CardDetails` (cobre forma e parcelas, que mudam o valor)
   - Aceite: definidos, sem comportamento: o `CheckoutBasketRequest` novo (`CheckoutId`, `OrderId`, `CartVersion`, `Lines`, sem cartão) **aceitando também o formato antigo**; os records de request e response de `payment-register`/`payment-void`; os nomes de função; o formato do `cause` de cada `Fail` (`errorType` → campos de `errorInfo`); a fórmula do `OrderId` com 3 vetores de teste fixos.
   - Verificar: build verde; contratos registrados na seção 3 da ADR-0050.
   - Arquivos: `Basket.Function/.../CheckoutBasket/Endpoint.cs`, `Payment.Function/.../Features/{RegisterPayment,VoidPayment}/Contracts.cs`, ADR-0050. Dependências: T1.

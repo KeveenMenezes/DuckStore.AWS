@@ -13,6 +13,10 @@ namespace Payment.Function.Shared.Configuration;
 /// here is therefore a runtime error, not a compile error (ADR-0042 §7).
 /// </remarks>
 [JsonSerializable(typeof(DynamoDBEvent))]
+[JsonSerializable(typeof(RegisterPaymentRequest))]
+[JsonSerializable(typeof(RegisterPaymentResponse))]
+[JsonSerializable(typeof(VoidPaymentRequest))]
+[JsonSerializable(typeof(VoidPaymentResponse))]
 [JsonSerializable(typeof(EventBridgeEvent<BasketCheckoutEvent>))]
 [JsonSerializable(typeof(EventBridgeEvent<PaymentAuthorizedEvent>))]
 [JsonSerializable(typeof(EventBridgeEvent<PaymentDeclinedEvent>))]

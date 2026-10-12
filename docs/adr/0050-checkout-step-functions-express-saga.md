@@ -236,6 +236,18 @@ There is no Step Functions locally. `local.ts` emulates the saga step by step ag
 and the Aspire Lambda emulator, using the same `OrderId` formula (checked against §3's vectors) and
 raising the same `errorType`s — the same arrangement ADR-0032 §6 uses for `createProductWithPrice`.
 
+### 10. Step contracts
+
+Every Lambda the saga invokes returns a typed refusal **as data** (never a thrown error), so the state
+machine can tell a refusal it may compensate from an ambiguous failure it must not (§1).
+
+| Lambda | Request | Response |
+|---|---|---|
+| `pricing-get-basket-installment-plan` | `Items[{ProductId, Quantity}]`, `PointsToUse`, `ExpectedTotal`, `PaymentMethod`, `Installments` | `ChargedTotal`, `Lines[{ProductId, Quantity, UnitPrice}]`, or `Rejection{ErrorType, Message, ServerTotal, MaxRedeemablePoints}` |
+| `payment-register` | `OrderId`, `CustomerId`, `Amount`, `PaymentMethod`, `Installments`, `CardName?`, `CardNumber?`, `Expiration?`, `Cvv?` | `PaymentId`, or `Refusal{ErrorType: InvalidCard \| CheckoutRetryRequired, Message, Field?}` |
+| `basket-checkout-basket` | `BasketCheckoutDto` (with `OrderId` and the saga's `Items`, no card), `CheckoutId`, `CartVersion?` | `IsSuccess`, `OrderId`, `ErrorType?` (`CartChanged`) |
+| `payment-void` | `OrderId` | `Voided` |
+
 ### Flow
 
 ```mermaid
