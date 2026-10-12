@@ -11,6 +11,8 @@ tags:
 
 **Amended** — October 2026: [ADR-0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) §6 amends §1/§3 — Payment also publishes `PaymentDeclinedEvent` for `InsufficientPoints`, and `PaymentRequestedRule` also matches MODIFY `AwaitingPoints → Pending`.
 
+**Amended** — October 2026 (proposed): [ADR-0050](./0050-checkout-step-functions-express-saga.md) §6 amends §3 — the payment is created at checkout by `payment-register` in status `Registered`; `payment-basket-checkout-consumer` only promotes it, and `PaymentRequestedRule` also matches `Registered → Pending`.
+
 ---
 
 ## Context

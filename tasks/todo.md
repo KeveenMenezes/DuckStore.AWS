@@ -13,7 +13,7 @@
 
 ## Fase 1 — `checkout-saga` ([spec](../SPEC-checkout-saga.md))
 
-- [ ] **T1: ADR-0050, checkout como saga Express** (XS)
+- [x] **T1: ADR-0050, checkout como saga Express** (XS) — feito, status **Proposed** (vira Accepted no PR da fase 1, ADR-0000). Duas passadas do `adr-guardian`: a 1ª reprovou (4 bloqueantes: condição do Delete com o carrinho apagado, void em erro ambíguo, replay do registro, corrida da reserva de pontos com `Registered`; 10 a corrigir: emendas não declaradas a 0008/0016/0043, cartão em log e no `PaymentRequestedEvent`, etc.); a 2ª confirmou tudo resolvido e apontou 2 novos (orçamento de timeout, renovação do `checkoutId`), aplicados. Specs dos módulos 1 e 2 e tarefas T5–T14 alinhadas
   - Aceite: a ADR cobre a saga, o `checkoutId`, o `OrderId` derivado, o fechamento atômico com versão, as linhas do Pricing e do Catalog, o `RegisterPayment` e o cartão fora do evento; emenda as ADRs 0048 §4, 0025 e 0038; escrita com a skill `adr` e indexada em `docs/adr/README.md`.
   - Verificar: `adr-guardian` sem conflito com ADR aceita.
   - Arquivos: `docs/adr/0050-*.md`, `docs/adr/README.md`. Dependências: T0.
@@ -24,7 +24,7 @@
   - Arquivos: `infra/constructs/basket-lambdas.ts`, `infra/stacks/basket-stack.ts`. Dependências: T1.
 
 - [ ] **T3: Pricing devolve `Lines` na cotação** (S)
-  - Aceite: `GetBasketInstallmentPlanResponse.Lines: [{ ProductId, Quantity, UnitPrice }]` com o preço unitário pós-campanha (alocação ADR-0043); a soma das linhas bate com o `Price` pós-campanha (diferença de arredondamento distribuída de forma determinística); a query `basketInstallmentPlan` não muda.
+  - Aceite: `GetBasketInstallmentPlanResponse.Lines: [{ ProductId, Quantity, UnitPrice }]` com o preço unitário pós-campanha (alocação ADR-0043); `UnitPrice` = parte da linha no preço pós-campanha ÷ quantidade, arredondado ao centavo (Σ pode diferir pelo arredondamento, no máximo meio centavo por unidade — ADR-0050 §5); a alocação por linha mora no `CartDiscountAllocation` e concorda com `TotalReductionFrom`; a query `basketInstallmentPlan` não muda.
   - Verificar: `dotnet test tests/Services/Pricing/Pricing.UnitTests` com casos de 1 item, vários itens com campanha e arredondamento.
   - Arquivos: `Modules/Prices/Features/GetBasketInstallmentPlan/{Endpoint,Handler,Query}.cs`, domain service de alocação, testes. Dependências: T1.
 
@@ -34,19 +34,19 @@
   - Arquivos: `Basket.Function/.../CheckoutBasket/Endpoint.cs`, `Payment.Function/.../Features/{RegisterPayment,VoidPayment}/Contracts.cs`, ADR-0050. Dependências: T1.
 
 - [ ] **T5: Payment — domínio `Registered`/`Voided` e validação do cartão** (M) — *trilha Payment (subagente)*
-  - Aceite: `PaymentStatus.Registered` e `Voided` (acrescentados no fim do enum); `Payment.Register(...)` com validação (Luhn, `MM/AAAA` não vencida, CVV de 3 ou 4 dígitos; dinheiro dispensa cartão) que lança `InvalidCardException(field)`; `Void()` só a partir de `Registered`, no-op nos demais; `Promote(awaitingPoints)` faz `Registered → Pending/AwaitingPoints`; `PaymentId` derivado do `OrderId` (um pagamento por pedido).
+  - Aceite: `PaymentStatus.Registered` e `Voided` (acrescentados no fim do enum); `Payment.Register(...)` com validação (Luhn, `MM/AAAA` não vencida, CVV de 3 ou 4 dígitos; dinheiro dispensa cartão) que lança `InvalidCardException(field)`; `Void()` só a partir de `Registered`, no-op nos demais; `IsSameRegistration(amount, method, installments)` para o replay; o command de registro redige o cartão no `ToString`; `CardDetails.Of` aceita CVV de 4 dígitos; `Promote(awaitingPoints)` faz `Registered → Pending/AwaitingPoints`; `PaymentId` derivado do `OrderId` (um pagamento por pedido).
   - Verificar: `dotnet test tests/Services/Payment/Payment.UnitTests` com casos de cada regra de validação e de cada transição.
   - Arquivos: `Domain/Entities/Payment.cs`, `Domain/Enums/PaymentStatus.cs`, `Domain/Exceptions/InvalidCardException.cs`, testes. Dependências: T4.
 
 - [ ] **T6: Payment — Lambdas `payment-register` e `payment-void`** (M) — *trilha Payment*
-  - Aceite: endpoints Invoke (`[LambdaFunction]`); o register grava condicionado ao `PaymentId` (replay devolve o mesmo pagamento), e `InvalidCard` volta como recusa tipada (`{ ErrorType, Message, Field }`), não como exceção da Lambda; o void é idempotente; CDK (função, grants, AOT) e registro no AppHost.
+  - Aceite: endpoints Invoke (`[LambdaFunction]`); o register grava condicionado ao `PaymentId`; a repetição só devolve o pagamento se ainda `Registered` com os mesmos termos, senão `CheckoutRetryRequired`; `InvalidCard` e `CheckoutRetryRequired` voltam como recusa tipada (`{ ErrorType, Message, Field }`), não como exceção da Lambda; o void é idempotente; CDK (função, grants, AOT) e registro no AppHost.
   - Verificar: testes unitários dos handlers; `npx cdk synth PaymentStack`; no Aspire, invocar as duas pelo emulador.
   - Arquivos: `Features/{RegisterPayment,VoidPayment}/*`, `Data/DynamoPaymentRepository.cs`, `infra/constructs/payment-lambdas.ts`, `src/AppHost/PaymentExtensions.cs`, testes. Dependências: T5.
 
 - [ ] **T7: Payment — consumer de checkout promove em vez de criar (tolerante)** (M) — *trilha Payment*
-  - Aceite: com pagamento `Registered` do pedido, o consumer promove (`AwaitingPoints` se `PointsToUse > 0`, senão `Pending`); sem pagamento registrado, cria como hoje (forma antiga, até a T14); o `PaymentRequestedRule` casa `Registered → Pending` além dos casos atuais; o gateway nunca é acionado para `Registered`.
-  - Verificar: testes do consumer (os dois caminhos) e da regra (INSERT `Registered` não casa; MODIFY `Registered → Pending` casa).
-  - Arquivos: `EventsIntegration/Consumers/BasketCheckout/*`, `EventsIntegration/Publishers/Rules/PaymentRequestedRule.cs`, testes. Dependências: T6.
+  - Aceite: com pagamento `Registered` do pedido, o consumer promove (`AwaitingPoints` se `PointsToUse > 0`, senão `Pending`); sem pagamento registrado, cria como hoje (forma antiga, até a T14); o `PaymentRequestedRule` casa `Registered → Pending` e **mantém** INSERT `Pending` (caminho antigo); o gateway nunca é acionado para `Registered`; o `PointsReservationHandler` lança erro quando o pagamento ainda está `Registered` (ADR-0050 §6).
+  - Verificar: testes do consumer (os dois caminhos), da regra (INSERT `Registered` não casa; MODIFY `Registered → Pending` casa; INSERT `Pending` casa) e do handler de pontos (`Registered` lança).
+  - Arquivos: `EventsIntegration/Consumers/{BasketCheckout,PointsReservation}/*`, `EventsIntegration/Publishers/Rules/PaymentRequestedRule.cs`, testes. Dependências: T6.
 
 - [ ] **T8: `Version` no carrinho** (S)
   - Aceite: o `storeBasket` grava `Version = util.autoId()` a cada escrita; o `MergeAsync` grava uma `Version` nova; a query `basket` não muda; o `local.ts` grava `Version` no `storeBasket` local.
@@ -54,32 +54,32 @@
   - Arquivos: `graphql/resolvers/basket/mutations/Mutation.storeBasket.js`, `Basket.Function/.../DynamoShoppingCartRepository.cs`, `app/api/graphql/local.ts`, teste. Dependências: T4.
 
 - [ ] **T9: Basket — checkout atômico e idempotente (tolerante)** (M)
-  - Aceite: com `CheckoutId` no request, um `TransactWriteItems` (Put `CHECKOUT#<owner>#<checkoutId>` condicional + Delete do carrinho condicionado à `Version`); a falha do Put é replay e devolve o `OrderId` gravado; a falha do Delete é `CartChanged` (recusa tipada); usa as linhas e o `OrderId` do request sem reler o carrinho. Sem `CheckoutId`, o caminho antigo (até a T14). O `CheckoutedRule` casa INSERT do `CHECKOUT#` e MODIFY `Type = Checkout`. `ExpiresAt` de 24 h no registro.
-  - Verificar: `dotnet test tests/Services/Basket/Basket.UnitTests`: feliz, replay, versão mudou, carrinho antigo sem `Version`, os dois formatos da regra.
+  - Aceite: com `CheckoutId` no request, um `TransactWriteItems` (Put `CHECKOUT#<owner>#<checkoutId>` condicional + Delete do carrinho condicionado à `Version`); Delete condicionado a `Version = :v` ou, sem versão lida, a `attribute_exists(OwnerId) AND attribute_not_exists(Version)` (nunca o OR nu, ADR-0050 §4); a falha do Put tem precedência e é replay (devolve o `OrderId` gravado); a falha só do Delete é `CartChanged` (recusa tipada); usa as linhas e o `OrderId` do request sem reler o carrinho. Sem `CheckoutId`, o caminho antigo (até a T14). O `CheckoutedRule` casa INSERT do `CHECKOUT#` e MODIFY `Type = Checkout`. `ExpiresAt` de 24 h no registro.
+  - Verificar: `dotnet test tests/Services/Basket/Basket.UnitTests`: feliz, replay, versão mudou, carrinho antigo sem `Version`, carrinho já apagado por outra tentativa (`CartChanged`), os dois formatos da regra.
   - Arquivos: `Features/CheckoutBasket/{Handler,Command,Endpoint}.cs`, `Data/{IShoppingCartRepository,DynamoShoppingCartRepository}.cs`, `Publishers/Rules/CheckoutedRule.cs`, `ShoppingCartStreamImage` (se precisar), testes. Dependências: T4, T8.
 
 - [ ] **T10: `checkout-saga` — Derive, LoadCart, CatalogLines, Quote** (M)
-  - Aceite: construct `infra/constructs/checkout-saga.ts` (Express, JSONata, `LogLevel.ERROR`, `includeExecutionData: false`, X-Ray); `DeriveOrderId` bate com os 3 vetores da T4; `LoadCart` devolve itens e versão, falha `BadRequest` se vazio e entra no replay se o `CHECKOUT#` existir; `CatalogLines` com `BatchGetItem` em `products` e `ProductUnavailable`; `Quote` com retry transitório e `Rejection` → `Fail`. Ainda sem ligação ao AppSync.
+  - Aceite: construct `infra/constructs/checkout-saga.ts` (Express, JSONata, `LogLevel.ERROR`, `includeExecutionData: false`, X-Ray); `DeriveOrderId` bate com os 3 vetores da T4; `LoadCart` faz `BatchGetItem` consistente do carrinho e do `CHECKOUT#`, verifica o replay **antes** do `BadRequest` (carrinho vazio ou inexistente) e devolve itens e versão; `CatalogLines` com `BatchGetItem` em `products` e `ProductUnavailable`; `Quote` com retry transitório e `Rejection` → `Fail`. Ainda sem ligação ao AppSync.
   - Verificar: `npx cdk synth AppSyncStack`; teste da fórmula de derivação (vetores) num teste de infra ou no `local.ts` (T13); revisão visual do ASL sintetizado.
   - Arquivos: `infra/constructs/checkout-saga.ts`, `infra/stacks/appsync-stack.ts`. Dependências: T3, T4.
 
 - [ ] **T11: `checkout-saga` — RegisterPayment, Checkout, VoidPayment** (M)
-  - Aceite: `RegisterPayment` → `Checkout` → `Output`; `InvalidCard`/`CartChanged` como `Fail` com `cause` JSON; `Catch` em `Checkout` → `VoidPayment` (retry 3x) → `Fail` com o erro original, e `CompensationFailed` se a compensação esgotar; timeouts por `Task` com a soma abaixo do timeout da execução; grants de invoke para Pricing, Payment e Basket.
+  - Aceite: `RegisterPayment` → `Checkout` → `Output`; `InvalidCard`/`CheckoutRetryRequired`/`CartChanged` como `Fail` com `cause` JSON; `Checkout` com retry em erro transitório e timeout; **só** a recusa `CartChanged` → `VoidPayment` (retry 3x) → `Fail(CartChanged)`, e `CompensationFailed` se a compensação esgotar; erro ambíguo esgotado → `Fail(InternalError)` **sem** void; metric filter + alarme no `duckstore-alerts` para `CompensationFailed`/`InternalError`; orçamento de timeout da ADR-0050 §1 (execução de 20 s; Σ timeout × (1 + tentativas) + backoff abaixo disso no caminho mais lento); confirmar que o log de erro com `includeExecutionData: false` traz o nome do `error`, senão alarmar por `ExecutionsFailed`; grants de invoke para Pricing, Payment e Basket.
   - Verificar: `npx cdk synth AppSyncStack`; `cdk diff AppSyncStack` mostra a state machine e o IAM.
   - Arquivos: `infra/constructs/checkout-saga.ts`. Dependências: T6, T9, T10.
 
 - [ ] **T12: Resolver HTTP no lugar do pipeline** (M)
-  - Aceite: `checkoutId: ID` opcional no `CheckoutInput`; `Mutation.checkoutBasket.js` chama `StartSyncExecution` com o dono do token e mapeia `SUCCEEDED`/`FAILED` → `{ isSuccess, orderId }` ou erro com `errorType`/`errorInfo`; sem `checkoutId`, a saga usa `$uuid()`; os 3 arquivos de passo e o `pipelineResolver` do checkout são apagados; os data sources que ficarem sem uso saem.
+  - Aceite: `checkoutId: ID` opcional no `CheckoutInput`; `Mutation.checkoutBasket.js` chama `StartSyncExecution` com o dono do token e mapeia `SUCCEEDED`/`FAILED` → `{ isSuccess, orderId }` ou erro com `errorType`/`errorInfo`, e qualquer `error` fora da tabela da ADR-0050 §8 vira `InternalError` sem `cause`; a linha do `checkoutBasket` na tabela da ADR-0009 §3 passa a "HTTP → saga Express, critério 2"; sem `checkoutId`, a saga usa `$uuid()`; os 3 arquivos de passo e o `pipelineResolver` do checkout são apagados; os data sources que ficarem sem uso saem.
   - Verificar: `npx cdk synth AppSyncStack`; `cdk diff` com a troca do resolver; `grep -rn checkoutBasket.loadCart` vazio.
-  - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/basket/mutations/Mutation.checkoutBasket*.js`, `infra/constructs/appsync-api.ts`, `src/WebApps/Shopping.Web.SPA.React/graphql/types.ts`. Dependências: T11.
+  - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/basket/mutations/Mutation.checkoutBasket*.js`, `infra/constructs/appsync-api.ts`, `src/WebApps/Shopping.Web.SPA.React/graphql/types.ts`, `docs/adr/0009-*.md`. Dependências: T11.
 
 - [ ] **T13: `local.ts` e SPA no contrato novo** (M)
-  - Aceite: o `local.ts` imita a saga passo a passo (mesma derivação, mesmos `errorType`, register/void pelo emulador); o SPA gera o `checkoutId` ao abrir o checkout e o mantém nos retries, renovando depois de sucesso ou de recusa; `CartChanged`/`ProductUnavailable` recotam e pedem confirmação, e `InvalidCard` marca o campo do cartão.
+  - Aceite: o `local.ts` imita a saga passo a passo (mesma derivação, mesmos `errorType`, register/void pelo emulador); o SPA gera o `checkoutId` ao abrir o checkout e o mantém nos retries, renovando só depois de sucesso ou de recusa tipada (`InternalError`/rede mantêm o id); `CartChanged`/`ProductUnavailable` recotam e pedem confirmação, e `InvalidCard` marca o campo do cartão.
   - Verificar: `pnpm lint && pnpm typecheck && pnpm build`; no Aspire: checkout feliz, duplo clique (um pedido), carrinho alterado em outra aba (`CartChanged`) e cartão inválido (`InvalidCard`).
   - Arquivos: `app/api/graphql/local.ts`, `features/checkout/{hooks/use-checkout.ts,services/checkout.service.ts,components/*}`. Dependências: T12.
 
 - [ ] **T14: Limpeza das formas antigas e cartão fora do evento** (M) — *depois do deploy de T2 a T13 no dev*
-  - Aceite: `BasketCheckoutDto`/`BasketCheckoutEvent` sem `CardName`/`CardNumber`/`Expiration`/`Cvv` (consumers ajustados: Payment, Ordering, Challenges); o Basket sem o caminho sem `CheckoutId`; o `CheckoutedRule` só em INSERT; o consumer do Payment só promove, e um pedido sem pagamento registrado lança erro; `checkoutId` obrigatório no schema e no `local.ts`.
+  - Aceite: `BasketCheckoutDto`/`BasketCheckoutEvent` sem `CardName`/`CardNumber`/`Expiration`/`Cvv` (consumers ajustados: Payment, Ordering, Challenges); o Basket sem o caminho sem `CheckoutId`; o `CheckoutedRule` só em INSERT; o consumer do Payment só promove, e um pedido sem pagamento registrado lança erro; o `PaymentRequestedRule` deixa de casar INSERT `Pending`; `checkoutId` obrigatório no schema e no `local.ts`.
   - Verificar: build e testes de todos os serviços que referenciam o evento; `grep -rn "CardNumber" src/BuildingBlocks src/Services/Basket` vazio.
   - Arquivos: `BuildingBlocks.Messaging/Events/BasketCheckoutEvent.cs`, `Basket.Function/.../Dtos/BasketCheckoutDto.cs`, os mappers dos consumers, `CheckoutedRule.cs`, consumer do Payment, `graphql/schema.graphql`, `local.ts`, testes. Dependências: checkpoint parcial no dev (T13 no ar).
 

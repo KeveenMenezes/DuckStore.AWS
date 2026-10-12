@@ -10,6 +10,8 @@ tags:
 ## Status
 **Accepted** — July 2026
 
+**Amended** — October 2026 (proposed): [ADR-0050](./0050-checkout-step-functions-express-saga.md) §3/§6/§7 amends §1 and §5–§7 — `BasketCheckoutEvent` drops the card fields, Payment receives card data once from the checkout saga, and `OrderId` is derived by the saga instead of minted by Basket; `PaymentId = OrderId`, and `PaymentRequestedRule` also matches `Registered → Pending`.
+
 ---
 
 ## Context

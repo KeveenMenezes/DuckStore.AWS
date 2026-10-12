@@ -1,6 +1,6 @@
 # Spec: Checkout como Saga em Step Functions (Checkout Saga v1)
 
-> Status: **APROVADO** (revisão 4, 2026-10-12: `RegisterPayment` incorporado). Módulo 1 de 3 do mapa [`SPEC-checkout.md`](./SPEC-checkout.md).
+> Status: **APROVADO** (revisão 5, 2026-10-12: `RegisterPayment` incorporado; achados do `adr-guardian` sobre a ADR-0050 incorporados — condição do Delete, compensação só em recusa tipada, replay do registro, logs). Módulo 1 de 3 do mapa [`SPEC-checkout.md`](./SPEC-checkout.md).
 
 ## 1. Objetivo
 
@@ -42,12 +42,13 @@ SPA ──checkoutBasket(input + checkoutId)──▶ AppSync (HTTP data source,
 │                                                                                                         │
 │ DeriveOrderId ─▶ LoadCart ─▶ CatalogLines ─▶ Quote ─▶ RegisterPayment ─▶ Checkout ─▶ Output              │
 │                  │            │               │         (Payment)          (Basket)                     │
-│                  ├ vazio ─▶   └ produto  ─▶   ├ Rejection ─▶ ├ inválido ─▶  ├ versão mudou ─┐           │
-│                  │ BadRequest   ausente ─▶    │ PriceChanged │ InvalidCard  │  ou erro       ▼           │
+│                  ├ vazio ─▶   └ produto  ─▶   ├ Rejection ─▶ ├ inválido ─▶  ├ CartChanged ───┐          │
+│                  │ BadRequest   ausente ─▶    │ PriceChanged │ InvalidCard  │  (só recusa    ▼          │
 │                  │              Product       │ PointsAboveCap              │          VoidPayment ─▶  │
-│                  │              Unavailable   └ retry transitório           │          Fail(erro       │
-│                  └ já fechado com este checkoutId ─▶ orderId (replay)       └ já fechado ─▶  original)  │
-│                                                                                orderId (replay)         │
+│                  │              Unavailable   └ retry transitório           │   tipada)  Fail(CartChanged)│
+│                  └ já fechado com este checkoutId ─▶ orderId (replay)       ├ erro: retry; esgotou ─▶   │
+│                    (verificado antes de tudo)                               │  Fail(InternalError), sem void│
+│                                                                             └ já fechado ─▶ orderId     │
 └─────────────────────────────────────────────────────────────────────────────────────────────────────────┘
                                               │
                                               ▼
@@ -60,20 +61,20 @@ SPA ──checkoutBasket(input + checkoutId)──▶ AppSync (HTTP data source,
 |---|---|
 | Entrada (resolver) | Exige Cognito. `ownerId = USER#<sub>` e `customerId = sub` **sempre do token**. Repassa o `checkoutId` |
 | `DeriveOrderId` | `OrderId` = GUID derivado de forma determinística de `(ownerId, checkoutId)`. Duas execuções da mesma tentativa chegam ao mesmo id. Como o dono entra na derivação, um `checkoutId` escolhido pelo cliente nunca colide com o pedido de outra pessoa |
-| `LoadCart` | Leitura consistente. Saída: `ProductId`, `Quantity` e a **versão** do carrinho. Vazio → `Fail(BadRequest)`. Já fechado com o mesmo `checkoutId` → devolve o `orderId` gravado (**replay**) |
+| `LoadCart` | `BatchGetItem` consistente do carrinho **e** do `CHECKOUT#<owner>#<checkoutId>`. Primeiro o replay: se o registro existe, devolve o `orderId` dele. Depois, carrinho vazio ou inexistente → `Fail(BadRequest)`. Senão: `ProductId`, `Quantity` e a **versão** |
 | `CatalogLines` | `BatchGetItem` direto na tabela `products` (integração SDK, sem Lambda). Leva `Name` e a imagem principal. Produto inexistente → `Fail(ProductUnavailable)` com os ids em `cause` |
-| `Quote` | Mesmo Lambda do Pricing. A resposta passa a incluir o **preço unitário cobrado de cada linha** (pós-campanha, ADR-0043). `Rejection` → `Fail` com `error = ErrorType` e `cause` = JSON `{ message, serverTotal, maxRedeemablePoints }`. Retry em erro transitório |
-| `RegisterPayment` | Lambda nova `payment-register` (Invoke). Entrada: `orderId`, `customerId`, `amount = chargedTotal`, forma de pagamento, parcelas e dados do cartão. Valida o cartão nas formas com cartão: Luhn, validade `MM/AAAA` não vencida e CVV de 3 ou 4 dígitos. Inválido → `Fail(InvalidCard)` com `cause` `{ message, field }`. Válido → grava o pagamento com o **novo status `Registered`**, que não aciona o gateway. **Um pagamento por `orderId`**: a repetição devolve o mesmo |
-| `Checkout` | Lambda do Basket com dono, `checkoutId`, `orderId`, versão cotada, **linhas montadas pela saga**, `chargedTotal`, endereço, forma de pagamento e parcelas, **sem cartão**. Não relê itens nem preços, e não gera o `OrderId`. Grava numa **única operação atômica e condicional** (seção 3.4) |
-| `VoidPayment` (compensação) | `Catch` em `Checkout` → Lambda nova `payment-void` (`Registered → Voided`, idempotente) → `Fail` com o **erro original**. Retry com backoff; se esgotar, `Fail(CompensationFailed)` e alarme. O replay "já fechado" é sucesso e não anula nada |
-| Timeouts | Cada `Task` com timeout próprio, e a soma abaixo do timeout da execução, para toda falha de passo cair no `Catch` |
-| Saída (resolver) | `SUCCEEDED` → `{ isSuccess: true, orderId }`. `FAILED` → erro GraphQL com `errorType` = `error` e `errorInfo` = `cause` parseado. **O SPA lê `PriceChanged`/`PointsAboveCap` e `errorInfo.serverTotal` como hoje** |
+| `Quote` | Mesmo Lambda do Pricing. A resposta passa a incluir o **preço unitário de cada linha**: a parte do `CartDiscountAllocation` no preço pós-campanha **no cartão**, **antes** dos pontos, dividida pela quantidade e arredondada ao centavo. Σ(`UnitPrice` × `Quantity`) pode diferir do preço pós-campanha pelo arredondamento (no máximo meio centavo por unidade); o valor oficial do pedido é o total cobrado (ADR-0043, ADR-0050 §5). `Rejection` → `Fail` com `error = ErrorType` e `cause` = JSON `{ message, serverTotal, maxRedeemablePoints }`. Retry em erro transitório |
+| `RegisterPayment` | Lambda nova `payment-register` (Invoke). Entrada: `orderId`, `customerId`, `amount = chargedTotal`, forma de pagamento, parcelas e dados do cartão. Valida o cartão nas formas com cartão: Luhn, validade `MM/AAAA` não vencida e CVV de 3 ou 4 dígitos. Inválido → `Fail(InvalidCard)` com `cause` `{ message, field }`. Válido → grava o pagamento com o **novo status `Registered`** e `PaymentId = OrderId`, que não aciona o gateway. A repetição só é aceita se o pagamento ainda está `Registered` com o mesmo valor, forma e parcelas; qualquer outro caso (`Voided`, já promovido, termos diferentes) → `Fail(CheckoutRetryRequired)`, e o SPA renova o `checkoutId`. O command que carrega o cartão redige os campos no `ToString` (o `LoggingBehavior` loga o command inteiro) |
+| `Checkout` | Lambda do Basket com dono, `checkoutId`, `orderId`, versão cotada, **linhas montadas pela saga**, `chargedTotal`, endereço, forma de pagamento e parcelas, **sem cartão**. Não relê itens nem preços, e não gera o `OrderId`. Grava numa **única operação atômica e condicional** (seção 3.4). Retry em erro transitório e timeout, porque é idempotente por `checkoutId` |
+| `VoidPayment` (compensação) | **Só** na recusa tipada `CartChanged` do `Checkout` → Lambda nova `payment-void` (`Registered → Voided`, idempotente) → `Fail(CartChanged)`. Retry com backoff; se esgotar, `Fail(CompensationFailed)` e alarme. Erro ambíguo do `Checkout` (timeout, exceção) depois dos retries **não anula**: pode ter havido commit, então a saga falha com `InternalError`, e o pagamento `Registered` segue pelo evento (se fechou) ou fica órfão e inerte (se não fechou). O replay "já fechado" é sucesso |
+| Timeouts | Execução de 20 s. No caminho mais lento, Σ(`TimeoutSeconds` × (1 + tentativas)) + backoff, incluindo os retries do `VoidPayment`, fica abaixo de 20 s, para toda falha cair num `Catch`. Um `TIMED_OUT` da execução vira `InternalError` no resolver |
+| Saída (resolver) | `SUCCEEDED` → `{ isSuccess: true, orderId }`. `FAILED` → erro GraphQL com `errorType` = `error` e `errorInfo` = `cause` parseado (tabela de erros da ADR-0050 §8); qualquer erro fora da tabela vira `InternalError` sem `cause`, para stack trace nunca chegar ao cliente. **O SPA lê `PriceChanged`/`PointsAboveCap` e `errorInfo.serverTotal` como hoje** |
 
 ### 3.3 Contratos
 
-- **GraphQL:** `CheckoutInput` ganha `checkoutId: ID`, gerado pelo SPA ao abrir o checkout e mantido nos retries da mesma tentativa. Ele é renovado depois de sucesso ou de **qualquer** recusa. Nasce opcional (sem ele, a saga gera um id e não há proteção de replay) e vira obrigatório na última tarefa do módulo. Novos `errorType`: `CartChanged`, `ProductUnavailable` e `InvalidCard`. O SPA recota e pede nova confirmação nos dois primeiros, e no `InvalidCard` marca o campo do cartão.
+- **GraphQL:** `CheckoutInput` ganha `checkoutId: ID`, gerado pelo SPA ao abrir o checkout e mantido nos retries da mesma tentativa. Ele é renovado depois de sucesso ou de recusa tipada, nunca depois de `InternalError` ou falha de rede. Nasce opcional (sem ele, a saga gera um id e não há proteção de replay) e vira obrigatório na última tarefa do módulo. Novos `errorType`: `CartChanged`, `ProductUnavailable`, `InvalidCard`, `CheckoutRetryRequired` e `InternalError`. O SPA recota e pede nova confirmação em `CartChanged`/`ProductUnavailable`, marca o campo do cartão em `InvalidCard` e renova o `checkoutId` em qualquer **recusa tipada**. `InternalError`, timeout do cliente e erro de rede **mantêm** o `checkoutId`: o carrinho pode já ter sido fechado, e a repetição cai no replay e devolve o `orderId`.
 - **Pricing:** `GetBasketInstallmentPlanResponse` ganha `Lines: [{ ProductId, Quantity, UnitPrice }]` (aditivo).
-- **Payment:** Lambdas novas `payment-register` e `payment-void`, e status novos `Registered` e `Voided`. O `payment-basket-checkout-consumer` deixa de criar o pagamento: ele **promove** o pagamento `Registered` do pedido para `Pending`, ou para `AwaitingPoints` quando `PointsToUse > 0`, até o módulo 2. O `PaymentRequestedRule` passa a casar a transição `Registered → Pending`, como já casa `AwaitingPoints → Pending`. Um pedido sem pagamento registrado lança erro, e o retry leva à DLQ.
+- **Payment:** Lambdas novas `payment-register` e `payment-void`, e status novos `Registered` e `Voided`. O `payment-basket-checkout-consumer` deixa de criar o pagamento: ele **promove** o pagamento `Registered` do pedido para `Pending`, ou para `AwaitingPoints` quando `PointsToUse > 0`, até o módulo 2. O `PaymentRequestedRule` passa a casar a transição `Registered → Pending`, como já casa `AwaitingPoints → Pending`, e **continua** casando INSERT `Pending` enquanto o caminho antigo de criação existir. Um pedido sem pagamento registrado lança erro (depois da T14), e o retry leva à DLQ. Os consumers de reserva de pontos lançam erro enquanto o pagamento ainda está `Registered` (ainda não promovido), como já fazem quando ele não existe: sem isso, um `PointsReservedEvent` que chega antes da promoção é descartado em silêncio.
 - **Basket:** `CheckoutBasketRequest` recebe `CheckoutId`, `OrderId`, `CartVersion` e as linhas montadas pela saga, sem cartão.
 - **`BasketCheckoutEvent`/`BasketCheckoutDto`:** **perdem os campos de cartão** (`CardName`, `CardNumber`, `Expiration`, `Cvv`). `PaymentMethod` e `Installments` ficam. O resto não muda.
 - **Carrinho:** ganha `Version` (token novo a cada escrita), gravado pelo `storeBasket` e pelo `MergeAsync`. Um carrinho antigo sem `Version` continua fechável.
@@ -83,9 +84,9 @@ SPA ──checkoutBasket(input + checkoutId)──▶ AppSync (HTTP data source,
 `TransactWriteItems` na tabela `shopping-carts`:
 
 1. `Put` de `OwnerId = CHECKOUT#<owner>#<checkoutId>` com `Type = Checkout`, `CheckoutData`, `OrderId` e `ExpiresAt` em 24 h, condicionado a `attribute_not_exists(OwnerId)`.
-2. `Delete` do carrinho, condicionado a `Version = :cotada` (ou `attribute_not_exists(Version)`).
+2. `Delete` do carrinho, condicionado a `Version = :cotada` quando o `LoadCart` leu uma versão, ou a `attribute_exists(OwnerId) AND attribute_not_exists(Version)` quando não leu (carrinho antigo). As duas condições são falsas se o carrinho já não existe, então duas tentativas com `checkoutId`s **diferentes** nunca fecham o mesmo carrinho.
 
-Falha no item 1 significa replay: o Basket lê o registro e devolve o `OrderId`. Falha no item 2 significa `CartChanged`. O `CheckoutedRule` passa a casar em **INSERT** de `Type = Checkout` e publica o evento.
+Falha no item 1 tem precedência e significa replay: o Basket lê o registro e devolve o `OrderId`. Falha só no item 2 significa `CartChanged`. O `CheckoutedRule` passa a casar em **INSERT** de `Type = Checkout` e publica o evento.
 
 ## 4. Fora deste módulo
 
@@ -97,7 +98,8 @@ A reserva síncrona de pontos (módulo 2) e a saga Standard do pedido (módulo 3
 |---|---|
 | Latência extra do Step Functions e de um passo a mais (`RegisterPayment`) | Express síncrona com `lambda:invoke` otimizado. Medir antes e depois (critério 10) |
 | `StartSyncExecution` é *at-most-once*, e um timeout não diz se o checkout aconteceu | O cliente repete com o mesmo `checkoutId` e recebe o mesmo `orderId` |
-| Pagamento `Registered` órfão (a execução abortou entre `RegisterPayment` e `Checkout` sem passar pelo `Catch`) | Inofensivo: o gateway nunca é chamado para `Registered`. O módulo 3 o anula no reconciliador |
+| Pagamento `Registered` órfão (execução abortada, ou erro ambíguo do `Checkout` sem commit) | Inofensivo: o gateway nunca é chamado para `Registered`. O módulo 3 o anula no reconciliador |
+| Cartão em log | Command com `ToString` redigido; a saga loga em `ERROR` sem dados de execução; o AppSync já loga em `ERROR` com `excludeVerboseContent`. O `PaymentRequestedEvent` ainda leva o cartão ao gateway até o módulo 3 (exceção registrada na ADR-0050 §7) |
 | Mudanças de forma em dois pontos durante o deploy: `CheckoutedRule` (MODIFY → INSERT) e o consumer do Payment (cria → promove) | As duas peças aceitam as formas antiga e nova durante a transição: a regra casa as duas, e o consumer cria quando não acha pagamento registrado. A forma antiga sai numa tarefa seguinte, depois do deploy da saga |
 | Sem Step Functions no dev local | O `local.ts` imita a saga passo a passo, como no `createProductWithPrice` |
 
@@ -147,8 +149,8 @@ Handler fino com a regra no domínio/repositório (`thin-handlers-rich-domain`),
 
 | Nível | O que cobre |
 |---|---|
-| Unit (`Basket.UnitTests`) | Checkout feliz; replay devolve o mesmo `OrderId`; versão diferente → `CartChanged`; linhas e `OrderId` vêm do request; `CheckoutedRule` casa o INSERT do registro de checkout |
-| Unit (`Payment.UnitTests`) | Registro válido grava `Registered`; Luhn, validade e CVV inválidos → `InvalidCard`; dinheiro dispensa cartão; registro repetido devolve o mesmo pagamento; void idempotente; o consumer promove `Registered → Pending/AwaitingPoints` |
+| Unit (`Basket.UnitTests`) | Checkout feliz; replay devolve o mesmo `OrderId`; versão diferente → `CartChanged`; carrinho já apagado por outra tentativa → `CartChanged` (nunca um segundo fechamento); linhas e `OrderId` vêm do request; `CheckoutedRule` casa o INSERT do registro de checkout |
+| Unit (`Payment.UnitTests`) | Registro válido grava `Registered`; Luhn, validade e CVV inválidos → `InvalidCard`; dinheiro dispensa cartão; repetição igual devolve o mesmo pagamento; repetição sobre `Voided`/promovido/termos diferentes → `CheckoutRetryRequired`; void idempotente; o consumer promove `Registered → Pending/AwaitingPoints`; consumer de pontos lança erro com `Registered`; `ToString` do command sem cartão |
 | Unit (`Pricing.UnitTests`) | `Lines` soma ao preço pós-campanha, coerente com a ADR-0043 |
 | Derivação do `OrderId` | Mesmo `(dono, checkoutId)` → mesmo id; donos diferentes → ids diferentes |
 | CDK | `cdk synth` limpo, e o `cdk diff` mostra só a saga, as Lambdas de pagamento, a remoção da Function URL e a troca do resolver |

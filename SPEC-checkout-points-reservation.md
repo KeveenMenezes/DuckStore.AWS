@@ -1,6 +1,6 @@
 # Spec: Reserva de Pontos Síncrona no Checkout
 
-> Status: **APROVADO** (revisão 2, 2026-10-12: compensação encadeada com o `RegisterPayment` do módulo 1). Módulo 2 de 3 do mapa [`SPEC-checkout.md`](./SPEC-checkout.md). Depende de [`checkout-saga`](./SPEC-checkout-saga.md).
+> Status: **APROVADO** (revisão 3, 2026-10-12: compensação encadeada com o `RegisterPayment` do módulo 1, só em recusa tipada, como na ADR-0050). Módulo 2 de 3 do mapa [`SPEC-checkout.md`](./SPEC-checkout.md). Depende de [`checkout-saga`](./SPEC-checkout-saga.md).
 
 ## 1. Objetivo
 
@@ -32,10 +32,10 @@ Dois passos novos na `checkout-saga` (Express), entre `Quote` e `RegisterPayment
 | `challenges-reserve-points` (Lambda nova, Invoke síncrono) | Entrada `{ ownerId, orderId, points }`. Reaproveita `ReservePointsAsync` (débito condicionado a `Score >= points` + `REDEMPTION#<orderId>` `Reserved`, numa transação). Saídas: `Reserved`; `Reserved` também quando a linha já existe como `Reserved` ou `Used` (replay da mesma tentativa); `InsufficientPoints` com `{ availablePoints }`. **Uma recusa não grava nada**, porque a linha `Failed` só existia para alimentar o evento que sai |
 | `challenges-release-points` (Lambda nova, Invoke síncrono) | Entrada `{ ownerId, orderId }`. `Reserved → Released` devolvendo o saldo na mesma transação (`CancelOrder` do domínio). Idempotente: sem linha, ou linha já liberada, é no-op com sucesso |
 | `ReservePoints` (passo) | Só roda com `pointsToUse > 0`. `InsufficientPoints` → `Fail` com `cause` JSON `{ message, availablePoints }`. Retry só em erro transitório do Lambda |
-| Compensação | Falha em `RegisterPayment` → `ReleasePoints`. Falha em `Checkout` → `VoidPayment` (módulo 1) → `ReleasePoints`. Os dois casos terminam em `Fail` com o **erro original**, para o SPA reagir a `InvalidCard`/`CartChanged` e não à compensação. `ReleasePoints` só roda quando o checkout reservou pontos. O replay "já fechado" é sucesso e **não** compensa |
+| Compensação | Recusa tipada em `RegisterPayment` (`InvalidCard`, `CheckoutRetryRequired`) → `ReleasePoints`. Recusa tipada em `Checkout` (`CartChanged`) → `VoidPayment` (módulo 1) → `ReleasePoints`. Erro ambíguo depois dos retries **não compensa** (pode ter havido commit): a reserva segue com o pedido, ou fica órfã e o reconciliador do módulo 3 a libera. Os dois casos terminam em `Fail` com o **erro original**, para o SPA reagir a `InvalidCard`/`CartChanged` e não à compensação. `ReleasePoints` só roda quando o checkout reservou pontos. O replay "já fechado" é sucesso e **não** compensa |
 | `ReleasePoints` (passo) | Retry com backoff (3 tentativas). Se esgotar, a execução falha com `CompensationFailed`, e o log de erro da state machine dispara o alarme no `duckstore-alerts` |
-| Timeouts | Cada passo `Task` tem timeout próprio, e a soma fica abaixo do timeout da execução. Assim qualquer falha de passo é capturável e cai na compensação |
-| Reserva sobre linha `Released` | Mesmo `orderId` com a reserva já liberada (tentativa compensada e repetida com o mesmo `checkoutId`) → `Fail(CheckoutRetryRequired)`. O SPA renova o `checkoutId` depois de **qualquer** recusa |
+| Timeouts | Os passos novos entram no orçamento de timeout da ADR-0050 §1. Toda falha de passo é capturável; recusas tipadas compensam, erros ambíguos não |
+| Reserva sobre linha `Released` | Mesmo `orderId` com a reserva já liberada (tentativa compensada e repetida com o mesmo `checkoutId`) → `Fail(CheckoutRetryRequired)`, o mesmo `errorType` que o módulo 1 já usa no registro do pagamento |
 
 ### 2.2 O que sai
 
@@ -49,7 +49,7 @@ Dois passos novos na `checkout-saga` (Express), entre `Quote` e `RegisterPayment
 
 ### 2.3 Contratos
 
-- **GraphQL:** novos `errorType`: `InsufficientPoints` (`errorInfo.availablePoints`) e `CheckoutRetryRequired`. O schema não muda.
+- **GraphQL:** novo `errorType` `InsufficientPoints` (`errorInfo.availablePoints`). `CheckoutRetryRequired` já existe desde o módulo 1. O schema não muda.
 - **SPA:** trata `InsufficientPoints` como hoje trata `PointsAboveCap`: atualiza o saldo e ajusta o campo de pontos. O `checkoutId` é renovado depois de qualquer recusa.
 - **`local.ts`:** o check local de saldo (`:1045-1051`) dá lugar à mesma sequência reserva → checkout → compensação, com os mesmos `errorType`.
 - **Ledger:** as linhas `Failed` antigas continuam legíveis no `myPointsHistory`. Só deixam de ser criadas.
