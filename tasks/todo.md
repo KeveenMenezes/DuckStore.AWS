@@ -6,7 +6,7 @@
 
 ## Preparação
 
-- [x] **T0: Branch, dependências e baseline de latência** (S) — feito: branch criado, `npm ci` (aws-cdk-lib 2.265.0) e templates regenerados no commit de preparação. **O baseline de latência foi movido para o início do checkpoint 1**, antes do primeiro deploy: depende da sessão logada no dev, e o dev não muda até lá
+- [x] **T0: Branch, dependências e baseline de latência** (S) — feito: branch criado, `npm ci` (aws-cdk-lib 2.265.0) e templates regenerados no commit de preparação. **Baseline (pipeline antigo, dev, 2026-10-12, `Checkout.E2ETests` `Category=Latency`, 10 chamadas aquecidas): p50 = 590 ms, p95 = 830 ms** (mín. 402, máx. 830)
   - Aceite: branch `feat/checkout-sagas` criado a partir de `origin/development`, sem incluir as mudanças locais pré-existentes nos commits; `npm ci` em `infra/` (aws-cdk-lib 2.265); p50 e p95 de 10 `checkoutBasket` aquecidos no dev registrados nesta tarefa.
   - Verificar: `git log origin/development..HEAD` vazio no início; `npm ls aws-cdk-lib` = 2.265.0; números anotados aqui.
   - Arquivos: nenhum de código. Dependências: aprovação de branch e dev.
