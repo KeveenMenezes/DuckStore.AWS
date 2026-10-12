@@ -83,7 +83,7 @@
   - Verificar: build e testes de todos os serviços que referenciam o evento; `grep -rn "CardNumber" src/BuildingBlocks src/Services/Basket` vazio.
   - Arquivos: `BuildingBlocks.Messaging/Events/BasketCheckoutEvent.cs`, `Basket.Function/.../Dtos/BasketCheckoutDto.cs`, os mappers dos consumers, `CheckoutedRule.cs`, consumer do Payment, `graphql/schema.graphql`, `local.ts`, testes. Dependências: checkpoint parcial no dev (T13 no ar).
 
-- [ ] **T15: Documentação da fase 1** (S)
+- [x] **T15: Documentação da fase 1** (S) — feito; `CLAUDE.md` (Basket, Payment — corrigida também a descrição do gateway, que é por eventos e não por Lambda invoke —, Pricing, a seção do AppSync, comandos e a categoria E2E em Testing); READMEs de Basket, Payment e Pricing; diagramas Basket (saga, transação `CHECKOUT#`, INSERT), Payment (faixa nova com saga, `payment-register` e `payment-void`, ciclo renumerado ①–⑥) e Pricing (passo `Quote` da saga); validador sem achados, antes e depois
   - Aceite: `CLAUDE.md` (Basket e o `checkoutBasket` como saga, Payment com register/void, sem cartão no evento); READMEs de Basket, Payment e Pricing; diagrama atualizado com a skill `architecture-diagrams`, e o validador sem drift.
   - Verificar: o validador da skill passa.
   - Arquivos: `CLAUDE.md`, `src/Services/{Basket,Payment,Pricing}/README.md`, `docs/duckstore-process-flow.drawio` + SVG. Dependências: T14.
