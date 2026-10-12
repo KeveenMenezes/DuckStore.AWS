@@ -3,7 +3,11 @@ namespace E2E.Infrastructure;
 // Where and as whom the end-to-end suites run. Nothing here is checked in: the target and the test
 // user come from the environment, so the suites skip themselves in CI and on machines that don't
 // point at a deployed environment (see tests/E2E/README.md).
-public sealed record E2ESettings(Uri BaseUrl, string UserEmail, string UserPassword, bool Headless)
+// Headless, SlowMo and TraceDirectory only change how a run can be watched: E2E_HEADED=1 shows the
+// browser, E2E_SLOWMO_MS slows every action down, and E2E_TRACE_DIR saves a Playwright trace per test
+// class (open it with `npx playwright show-trace <file>`).
+public sealed record E2ESettings(
+    Uri BaseUrl, string UserEmail, string UserPassword, bool Headless, float SlowMo, string? TraceDirectory)
 {
     public const string BaseUrlVariable = "E2E_BASE_URL";
     public const string UserEmailVariable = "E2E_USER_EMAIL";
@@ -19,7 +23,11 @@ public sealed record E2ESettings(Uri BaseUrl, string UserEmail, string UserPassw
             return null;
 
         var headless = Environment.GetEnvironmentVariable("E2E_HEADED") is not ("1" or "true");
-        return new E2ESettings(new Uri(baseUrl.TrimEnd('/') + "/"), email, password, headless);
+        var slowMo = float.TryParse(Environment.GetEnvironmentVariable("E2E_SLOWMO_MS"), out var ms) ? ms : 0;
+        var traceDirectory = Environment.GetEnvironmentVariable("E2E_TRACE_DIR");
+        return new E2ESettings(
+            new Uri(baseUrl.TrimEnd('/') + "/"), email, password, headless, slowMo,
+            string.IsNullOrWhiteSpace(traceDirectory) ? null : traceDirectory);
     }
 
     public static bool IsConfigured => FromEnvironment() is not null;

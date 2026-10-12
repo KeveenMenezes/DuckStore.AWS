@@ -25,6 +25,8 @@ deployed environment by accident:
 | `E2E_BASE_URL` | The SPA's URL, e.g. `https://duckstore.dev.keveenmenezes.com` |
 | `E2E_USER_EMAIL` / `E2E_USER_PASSWORD` | A dedicated test customer in the environment's Cognito user pool. Never commit them |
 | `E2E_HEADED` | `1` to watch the browser |
+| `E2E_SLOWMO_MS` | Pause between browser actions, e.g. `600`, to follow a headed run |
+| `E2E_TRACE_DIR` | Save a Playwright trace per test class there; open with `npx playwright show-trace <file>` |
 
 ```bash
 export E2E_BASE_URL=... E2E_USER_EMAIL=... E2E_USER_PASSWORD=...

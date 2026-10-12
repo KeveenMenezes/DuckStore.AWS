@@ -29,14 +29,29 @@ public sealed class StorefrontSession : IAsyncLifetime
             throw new InvalidOperationException($"Playwright could not install Chromium (exit code {exitCode}).");
 
         _playwright = await Playwright.CreateAsync();
-        _browser = await _playwright.Chromium.LaunchAsync(new() { Headless = settings.Headless });
-        Context = await _browser.NewContextAsync(new() { BaseURL = settings.BaseUrl.ToString() });
+        _browser = await _playwright.Chromium.LaunchAsync(new() { Headless = settings.Headless, SlowMo = settings.SlowMo });
+        Context = await _browser.NewContextAsync(new()
+        {
+            BaseURL = settings.BaseUrl.ToString(),
+            ViewportSize = new() { Width = 1366, Height = 900 },
+        });
+        if (settings.TraceDirectory is not null)
+            await Context.Tracing.StartAsync(new() { Screenshots = true, Snapshots = true, Sources = false });
 
         await SignInAsync();
     }
 
     public async Task DisposeAsync()
     {
+        if (Settings?.TraceDirectory is { } directory && Context is not null)
+        {
+            Directory.CreateDirectory(directory);
+            await Context.Tracing.StopAsync(new()
+            {
+                Path = Path.Combine(directory, $"storefront-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.zip"),
+            });
+        }
+
         if (_browser is not null)
             await _browser.DisposeAsync();
         _playwright?.Dispose();
