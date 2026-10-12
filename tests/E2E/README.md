@@ -27,6 +27,7 @@ deployed environment by accident:
 | `E2E_HEADED` | `1` to watch the browser |
 | `E2E_SLOWMO_MS` | Pause between browser actions, e.g. `600`, to follow a headed run |
 | `E2E_TRACE_DIR` | Save a Playwright trace per test class there; open with `npx playwright show-trace <file>` |
+| `E2E_SCREENSHOT_DIR` | Save a screenshot at each moment a test marks with `CaptureAsync` |
 
 ```bash
 export E2E_BASE_URL=... E2E_USER_EMAIL=... E2E_USER_PASSWORD=...

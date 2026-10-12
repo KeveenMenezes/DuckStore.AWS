@@ -53,10 +53,12 @@ public sealed class CheckoutUiTests(StorefrontSession session) : IClassFixture<S
         var page = await CheckoutPageWithACartAsync();
         await FillShippingAsync(page);
         await FillCardAsync(page, Storefront.ValidCard);
+        await session.CaptureAsync(page, "card-1-form-filled");
 
         await page.GetByRole(AriaRole.Button, new() { NameRegex = new("^Confirm Order") }).ClickAsync();
 
         await Assertions.Expect(page.GetByText("Order Confirmed!")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        await session.CaptureAsync(page, "card-2-order-confirmed");
         var orderNumber = await page.GetByTestId("order-number").InnerTextAsync();
         Assert.True(Guid.TryParse(orderNumber, out _), $"order number '{orderNumber}' is not a GUID");
     }
@@ -67,10 +69,12 @@ public sealed class CheckoutUiTests(StorefrontSession session) : IClassFixture<S
         var page = await CheckoutPageWithACartAsync();
         await FillShippingAsync(page);
         await page.Locator("label[for='payment-cash']").ClickAsync();
+        await session.CaptureAsync(page, "cash-1-form-filled");
 
         await page.GetByRole(AriaRole.Button, new() { NameRegex = new("^Confirm Order") }).ClickAsync();
 
         await Assertions.Expect(page.GetByText("Order Confirmed!")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        await session.CaptureAsync(page, "cash-2-order-confirmed");
     }
 
     [E2EFact]
@@ -83,6 +87,7 @@ public sealed class CheckoutUiTests(StorefrontSession session) : IClassFixture<S
         await page.GetByRole(AriaRole.Button, new() { NameRegex = new("^Confirm Order") }).ClickAsync();
 
         await Assertions.Expect(page.GetByText("The card number is invalid.")).ToBeVisibleAsync(new() { Timeout = 30_000 });
+        await session.CaptureAsync(page, "invalid-card-refused");
         await Assertions.Expect(page.GetByText("Order Confirmed!")).ToHaveCountAsync(0);
     }
 }

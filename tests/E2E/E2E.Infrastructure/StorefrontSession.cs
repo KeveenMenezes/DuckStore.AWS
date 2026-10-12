@@ -61,6 +61,15 @@ public sealed class StorefrontSession : IAsyncLifetime
 
     public Task<IPage> NewPageAsync() => Context.NewPageAsync();
 
+    // A named screenshot of a moment worth seeing, saved only when E2E_SCREENSHOT_DIR is set.
+    public async Task CaptureAsync(IPage page, string moment)
+    {
+        if (Settings.ScreenshotDirectory is not { } directory)
+            return;
+        Directory.CreateDirectory(directory);
+        await page.ScreenshotAsync(new() { Path = Path.Combine(directory, $"{moment}.png"), FullPage = true });
+    }
+
     // The BFF starts the PKCE flow and Cognito's managed login takes the test user's credentials;
     // the callback leaves the opaque session cookie on the context (ADR-0041).
     private async Task SignInAsync()
