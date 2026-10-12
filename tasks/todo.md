@@ -18,7 +18,7 @@
   - Verificar: `adr-guardian` sem conflito com ADR aceita.
   - Arquivos: `docs/adr/0050-*.md`, `docs/adr/README.md`. Dependências: T0.
 
-- [ ] **T2: Remover a Function URL pública do checkout** (XS)
+- [x] **T2: Remover a Function URL pública do checkout** (XS) — feito; `cdk synth DuckStoreBasketStack` sem `AWS::Lambda::Url` e sem o output; nada lia o export (nem o `sst.config.ts`). O `cdk diff` contra o dev fica para o checkpoint 1 (precisa de credenciais)
   - Aceite: sem `addFunctionUrl` no `basket-checkout-basket`, sem a propriedade `checkoutBasketUrl` e sem o `CfnOutput`/export `CheckoutBasketUrl`; nada importa o export.
   - Verificar: `npx cdk diff BasketStack` mostra só a remoção do `AWS::Lambda::Url`, da permissão e do output; `grep -rn CheckoutBasketUrl infra/` vazio.
   - Arquivos: `infra/constructs/basket-lambdas.ts`, `infra/stacks/basket-stack.ts`. Dependências: T1.
