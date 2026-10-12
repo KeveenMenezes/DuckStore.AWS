@@ -9,7 +9,7 @@ tags:
 ## Status
 **Accepted** — June 2026
 
-**Amended** — October 2026 (proposed): [ADR-0050](./0050-checkout-step-functions-express-saga.md) §4 amends §2–§4 — checkout inserts a `CHECKOUT#` record and deletes the cart in one transaction, and the publisher fires on that INSERT instead of on MODIFY of the cart row.
+**Amended** — October 2026: [ADR-0050](./0050-checkout-step-functions-express-saga.md) §4 amends §2–§4 — checkout inserts a `CHECKOUT#` record and deletes the cart in one transaction, and the publisher fires on that INSERT instead of on MODIFY of the cart row.
 
 ---
 

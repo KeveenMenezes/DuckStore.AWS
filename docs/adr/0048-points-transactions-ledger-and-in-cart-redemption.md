@@ -12,7 +12,7 @@ tags:
 ## Status
 **Accepted** — October 2026
 
-**Amended** — October 2026 (proposed): [ADR-0050](./0050-checkout-step-functions-express-saga.md) replaces §4's AppSync pipeline with the `checkout-saga` Express state machine, and amends §6 — the payment exists as `Registered` before `BasketCheckoutEvent`, and the points-reservation consumer retries while it is still `Registered`. The server-total rule stands.
+**Amended** — October 2026: [ADR-0050](./0050-checkout-step-functions-express-saga.md) replaces §4's AppSync pipeline with the `checkout-saga` Express state machine, and amends §6 — the payment exists as `Registered` before `BasketCheckoutEvent`, and the points-reservation consumer retries while it is still `Registered`. The server-total rule stands.
 
 Amends:
 

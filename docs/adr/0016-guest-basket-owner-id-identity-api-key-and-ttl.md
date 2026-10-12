@@ -9,7 +9,7 @@ tags:
 ## Status
 **Accepted** — July 2026. §2's authenticated-branch mechanism amended by [ADR-0041](./0041-bff-opaque-server-side-session-centralized-cognito-refresh.md).
 
-**Amended** — October 2026 (proposed): [ADR-0050](./0050-checkout-step-functions-express-saga.md) §4 amends §1/§4 — `shopping-carts` gains a server-only `CHECKOUT#` key namespace, whose records also carry `ExpiresAt`.
+**Amended** — October 2026: [ADR-0050](./0050-checkout-step-functions-express-saga.md) §4 amends §1/§4 — `shopping-carts` gains a server-only `CHECKOUT#` key namespace, whose records also carry `ExpiresAt`.
 
 ---
 

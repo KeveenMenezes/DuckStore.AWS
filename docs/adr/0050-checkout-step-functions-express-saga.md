@@ -1,6 +1,6 @@
 ---
 tags:
-  - status/proposed
+  - status/accepted
   - domain/basket
   - domain/payment
   - domain/pricing
@@ -11,7 +11,7 @@ tags:
 # ADR-0050: Checkout as a Step Functions Express Saga
 
 ## Status
-**Proposed** — October 2026
+**Accepted** — October 2026 (PR #179). Implemented in `checkout-saga` (AppSyncStack), Basket, Payment and Pricing.
 
 Amends:
 
