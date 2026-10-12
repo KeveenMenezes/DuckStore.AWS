@@ -66,6 +66,10 @@ const toInternalError = [{ ErrorEquals: ['States.ALL'], Next: 'InternalError' }]
 // array where an API (BatchGetItem Keys, a Lambda's list field) requires one.
 const asArray = (expression: string) => `$append([], ${expression})`;
 
+// A top-level Arguments field whose expression yields nothing fails the state
+// (States.QueryEvaluationError), so a field the client may omit maps to an explicit null.
+const optional = (path: string) => `{% $exists(${path}) ? ${path} : null %}`;
+
 // Refusal outputs, mapped by the resolver to errorType/errorInfo (ADR-0050 §8).
 const refusal = (errorType: string, message: string, errorInfo = '{}') => ({
   Type: 'Succeed',
@@ -278,10 +282,11 @@ export class CheckoutSaga extends Construct {
               Amount: '{% $quote.ChargedTotal %}',
               PaymentMethod: '{% $checkoutInput.paymentMethod %}',
               Installments: '{% $checkoutInput.installments %}',
-              CardName: '{% $checkoutInput.cardName %}',
-              CardNumber: '{% $checkoutInput.cardNumber %}',
-              Expiration: '{% $checkoutInput.expiration %}',
-              Cvv: '{% $checkoutInput.cvv %}',
+              // Absent for cash.
+              CardName: optional('$checkoutInput.cardName'),
+              CardNumber: optional('$checkoutInput.cardNumber'),
+              Expiration: optional('$checkoutInput.expiration'),
+              Cvv: optional('$checkoutInput.cvv'),
             },
           },
           Assign: { registration: '{% $states.result.Payload %}' },
