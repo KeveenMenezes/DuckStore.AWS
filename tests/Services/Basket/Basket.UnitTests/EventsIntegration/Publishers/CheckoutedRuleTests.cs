@@ -19,11 +19,19 @@ public class CheckoutedRuleTests
     public void Match_ReturnsTrue_ForModifyOfCheckoutWithData() =>
         Assert.True(_rule.Match(Context("MODIFY")));
 
-    [Theory]
-    [InlineData("INSERT")]
-    [InlineData("REMOVE")]
-    public void Match_ReturnsFalse_ForNonModifyEvents(string eventName) =>
-        Assert.False(_rule.Match(Context(eventName)));
+    // The checkout saga inserts a CHECKOUT# record instead of marking the cart row (ADR-0050 §4).
+    // Both shapes publish while the old pipeline is still rolling out; each checkout writes only one.
+    [Fact]
+    public void Match_ReturnsTrue_ForInsertOfACheckoutRecordWithData() =>
+        Assert.True(_rule.Match(Context("INSERT")));
+
+    [Fact]
+    public void Match_ReturnsFalse_ForRemoveEvents() =>
+        Assert.False(_rule.Match(Context("REMOVE")));
+
+    [Fact]
+    public void Match_ReturnsFalse_ForInsertOfAnOrdinaryCart() =>
+        Assert.False(_rule.Match(Context("INSERT", newType: string.Empty, checkoutData: null)));
 
     [Fact]
     public void Match_ReturnsFalse_WhenNewImageIsNotCheckout() =>

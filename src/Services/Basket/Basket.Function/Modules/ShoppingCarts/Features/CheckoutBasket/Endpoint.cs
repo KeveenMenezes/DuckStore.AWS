@@ -28,8 +28,8 @@ public partial class Functions
         CheckoutBasketRequest request,
         [FromServices] ISender sender)
     {
-        var command = new CheckoutBasketCommand(request.BasketCheckoutDto);
+        var command = new CheckoutBasketCommand(request.BasketCheckoutDto, request.CheckoutId, request.CartVersion);
         var result = await sender.Send(command, CancellationToken.None);
-        return new CheckoutBasketResponse(result.IsSuccess, result.OrderId);
+        return new CheckoutBasketResponse(result.IsSuccess, result.OrderId, result.ErrorType);
     }
 }
