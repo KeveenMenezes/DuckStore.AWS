@@ -87,6 +87,7 @@ public class Payment : Aggregate<PaymentId>
     // this transition). A no-op once the payment left AwaitingPoints, so a redelivery is harmless.
     public void ConfirmPoints()
     {
+        EnsurePromoted();
         if (Status != PaymentStatus.AwaitingPoints)
             return;
 
@@ -97,11 +98,21 @@ public class Payment : Aggregate<PaymentId>
     // announces it so Ordering cancels the order.
     public void RejectPoints()
     {
+        EnsurePromoted();
         if (Status != PaymentStatus.AwaitingPoints)
             return;
 
         Status = PaymentStatus.Declined;
         DeclineReason = InsufficientPointsReason;
+    }
+
+    // Challenges reserves the points off the same checkout event that promotes a Registered payment,
+    // so its outcome can arrive first. Unlike any other status, Registered will still move to
+    // AwaitingPoints: the outcome must be retried, not dropped as a no-op (ADR-0050 §6).
+    private void EnsurePromoted()
+    {
+        if (Status == PaymentStatus.Registered)
+            throw new PaymentNotYetPromotedException(OrderId);
     }
 
     // Maps a Payment gateway's authorize/decline outcome onto the payment's own transition, so

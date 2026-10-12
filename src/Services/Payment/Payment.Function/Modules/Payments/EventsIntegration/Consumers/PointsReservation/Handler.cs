@@ -8,7 +8,9 @@ public static class PointsReservationHandler
     // Unlike PaymentResult, a missing payment throws instead of returning: Payment and Challenges
     // consume BasketCheckoutEvent in parallel, so the outcome can arrive before the payment row is
     // written. Throwing lets EventBridge retry (then DLQ); dropping it would leave the payment
-    // AwaitingPoints forever (ADR-0048 §6).
+    // AwaitingPoints forever (ADR-0048 §6). The same holds for a payment the checkout saga
+    // registered but the checkout event hasn't promoted yet: ConfirmPoints/RejectPoints throw
+    // PaymentNotYetPromotedException (ADR-0050 §6).
     public static async Task<Domain.Entities.Payment> ApplyAsync(
         IPaymentRepository paymentRepository,
         ApplyPointsReservationCommand command,

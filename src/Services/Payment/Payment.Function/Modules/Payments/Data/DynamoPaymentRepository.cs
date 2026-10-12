@@ -106,6 +106,21 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
     internal static TransactWriteItem ToTransactWriteItem(PaymentEntity payment) =>
         new() { Put = new Put { TableName = TableName, Item = ToItem(payment) } };
 
+    // The same Put, applied only while the stored payment is still in expectedStatus; otherwise the
+    // whole transaction (inbox record included) is cancelled and the event is retried.
+    internal static TransactWriteItem ToTransactWriteItem(PaymentEntity payment, PaymentStatus expectedStatus) =>
+        new()
+        {
+            Put = new Put
+            {
+                TableName = TableName,
+                Item = ToItem(payment),
+                ConditionExpression = StatusCondition,
+                ExpressionAttributeNames = StatusConditionNames,
+                ExpressionAttributeValues = StatusConditionValues(expectedStatus)
+            }
+        };
+
     public async Task<bool> AnyAsync(CancellationToken cancellationToken = default)
     {
         var response = await dynamoDb.ScanAsync(

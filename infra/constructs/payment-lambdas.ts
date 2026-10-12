@@ -54,8 +54,10 @@ export class PaymentLambdas extends Construct {
     //    Consumes BasketCheckoutEvent directly (not OrderCreatedEvent) so card data never
     //    has to be persisted or republished by Ordering — Ordering and Payment are
     //    independent, parallel consumers of the same event (ADR-0038).
-    //    Writes the new Payment (Status=Pending) + idempotency record atomically via
-    //    TransactWriteItems. EventBridge sets evt.Id as the idempotency key.
+    //    Promotes the payment the checkout saga registered (Registered -> Pending/AwaitingPoints,
+    //    ADR-0050 §6) or, for an event from the old checkout pipeline, creates it; the payment
+    //    write + idempotency record go atomically via TransactWriteItems. EventBridge sets evt.Id
+    //    as the idempotency key.
     this.basketCheckoutConsumer = new lambda.Function(
       this,
       'BasketCheckoutConsumer',
@@ -70,7 +72,7 @@ export class PaymentLambdas extends Construct {
         timeout: cdk.Duration.seconds(30),
         memorySize: DOTNET_MEMORY_MB,
         description:
-          'Consumes BasketCheckoutEvent and creates a Pending Payment idempotently (ADR-0025/0038)',
+          'Consumes BasketCheckoutEvent and promotes (or creates) the order\'s Payment idempotently (ADR-0025/0038/0050)',
         environment: {
           ANNOTATIONS_HANDLER: 'BasketCheckoutConsumer',
           EventBridge__BusName: eventBus.eventBusName,
@@ -78,7 +80,8 @@ export class PaymentLambdas extends Construct {
       },
     );
 
-    paymentsTable.grantWriteData(this.basketCheckoutConsumer);
+    // Read: the consistent GetItem of the registered payment it promotes.
+    paymentsTable.grantReadWriteData(this.basketCheckoutConsumer);
     processedEventsTable.grantWriteData(this.basketCheckoutConsumer);
 
     const basketCheckoutRule = new events.Rule(this, 'BasketCheckoutRule', {
@@ -105,8 +108,8 @@ export class PaymentLambdas extends Construct {
 
     // 2. payment-payments-stream-publisher
     //    Trigger: DynamoDB Streams on payments table (NEW_AND_OLD_IMAGES, CDC — ADR-0005/0019)
-    //    Rule-based publisher: PaymentRequestedRule emits PaymentRequestedEvent on INSERT of a
-    //    Pending payment.
+    //    Rule-based publisher: PaymentRequestedRule emits PaymentRequestedEvent when a payment
+    //    becomes Pending (INSERT, or MODIFY from Registered/AwaitingPoints — ADR-0050 §6).
     this.paymentRequestedPublisher = new lambda.Function(
       this,
       'PaymentRequestedPublisher',
