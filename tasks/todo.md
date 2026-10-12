@@ -73,7 +73,7 @@
   - Verificar: `npx cdk synth AppSyncStack`; `cdk diff` com a troca do resolver; `grep -rn checkoutBasket.loadCart` vazio.
   - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/basket/mutations/Mutation.checkoutBasket*.js`, `infra/constructs/appsync-api.ts`, `src/WebApps/Shopping.Web.SPA.React/graphql/types.ts`, `docs/adr/0009-*.md`. Dependências: T11.
 
-- [ ] **T13: `local.ts` e SPA no contrato novo** (M)
+- [x] **T13: `local.ts` e SPA no contrato novo** (M) — código feito; `local.ts` imita a saga passo a passo (derivação em `lib/checkout-order-id.ts`, 3 vetores da ADR verificados com `node --experimental-strip-types`), SPA com `checkoutId` por tentativa (renova em sucesso ou recusa tipada, mantém em `InternalError`/rede) e tratamento de `CartChanged`/`ProductUnavailable`/`InvalidCard`/`CheckoutRetryRequired`/`InternalError`; `typecheck` ok, `lint` sem erro novo. **Pendente para o checkpoint 1:** os cenários manuais no Aspire e o `pnpm build` (o SSG de `/` precisa de backend GraphQL; o CI só roda lint + typecheck)
   - Aceite: o `local.ts` imita a saga passo a passo (mesma derivação, mesmos `errorType`, register/void pelo emulador); o SPA gera o `checkoutId` ao abrir o checkout e o mantém nos retries, renovando só depois de sucesso ou de recusa tipada (`InternalError`/rede mantêm o id); `CartChanged`/`ProductUnavailable` recotam e pedem confirmação, e `InvalidCard` marca o campo do cartão.
   - Verificar: `pnpm lint && pnpm typecheck && pnpm build`; no Aspire: checkout feliz, duplo clique (um pedido), carrinho alterado em outra aba (`CartChanged`) e cartão inválido (`InvalidCard`).
   - Arquivos: `app/api/graphql/local.ts`, `features/checkout/{hooks/use-checkout.ts,services/checkout.service.ts,components/*}`. Dependências: T12.

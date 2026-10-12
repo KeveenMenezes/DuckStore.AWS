@@ -8,6 +8,7 @@ import { useAuth } from "@/features/auth/hooks/use-auth"
 import { getMyProfile } from "@/features/auth/services/profile.service"
 import { usePointsBalance } from "@/features/points/hooks/use-points-balance"
 import { REDEMPTION_REFRESH_DELAY_MS } from "@/features/points/constants"
+import { createCheckoutId } from "@/shared/lib/id"
 import {
   chargedTotalFor,
   submitCheckout,
@@ -37,6 +38,13 @@ const EMPTY_FORM: CheckoutFormData = {
 // Typing a number of points re-quotes the cart; wait for the customer to stop typing.
 const POINTS_QUOTE_DEBOUNCE_MS = 400
 
+// The server's card field names (InvalidCard errorInfo.field) mapped to this form's fields.
+const CARD_FIELDS: Record<string, keyof CheckoutFieldErrors> = {
+  CardNumber: "cardNumber",
+  Expiration: "cardExpiry",
+  Cvv: "cardCvc",
+}
+
 /**
  * Owns the entire checkout flow: form state, validation, the points to use, the server quote,
  * the checkout mutation, and the form/processing/success state machine.
@@ -44,6 +52,11 @@ const POINTS_QUOTE_DEBOUNCE_MS = 400
  * The total shown and sent is always the quote's total for the chosen payment method
  * (chargedTotalFor) — the same figure Pricing recomputes and compares in the checkout pipeline,
  * which rejects any difference with PriceChanged (ADR-0048 §4).
+ *
+ * Every submit of one checkout attempt carries the same checkoutId, so a retry after a timeout or
+ * a network error gets the order the first try created instead of a second one. The id is renewed
+ * only after a success or a typed refusal — never after InternalError, which may hide a checkout
+ * that did go through (ADR-0050 §3).
  */
 export function useCheckout() {
   const { items, totalPrice, totalItems, clearCart } = useCart()
@@ -68,6 +81,7 @@ export function useCheckout() {
   // Bumped to force a fresh quote of the same cart and points (after PriceChanged).
   const [quoteVersion, setQuoteVersion] = useState(0)
   const quotedItemsRef = useRef<typeof items | null>(null)
+  const checkoutIdRef = useRef<string>(createCheckoutId())
 
   // Debounce the points before re-quoting.
   useEffect(() => {
@@ -188,7 +202,8 @@ export function useCheckout() {
 
     setState("processing")
     try {
-      const id = await submitCheckout(formData, chargedTotal, pointsToUse)
+      const id = await submitCheckout(formData, chargedTotal, pointsToUse, checkoutIdRef.current)
+      checkoutIdRef.current = createCheckoutId()
       setOrderId(id)
       setPriceChangedTotal(null)
 
@@ -216,6 +231,11 @@ export function useCheckout() {
       setState("success")
     } catch (err) {
       setState("form")
+      // A typed refusal means this attempt is over; anything else may have checked out, so the
+      // next submit keeps the id and gets that order back if it exists.
+      if (err instanceof GraphQLRequestError && err.errorType && err.errorType !== "InternalError") {
+        checkoutIdRef.current = createCheckoutId()
+      }
       if (err instanceof GraphQLRequestError && err.errorType === "PriceChanged") {
         // Never resubmit on the customer's behalf: show the new total and let them confirm it.
         const serverTotal = Number(err.errorInfo?.serverTotal)
@@ -227,6 +247,34 @@ export function useCheckout() {
         const max = Number(err.errorInfo?.maxRedeemablePoints ?? 0)
         setPointsToUse(max)
         setPointsNotice(`Adjusted to ${max} points, the most this order allows. Review the total and confirm again.`)
+        return
+      }
+      if (err instanceof GraphQLRequestError && err.errorType === "CartChanged") {
+        setCheckoutError("Your cart changed in another window. Review it and confirm again.")
+        setQuoteVersion((v) => v + 1)
+        return
+      }
+      if (err instanceof GraphQLRequestError && err.errorType === "ProductUnavailable") {
+        const unavailable = (err.errorInfo?.productIds as string[] | undefined) ?? []
+        const names = items.filter((i) => unavailable.includes(i.product.id)).map((i) => i.product.name)
+        setCheckoutError(
+          `${names.length > 0 ? names.join(", ") : "Some products"} ${names.length === 1 ? "is" : "are"} no longer available. Remove ${names.length === 1 ? "it" : "them"} from your cart to continue.`,
+        )
+        setQuoteVersion((v) => v + 1)
+        return
+      }
+      if (err instanceof GraphQLRequestError && err.errorType === "InvalidCard") {
+        const field = CARD_FIELDS[String(err.errorInfo?.field)] ?? "cardNumber"
+        setErrors((prev) => ({ ...prev, [field]: err.message }))
+        return
+      }
+      if (err instanceof GraphQLRequestError && err.errorType === "CheckoutRetryRequired") {
+        setCheckoutError("This checkout expired. Review your order and confirm again.")
+        setQuoteVersion((v) => v + 1)
+        return
+      }
+      if (err instanceof GraphQLRequestError && err.errorType === "InternalError") {
+        setCheckoutError("We couldn't confirm your order. Try again — you won't be charged twice.")
         return
       }
       const message = err instanceof Error ? err.message : "An unexpected error occurred."

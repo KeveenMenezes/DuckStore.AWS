@@ -68,6 +68,8 @@ export async function submitCheckout(
   // server recomputes it and rejects a mismatch with errorType "PriceChanged" (ADR-0048 §4).
   totalPrice: number,
   pointsToUse = 0,
+  // One per checkout attempt, the same on every retry of it (ADR-0050 §3).
+  checkoutId?: string,
 ): Promise<string | null> {
   const nameParts = formData.name.trim().split(" ")
   const firstName = nameParts[0] ?? "Guest"
@@ -81,6 +83,7 @@ export async function submitCheckout(
 
   const data = await gql<{ checkoutBasket: GqlCheckoutResult }>(CHECKOUT_BASKET, {
     input: {
+      checkoutId,
       totalPrice,
       pointsToUse,
       firstName,
