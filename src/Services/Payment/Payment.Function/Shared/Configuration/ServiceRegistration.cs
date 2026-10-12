@@ -1,5 +1,7 @@
 ﻿using BuildingBlocks.Core.Validation;
 using Payment.Function.Modules.Payments.EventsIntegration.Consumers.BasketCheckout;
+using Payment.Function.Modules.Payments.Features.RegisterPayment;
+using Payment.Function.Modules.Payments.Features.VoidPayment;
 namespace Payment.Function.Shared.Configuration;
 
 // Single DI composition for the whole service, shared by the [LambdaStartup] consumers, the
@@ -25,6 +27,10 @@ public static class ServiceRegistration
         // DynamoDB Local injects AWS_ENDPOINT_URL_DYNAMODB; the SDK resolves it on its own.
         services.AddSingleton<IAmazonDynamoDB>(_ => new AmazonDynamoDBClient());
         services.AddScoped<IPaymentRepository, DynamoPaymentRepository>();
+
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<RegisterPaymentHandler>();
+        services.AddScoped<VoidPaymentHandler>();
 
         services.AddEventBridgeMessaging(configuration);
         services.AddIdempotentEventConsumer(ProcessedIntegrationEvent.TableName);

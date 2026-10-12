@@ -19,7 +19,8 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
             new GetItemRequest
             {
                 TableName = TableName,
-                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) }
+                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(id.ToString()) },
+                ConsistentRead = true
             },
             cancellationToken);
 
@@ -50,6 +51,57 @@ public class DynamoPaymentRepository(IAmazonDynamoDB dynamoDb) : IPaymentReposit
         dynamoDb.PutItemAsync(
             new PutItemRequest { TableName = TableName, Item = ToItem(payment) },
             cancellationToken);
+
+    public async Task<bool> TryAddAsync(PaymentEntity payment, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await dynamoDb.PutItemAsync(
+                new PutItemRequest
+                {
+                    TableName = TableName,
+                    Item = ToItem(payment),
+                    ConditionExpression = "attribute_not_exists(Id)"
+                },
+                cancellationToken);
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    public async Task<bool> ReplaceIfStatusAsync(
+        PaymentEntity payment, PaymentStatus expectedStatus, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await dynamoDb.PutItemAsync(
+                new PutItemRequest
+                {
+                    TableName = TableName,
+                    Item = ToItem(payment),
+                    ConditionExpression = StatusCondition,
+                    ExpressionAttributeNames = StatusConditionNames,
+                    ExpressionAttributeValues = StatusConditionValues(expectedStatus)
+                },
+                cancellationToken);
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
+    }
+
+    // Status is a DynamoDB reserved word, hence the #status alias.
+    private const string StatusCondition = "#status = :expectedStatus";
+
+    private static Dictionary<string, string> StatusConditionNames => new() { ["#status"] = "Status" };
+
+    private static Dictionary<string, AttributeValue> StatusConditionValues(PaymentStatus expectedStatus) =>
+        new() { [":expectedStatus"] = new(expectedStatus.ToString()) };
 
     internal static TransactWriteItem ToTransactWriteItem(PaymentEntity payment) =>
         new() { Put = new Put { TableName = TableName, Item = ToItem(payment) } };
