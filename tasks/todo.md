@@ -33,17 +33,17 @@
   - Verificar: build verde; contratos registrados na seção 3 da ADR-0050.
   - Arquivos: `Basket.Function/.../CheckoutBasket/Endpoint.cs`, `Payment.Function/.../Features/{RegisterPayment,VoidPayment}/Contracts.cs`, ADR-0050. Dependências: T1.
 
-- [ ] **T5: Payment — domínio `Registered`/`Voided` e validação do cartão** (M) — *trilha Payment (subagente)*
+- [x] **T5: Payment — domínio `Registered`/`Voided` e validação do cartão** (M) — *trilha Payment (subagente)* — feito (`c786b7a`); validação em `CardDetails.Validated(..., TimeProvider)` (o `Of` segue estrutural para dados legados `MM/YY`), Luhn em `Domain/Services/Luhn.cs`, `Void()`/`Promote()` devolvem `bool`, `ConfirmPoints`/`RejectPoints` lançam `PaymentNotYetPromotedException` com `Registered`
   - Aceite: `PaymentStatus.Registered` e `Voided` (acrescentados no fim do enum); `Payment.Register(...)` com validação (Luhn, `MM/AAAA` não vencida, CVV de 3 ou 4 dígitos; dinheiro dispensa cartão) que lança `InvalidCardException(field)`; `Void()` só a partir de `Registered`, no-op nos demais; `IsSameRegistration(amount, method, installments)` para o replay; o command de registro redige o cartão no `ToString`; `CardDetails.Of` aceita CVV de 4 dígitos; `Promote(awaitingPoints)` faz `Registered → Pending/AwaitingPoints`; `PaymentId` derivado do `OrderId` (um pagamento por pedido).
   - Verificar: `dotnet test tests/Services/Payment/Payment.UnitTests` com casos de cada regra de validação e de cada transição.
   - Arquivos: `Domain/Entities/Payment.cs`, `Domain/Enums/PaymentStatus.cs`, `Domain/Exceptions/InvalidCardException.cs`, testes. Dependências: T4.
 
-- [ ] **T6: Payment — Lambdas `payment-register` e `payment-void`** (M) — *trilha Payment*
+- [x] **T6: Payment — Lambdas `payment-register` e `payment-void`** (M) — *trilha Payment* — feito (`a606ec3`); handlers fora do MediatR (nada no caminho do cartão passa pelo `LoggingBehavior`), Put condicional por `PaymentId = OrderId`, void condicionado a `Status = Registered`, `GetByIdAsync` sempre consistente; CDK sem Function URL e AppHost
   - Aceite: endpoints Invoke (`[LambdaFunction]`); o register grava condicionado ao `PaymentId`; a repetição só devolve o pagamento se ainda `Registered` com os mesmos termos, senão `CheckoutRetryRequired`; `InvalidCard` e `CheckoutRetryRequired` voltam como recusa tipada (`{ ErrorType, Message, Field }`), não como exceção da Lambda; o void é idempotente; CDK (função, grants, AOT) e registro no AppHost.
   - Verificar: testes unitários dos handlers; `npx cdk synth PaymentStack`; no Aspire, invocar as duas pelo emulador.
   - Arquivos: `Features/{RegisterPayment,VoidPayment}/*`, `Data/DynamoPaymentRepository.cs`, `infra/constructs/payment-lambdas.ts`, `src/AppHost/PaymentExtensions.cs`, testes. Dependências: T5.
 
-- [ ] **T7: Payment — consumer de checkout promove em vez de criar (tolerante)** (M) — *trilha Payment*
+- [x] **T7: Payment — consumer de checkout promove em vez de criar (tolerante)** (M) — *trilha Payment* — feito (`b9b1ccd`); promoção condicionada a `Status = Registered` dentro da transação do inbox; o consumer ganhou leitura na tabela `payments`. 140 testes do Payment verdes
   - Aceite: com pagamento `Registered` do pedido, o consumer promove (`AwaitingPoints` se `PointsToUse > 0`, senão `Pending`); sem pagamento registrado, cria como hoje (forma antiga, até a T14); o `PaymentRequestedRule` casa `Registered → Pending` e **mantém** INSERT `Pending` (caminho antigo); o gateway nunca é acionado para `Registered`; o `PointsReservationHandler` lança erro quando o pagamento ainda está `Registered` (ADR-0050 §6).
   - Verificar: testes do consumer (os dois caminhos), da regra (INSERT `Registered` não casa; MODIFY `Registered → Pending` casa; INSERT `Pending` casa) e do handler de pontos (`Registered` lança).
   - Arquivos: `EventsIntegration/Consumers/{BasketCheckout,PointsReservation}/*`, `EventsIntegration/Publishers/Rules/PaymentRequestedRule.cs`, testes. Dependências: T6.
