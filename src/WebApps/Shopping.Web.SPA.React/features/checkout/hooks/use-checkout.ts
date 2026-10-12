@@ -81,7 +81,9 @@ export function useCheckout() {
   // Bumped to force a fresh quote of the same cart and points (after PriceChanged).
   const [quoteVersion, setQuoteVersion] = useState(0)
   const quotedItemsRef = useRef<typeof items | null>(null)
-  const checkoutIdRef = useRef<string>(createCheckoutId())
+  // Lazily: one id per attempt, not one per render.
+  const checkoutIdRef = useRef<string | null>(null)
+  checkoutIdRef.current ??= createCheckoutId()
 
   // Debounce the points before re-quoting.
   useEffect(() => {
@@ -202,7 +204,7 @@ export function useCheckout() {
 
     setState("processing")
     try {
-      const id = await submitCheckout(formData, chargedTotal, pointsToUse, checkoutIdRef.current)
+      const id = await submitCheckout(formData, chargedTotal, pointsToUse, checkoutIdRef.current ?? undefined)
       checkoutIdRef.current = createCheckoutId()
       setOrderId(id)
       setPriceChangedTotal(null)

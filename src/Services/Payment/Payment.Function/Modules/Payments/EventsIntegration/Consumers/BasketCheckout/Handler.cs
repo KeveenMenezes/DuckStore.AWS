@@ -28,8 +28,11 @@ public class CreatePaymentHandler(IPaymentRepository paymentRepository)
         if (registered is null)
             return [DynamoPaymentRepository.ToTransactWriteItem(CreateNewPayment(command))];
 
+        // Conditioned on the status it was read in, so a concurrent change cancels the transaction
+        // and EventBridge retries against the new state.
+        var readStatus = registered.Status;
         return registered.Promote(awaitingPoints: command.PointsToUse > 0)
-            ? [DynamoPaymentRepository.ToTransactWriteItem(registered, expectedStatus: PaymentStatus.Registered)]
+            ? [DynamoPaymentRepository.ToTransactWriteItem(registered, expectedStatus: readStatus)]
             : [];
     }
 

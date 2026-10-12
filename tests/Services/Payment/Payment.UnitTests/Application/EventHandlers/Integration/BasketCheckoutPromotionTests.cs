@@ -63,21 +63,30 @@ public class BasketCheckoutPromotionTests
         Assert.Null(put.ConditionExpression);
     }
 
-    // Already promoted (a redelivery the inbox didn't catch) or voided: only the inbox is written.
-    [Theory]
-    [InlineData("promoted")]
-    [InlineData("voided")]
-    public async Task ShouldWriteNothing_WhenThePaymentIsNoLongerRegistered(string scenario)
+    // Already promoted (a redelivery the inbox didn't catch): only the inbox is written.
+    [Fact]
+    public async Task ShouldWriteNothing_WhenThePaymentWasAlreadyPromoted()
     {
         var command = Command();
-        var payment = GivenARegisteredPayment(command);
-        if (scenario == "promoted")
-            payment.Promote(awaitingPoints: false);
-        else
-            payment.Void();
+        GivenARegisteredPayment(command).Promote(awaitingPoints: false);
 
         var writes = await CreatePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command);
 
         Assert.Empty(writes);
+    }
+
+    // Two executions of one checkout attempt: A's CartChanged voided the payment just before B
+    // closed the cart. The event proves the cart closed under this OrderId, so the payment is
+    // promoted anyway — conditioned on the Voided status it was read in.
+    [Fact]
+    public async Task ShouldPromoteAVoidedPayment_BecauseTheEventProvesTheCartClosed()
+    {
+        var command = Command();
+        GivenARegisteredPayment(command).Void();
+
+        var put = SinglePut(await CreatePaymentHandler.ToPaymentWritesAsync(_paymentRepository.Object, command));
+
+        Assert.Equal("Pending", put.Item["Status"].S);
+        Assert.Equal("Voided", put.ExpressionAttributeValues[":expectedStatus"].S);
     }
 }

@@ -98,14 +98,16 @@ public class PaymentRegistrationTests
         Assert.Equal(expected, payment.Status);
     }
 
+    // Promotion is driven by BasketCheckoutEvent, which proves the cart closed under this OrderId:
+    // a void that raced a successful close of the same attempt must not leave the order unpaid.
     [Fact]
-    public void Promote_ShouldBeANoOp_OnceVoided()
+    public void Promote_ShouldMoveAVoidedPaymentOn_BecauseTheCartClosed()
     {
         var payment = Registered();
         payment.Void();
 
-        Assert.False(payment.Promote(awaitingPoints: false));
-        Assert.Equal(PaymentStatus.Voided, payment.Status);
+        Assert.True(payment.Promote(awaitingPoints: false));
+        Assert.Equal(PaymentStatus.Pending, payment.Status);
     }
 
     // A redelivered checkout event must not move a payment that already went on.

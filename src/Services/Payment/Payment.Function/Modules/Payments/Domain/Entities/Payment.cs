@@ -61,11 +61,13 @@ public class Payment : Aggregate<PaymentId>
         Status == PaymentStatus.Registered && Amount == amount && Card == card;
 
     // The cart closed: the payment moves on as a checkout-created one always did — waiting for the
-    // points reservation when the checkout used points. Returns false (no-op) unless Registered, so
-    // a redelivered event or a payment the saga already voided is left alone.
+    // points reservation when the checkout used points. Voided moves on too: the caller only promotes
+    // on BasketCheckoutEvent, which proves the cart closed under this OrderId, so a void that raced
+    // that close (two executions of one attempt) must not leave the order unpaid. Any other status
+    // is a redelivery: no-op, returns false.
     public bool Promote(bool awaitingPoints)
     {
-        if (Status != PaymentStatus.Registered)
+        if (Status is not (PaymentStatus.Registered or PaymentStatus.Voided))
             return false;
 
         Status = awaitingPoints ? PaymentStatus.AwaitingPoints : PaymentStatus.Pending;

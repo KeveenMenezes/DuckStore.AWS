@@ -166,7 +166,7 @@ export class CheckoutSaga extends Construct {
               '{% $exists($states.result.Item) ? ' +
               asArray(
                 '$map($parse($states.result.Item.Data.S).Items, function($i) { ' +
-                  '{ "productId": $string($i.ProductId), "quantity": $i.Quantity } })',
+                  '{ "productId": $lowercase($string($i.ProductId)), "quantity": $i.Quantity } })',
               ) +
               ' : [] %}',
             cartVersion: '{% $exists($states.result.Item.Version) ? $states.result.Item.Version.S : null %}',
@@ -176,10 +176,15 @@ export class CheckoutSaga extends Construct {
         },
         HasItems: {
           Type: 'Choice',
-          Choices: [{ Condition: '{% $count($cartItems) > 0 %}', Next: 'CatalogLines' }],
-          Default: 'RefuseEmptyCart',
+          Choices: [
+            { Condition: '{% $count($cartItems) = 0 %}', Next: 'RefuseEmptyCart' },
+            // BatchGetItem takes at most 100 keys.
+            { Condition: '{% $count($distinct($cartItems.productId)) > 100 %}', Next: 'RefuseCartTooLarge' },
+          ],
+          Default: 'CatalogLines',
         },
         RefuseEmptyCart: refusal('"BadRequest"', '"There is no cart to check out."'),
+        RefuseCartTooLarge: refusal('"BadRequest"', '"A cart can hold at most 100 different products."'),
 
         // Name and main image come from Catalog, never from the cart (ADR-0050 §5).
         CatalogLines: {
@@ -199,7 +204,7 @@ export class CheckoutSaga extends Construct {
             catalog:
               `{% $merge(${asArray(
                 `$map(${asArray(`$lookup($states.result.Responses, '${productsTable.tableName}')`)}, function($p) { ` +
-                  '{ $p.Id.S: { "name": $p.Name.S, "imageId": $p.Images.L[M.IsMain.BOOL = true].M.ImageId.S } } })',
+                  '{ $p.Id.S: { "name": $p.Name.S, "imageId": $p.Images.L[M.IsMain.BOOL = true][0].M.ImageId.S } } })',
               )}) %}`,
             unprocessedKeys: '{% $count($keys($states.result.UnprocessedKeys)) %}',
           },
@@ -246,7 +251,12 @@ export class CheckoutSaga extends Construct {
         },
         QuoteAccepted: {
           Type: 'Choice',
-          Choices: [{ Condition: '{% $exists($quote.Rejection) %}', Next: 'RefuseQuote' }],
+          Choices: [
+            { Condition: '{% $exists($quote.Rejection) %}', Next: 'RefuseQuote' },
+            // Defence in depth: a Pricing that predates per-line prices would price the order lines
+            // at zero. Never write an order without one price per cart line.
+            { Condition: `{% $count(${asArray('$quote.Lines')}) != $count($cartItems) %}`, Next: 'InternalError' },
+          ],
           Default: 'RegisterPayment',
         },
         RefuseQuote: refusal(
@@ -351,7 +361,9 @@ export class CheckoutSaga extends Construct {
         CheckoutOutcome: {
           Type: 'Choice',
           Choices: [
-            { Condition: '{% $checkout.IsSuccess = true %}', Next: 'CheckedOut' },
+            // Defence in depth: a Basket that predates the saga mints its own OrderId; an id other
+            // than the derived one means the close was not the saga's.
+            { Condition: '{% $checkout.IsSuccess = true and $checkout.OrderId = $orderId %}', Next: 'CheckedOut' },
             { Condition: "{% $checkout.ErrorType = 'CartChanged' %}", Next: 'VoidPayment' },
           ],
           Default: 'InternalError',

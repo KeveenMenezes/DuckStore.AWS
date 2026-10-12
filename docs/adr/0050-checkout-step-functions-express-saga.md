@@ -190,6 +190,9 @@ is the typed refusal `CheckoutRetryRequired`, and the SPA renews the `checkoutId
 `Registered` MUST NOT trigger the gateway. `PaymentRequestedRule` matches `Registered → Pending` and
 the existing `AwaitingPoints → Pending`, and keeps matching INSERT `Pending` while the legacy create
 path exists (§3 transition). `payment-void` moves `Registered → Voided` and is a no-op otherwise.
+Promotion accepts `Voided` as well: `BasketCheckoutEvent` proves the cart closed under that `OrderId`,
+so a void from one execution that raced a successful close by another execution of the same attempt
+must not leave the order unpaid.
 
 `payment-basket-checkout-consumer` stops creating payments: it promotes the order's `Registered`
 payment to `Pending`, or to `AwaitingPoints` when `PointsToUse > 0`. The points-reservation consumers

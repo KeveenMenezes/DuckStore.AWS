@@ -1029,6 +1029,16 @@ const resolvers = {
       if (ownerId.startsWith('GUEST#')) throw unauthorized('checkoutBasket')
       const customerId = customerIdFromOwner(ownerId)
 
+      // The resolver's input checks (Mutation.checkoutBasket.js), refused before the saga runs.
+      const UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+      if (input.checkoutId != null && !UUID.test(String(input.checkoutId))) {
+        throw refusal('BadRequest', 'checkoutId must be a UUID.')
+      }
+      if (!String(input.addressLine ?? '').trim()) throw refusal('BadRequest', 'An address is required.')
+      if (!String(input.emailAddress ?? '').trim()) throw refusal('BadRequest', 'An email address is required.')
+      if (![1, 2, 3].includes(Number(input.paymentMethod))) throw refusal('BadRequest', 'Unknown payment method.')
+      if (Number(input.installments) < 1) throw refusal('BadRequest', 'installments must be at least 1.')
+
       const checkoutId = (input.checkoutId as string | null | undefined) || randomUUID()
       const orderId = checkoutOrderId(ownerId, checkoutId)
 
@@ -1048,11 +1058,12 @@ const resolvers = {
       )
       const items = cart.Item
         ? ((JSON.parse(cart.Item.Data?.S ?? '{}').Items ?? []) as Array<{ ProductId: string; Quantity: number }>)
-            .map(i => ({ ProductId: String(i.ProductId), Quantity: Number(i.Quantity) }))
+            .map(i => ({ ProductId: String(i.ProductId).toLowerCase(), Quantity: Number(i.Quantity) }))
         : []
       if (items.length === 0) throw refusal('BadRequest', 'There is no cart to check out.')
       const cartVersion = cart.Item?.Version?.S ?? null
       const productIds = [...new Set(items.map(i => i.ProductId))]
+      if (productIds.length > 100) throw refusal('BadRequest', 'A cart can hold at most 100 different products.')
 
       // CatalogLines: name and main image from Catalog.
       const catalogResult = await dynamoDb.send(
@@ -1093,6 +1104,9 @@ const resolvers = {
       if (pointsToUse > 0 && (await pointsBalance(ownerId)) < pointsToUse) {
         throw refusal('InsufficientPoints', 'Not enough points for this order.')
       }
+
+      // Never write an order without one Pricing price per cart line.
+      if ((quote.Lines ?? []).length !== items.length) throw internalError()
 
       // RegisterPayment: the card reaches Payment here and nowhere else (ADR-0050 §6/§7).
       const registration = await invokeLambda<{
@@ -1159,7 +1173,7 @@ const resolvers = {
         await invokeLambda('payment-void', { OrderId: orderId })
         throw refusal('CartChanged', 'Your cart changed. Review it before checking out.')
       }
-      if (!body.IsSuccess) throw internalError()
+      if (!body.IsSuccess || body.OrderId !== orderId) throw internalError()
 
       await createEligibleReviews(customerId, productIds)
       if (pointsToUse > 0 && body.OrderId) await redeemPointsForOrder(ownerId, body.OrderId, pointsToUse)

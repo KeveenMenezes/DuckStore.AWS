@@ -69,13 +69,24 @@ public partial class Functions
         }
         catch (QuoteRejectedException ex)
         {
-            return new GetBasketInstallmentPlanResponse(
-                0m, 0m, 0m, 0, [], 0, 0m, null,
-                new QuoteRejectionResponse(
-                    ex.ErrorType,
-                    ex.Message,
-                    (ex as PriceChangedException)?.ServerTotal,
-                    (ex as PointsAboveCapException)?.MaxRedeemablePoints));
+            return Rejected(new QuoteRejectionResponse(
+                ex.ErrorType,
+                ex.Message,
+                (ex as PriceChangedException)?.ServerTotal,
+                (ex as PointsAboveCapException)?.MaxRedeemablePoints));
+        }
+        // Inputs a client can get wrong (its stored cart, the payment choice) are refusals too: a
+        // thrown error would reach the checkout saga as an ambiguous fault (ADR-0050 §8).
+        catch (PriceNotFoundException ex)
+        {
+            return Rejected(new QuoteRejectionResponse("ProductUnavailable", ex.Message, null, null));
+        }
+        catch (Exception ex) when (ex is BadRequestException or ValidationException)
+        {
+            return Rejected(new QuoteRejectionResponse("BadRequest", ex.Message, null, null));
         }
     }
+
+    private static GetBasketInstallmentPlanResponse Rejected(QuoteRejectionResponse rejection) =>
+        new(0m, 0m, 0m, 0, [], 0, 0m, null, rejection);
 }

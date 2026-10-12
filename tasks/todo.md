@@ -169,7 +169,7 @@
   - Verificar: `npx cdk synth OrderingStack`; `cdk diff` com a state machine, a regra e o IAM.
   - Arquivos: `infra/constructs/order-saga.ts`, `infra/stacks/ordering-stack.ts`. Dependências: T25, T26, T27.
 
-- [ ] **T29: Reconciliadores de órfãos** (M)
+- [ ] **T29: Reconciliadores de órfãos** (M) — **incluir (code-review do checkpoint 1, #9):** pagamentos `Registered` órfãos e `Voided` guardam o cartão completo (número e CVV) sem prazo; o reconciliador anula **e apaga os dados do cartão** desses registros (ou TTL nos dois status). O CVV já era persistido antes desta iniciativa; avaliar parar de guardá-lo depois do registro, já que o `SimulatedGatewayDecision` não o usa
   - Aceite: `challenges-redemption-reconciler` (`Reserved` há mais de 15 min sem execução `order-saga` → `Released`) e `payment-registration-reconciler` (`Registered` há mais de 15 min sem execução → `Voided`), agendados a cada 15 min pelo EventBridge Scheduler; consulta por índice esparso de pendentes, não por scan; `DescribeExecution` com o ARN derivado de `name = orderId`.
   - Verificar: testes (libera ou anula só os antigos e sem execução; ignora os que têm execução); `npx cdk synth ChallengesStack PaymentStack`.
   - Arquivos: `Modules/Progress/Features/ReconcileRedemptions/*`, `Payment.Function/.../Features/ReconcileRegistrations/*`, índices nos `*-dynamodb.ts`, `infra/constructs/{challenges,payment}-lambdas.ts`, testes. Dependências: T28.
