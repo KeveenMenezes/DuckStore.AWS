@@ -68,7 +68,7 @@
   - Verificar: `npx cdk synth AppSyncStack`; `cdk diff AppSyncStack` mostra a state machine e o IAM.
   - Arquivos: `infra/constructs/checkout-saga.ts`. Dependências: T6, T9, T10.
 
-- [ ] **T12: Resolver HTTP no lugar do pipeline** (M)
+- [x] **T12: Resolver HTTP no lugar do pipeline** (M) — feito; mesmo construct id → mesmo logical ID (`AppSyncApiCheckoutBasketResolver5144D868`), atualização no lugar `PIPELINE → UNIT` no `SfnDS`; os 3 passos JS, as 3 AppSync Functions e o `CheckoutDS` saíram; recusa = execução `SUCCEEDED` com `refusal`, `FAILED`/`TIMED_OUT`/HTTP ≠ 200 = `InternalError` sem detalhe; ADR-0009 §3 atualizada
   - Aceite: `checkoutId: ID` opcional no `CheckoutInput`; `Mutation.checkoutBasket.js` chama `StartSyncExecution` com o dono do token e mapeia `SUCCEEDED`/`FAILED` → `{ isSuccess, orderId }` ou erro com `errorType`/`errorInfo`, e qualquer `error` fora da tabela da ADR-0050 §8 vira `InternalError` sem `cause`; a linha do `checkoutBasket` na tabela da ADR-0009 §3 passa a "HTTP → saga Express, critério 2"; sem `checkoutId`, a saga usa `$uuid()`; os 3 arquivos de passo e o `pipelineResolver` do checkout são apagados; os data sources que ficarem sem uso saem.
   - Verificar: `npx cdk synth AppSyncStack`; `cdk diff` com a troca do resolver; `grep -rn checkoutBasket.loadCart` vazio.
   - Arquivos: `graphql/schema.graphql`, `graphql/resolvers/basket/mutations/Mutation.checkoutBasket*.js`, `infra/constructs/appsync-api.ts`, `src/WebApps/Shopping.Web.SPA.React/graphql/types.ts`, `docs/adr/0009-*.md`. Dependências: T11.

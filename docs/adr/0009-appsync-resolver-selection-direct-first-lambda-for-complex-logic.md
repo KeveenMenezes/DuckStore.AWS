@@ -71,7 +71,7 @@ Apply the following criteria for each field before implementation:
 | `deleteProduct(id)` | **Direct** | — |
 | `deleteBasket(userName)` | **Direct** | — |
 | `storeBasket(input)` | **Lambda** | **Criterion 2** — invokes Discount Lambda per cart item |
-| `checkoutBasket(input)` | **Lambda** | **Criterion 1** — 2-step DynamoDB pipeline: UpdateItem with CDC marker derived from input + DeleteItem; state-writing sequence for DynamoDB Streams (ADR-0008) |
+| `checkoutBasket(input)` | **HTTP → Step Functions Express saga** | **Criterion 2** — multi-service orchestration with compensation (Pricing, Payment, Basket); see [ADR-0050](./0050-checkout-step-functions-express-saga.md) (was a Lambda, then the ADR-0048 §4 pipeline) |
 | `couponFor(productName)` | **Lambda** | **Criterion 1** — Discount domain rule: GetItem + business fallback (zero-discount coupon) |
 
 **Ordering (added to AppSync schema)**

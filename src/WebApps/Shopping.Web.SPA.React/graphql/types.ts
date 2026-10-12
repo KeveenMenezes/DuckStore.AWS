@@ -210,6 +210,8 @@ export interface ShoppingCartInput {
 }
 
 export interface CheckoutInput {
+  // One per checkout attempt, kept across its retries (ADR-0050 §3).
+  checkoutId?: string | null
   totalPrice: number
   firstName: string
   lastName: string
@@ -225,6 +227,7 @@ export interface CheckoutInput {
   cvv?: string | null
   paymentMethod: number
   installments: number
+  pointsToUse?: number | null
 }
 
 export interface CreateReviewInput {

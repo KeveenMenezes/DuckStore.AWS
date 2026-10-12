@@ -60,6 +60,7 @@ export class AppSyncStack extends cdk.Stack {
       shoppingUserPool: auth.shoppingUserPool,
       managementUserPool: auth.managementUserPool,
       productCreateSaga: productCreateSaga.stateMachine,
+      checkoutSaga: checkoutSaga.stateMachine,
     });
 
     new cdk.CfnOutput(this, 'ApiUrl', {
