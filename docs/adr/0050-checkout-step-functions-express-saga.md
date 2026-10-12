@@ -74,17 +74,20 @@ criterion 2 (multi-service orchestration), now with compensation.
 
 Deviations from ADR-0032, deliberate: the state machine uses the **JSONata** query language (needed by
 §3's hashing; ADR-0032 §4's numbers-as-strings rule applies only where a DynamoDB task writes N values),
-and its execution timeout is **20 s** (below AppSync's 30 s). **Timeout budget (binding):** on the
+and its execution timeout is **25 s** (below AppSync's 30 s). **Timeout budget (binding):** on the
 slowest path, the sum over every state of `TimeoutSeconds × (1 + MaxAttempts)` plus all retry backoff —
 including `VoidPayment`'s retries — MUST stay under the execution timeout, so every failure lands in a
 `Catch` and a compensation is never cut off. An execution-level `TIMED_OUT` (which no `Catch` sees) is
-mapped to `InternalError` by the resolver. It lives in `infra/constructs/checkout-saga.ts`, instantiated by `AppSyncStack` next
+mapped to `InternalError` by the resolver. As built: Lambda tasks allow 2 attempts of 2 s with a 1 s
+interval (5 s), DynamoDB reads one 2 s attempt; the slowest paths take 21 s (every Lambda retried and
+failing) and 23 s (a `CartChanged` followed by a fully retried void). The definition is plain JSONata
+ASL, so each expression can be checked with `aws stepfunctions test-state`. It lives in `infra/constructs/checkout-saga.ts`, instantiated by `AppSyncStack` next
 to `product-create-saga`.
 
 | State | Kind | Responsibility |
 |---|---|---|
 | `DeriveOrderId` | Pass (JSONata) | `OrderId` from `(ownerId, checkoutId)` — §3 |
-| `LoadCart` | DynamoDB `BatchGetItem` (consistent) of the cart **and** `CHECKOUT#<ownerId>#<checkoutId>` | An existing `CHECKOUT#` record → **replay** (return its `OrderId`), checked **before** anything else; else an empty or missing cart → `BadRequest`; else `ProductId`, `Quantity`, `Version` |
+| `LoadCheckoutRecord`, `LoadCart` | Two consistent DynamoDB `GetItem`s: `CHECKOUT#<ownerId>#<checkoutId>` first, then the cart | An existing `CHECKOUT#` record → **replay** (return its `OrderId`), checked **before** anything else; else an empty or missing cart → `BadRequest`; else `ProductId`, `Quantity`, `Version` |
 | `CatalogLines` | DynamoDB `BatchGetItem` on `products` | `Name` and main image per line; a missing product → `ProductUnavailable` |
 | `Quote` | Lambda `pricing-get-basket-installment-plan` | Charged total and per-line unit price (§5); `Rejection` → `PriceChanged` / `PointsAboveCap`. Retried on transient errors |
 | `RegisterPayment` | Lambda `payment-register` | Validates the card, writes the payment `Registered` — §6 |
@@ -209,10 +212,11 @@ replaces that hand-off; that is the one remaining exception, recorded here so it
 
 ### 8. Error contract
 
-A failed execution's `error` becomes the GraphQL `errorType`; its `cause` (a JSON string) becomes
-`errorInfo`. The SPA branches on `errorType` only. Any error outside this table — including an
-unhandled Lambda exception — is mapped to `InternalError` with **no** `cause` passed through, so stack
-traces never reach the client.
+A typed refusal is an expected outcome, so the execution **succeeds** with
+`{ refusal: { errorType, message, errorInfo } }`, which the resolver raises as a GraphQL error with that
+`errorType` and `errorInfo`. Only real faults end the execution as `FAILED` (`InternalError`,
+`CompensationFailed`), and the resolver raises `InternalError` with **no** detail for any failed or
+timed-out execution, so stack traces never reach the client. The SPA branches on `errorType` only.
 
 | `errorType` | Raised by | `errorInfo` |
 |---|---|---|
@@ -223,12 +227,12 @@ traces never reach the client.
 | `InvalidCard` | `RegisterPayment` | `{ field }` |
 | `CheckoutRetryRequired` | `RegisterPayment` | — |
 | `CartChanged` | `Checkout` | — |
-| `CompensationFailed` | `VoidPayment` retries exhausted | — |
-| `InternalError` | anything else, including an execution `TIMED_OUT` | — |
+| `CompensationFailed` | `VoidPayment` retries exhausted (execution `FAILED`, surfaced as `InternalError`) | — |
+| `InternalError` | any failed or timed-out execution | — |
 
-`CompensationFailed` and `InternalError` are alarmed on the shared `duckstore-alerts` topic (ADR-0015,
-ADR-0022): from a metric filter on the saga's error log if, with `includeExecutionData: false`, the
-failure entry still carries the `error` name; otherwise from the Express `ExecutionsFailed` metric.
+Because refusals succeed, the state machine's own `ExecutionsFailed` and `ExecutionsTimedOut` metrics
+count only real faults; each has an alarm on the shared `duckstore-alerts` topic (ADR-0015, ADR-0022),
+with no log parsing.
 
 ### 9. Local development
 
@@ -273,7 +277,7 @@ sequenceDiagram
     SFN->>Basket: checkout — Put CHECKOUT# + Delete cart if Version (retried)
     alt CartChanged
         SFN->>Payment: void — Voided
-        SFN-->>AppSync: FAILED CartChanged
+        SFN-->>AppSync: SUCCEEDED { refusal: CartChanged }
     else closed or replay
         SFN-->>AppSync: SUCCEEDED { orderId }
     end
