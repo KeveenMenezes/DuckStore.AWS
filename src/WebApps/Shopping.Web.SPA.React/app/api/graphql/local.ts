@@ -1003,6 +1003,8 @@ const resolvers = {
           Item: {
             OwnerId: { S: ownerId },
             Data: { S: JSON.stringify({ OwnerId: ownerId, Items: items, TotalPrice: totalPrice }) },
+            // Same as the resolver: a fresh token per write, checked by the checkout (ADR-0050 §4).
+            Version: { S: randomUUID() },
             // Only guest carts expire; user carts omit ExpiresAt so DynamoDB TTL never touches them.
             ...(ownerId.startsWith('GUEST#')
               ? { ExpiresAt: { N: String(Math.floor(Date.now() / 1000) + 15 * 24 * 60 * 60) } }

@@ -97,7 +97,10 @@ public class DynamoShoppingCartRepository(IAmazonDynamoDB dynamoDb)
         var item = new Dictionary<string, AttributeValue>
         {
             ["OwnerId"] = new(cart.OwnerId),
-            ["Data"] = new(ShoppingCartSerializer.Serialize(cart))
+            ["Data"] = new(ShoppingCartSerializer.Serialize(cart)),
+            // A fresh token on every write: the checkout closes the cart only while its Version is
+            // still the one Pricing quoted (ADR-0050 §4). The storeBasket resolver does the same.
+            ["Version"] = new(Guid.NewGuid().ToString("N"))
         };
 
         // Only guest carts expire; user carts omit ExpiresAt so DynamoDB TTL never touches them.

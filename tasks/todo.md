@@ -48,7 +48,7 @@
   - Verificar: testes do consumer (os dois caminhos), da regra (INSERT `Registered` não casa; MODIFY `Registered → Pending` casa; INSERT `Pending` casa) e do handler de pontos (`Registered` lança).
   - Arquivos: `EventsIntegration/Consumers/{BasketCheckout,PointsReservation}/*`, `EventsIntegration/Publishers/Rules/PaymentRequestedRule.cs`, testes. Dependências: T6.
 
-- [ ] **T8: `Version` no carrinho** (S)
+- [x] **T8: `Version` no carrinho** (S) — feito; `BuildItem` (usado pelo `MergeAsync`/`StoreCart`), o resolver `storeBasket` (`util.autoId()`) e o `local.ts` gravam um token novo por escrita; teste do repositório com `IAmazonDynamoDB` mockado
   - Aceite: o `storeBasket` grava `Version = util.autoId()` a cada escrita; o `MergeAsync` grava uma `Version` nova; a query `basket` não muda; o `local.ts` grava `Version` no `storeBasket` local.
   - Verificar: `npx cdk synth AppSyncStack`; teste do `MergeAsync`; no Aspire, o item na tabela ganha `Version` a cada alteração do carrinho.
   - Arquivos: `graphql/resolvers/basket/mutations/Mutation.storeBasket.js`, `Basket.Function/.../DynamoShoppingCartRepository.cs`, `app/api/graphql/local.ts`, teste. Dependências: T4.
