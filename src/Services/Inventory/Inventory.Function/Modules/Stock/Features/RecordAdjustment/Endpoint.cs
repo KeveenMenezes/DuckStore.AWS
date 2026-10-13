@@ -16,9 +16,10 @@ public partial class Functions
     public async Task<StockMovementResponse> RecordStockAdjustment(
         RecordStockAdjustmentRequest request, [FromServices] ISender sender)
     {
-        if (!Enum.TryParse<StockAdjustmentDirection>(request.Direction, ignoreCase: false, out var direction))
+        // Enum.IsDefined: TryParse alone accepts numeric strings such as "7".
+        if (!Enum.TryParse<StockAdjustmentDirection>(request.Direction, ignoreCase: false, out var direction) || !Enum.IsDefined(direction))
             return StockMovementResponse.Refused(StockRefusal.BadRequest("direction", "direction must be Increase or Decrease"));
-        if (!Enum.TryParse<StockAdjustmentReason>(request.Reason, ignoreCase: false, out var reason))
+        if (!Enum.TryParse<StockAdjustmentReason>(request.Reason, ignoreCase: false, out var reason) || !Enum.IsDefined(reason))
             return StockMovementResponse.Refused(StockRefusal.BadRequest("reason", "reason must be Count, Loss, Damage, Return or Other"));
 
         var result = await sender.Send(new RecordAdjustmentCommand(

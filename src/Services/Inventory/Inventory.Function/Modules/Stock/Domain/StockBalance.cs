@@ -53,7 +53,7 @@ public sealed class StockBalance
         if (NoteRefusal(cleanNote) is { } badNote) return badNote;
         if (!Warehouse.Active) return StockRefusal.WarehouseInactive("warehouseId", Warehouse.Code);
 
-        Available += quantity;
+        Available = checked(Available + quantity);
         return MovementDecision.Recorded(Row(
             context.IdempotencyKey.ToString(), StockMovementType.Receipt, quantity, context,
             invoiceNumber: invoice, supplier: cleanSupplier, note: cleanNote));
@@ -74,7 +74,7 @@ public sealed class StockBalance
         if (delta > 0 && !Warehouse.Active) return StockRefusal.WarehouseInactive("warehouseId", Warehouse.Code);
         if (Available + delta < 0) return StockRefusal.InsufficientStock(Available);
 
-        Available += delta;
+        Available = checked(Available + delta);
         return MovementDecision.Recorded(Row(
             context.IdempotencyKey.ToString(), StockMovementType.Adjustment, delta, context,
             reason: reason, note: cleanNote));
@@ -99,7 +99,7 @@ public sealed class StockBalance
 
         var transferId = context.IdempotencyKey.ToString();
         Available -= quantity;
-        destination.Available += quantity;
+        destination.Available = checked(destination.Available + quantity);
         return MovementDecision.Recorded(
             Row($"{transferId}#OUT", StockMovementType.TransferOut, -quantity, context,
                 note: cleanNote, transferId: transferId, counterpart: destination.Warehouse.Id),

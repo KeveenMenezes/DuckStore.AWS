@@ -27,24 +27,22 @@ public sealed class DynamoStockRepository(IAmazonDynamoDB dynamoDb, TimeProvider
     public async Task<IReadOnlyList<StockMovement>> FindMovementsAsync(
         string productId, IReadOnlyList<string> movementIds, CancellationToken cancellationToken)
     {
-        var response = await dynamoDb.BatchGetItemAsync(new BatchGetItemRequest
+        // One consistent GetItem per row (one or two): unlike BatchGetItem, nothing comes back
+        // partially processed, and the rows return in the order asked for (OUT before IN).
+        var found = new List<StockMovement>();
+        foreach (var movementId in movementIds)
         {
-            RequestItems = new()
+            var response = await dynamoDb.GetItemAsync(new GetItemRequest
             {
-                [MovementsSchema.TableName] = new KeysAndAttributes
-                {
-                    Keys = [.. movementIds.Select(id => MovementKey(productId, id))],
-                    ConsistentRead = true,
-                },
-            },
-        }, cancellationToken);
+                TableName = MovementsSchema.TableName,
+                Key = MovementKey(productId, movementId),
+                ConsistentRead = true,
+            }, cancellationToken);
+            if (response.Item is { Count: > 0 } item)
+                found.Add(ToMovement(item));
+        }
 
-        var items = response.Responses.TryGetValue(MovementsSchema.TableName, out var found) ? found : [];
-        // Returned in the order asked for (OUT before IN), whatever order DynamoDB answered in.
-        return [.. movementIds
-            .Select(id => items.FirstOrDefault(item => item[MovementsSchema.SortKey].S == id))
-            .Where(item => item is not null)
-            .Select(item => ToMovement(item!))];
+        return found;
     }
 
     // One TransactWriteItems (ADR-0052 §7): balances first, then ledger rows, then warehouse checks —
@@ -91,14 +89,19 @@ public sealed class DynamoStockRepository(IAmazonDynamoDB dynamoDb, TimeProvider
             UpdateExpression =
                 "SET Available = :available, Reserved = if_not_exists(Reserved, :zero), WarehouseCode = :code, UpdatedAt = :now",
             // Written against the value read: a concurrent movement makes this one retry (ADR-0052 §7).
-            ConditionExpression = balance.ReadAvailable is null ? "attribute_not_exists(ProductId)" : "Available = :read",
+            // Reserved too: a reservation settling concurrently (ADR-0052 §6) changes what is on hand.
+            ConditionExpression = balance.ReadAvailable is null
+                ? "attribute_not_exists(ProductId)"
+                : "Available = :read AND Reserved = :reserved",
             ExpressionAttributeValues = new Dictionary<string, AttributeValue>
             {
                 [":available"] = Number(balance.Available),
                 [":zero"] = Number(0),
                 [":code"] = new AttributeValue { S = balance.Warehouse.Code },
                 [":now"] = new AttributeValue { S = now },
-            }.With(balance.ReadAvailable is { } read ? (":read", Number(read)) : null),
+            }
+            .With(balance.ReadAvailable is { } read ? (":read", Number(read)) : null)
+            .With(balance.ReadAvailable is not null ? (":reserved", Number(balance.Reserved)) : null),
         },
     };
 

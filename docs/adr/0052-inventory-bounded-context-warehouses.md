@@ -183,6 +183,10 @@ of its type (`InvoiceNumber`, `Supplier`, `Reason`, `Note`, `TransferId`, `Count
 `PayloadHash`, `CreatedAt` and `CreatedBy` (the Cognito `sub` from the token, never from the client;
 there is no e-mail lookup).
 
+The Lambdas' IAM grants match what the transaction does — reads, `UpdateItem` on the balance,
+`PutItem` of the ledger row, `ConditionCheckItem` on the warehouse — with no `DeleteItem`, so IAM
+itself keeps the ledger immutable.
+
 **Lambdas, one per movement.** `inventory-record-stock-receipt`, `inventory-record-stock-adjustment`
 and `inventory-transfer-stock`, in a new `Inventory.Function` (Inventory's first Native AOT package,
 ADR-0042), module `Modules/Stock` with the rules in the domain (`StockBalance`), not in handlers; they
@@ -196,28 +200,35 @@ requires of the checkout path.
 
 **Replay first, then one transaction with optimistic concurrency.** Each Lambda:
 
-1. Reads the ledger rows the request would write (`MovementId`s below), consistently. If they exist,
-   it compares their `PayloadHash` with the request: the same request returns the recorded
-   movement, a different one is refused with `IdempotencyKeyReused`. Nothing else runs, so a retry
-   of a movement that already committed is never re-judged against the stock it changed.
+1. Reads, consistently, every ledger row the key could have produced for this product (`<key>`,
+   `<key>#OUT`, `<key>#IN`). If they are the request's own rows, it compares their `PayloadHash`
+   with the request: the same request returns the recorded movement, a different one is refused
+   with `IdempotencyKeyReused`; rows of another kind of movement are `IdempotencyKeyReused` too.
+   Nothing else runs, so a retry of a movement that already committed is never re-judged against
+   the stock it changed.
 2. Reads the warehouse(s) and balance(s) consistently and lets `StockBalance` decide.
 3. Writes one `TransactWriteItems`:
 
 ```text
-Update inventory-stock      Available = :new ...   Condition: Available = :read   (attribute_not_exists when the read found no row)
+Update inventory-stock      Available = :new ...   Condition: Available = :read AND Reserved = :reserved   (attribute_not_exists when the read found no row)
 Put    inventory-movements  <ledger row>           Condition: attribute_not_exists(MovementId)
 ConditionCheck inventory-warehouses                 Condition: #Type = Warehouse [AND Active = true where the rules require it]
 ```
 
 A transfer has two `Update`s, two `Put`s and two `ConditionCheck`s (origin: `Type` only; destination:
 `Type` and `Active`). On cancellation, a failed `Put` condition takes precedence — the request is a
-replay that raced its twin, answered as in step 1 — then a failed warehouse check or a failed balance
-condition (or a `TransactionConflict`) sends the Lambda back to step 2, at most three times in all;
-after that it refuses with the retryable `TransactionConflict`. `BalanceAfter` is therefore always
-exact.
+replay that raced its twin, answered as in step 1 — and after any other cancellation step 1 runs
+again too, because DynamoDB may report a twin's commit as a conflict rather than a failed condition;
+then a failed warehouse check or a failed balance condition (or a `TransactionConflict`) sends the Lambda back to step 2, at most three times in all;
+after that it refuses with the retryable `TransactionConflict`. The condition covers `Reserved` as well
+as `Available`, so a reservation settling concurrently (§6) also forces a re-read, and each attempt
+takes its own `CreatedAt`; `BalanceAfter` is therefore always exact and a warehouse's history reads
+as a running sum.
 
 **Idempotency.** Each mutation takes an `idempotencyKey`, a UUID (anything else is `BadRequest`, so a
-client key can never collide with a `#OUT`/`#IN` suffix). `MovementId = idempotencyKey`; a transfer's
+client key can never collide with a `#OUT`/`#IN` suffix). The key is scoped to the product: the
+ledger is keyed by `ProductId`, so the same key on another product is a new movement (the client
+mints one key per form, which never changes product). `MovementId = idempotencyKey`; a transfer's
 rows are `<key>#OUT` and `<key>#IN`. `PayloadHash` is a SHA-256 of the movement type and the
 normalised input without the key (product, warehouse(s), quantity, direction, reason, invoice,
 supplier, note), stored on every row of the movement. The client renewal rule is the `checkoutId`

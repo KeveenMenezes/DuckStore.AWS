@@ -117,7 +117,8 @@ export class AppSyncApi extends Construct {
   // pipeline's own pass-through request/response (returns `ctx.prev.result`). A step given as a
   // file name runs against `dataSource`; one given as `{ file, dataSource }` runs against its own —
   // an orchestration pipeline whose steps call different services (checkoutBasket used it until
-  // ADR-0050 moved it to a saga).
+  // ADR-0050 moved it to a saga). A step shared by several fields of one context is named
+  // `<Type>.<context>.<step>.js` (e.g. `Mutation.stock.checkProduct.js`).
   private pipelineResolver(
     dataSource: appsync.BaseDataSource | undefined,
     id: string,

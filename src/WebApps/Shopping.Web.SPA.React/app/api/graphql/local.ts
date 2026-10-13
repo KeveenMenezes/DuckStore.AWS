@@ -1125,10 +1125,6 @@ const resolvers = {
       }
     },
 
-    // Mirrors the constants baked into the rewardConversion NONE resolver in prod
-    // (infra/constructs/reward-config.ts) and the Pricing Lambdas' Rewards__* env vars
-    // (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
-    // to read them from (ADR-0048 §3).
     // Mirrors Query.stockByProduct.js.
     async stockByProduct(_: unknown, { productId }: { productId: string }) {
       const result = await dynamoDb.send(
@@ -1214,6 +1210,10 @@ const resolvers = {
       return { items: await withProductNames(items), nextToken: encodeToken(result.LastEvaluatedKey) }
     },
 
+    // Mirrors the constants baked into the rewardConversion NONE resolver in prod
+    // (infra/constructs/reward-config.ts) and the Pricing Lambdas' Rewards__* env vars
+    // (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
+    // to read them from (ADR-0048 §3).
     async rewardConversion() {
       return { pointsPerUnit: 100, currencyPerUnit: 1 }
     },

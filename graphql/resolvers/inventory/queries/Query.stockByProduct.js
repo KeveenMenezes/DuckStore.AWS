@@ -17,6 +17,10 @@ export function request(ctx) {
 
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
+  // One page holds every warehouse a product can realistically be in; say so if it ever doesn't.
+  if (ctx.result.nextToken) {
+    util.appendError('The product is in more warehouses than one Query page holds; the list is truncated', 'Truncated')
+  }
 
   let totalAvailable = 0
   const warehouses = []

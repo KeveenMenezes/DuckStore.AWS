@@ -112,7 +112,7 @@ public abstract class StockMovementFormBase<TModel> : ComponentBase
         }
         catch (Exception ex)
         {
-            Error = $"Failed to {ActionName}: {ex.Message}. Submitting again is safe: it will not be recorded twice.";
+            Error = $"Failed to {ActionName}: {ex.Message}. Submitting this form again is safe: it will not be recorded twice. If you close it, check the history before recording the movement again.";
         }
         finally
         {

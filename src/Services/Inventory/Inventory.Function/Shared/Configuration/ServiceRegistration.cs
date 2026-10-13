@@ -2,7 +2,7 @@ using Inventory.Function.Modules.Stock.Features;
 
 namespace Inventory.Function.Shared.Configuration;
 
-// Single DI composition for the service, shared by the [LambdaStartup] and the dev data seeder.
+// Single DI composition for the service's Lambdas (the [LambdaStartup]).
 public static class ServiceRegistration
 {
     public static IServiceCollection AddInventoryServices(

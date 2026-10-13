@@ -48,11 +48,14 @@ export class InventoryLambdas extends Construct {
         description,
         environment: { ANNOTATIONS_HANDLER: handler },
       });
-      // Consistent reads of the warehouse (ConditionCheck included) and of the balance and the
-      // ledger rows (replay), then the conditional writes. Nothing wider.
+      // Consistent reads of the warehouse (ConditionCheckItem included), the balance and the ledger
+      // rows (replay), then exactly the writes the transaction performs: UpdateItem on the balance,
+      // PutItem of the ledger row. No DeleteItem anywhere, so IAM itself keeps the ledger immutable.
       warehousesTable.grantReadData(fn);
-      stockTable.grantReadWriteData(fn);
-      movementsTable.grantReadWriteData(fn);
+      stockTable.grantReadData(fn);
+      stockTable.grant(fn, 'dynamodb:UpdateItem');
+      movementsTable.grantReadData(fn);
+      movementsTable.grant(fn, 'dynamodb:PutItem');
       return fn;
     };
 

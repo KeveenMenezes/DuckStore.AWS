@@ -73,12 +73,12 @@ public class MovementHandlersTests
     {
         var command = Receipt();
         var recorded = Row(command.Fingerprint());
-        _stock.Setup(s => s.FindMovementsAsync(ProductId, It.Is<IReadOnlyList<string>>(ids => ids.Single() == Key), It.IsAny<CancellationToken>()))
+        _stock.Setup(s => s.FindMovementsAsync(ProductId, It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([recorded]);
 
         var result = await ReceiptHandler.Handle(command, default);
 
-        Assert.Same(recorded, Assert.Single(result.Movements));
+        Assert.Equal(recorded, Assert.Single(result.Movements));
         _stock.Verify(s => s.LoadAsync(It.IsAny<string>(), It.IsAny<WarehouseSnapshot>(), It.IsAny<CancellationToken>()), Times.Never);
         Assert.Empty(_writes);
     }
@@ -130,7 +130,52 @@ public class MovementHandlersTests
 
         var result = await ReceiptHandler.Handle(command, default);
 
-        Assert.Same(twin, Assert.Single(result.Movements));
+        Assert.Equal(twin, Assert.Single(result.Movements));
+    }
+
+    [Fact]
+    public async Task ATwinThatWinsWithAConflict_IsStillAnsweredAsTheReplay_NotJudgedAgain()
+    {
+        // A decrease whose twin committed first: the retry would see the stock the twin consumed and
+        // refuse it, so the ledger is checked again before deciding (ADR-0052 §7).
+        var command = new RecordAdjustmentCommand(Key, ProductId, "w-alpha", StockAdjustmentDirection.Decrease, 10, StockAdjustmentReason.Loss, null, "sub-1");
+        var twin = Row(command.Fingerprint()) with { Type = StockMovementType.Adjustment, Quantity = -10, BalanceAfter = 0 };
+        _stock.SetupSequence(s => s.FindMovementsAsync(ProductId, It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([])
+            .ReturnsAsync([twin]);
+        SaveReturns(SaveOutcome.BalanceChanged);
+        var handler = new RecordAdjustmentHandler(Recorder, _warehouses.Object, _stock.Object);
+
+        var result = await handler.Handle(command, default);
+
+        Assert.Null(result.Refusal);
+        Assert.Equal(twin, Assert.Single(result.Movements));
+        Assert.Single(_writes);
+    }
+
+    [Fact]
+    public async Task AKeyAlreadyUsedByAnotherKindOfMovement_IsIdempotencyKeyReused()
+    {
+        _stock.Setup(s => s.FindMovementsAsync(ProductId, It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([Row("receipt-hash")]);
+        var handler = new TransferStockHandler(Recorder, _warehouses.Object, _stock.Object);
+
+        var result = await handler.Handle(new TransferStockCommand(Key, ProductId, "w-beta", "w-alpha", 1, null, "sub-1"), default);
+
+        Assert.Equal("IdempotencyKeyReused", result.Refusal!.ErrorType);
+        Assert.Empty(_writes);
+    }
+
+    [Fact]
+    public async Task ATransferWithOnlyOneOfItsRows_IsAnError_NotAReplay()
+    {
+        var outRow = Row("h") with { MovementId = $"{Key}#OUT" };
+        _stock.Setup(s => s.FindMovementsAsync(ProductId, It.IsAny<IReadOnlyList<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([outRow]);
+        var handler = new TransferStockHandler(Recorder, _warehouses.Object, _stock.Object);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(async () =>
+            await handler.Handle(new TransferStockCommand(Key, ProductId, "w-beta", "w-alpha", 1, null, "sub-1"), default));
     }
 
     [Fact]
@@ -175,7 +220,7 @@ public class MovementHandlersTests
         Assert.Equal(["w-beta", "w-alpha"], write.Balances.Select(b => b.Warehouse.Id));
         Assert.Equal([new WarehouseCondition("w-beta", false), new WarehouseCondition("w-alpha", true)], write.Warehouses);
         _stock.Verify(s => s.FindMovementsAsync(ProductId,
-            It.Is<IReadOnlyList<string>>(ids => ids.SequenceEqual(new[] { $"{Key}#OUT", $"{Key}#IN" })), It.IsAny<CancellationToken>()));
+            It.Is<IReadOnlyList<string>>(ids => ids.SequenceEqual(new[] { Key, $"{Key}#OUT", $"{Key}#IN" })), It.IsAny<CancellationToken>()));
     }
 
     [Fact]
@@ -184,6 +229,8 @@ public class MovementHandlersTests
         Assert.Equal(Receipt(invoice: "NF-1").Fingerprint(), Receipt(invoice: " NF-1 ").Fingerprint());
         Assert.NotEqual(Receipt(invoice: "NF-1").Fingerprint(), Receipt(invoice: "NF-2").Fingerprint());
         Assert.NotEqual(Receipt(quantity: 5).Fingerprint(), Receipt(quantity: 6).Fingerprint());
+        // Blank and absent are the same value, as in StockBalance.
+        Assert.Equal((Receipt() with { Note = null }).Fingerprint(), (Receipt() with { Note = "  " }).Fingerprint());
     }
 
     private static StockMovement Row(string hash) => new(

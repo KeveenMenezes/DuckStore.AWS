@@ -44,6 +44,7 @@ public class DynamoStockRepositoryTests
                 Assert.Equal("20", update.Update.ExpressionAttributeValues[":available"].N);
                 Assert.Equal("ALPHA", update.Update.ExpressionAttributeValues[":code"].S);
                 Assert.False(update.Update.ExpressionAttributeValues.ContainsKey(":read"));
+                Assert.False(update.Update.ExpressionAttributeValues.ContainsKey(":reserved"));
             },
             put =>
             {
@@ -71,8 +72,9 @@ public class DynamoStockRepositoryTests
         await _repository.SaveAsync(new StockWrite([balance], movements, [new WarehouseCondition("w-alpha", false)]), default);
 
         var update = _written!.TransactItems[0].Update;
-        Assert.Equal("Available = :read", update.ConditionExpression);
+        Assert.Equal("Available = :read AND Reserved = :reserved", update.ConditionExpression);
         Assert.Equal("7", update.ExpressionAttributeValues[":read"].N);
+        Assert.Equal("0", update.ExpressionAttributeValues[":reserved"].N);
         Assert.Equal("5", update.ExpressionAttributeValues[":available"].N);
         Assert.Equal("#type = :warehouse", _written.TransactItems[2].ConditionCheck.ConditionExpression);
         Assert.False(_written.TransactItems[2].ConditionCheck.ExpressionAttributeValues.ContainsKey(":true"));
@@ -90,6 +92,19 @@ public class DynamoStockRepositoryTests
         var reasons = codes.Select(code => new CancellationReason { Code = code }).ToList();
 
         Assert.Equal(expected, DynamoStockRepository.OutcomeOf(reasons, balances: 1, movements: 1));
+    }
+
+    [Theory]
+    // A transfer: 2 balances, 2 movements, 2 warehouse checks.
+    [InlineData(3, SaveOutcome.MovementExists)]
+    [InlineData(5, SaveOutcome.WarehouseChanged)]
+    [InlineData(1, SaveOutcome.BalanceChanged)]
+    public void OutcomeOf_ATransferLayout_IsReadAtItsOffsets(int failedIndex, SaveOutcome expected)
+    {
+        var reasons = Enumerable.Range(0, 6)
+            .Select(i => new CancellationReason { Code = i == failedIndex ? "ConditionalCheckFailed" : "None" }).ToList();
+
+        Assert.Equal(expected, DynamoStockRepository.OutcomeOf(reasons, balances: 2, movements: 2));
     }
 
     [Fact]

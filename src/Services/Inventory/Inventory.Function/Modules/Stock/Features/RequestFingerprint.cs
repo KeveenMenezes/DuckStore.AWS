@@ -11,7 +11,9 @@ public static class RequestFingerprint
     {
         var canonical = string.Join('\u001f', parts.Select(part => part switch
         {
+            // Same normalisation as StockBalance: blank and absent are the same value.
             null => "␀",
+            string text when string.IsNullOrWhiteSpace(text) => "␀",
             string text => text.Trim(),
             IFormattable value => value.ToString(null, CultureInfo.InvariantCulture),
             _ => part.ToString(),
