@@ -9,7 +9,6 @@ public sealed record CatalogStreamImage(
     string Name,
     string Description,
     List<ProductImageData> Images,
-    int Stock,
     List<string> CategoryIds)
 {
     public static CatalogStreamImage? From(Dictionary<string, DynamoDBEvent.AttributeValue>? image)
@@ -24,9 +23,6 @@ public sealed record CatalogStreamImage(
             image.TryGetValue("Images", out var images) && images.L is not null
                 ? [.. images.L.Select(ToImage)]
                 : [],
-            image.TryGetValue("Stock", out var stock) && !string.IsNullOrEmpty(stock.N)
-                ? int.Parse(stock.N, CultureInfo.InvariantCulture)
-                : 0,
             image.TryGetValue("CategoryIds", out var categoryIds) && categoryIds.SS is not null
                 ? [.. categoryIds.SS]
                 : []);

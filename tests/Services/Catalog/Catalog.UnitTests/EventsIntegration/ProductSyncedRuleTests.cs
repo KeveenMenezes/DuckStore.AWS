@@ -11,7 +11,7 @@ namespace Catalog.UnitTests.EventsIntegration;
 public class ProductSyncedRuleTests
 {
     private static CatalogStreamImage NewProduct(string id, List<string>? categoryIds = null) =>
-        new(id, "Debug Duck", "A duck", [], 10, categoryIds ?? []);
+        new(id, "Debug Duck", "A duck", [], categoryIds ?? []);
 
     [Theory]
     [InlineData("INSERT")]
