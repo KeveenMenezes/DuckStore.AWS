@@ -1,0 +1,175 @@
+@page "/warehouses/{Id}/stock"
+@attribute [Authorize]
+@inject WarehouseAdminService Warehouses
+@inject StockAdminService Stock
+
+<PageTitle>Warehouse stock — DuckStore Management</PageTitle>
+
+<div class="page-header">
+    <h1>Stock — @(warehouse is null ? "..." : $"{warehouse.Code} {warehouse.Name}")</h1>
+    <a class="btn btn-secondary" href="warehouses">Back to warehouses</a>
+</div>
+
+@if (!canManage)
+{
+    <p class="muted">Only the StockKeeper and Admin groups can manage stock.</p>
+}
+else
+{
+    @if (error is not null)
+    {
+        <div class="banner banner-error">@error</div>
+    }
+
+    @if (notFound)
+    {
+        <p class="muted">Warehouse not found.</p>
+    }
+    else if (balances is null || movements is null)
+    {
+        <p class="muted">Loading stock...</p>
+    }
+    else
+    {
+        @if (warehouse is { Active: false })
+        {
+            <p class="muted">This warehouse is inactive: it can no longer receive stock, but its stock can still be adjusted down or transferred out.</p>
+        }
+
+        <h2>Balances</h2>
+        @if (balances.Count == 0)
+        {
+            <p class="muted">No stock in this warehouse yet.</p>
+        }
+        else
+        {
+            <table class="data-table">
+                <thead>
+                    <tr>
+                        <th>Product</th>
+                        <th>Available</th>
+                        <th>Reserved</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var balance in balances)
+                    {
+                        <tr data-product-id="@balance.ProductId">
+                            <td>
+                                <a href="stock/products/@balance.ProductId">@(balance.ProductName ?? "(deleted product)")</a>
+                            </td>
+                            <td class="stock-available">@balance.Available</td>
+                            <td class="stock-reserved">@balance.Reserved</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        @if (balancesToken is not null)
+        {
+            <button class="btn btn-secondary" disabled="@loadingBalances" @onclick="LoadMoreBalancesAsync">
+                @(loadingBalances ? "Loading..." : "Load more")
+            </button>
+        }
+
+        <h2>History</h2>
+        <StockMovementTable Movements="movements" Warehouses="allWarehouses" ShowProduct="true"
+                            NextToken="@movementsToken" LoadingMore="loadingMovements"
+                            OnLoadMore="LoadMoreMovementsAsync" />
+    }
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    private bool canManage;
+    private bool notFound;
+    private Warehouse? warehouse;
+    private List<Warehouse> allWarehouses = [];
+    private List<WarehouseProductStock>? balances;
+    private string? balancesToken;
+    private bool loadingBalances;
+    private List<StockMovement>? movements;
+    private string? movementsToken;
+    private bool loadingMovements;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        canManage = CognitoGroups.CanManageStock((await AuthenticationState).User);
+        if (!canManage)
+            return;
+
+        try
+        {
+            // The full list doubles as the lookup for transfer counterparts' codes.
+            allWarehouses = await Warehouses.GetWarehousesAsync();
+            warehouse = allWarehouses.FirstOrDefault(w => w.Id == Id);
+            if (warehouse is null)
+            {
+                notFound = true;
+                return;
+            }
+
+            var balancesTask = Stock.GetStockByWarehouseAsync(Id);
+            var movementsTask = Stock.GetMovementsByWarehouseAsync(Id);
+            await Task.WhenAll(balancesTask, movementsTask);
+
+            var balancePage = await balancesTask;
+            balances = balancePage.Items;
+            balancesToken = balancePage.NextToken;
+
+            var movementPage = await movementsTask;
+            movements = movementPage.Items;
+            movementsToken = movementPage.NextToken;
+        }
+        catch (Exception ex)
+        {
+            balances ??= [];
+            movements ??= [];
+            error = $"Failed to load stock: {ex.Message}";
+        }
+    }
+
+    private async Task LoadMoreBalancesAsync()
+    {
+        loadingBalances = true;
+        try
+        {
+            var page = await Stock.GetStockByWarehouseAsync(Id, nextToken: balancesToken);
+            balances!.AddRange(page.Items);
+            balancesToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load more balances: {ex.Message}";
+        }
+        finally
+        {
+            loadingBalances = false;
+        }
+    }
+
+    private async Task LoadMoreMovementsAsync()
+    {
+        loadingMovements = true;
+        try
+        {
+            var page = await Stock.GetMovementsByWarehouseAsync(Id, nextToken: movementsToken);
+            movements!.AddRange(page.Items);
+            movementsToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load more history: {ex.Message}";
+        }
+        finally
+        {
+            loadingMovements = false;
+        }
+    }
+}

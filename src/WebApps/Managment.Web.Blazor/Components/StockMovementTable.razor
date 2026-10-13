@@ -1,0 +1,106 @@
+@* The movements ledger, newest first (ADR-0052 §7). A product's history shows the warehouse of each
+   row; a warehouse's history shows the product instead. *@
+@if (Movements.Count == 0)
+{
+    <p class="muted">No movements yet.</p>
+}
+else
+{
+    <table class="data-table">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Type</th>
+                @if (ShowProduct)
+                {
+                    <th>Product</th>
+                }
+                else
+                {
+                    <th>Warehouse</th>
+                }
+                <th>Quantity</th>
+                <th>Balance after</th>
+                <th>Details</th>
+                <th>Author</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var movement in Movements)
+            {
+                <tr data-movement-id="@movement.Id">
+                    <td>@DateOf(movement.CreatedAt)</td>
+                    <td class="movement-type">@TypeLabel(movement.Type)</td>
+                    @if (ShowProduct)
+                    {
+                        <td>
+                            <a href="stock/products/@movement.ProductId">@(movement.ProductName ?? "(deleted product)")</a>
+                        </td>
+                    }
+                    else
+                    {
+                        <td>@movement.WarehouseCode</td>
+                    }
+                    <td class="movement-quantity">@movement.Quantity.ToString("+0;-0;0")</td>
+                    <td>@movement.BalanceAfter</td>
+                    <td>@DetailsOf(movement)</td>
+                    <td class="muted">@movement.CreatedBy</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@if (NextToken is not null)
+{
+    <button class="btn btn-secondary" disabled="@LoadingMore" @onclick="OnLoadMore">
+        @(LoadingMore ? "Loading..." : "Load more")
+    </button>
+}
+
+@code {
+    [Parameter, EditorRequired] public List<StockMovement> Movements { get; set; } = [];
+
+    // Resolves a transfer's counterpart warehouse id to its code.
+    [Parameter, EditorRequired] public List<Warehouse> Warehouses { get; set; } = [];
+
+    [Parameter] public bool ShowProduct { get; set; }
+
+    [Parameter] public string? NextToken { get; set; }
+
+    [Parameter] public bool LoadingMore { get; set; }
+
+    [Parameter] public EventCallback OnLoadMore { get; set; }
+
+    private static string TypeLabel(string type) => type switch
+    {
+        "TransferOut" => "Transfer out",
+        "TransferIn" => "Transfer in",
+        _ => type,
+    };
+
+    private static string DateOf(string createdAt) =>
+        DateTimeOffset.TryParse(createdAt, System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.None, out var date)
+            ? date.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            : createdAt;
+
+    private string DetailsOf(StockMovement movement)
+    {
+        var details = new List<string>();
+        if (movement.InvoiceNumber is not null)
+            details.Add($"Invoice {movement.InvoiceNumber}");
+        if (movement.Supplier is not null)
+            details.Add($"Supplier {movement.Supplier}");
+        if (movement.Reason is not null)
+            details.Add($"Reason: {movement.Reason}");
+        if (movement.CounterpartWarehouseId is not null)
+            details.Add($"{(movement.Type == "TransferOut" ? "To" : "From")} {CodeOf(movement.CounterpartWarehouseId)}");
+        if (movement.Note is not null)
+            details.Add(movement.Note);
+        return string.Join(" · ", details);
+    }
+
+    private string CodeOf(string warehouseId) =>
+        Warehouses.FirstOrDefault(w => w.Id == warehouseId)?.Code ?? warehouseId;
+}

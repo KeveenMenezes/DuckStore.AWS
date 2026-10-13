@@ -1,0 +1,119 @@
+@page "/stock"
+@attribute [Authorize]
+@inject ProductAdminService Products
+
+<PageTitle>Stock — DuckStore Management</PageTitle>
+
+<h1>Stock</h1>
+
+@if (!canManage)
+{
+    <p class="muted">Only the StockKeeper and Admin groups can manage stock.</p>
+}
+else
+{
+    <p class="muted">Find a product to see its stock per warehouse and record receipts, adjustments and transfers.</p>
+
+    @if (error is not null)
+    {
+        <div class="banner banner-error">@error</div>
+    }
+
+    <form class="search-bar" @onsubmit="LoadAsync">
+        <input id="stock-search" type="search" placeholder="Search products..." @bind="search" @bind:event="oninput" />
+        <button class="btn btn-secondary" type="submit">Search</button>
+    </form>
+
+    @if (items is null)
+    {
+        <p class="muted">Loading products...</p>
+    }
+    else if (items.Count == 0)
+    {
+        <p class="muted">No products found.</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var product in items)
+                {
+                    <tr data-product-id="@product.Id">
+                        <td><a href="stock/products/@product.Id">@product.Name</a></td>
+                        <td class="row-actions">
+                            <a class="btn btn-secondary" href="stock/products/@product.Id">View stock</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+
+        @if (nextToken is not null)
+        {
+            <button class="btn btn-secondary" disabled="@loadingMore" @onclick="LoadMoreAsync">
+                @(loadingMore ? "Loading..." : "Load more")
+            </button>
+        }
+    }
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    private bool canManage;
+    private List<Product>? items;
+    private string? nextToken;
+    private string search = string.Empty;
+    private string? error;
+    private bool loadingMore;
+
+    protected override async Task OnInitializedAsync()
+    {
+        canManage = CognitoGroups.CanManageStock((await AuthenticationState).User);
+        if (canManage)
+            await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        error = null;
+        items = null;
+        try
+        {
+            var page = await Products.GetProductsAsync(search);
+            items = page.Items;
+            nextToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            items = [];
+            error = $"Failed to load products: {ex.Message}";
+        }
+    }
+
+    private async Task LoadMoreAsync()
+    {
+        loadingMore = true;
+        try
+        {
+            var page = await Products.GetProductsAsync(search, nextToken: nextToken);
+            items!.AddRange(page.Items);
+            nextToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load more products: {ex.Message}";
+        }
+        finally
+        {
+            loadingMore = false;
+        }
+    }
+}

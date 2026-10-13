@@ -27,6 +27,8 @@ public sealed class GraphQLClient(HttpClient http)
                 ErrorType = errors[0].ErrorType ?? StringAt(errors[0].Extensions, "errorType"),
                 ErrorField = StringAt(errors[0].ErrorInfo, "field")
                     ?? StringAt(PropertyAt(errors[0].Extensions, "errorInfo"), "field"),
+                ErrorAvailable = IntAt(errors[0].ErrorInfo, "available")
+                    ?? IntAt(PropertyAt(errors[0].Extensions, "errorInfo"), "available"),
             };
 
         return payload.Data ?? throw new GraphQLException(["GraphQL response contained no data."]);
@@ -49,6 +51,11 @@ public sealed class GraphQLClient(HttpClient http)
 
     private static string? StringAt(JsonElement? element, string property) =>
         PropertyAt(element, property) is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
+
+    private static int? IntAt(JsonElement? element, string property) =>
+        PropertyAt(element, property) is { ValueKind: JsonValueKind.Number } value && value.TryGetInt32(out var number)
+            ? number
+            : null;
 }
 
 public sealed class GraphQLException(IReadOnlyList<string> messages)
@@ -61,4 +68,7 @@ public sealed class GraphQLException(IReadOnlyList<string> messages)
 
     // The input field the first error points at (errorInfo.field, e.g. "address.zipCode"), if any.
     public string? ErrorField { get; init; }
+
+    // The stock still available (errorInfo.available), on an InsufficientStock refusal (ADR-0052 §7).
+    public int? ErrorAvailable { get; init; }
 }

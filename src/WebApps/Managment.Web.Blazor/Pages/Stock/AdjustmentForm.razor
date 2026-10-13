@@ -1,0 +1,99 @@
+@inherits StockMovementFormBase<StockAdjustmentFormModel>
+
+<h2>Adjust stock</h2>
+
+@if (Error is not null)
+{
+    <div class="banner banner-error">@Error</div>
+}
+
+<EditForm Model="Model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+
+    <div class="form-field">
+        <label for="adjust-direction">Direction</label>
+        <InputSelect id="adjust-direction" @bind-Value="Model.Direction" @bind-Value:after="DirectionChanged">
+            @foreach (var direction in StockAdjustmentFormModel.Directions)
+            {
+                <option value="@direction">@direction</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => Model.Direction" />
+        @ServerMessage("direction")
+    </div>
+
+    <div class="form-field">
+        <label for="adjust-warehouse">Warehouse</label>
+        <InputSelect id="adjust-warehouse" @bind-Value="Model.WarehouseId">
+            <option value="">Select...</option>
+            @foreach (var (id, label) in WarehouseOptions)
+            {
+                <option value="@id">@label</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => Model.WarehouseId" />
+        @ServerMessage("warehouseId")
+    </div>
+
+    <div class="form-field">
+        <label for="adjust-quantity">Quantity</label>
+        <InputNumber id="adjust-quantity" @bind-Value="Model.Quantity" min="1" max="@StockMovementFormModel.MaxQuantity" />
+        <ValidationMessage For="() => Model.Quantity" />
+        @ServerMessage("quantity")
+    </div>
+
+    <div class="form-field">
+        <label for="adjust-reason">Reason</label>
+        <InputSelect id="adjust-reason" @bind-Value="Model.Reason">
+            <option value="">Select...</option>
+            @foreach (var reason in StockAdjustmentFormModel.Reasons)
+            {
+                <option value="@reason">@reason</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => Model.Reason" />
+        @ServerMessage("reason")
+    </div>
+
+    <div class="form-field">
+        <label for="adjust-note">Note @(Model.Reason == "Other" ? "(required for Other)" : "(optional)")</label>
+        <InputTextArea id="adjust-note" @bind-Value="Model.Note" rows="2" />
+        <ValidationMessage For="() => Model.Note" />
+        @ServerMessage("note")
+    </div>
+
+    <div class="form-actions">
+        <button class="btn btn-secondary" type="button" @onclick="OnCancel">Cancel</button>
+        <button class="btn btn-primary" type="submit" disabled="@Busy">
+            @(Busy ? "Saving..." : "Record adjustment")
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    private static readonly HashSet<string> FieldNames =
+        ["warehouseId", "direction", "quantity", "reason", "note"];
+
+    protected override IReadOnlySet<string> Fields => FieldNames;
+
+    protected override string ActionName => "record the adjustment";
+
+    // An increase needs an active warehouse; a decrease may empty an inactive one (ADR-0052 §7).
+    private IEnumerable<(string Id, string Label)> WarehouseOptions =>
+        Model.Direction == "Increase"
+            ? ActiveWarehouses.Select(w => (w.Id, LabelOf(w)))
+            : WarehousesHoldingStock;
+
+    private void DirectionChanged()
+    {
+        if (!WarehouseOptions.Any(option => option.Id == Model.WarehouseId))
+            Model.WarehouseId = string.Empty;
+    }
+
+    protected override Task<StockMovementResult> SendAsync() => Stock.RecordAdjustmentAsync(ProductId, Model);
+
+    protected override string Describe(StockMovementResult result) =>
+        result.Movements.FirstOrDefault() is { } movement
+            ? $"Adjusted {movement.Quantity:+0;-0;0} at {movement.WarehouseCode}; {movement.BalanceAfter} on hand there now."
+            : "Adjustment recorded.";
+}

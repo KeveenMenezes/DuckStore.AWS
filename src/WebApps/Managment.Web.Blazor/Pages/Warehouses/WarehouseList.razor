@@ -61,6 +61,7 @@ else
                         <td class="warehouse-status">@(warehouse.Active ? "Active" : "Inactive")</td>
                         <td class="row-actions">
                             <a class="btn btn-secondary" href="warehouses/@warehouse.Id/edit">Edit</a>
+                            <a class="btn btn-secondary" href="warehouses/@warehouse.Id/stock">Stock</a>
                             <button class="btn @(warehouse.Active ? "btn-danger" : "btn-secondary")"
                                     disabled="@(togglingId is not null)" @onclick="() => ToggleAsync(warehouse)">
                                 @(togglingId == warehouse.Id ? "Saving..." : warehouse.Active ? "Deactivate" : "Activate")
