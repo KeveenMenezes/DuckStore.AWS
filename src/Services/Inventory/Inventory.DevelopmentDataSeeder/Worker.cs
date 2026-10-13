@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Amazon.DynamoDBv2;
 using Amazon.DynamoDBv2.Model;
+using Inventory.Function.Modules.Warehouses.Data;
 
 namespace Inventory.DevelopmentDataSeeder;
 

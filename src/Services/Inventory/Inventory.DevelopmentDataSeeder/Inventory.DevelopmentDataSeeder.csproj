@@ -12,5 +12,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\BuildingBlocks\BuildingBlocks.ServiceDefaults\BuildingBlocks.ServiceDefaults.csproj" />
+    <ProjectReference Include="..\Inventory.Function\Inventory.Function.csproj" />
   </ItemGroup>
 </Project>

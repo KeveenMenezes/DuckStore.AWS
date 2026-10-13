@@ -40,6 +40,7 @@
     <Project Path="src/Services/Challenges/Challenges.DevelopmentDataSeeder/Challenges.DevelopmentDataSeeder.csproj" />
   </Folder>
   <Folder Name="/src/Services/Inventory/">
+    <Project Path="src/Services/Inventory/Inventory.Function/Inventory.Function.csproj" />
     <Project Path="src/Services/Inventory/Inventory.DevelopmentDataSeeder/Inventory.DevelopmentDataSeeder.csproj" />
   </Folder>
   <Folder Name="/src/Services/Payment/">
@@ -92,6 +93,9 @@
   </Folder>
   <Folder Name="/tests/Services/Challenges/">
     <Project Path="tests/Services/Challenges/Challenges.UnitTests/Challenges.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tests/Services/Inventory/">
+    <Project Path="tests/Services/Inventory/Inventory.UnitTests/Inventory.UnitTests.csproj" />
   </Folder>
   <Folder Name="/tests/Services/CatalogView/">
     <Project Path="tests/Services/CatalogView/CatalogView.UnitTests/CatalogView.UnitTests.csproj" />
