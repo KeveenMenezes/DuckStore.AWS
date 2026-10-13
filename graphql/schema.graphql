@@ -284,6 +284,88 @@ type Warehouse @aws_cognito_user_pools {
   updatedAt: AWSDateTime!
 }
 
+# Stock balances and the movements ledger (ADR-0052 §7). Management pool only — StockKeeper or
+# Admin, enforced in every resolver.
+enum StockMovementType {
+  Receipt
+  Adjustment
+  TransferOut
+  TransferIn
+}
+
+enum StockAdjustmentReason {
+  Count
+  Loss
+  Damage
+  Return
+  # Requires a note.
+  Other
+}
+
+enum StockAdjustmentDirection {
+  Increase
+  Decrease
+}
+
+# One immutable ledger row: one change of one balance. quantity is signed; balanceAfter is the stock on
+# hand in that warehouse right after it. A transfer is two rows sharing transferId.
+type StockMovement @aws_cognito_user_pools {
+  id: ID!
+  productId: ID!
+  # From Catalog, on the warehouse views only; null when the product no longer exists.
+  productName: String
+  type: StockMovementType!
+  quantity: Int!
+  balanceAfter: Int!
+  warehouseId: ID!
+  warehouseCode: String!
+  invoiceNumber: String
+  supplier: String
+  reason: StockAdjustmentReason
+  note: String
+  transferId: ID
+  counterpartWarehouseId: ID
+  createdAt: AWSDateTime!
+  # The Cognito sub of whoever recorded it.
+  createdBy: String!
+}
+
+type StockMovementPage @aws_cognito_user_pools {
+  items: [StockMovement!]!
+  nextToken: String
+}
+
+# A movement's rows: one for a receipt or an adjustment, two (out, in) for a transfer.
+type StockMovementResult @aws_cognito_user_pools {
+  movements: [StockMovement!]!
+}
+
+type WarehouseStock @aws_cognito_user_pools {
+  warehouseId: ID!
+  warehouseCode: String!
+  available: Int!
+  reserved: Int!
+}
+
+# Every warehouse holding the product, inactive ones included; totalAvailable sums them all.
+type ProductStock @aws_cognito_user_pools {
+  productId: ID!
+  totalAvailable: Int!
+  warehouses: [WarehouseStock!]!
+}
+
+type WarehouseProductStock @aws_cognito_user_pools {
+  productId: ID!
+  productName: String
+  available: Int!
+  reserved: Int!
+}
+
+type WarehouseProductStockPage @aws_cognito_user_pools {
+  items: [WarehouseProductStock!]!
+  nextToken: String
+}
+
 type WarehouseAddress @aws_cognito_user_pools {
   street: String!
   number: String!
@@ -535,6 +617,37 @@ input CreateWarehouseInput {
   priority: Int!
 }
 
+# idempotencyKey: a UUID the client mints when the form opens and renews only after a success or a
+# typed refusal (ADR-0052 §7). The author comes from the token, never from the input.
+input RecordStockReceiptInput {
+  idempotencyKey: ID!
+  productId: ID!
+  warehouseId: ID!
+  quantity: Int!
+  invoiceNumber: String!
+  supplier: String
+  note: String
+}
+
+input RecordStockAdjustmentInput {
+  idempotencyKey: ID!
+  productId: ID!
+  warehouseId: ID!
+  direction: StockAdjustmentDirection!
+  quantity: Int!
+  reason: StockAdjustmentReason!
+  note: String
+}
+
+input TransferStockInput {
+  idempotencyKey: ID!
+  productId: ID!
+  fromWarehouseId: ID!
+  toWarehouseId: ID!
+  quantity: Int!
+  note: String
+}
+
 # No code: it is immutable (ADR-0052 §2).
 input UpdateWarehouseInput {
   id: ID!
@@ -647,6 +760,21 @@ type Query {
   # Direct DynamoDB resolver — Cognito required; StockKeeper or Admin only. GetItem; null for an
   # unknown id or a code guard.
   warehouse(id: ID!): Warehouse @aws_cognito_user_pools
+
+  # Direct DynamoDB resolver — StockKeeper or Admin only. Query on inventory-stock by product: one
+  # row per warehouse, not paginated (ADR-0052 §7).
+  stockByProduct(productId: ID!): ProductStock! @aws_cognito_user_pools
+
+  # Direct DynamoDB pipeline — StockKeeper or Admin only. GSI1 of inventory-stock, then a
+  # BatchGetItem on products for the names (ADR-0052 §7). pageSize 1-100, default 20.
+  stockByWarehouse(warehouseId: ID!, pageSize: Int, nextToken: String): WarehouseProductStockPage! @aws_cognito_user_pools
+
+  # Direct DynamoDB resolver — StockKeeper or Admin only. LSI1 of inventory-movements, newest first.
+  stockMovementsByProduct(productId: ID!, pageSize: Int, nextToken: String): StockMovementPage! @aws_cognito_user_pools
+
+  # Direct DynamoDB pipeline — StockKeeper or Admin only. GSI1 of inventory-movements, newest first,
+  # then product names.
+  stockMovementsByWarehouse(warehouseId: ID!, pageSize: Int, nextToken: String): StockMovementPage! @aws_cognito_user_pools
 }
 
 type Mutation {
@@ -748,4 +876,17 @@ type Mutation {
   # Direct DynamoDB resolver — Cognito required; StockKeeper or Admin only. Deactivation instead of
   # delete (ADR-0052 §2).
   setWarehouseActive(id: ID!, active: Boolean!): Warehouse! @aws_cognito_user_pools
+
+  # Pipeline — StockKeeper or Admin only: checks the product exists in Catalog (ProductNotFound), then
+  # the Lambda inventory-record-stock-receipt (ADR-0009 criterion 1, ADR-0052 §7). Refusals:
+  # BadRequest, WarehouseNotFound, WarehouseInactive, IdempotencyKeyReused, TransactionConflict.
+  recordStockReceipt(input: RecordStockReceiptInput!): StockMovementResult! @aws_cognito_user_pools
+
+  # Pipeline — StockKeeper or Admin only: the product check (increases only), then the Lambda
+  # inventory-record-stock-adjustment. Adds InsufficientStock (errorInfo.available) to the refusals.
+  recordStockAdjustment(input: RecordStockAdjustmentInput!): StockMovementResult! @aws_cognito_user_pools
+
+  # Lambda resolver — StockKeeper or Admin only: inventory-transfer-stock (criteria 1 and 4). No
+  # product check, so a deleted product's stock can still be moved out.
+  transferStock(input: TransferStockInput!): StockMovementResult! @aws_cognito_user_pools
 }
