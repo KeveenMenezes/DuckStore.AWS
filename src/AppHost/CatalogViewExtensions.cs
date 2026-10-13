@@ -6,7 +6,8 @@ namespace AppHost.CatalogView;
 
 public static class CatalogViewExtensions
 {
-    public static IDistributedApplicationBuilder AddCatalogViewLambdas(
+    // Returns the seeder: Inventory's seeder applies its totals after the backfill (ADR-0052 §8).
+    public static IResourceBuilder<ProjectResource> AddCatalogViewLambdas(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb,
         IResourceBuilder<ProjectResource> catalogSeeder,
@@ -67,6 +68,6 @@ public static class CatalogViewExtensions
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
-        return builder;
+        return catalogViewSeeder;
     }
 }

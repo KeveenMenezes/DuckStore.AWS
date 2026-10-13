@@ -13,11 +13,15 @@ public static class InventoryExtensions
 {
     public static InventoryResources AddInventoryServices(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<DynamoDBLocalResource> dynamoDb)
+        IResourceBuilder<DynamoDBLocalResource> dynamoDb,
+        IResourceBuilder<ProjectResource> catalogViewSeeder)
     {
-        // Creates inventory-warehouses, inventory-stock and inventory-movements and seeds ALPHA/BETA.
+        // Creates inventory-warehouses, inventory-stock and inventory-movements, seeds ALPHA/BETA and
+        // receives the Catalog seed products' stock into ALPHA. It writes their storefront totals to
+        // catalogview-products, so it runs after CatalogView's backfill.
         var seeder = builder.AddProject<Projects.Inventory_DevelopmentDataSeeder>("inventory-data-seeder")
             .WaitFor(dynamoDb)
+            .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 

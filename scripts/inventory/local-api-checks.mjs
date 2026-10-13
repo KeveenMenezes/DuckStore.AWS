@@ -1,4 +1,5 @@
-// Warehouse operations (ADR-0052) checked against the local BFF (local.ts + DynamoDB Local).
+// Warehouse operations, stock movements and the storefront total (ADR-0052) checked against the
+// local BFF (local.ts + DynamoDB Local).
 // Usage: node scripts/inventory/local-api-checks.mjs [http://localhost:3000/api/graphql]
 const URL = process.argv[2] ?? 'http://localhost:3000/api/graphql'
 const W = 'id code name priority active address { street number complement district city state zipCode } createdAt updatedAt'
@@ -88,10 +89,16 @@ const adjust = (input) => gql(`mutation($input: RecordStockAdjustmentInput!) { r
 const move = (input) => gql(`mutation($input: TransferStockInput!) { transferStock(input: $input) { movements { ${M} } } }`, { input })
 const stockOf = async () => (await gql(`{ stockByProduct(productId: "${productId}") { totalAvailable warehouses { warehouseId warehouseCode available } } }`)).data.stockByProduct
 const at = (stock, id) => stock.warehouses.find((w) => w.warehouseId === id)?.available
+// What the storefront shows (ADR-0052 §8): the total over active warehouses, from catalogview-products.
+const shown = async () => (await gql(`{ product(id: "${productId}") { stock } }`)).data?.product?.stock
+const base = await shown()
+check('the storefront shows a number for the product', base, Number.isInteger(base))
+const showsTotal = async (label, expected) => { const now = await shown(); check(`storefront: ${label}`, now, now === expected) }
 
 const rKey = key()
 const r1 = await receive({ idempotencyKey: rKey, productId, warehouseId: wa.id, quantity: 20, invoiceNumber: '12345', supplier: 'ACME' })
 check('receipt 20 with NF -> balance 20, author local-dev', r1, r1.data?.recordStockReceipt?.movements?.[0]?.balanceAfter === 20 && r1.data.recordStockReceipt.movements[0].createdBy === 'local-dev')
+await showsTotal('a receipt into an active warehouse adds to the total', base + 20)
 const noNf = await receive({ idempotencyKey: key(), productId, warehouseId: wa.id, quantity: 1, invoiceNumber: '' })
 check('receipt without NF -> BadRequest invoiceNumber', noNf, err(noNf).errorType === 'BadRequest' && err(noNf).errorInfo?.field === 'invoiceNumber')
 await receive({ idempotencyKey: key(), productId, warehouseId: wb.id, quantity: 50, invoiceNumber: 'NF-2' })
@@ -106,6 +113,7 @@ check('adjust -30 -> InsufficientStock, available 18', short, err(short).errorTy
 const tr = await move({ idempotencyKey: key(), productId, fromWarehouseId: wb.id, toWarehouseId: wa.id, quantity: 10 })
 stock = await stockOf()
 check('transfer 10 B -> A: 28 / 40, two rows', tr, tr.data?.transferStock?.movements?.length === 2 && at(stock, wa.id) === 28 && at(stock, wb.id) === 40)
+await showsTotal('the adjustment counts, a transfer between active warehouses does not', base + 68)
 const same = await move({ idempotencyKey: key(), productId, fromWarehouseId: wa.id, toWarehouseId: wa.id, quantity: 1 })
 check('transfer to itself -> BadRequest toWarehouseId', same, err(same).errorInfo?.field === 'toWarehouseId')
 await gql(`mutation { setWarehouseActive(id: "${wb.id}", active: false) { id } }`)
@@ -113,7 +121,9 @@ const inB = await receive({ idempotencyKey: key(), productId, warehouseId: wb.id
 check('receipt into inactive -> WarehouseInactive', inB, err(inB).errorType === 'WarehouseInactive')
 const outB = await adjust({ idempotencyKey: key(), productId, warehouseId: wb.id, direction: 'Decrease', quantity: 1, reason: 'Count' })
 check('decrease on inactive is allowed', outB, !outB.errors)
+await showsTotal('an inactive warehouse never counts, its movements included', base + 28)
 await gql(`mutation { setWarehouseActive(id: "${wb.id}", active: true) { id } }`)
+await showsTotal('reactivating brings its 39 back', base + 67)
 const ghost = await receive({ idempotencyKey: key(), productId: 'no-such-product', warehouseId: wa.id, quantity: 1, invoiceNumber: 'NF' })
 check('unknown product -> ProductNotFound', ghost, err(ghost).errorType === 'ProductNotFound')
 const replay = await receive({ idempotencyKey: rKey, productId, warehouseId: wa.id, quantity: 20, invoiceNumber: '12345', supplier: 'ACME' })
@@ -132,6 +142,7 @@ check('warehouse history with names; adds up to the balance', histW,
 const badPage = await gql(`{ stockMovementsByWarehouse(warehouseId: "${wa.id}", pageSize: 101) { items { id } } }`)
 check('pageSize 101 -> BadRequest', badPage, err(badPage).errorType === 'BadRequest')
 for (const w of [wa, wb]) await gql(`mutation { setWarehouseActive(id: "${w.id}", active: false) { id } }`)
+await showsTotal('back to the seeded total once the test warehouses are inactive', base)
 
 // leave the test warehouse inactive, like the E2E suite does
 await gql(`mutation { setWarehouseActive(id: "${g.id}", active: false) { id } }`)
