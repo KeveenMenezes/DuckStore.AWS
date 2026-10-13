@@ -38,6 +38,24 @@ public static class InventoryExtensions
                 .WithAwsDevEnvironment())
             .ToList();
 
+        // The storefront total's CDC publishers (ADR-0052 §8): DynamoDB Streams in, EventBridge out
+        // (best-effort locally, so local.ts applies the total to catalogview-products itself).
+        foreach (var (name, handler, table) in new[]
+                 {
+                     ("inventory-stock-stream-publisher", "InventoryStockStreamPublisher", "inventory-stock"),
+                     ("inventory-warehouses-stream-publisher", "InventoryWarehousesStreamPublisher", "inventory-warehouses"),
+                 })
+        {
+            builder.AddAWSLambdaFunction<Projects.Inventory_Function>(
+                    name,
+                    lambdaHandler: LambdaHandler("Inventory.Function", handler))
+                .WaitForCompletion(seeder)
+                .WithReference(dynamoDb)
+                .WithDynamoDBStreamsEventSource(table)
+                .WithAwsDevEnvironment()
+                .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+        }
+
         return new InventoryResources(seeder, movementLambdas);
     }
 }

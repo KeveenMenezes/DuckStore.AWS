@@ -5,7 +5,8 @@ using Inventory.Function.Modules.Warehouses.Data;
 
 namespace Inventory.DevelopmentDataSeeder;
 
-// Mirrors infra/constructs/inventory-dynamodb.ts (ADR-0052 §2, §7). No streams.
+// Mirrors infra/constructs/inventory-dynamodb.ts (ADR-0052 §2, §7, §8): streams on inventory-stock and
+// inventory-warehouses feed the storefront-total publishers.
 public static class DynamoTableInitializer
 {
     public static async Task EnsureInventoryTablesCreatedAsync(this IServiceProvider services)
@@ -18,6 +19,7 @@ public static class DynamoTableInitializer
             AttributeDefinitions = [new(WarehousesSchema.PartitionKey, ScalarAttributeType.S)],
             KeySchema = [new(WarehousesSchema.PartitionKey, KeyType.HASH)],
             BillingMode = BillingMode.PAY_PER_REQUEST,
+            StreamSpecification = new StreamSpecification { StreamEnabled = true, StreamViewType = StreamViewType.NEW_AND_OLD_IMAGES },
         });
 
         // GSI1 lists a warehouse's balances.
@@ -48,6 +50,7 @@ public static class DynamoTableInitializer
                 },
             ],
             BillingMode = BillingMode.PAY_PER_REQUEST,
+            StreamSpecification = new StreamSpecification { StreamEnabled = true, StreamViewType = StreamViewType.NEW_AND_OLD_IMAGES },
         });
 
         // LSI1 is a product's history by date, GSI1 a warehouse's history by date.
