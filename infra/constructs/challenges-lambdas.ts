@@ -135,7 +135,7 @@ export class ChallengesLambdas extends Construct {
     //    Trigger: EventBridge rule (ReviewCreatedEvent, source=duckstore) — the second rule on
     //    this event, next to CatalogView's. Credits the review points once per product: one
     //    TransactWriteItems Puts the REVIEW#<productId> ledger row (attribute_not_exists) and ADDs
-    //    to PROFILE Score (SPEC-review-points, ADR-0048 §2). Publishes nothing and reads nothing,
+    //    to PROFILE Score (ADR-0048 §2). Publishes nothing and reads nothing,
     //    so it only needs those two item actions.
     this.reviewCreatedConsumer = new lambda.Function(this, 'ReviewCreatedConsumer', {
       functionName: 'challenges-review-created-consumer',

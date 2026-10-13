@@ -288,6 +288,7 @@ failure handling.
 | **Review** | Product reviews/ratings, aggregated downstream via CDC. | [README](./src/Services/Review/README.md) · [diagram](./docs/diagrams/review.svg) |
 | **Challenges** | Server-side code-challenge grading, progression, and point redemption. | [README](./src/Services/Challenges/README.md) · [diagram](./docs/diagrams/challenges.svg) |
 | **User** | User profile, backed by Cognito as the identity provider. | [README](./src/Services/User/README.md) · [diagram](./docs/diagrams/user.svg) |
+| **Inventory** | Warehouses (polos) and, next, stock per warehouse, owned by the StockKeeper group. | [README](./src/Services/Inventory/README.md) · [diagram](./docs/diagrams/inventory.svg) |
 | **Notification** | Go — consumes events, writes notifications to DynamoDB. | [README](./src/Services/Notification/README.md) · [diagram](./docs/diagrams/notification.svg) |
 
 Two supporting services have no bounded context of their own:

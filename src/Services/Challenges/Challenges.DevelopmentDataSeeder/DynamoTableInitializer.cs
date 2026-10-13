@@ -96,7 +96,7 @@ public static class DynamoTableInitializer
                     new KeySchemaElement("SK", KeyType.RANGE)
                 ],
                 BillingMode = BillingMode.PAY_PER_REQUEST,
-                // Drives challenges-progress-stream-publisher (ADR-0045 §9, CH-07). NEW_AND_OLD
+                // Drives challenges-progress-stream-publisher (ADR-0045 §9). NEW_AND_OLD
                 // is the same view type every other rule-based publisher in this codebase uses.
                 StreamSpecification = new StreamSpecification
                 {

@@ -155,8 +155,8 @@ export class AppSyncApi extends Construct {
   }
 
   // Resolver organization: `graphql/resolvers/` is split by domain (basket, products, categories,
-  // pricing, orders, reviews, user — matching the bounded contexts in `src/Services/*`), and each
-  // domain folder is split into `queries/`/`mutations/`. The `domain` string passed to
+  // pricing, orders, reviews, user, challenges, inventory — matching the bounded contexts in
+  // `src/Services/*`), and each domain folder is split into `queries/`/`mutations/`. The `domain` string passed to
   // `this.resolver(...)`/`this.pipelineResolver(...)` below is what points at that folder — keep
   // resolvers grouped in the same order here so the two stay easy to cross-reference.
   private addDataSources() {
@@ -213,6 +213,9 @@ export class AppSyncApi extends Construct {
       grantIndexPermissions: true,
     });
 
+    // Inventory warehouses (ADR-0052) — warehouses and their CODE#<code> guards; no index.
+    const warehousesTable = dynamodb.Table.fromTableName(this, 'WarehousesTable', 'inventory-warehouses');
+
     const productsDs = this.dynamoDbDataSource('ProductsDS', productsTable);
     const categoriesDs = this.dynamoDbDataSource('CategoriesDS', categoriesTable);
     const cartsDs = this.dynamoDbDataSource('CartsDS', cartsTable);
@@ -233,6 +236,7 @@ export class AppSyncApi extends Construct {
     const challengesAdminDs = this.dynamoDbDataSource('ChallengesAdminDS', challengesTable);
     const challengeProgressDs = this.dynamoDbDataSource('ChallengeProgressDS', challengeProgressTable);
     const pointsTransactionsDs = this.dynamoDbDataSource('PointsTransactionsDS', pointsTransactionsTable);
+    const warehousesDs = this.dynamoDbDataSource('WarehousesDS', warehousesTable);
     // NONE (local) data source — rewardConversion has no backend call, values are baked in below.
     const rewardConversionDs = api.addNoneDataSource('RewardConversionDS');
 
@@ -257,6 +261,10 @@ export class AppSyncApi extends Construct {
     challengesTable.grant(challengesAdminDs, 'dynamodb:UpdateItem');
     challengeProgressTable.grantReadData(challengeProgressDs);
     pointsTransactionsTable.grantReadData(pointsTransactionsDs);
+    // createWarehouse's TransactWriteItems performs PutItems; update/setActive are UpdateItems
+    // (ADR-0052 §4). Nothing wider: no DeleteItem, warehouses are never deleted.
+    warehousesTable.grantReadData(warehousesDs);
+    warehousesTable.grant(warehousesDs, 'dynamodb:PutItem', 'dynamodb:UpdateItem');
 
     // Lambda data sources — imported by function name (no CF coupling)
     const mergeBasketFn = lambda.Function.fromFunctionName(this, 'MergeBasketFn', 'basket-merge-basket');
@@ -429,6 +437,14 @@ export class AppSyncApi extends Construct {
     this.resolver(
       challengesAdminDs, 'UpdateChallengePointsResolver', 'Mutation', 'updateChallengePoints', 'challenges',
     );
+
+    // StockKeeper/Admin direct resolvers on inventory-warehouses (ADR-0009, ADR-0052 §4) — the
+    // group check is the first line of each.
+    this.resolver(warehousesDs, 'WarehousesResolver', 'Query', 'warehouses', 'inventory');
+    this.resolver(warehousesDs, 'WarehouseResolver', 'Query', 'warehouse', 'inventory');
+    this.resolver(warehousesDs, 'CreateWarehouseResolver', 'Mutation', 'createWarehouse', 'inventory');
+    this.resolver(warehousesDs, 'UpdateWarehouseResolver', 'Mutation', 'updateWarehouse', 'inventory');
+    this.resolver(warehousesDs, 'SetWarehouseActiveResolver', 'Mutation', 'setWarehouseActive', 'inventory');
   }
 
   // addDynamoDbDataSource always grants full read/write on the table — it doesn't expose

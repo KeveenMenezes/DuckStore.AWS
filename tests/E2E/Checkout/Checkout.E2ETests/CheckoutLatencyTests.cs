@@ -3,9 +3,8 @@ using Xunit.Abstractions;
 
 namespace Checkout.E2ETests;
 
-// Latency of checkoutBasket as the client sees it, through the BFF and AppSync (SPEC-checkout-saga
-// criterion 10). The baseline was taken against the old pipeline before the saga shipped: p50 590 ms,
-// p95 830 ms (tasks/todo.md, T0). Run alone with --filter Category=Latency; the figures go to the
+// Latency of checkoutBasket as the client sees it, through the BFF and AppSync. The baseline was
+// taken against the old pipeline before the saga shipped: p50 590 ms, p95 830 ms. Run alone with --filter Category=Latency; the figures go to the
 // test output.
 [Trait("Category", "Latency")]
 public sealed class CheckoutLatencyTests(StorefrontSession session, ITestOutputHelper output)

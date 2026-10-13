@@ -21,6 +21,12 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { prepareBasketRequest, guestCookieHeader } from '@/lib/basket-bff'
 import { checkoutOrderId } from '@/lib/checkout-order-id'
+import {
+  normalizeWarehouseCode,
+  normalizeWarehouseFields,
+  type WarehouseFields,
+  type WarehouseFieldsInput,
+} from '@/lib/warehouse-validation'
 import type { Owner } from '@/lib/identity'
 
 type LocalContext = { owner: Owner }
@@ -207,6 +213,62 @@ const REVIEW_TTL_SECONDS = 5 * 24 * 60 * 60
 // Same ceiling as Mutation.updateChallengePoints.js (MAX_POINTS) and the Blazor ChallengePointsInput.
 const MAX_CHALLENGE_POINTS = 1000
 
+// Inventory warehouses (ADR-0052) — mirrors graphql/resolvers/inventory. The table holds warehouses
+// and their CODE#<code> guards, so every read filters on Type.
+const WAREHOUSES_TABLE = 'inventory-warehouses'
+
+function mapWarehouse(item: Record<string, unknown>) {
+  return {
+    id: item.WarehouseId as string,
+    code: item.Code as string,
+    name: item.Name,
+    address: {
+      street: item.Street,
+      number: item.Number,
+      complement: item.Complement ?? null,
+      district: item.District,
+      city: item.City,
+      state: item.State,
+      zipCode: item.ZipCode,
+    },
+    priority: Number(item.Priority),
+    active: Boolean(item.Active),
+    createdAt: item.CreatedAt,
+    updatedAt: item.UpdatedAt,
+  }
+}
+
+// Same errorType and errorInfo as the resolvers' util.error(msg, 'BadRequest', null, { field }).
+function warehouseValidated<T>(result: { value?: T; error?: { field: string; message: string } }): T {
+  if (result.error) {
+    throw createGraphQLError(result.error.message, {
+      extensions: { errorType: 'BadRequest', errorInfo: { field: result.error.field } },
+    })
+  }
+  return result.value as T
+}
+
+function warehouseAttributes(fields: WarehouseFields): Record<string, AttributeValue> {
+  return {
+    Name: { S: fields.name },
+    Street: { S: fields.street },
+    Number: { S: fields.number },
+    District: { S: fields.district },
+    City: { S: fields.city },
+    State: { S: fields.state },
+    ZipCode: { S: fields.zipCode },
+    Priority: { N: String(fields.priority) },
+    ...(fields.complement ? { Complement: { S: fields.complement } } : {}),
+  }
+}
+
+function warehouseNotFound() {
+  return createGraphQLError('Warehouse not found', { extensions: { errorType: 'NotFound' } })
+}
+
+// Locally there is no Cognito identity to record, so UpdatedBy is a fixed marker.
+const LOCAL_WAREHOUSE_AUTHOR = 'local-dev'
+
 // The saved cart's lines as Pricing quotes them — the checkout pipeline's loadCart step (Data is
 // the .NET-serialized PascalCase JSON).
 // A typed checkout refusal, shaped like the AppSync resolver's (ADR-0050 §8): the SPA branches on
@@ -354,7 +416,7 @@ function mapBasketQuote(body: BasketQuote) {
   }
 }
 
-// Same value as PointsPolicy.ReviewCredit in Challenges.Function (SPEC-review-points).
+// Same value as PointsPolicy.ReviewCredit in Challenges.Function.
 const REVIEW_CREDIT_POINTS = 15
 
 // Local stand-in for challenges-review-created-consumer (same reason as createEligibleReviews):
@@ -977,6 +1039,35 @@ const resolvers = {
     async rewardConversion() {
       return { pointsPerUnit: 100, currencyPerUnit: 1 }
     },
+
+    // Mirrors Query.warehouses.js (StockKeeper/Admin in prod; no Cognito groups locally).
+    async warehouses() {
+      const result = await dynamoDb.send(
+        new ScanCommand({
+          TableName: WAREHOUSES_TABLE,
+          FilterExpression: '#type = :warehouse',
+          ExpressionAttributeNames: { '#type': 'Type' },
+          ExpressionAttributeValues: { ':warehouse': { S: 'Warehouse' } },
+        }),
+      )
+      if (result.LastEvaluatedKey) {
+        throw createGraphQLError('The warehouse list is larger than one Scan page and was truncated', {
+          extensions: { errorType: 'Truncated' },
+        })
+      }
+      return (result.Items ?? [])
+        .map(item => mapWarehouse(unmarshall(item)))
+        .sort((a, b) => a.priority - b.priority || (a.code < b.code ? -1 : a.code > b.code ? 1 : 0))
+    },
+
+    // Mirrors Query.warehouse.js: null for an unknown id or a CODE# guard.
+    async warehouse(_: unknown, { id }: { id: string }) {
+      const result = await dynamoDb.send(
+        new GetItemCommand({ TableName: WAREHOUSES_TABLE, Key: { WarehouseId: { S: id } } }),
+      )
+      const item = result.Item ? unmarshall(result.Item) : null
+      return item?.Type === 'Warehouse' ? mapWarehouse(item) : null
+    },
   },
 
   Mutation: {
@@ -1430,6 +1521,127 @@ const resolvers = {
       }
     },
 
+    // Mirrors Mutation.createWarehouse.js: the warehouse and its CODE#<code> guard in one
+    // transaction, both attribute_not_exists (ADR-0052 §2).
+    async createWarehouse(_: unknown, { input }: { input: WarehouseFieldsInput & { code: string } }) {
+      const code = warehouseValidated(normalizeWarehouseCode(input.code))
+      const fields = warehouseValidated(normalizeWarehouseFields(input))
+      const id = randomUUID()
+      const now = new Date().toISOString()
+      const item: Record<string, AttributeValue> = {
+        WarehouseId: { S: id },
+        Type: { S: 'Warehouse' },
+        Code: { S: code },
+        ...warehouseAttributes(fields),
+        Active: { BOOL: true },
+        CreatedAt: { S: now },
+        UpdatedAt: { S: now },
+        UpdatedBy: { S: LOCAL_WAREHOUSE_AUTHOR },
+      }
+      try {
+        await dynamoDb.send(
+          new TransactWriteItemsCommand({
+            TransactItems: [
+              { Put: { TableName: WAREHOUSES_TABLE, Item: item, ConditionExpression: 'attribute_not_exists(WarehouseId)' } },
+              {
+                Put: {
+                  TableName: WAREHOUSES_TABLE,
+                  Item: { WarehouseId: { S: `CODE#${code}` }, Type: { S: 'CodeGuard' }, TargetWarehouseId: { S: id } },
+                  ConditionExpression: 'attribute_not_exists(WarehouseId)',
+                },
+              },
+            ],
+          }),
+        )
+      } catch (err) {
+        if (err instanceof TransactionCanceledException) {
+          const reasons = err.CancellationReasons ?? []
+          if (reasons[1]?.Code === 'ConditionalCheckFailed') {
+            throw createGraphQLError(`Warehouse code ${code} is already taken`, {
+              extensions: { errorType: 'WarehouseCodeTaken', errorInfo: { field: 'code' } },
+            })
+          }
+          if (reasons.some(reason => reason.Code === 'TransactionConflict')) {
+            throw createGraphQLError('Another write to this warehouse code is in progress; retry', {
+              extensions: { errorType: 'TransactionConflict' },
+            })
+          }
+        }
+        throw err
+      }
+      return mapWarehouse(unmarshall(item))
+    },
+
+    // Mirrors Mutation.updateWarehouse.js: name, address and priority; the code is immutable.
+    async updateWarehouse(_: unknown, { input }: { input: WarehouseFieldsInput & { id: string } }) {
+      const fields = warehouseValidated(normalizeWarehouseFields(input))
+      const attributes = warehouseAttributes(fields)
+      const values: Record<string, AttributeValue> = {
+        ':name': attributes.Name,
+        ':street': attributes.Street,
+        ':number': attributes.Number,
+        ':district': attributes.District,
+        ':city': attributes.City,
+        ':state': attributes.State,
+        ':zipCode': attributes.ZipCode,
+        ':priority': attributes.Priority,
+        ':now': { S: new Date().toISOString() },
+        ':by': { S: LOCAL_WAREHOUSE_AUTHOR },
+        ':warehouse': { S: 'Warehouse' },
+      }
+      let expression = 'SET #name = :name, Street = :street, #number = :number, District = :district, City = :city, '
+        + '#state = :state, ZipCode = :zipCode, Priority = :priority, UpdatedAt = :now, UpdatedBy = :by'
+      if (attributes.Complement) {
+        expression += ', Complement = :complement'
+        values[':complement'] = attributes.Complement
+      } else {
+        expression += ' REMOVE Complement'
+      }
+      try {
+        const result = await dynamoDb.send(
+          new UpdateItemCommand({
+            TableName: WAREHOUSES_TABLE,
+            Key: { WarehouseId: { S: input.id } },
+            UpdateExpression: expression,
+            ConditionExpression: 'attribute_exists(WarehouseId) AND #type = :warehouse',
+            ExpressionAttributeNames: { '#name': 'Name', '#number': 'Number', '#state': 'State', '#type': 'Type' },
+            ExpressionAttributeValues: values,
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
+        return mapWarehouse(unmarshall(result.Attributes ?? {}))
+      } catch (err) {
+        if (err instanceof ConditionalCheckFailedException) throw warehouseNotFound()
+        throw err
+      }
+    },
+
+    // Mirrors Mutation.setWarehouseActive.js: deactivation instead of delete (ADR-0052 §2).
+    async setWarehouseActive(_: unknown, { id, active }: { id: string; active: boolean }) {
+      try {
+        const result = await dynamoDb.send(
+          new UpdateItemCommand({
+            TableName: WAREHOUSES_TABLE,
+            Key: { WarehouseId: { S: id } },
+            UpdateExpression: 'SET Active = :active, UpdatedAt = :now, UpdatedBy = :by',
+            ConditionExpression: 'attribute_exists(WarehouseId) AND #type = :warehouse',
+            ExpressionAttributeNames: { '#type': 'Type' },
+            ExpressionAttributeValues: {
+              ':active': { BOOL: active },
+              ':now': { S: new Date().toISOString() },
+              ':by': { S: LOCAL_WAREHOUSE_AUTHOR },
+              ':warehouse': { S: 'Warehouse' },
+            },
+            ReturnValues: 'ALL_NEW',
+          }),
+        )
+        return mapWarehouse(unmarshall(result.Attributes ?? {}))
+      } catch (err) {
+        if (err instanceof ConditionalCheckFailedException) throw warehouseNotFound()
+        throw err
+      }
+    },
+
     async setNominalPrice(
       _: unknown,
       { productId, price, cost }: { productId: string; price: number; cost: number },
@@ -1614,7 +1826,7 @@ const resolvers = {
       // On AWS the transition to Published emits ReviewCreatedEvent and
       // challenges-review-created-consumer credits the points; locally EventBridge is best-effort,
       // so the credit is simulated here, with the same transaction and the same once-per-product
-      // REVIEW#<productId> lock (SPEC-review-points). Legacy rows without Status already count as
+      // REVIEW#<productId> lock (ADR-0048). Legacy rows without Status already count as
       // Published, so they never credit.
       const wasPublished = previous.Status === undefined || previous.Status === 'Published'
       if (!wasPublished) await creditReviewPoints(context.owner.ownerId, input.productId)

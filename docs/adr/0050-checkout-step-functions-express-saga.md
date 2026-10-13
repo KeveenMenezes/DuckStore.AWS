@@ -24,9 +24,7 @@ Amends:
 | [ADR-0043](./0043-cart-discount-allocation-policy.md) | Extends §3: the per-line split of the post-campaign price is exposed on the quote (§5 here) | The allocation rule and its home in `CartDiscountAllocation` |
 | [ADR-0016](./0016-guest-basket-owner-id-identity-api-key-and-ttl.md) | §1: `shopping-carts`' `OwnerId` gains a third, server-only key namespace, `CHECKOUT#`. §4: `ExpiresAt` is also written on `CHECKOUT#` records (§4 here) | `USER#`/`GUEST#` identity; checkout stays Cognito-only |
 
-Specified by [SPEC-checkout-saga.md](../../SPEC-checkout-saga.md), module 1 of
-[SPEC-checkout.md](../../SPEC-checkout.md). Reviewed by `adr-guardian` before acceptance; its
-findings are incorporated.
+Reviewed by `adr-guardian` before acceptance; its findings are incorporated.
 
 ---
 
@@ -338,11 +336,9 @@ sequenceDiagram
   through §8's contract.
 - Any new checkout-path Lambda MUST be invoked only by the saga (§2).
 - Orphan `Registered` payments MUST be swept (voided) before any feature reads payments by status.
-  The order saga ([SPEC-order-saga.md](../../SPEC-order-saga.md)) plans that reconciler.
-- The points reservation moves into this saga next
-  ([SPEC-checkout-points-reservation.md](../../SPEC-checkout-points-reservation.md)), and the
-  post-checkout choreography is replaced by an order saga
-  ([SPEC-order-saga.md](../../SPEC-order-saga.md)); both get their own ADR changes.
+  The order saga (ADR-0051, reserved) is where that reconciler belongs.
+- The points reservation is meant to move into this saga, and the post-checkout choreography to be
+  replaced by an order saga; each gets its own ADR change.
 
 ---
 

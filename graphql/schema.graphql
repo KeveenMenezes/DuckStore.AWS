@@ -120,7 +120,7 @@ type CampaignPage @aws_cognito_user_pools {
 
 # The current points -> currency rate, so the SPA can show "500 points = R$5" before the customer
 # uses them (ADR-0046 §1, ADR-0048 §3). A fixed v1 constant, not a tier catalogue. Points
-# never expire (SPEC.md), so there is no expiry here.
+# never expire, so there is no expiry here.
 type RewardConversion @aws_cognito_user_pools {
   pointsPerUnit: Int!
   currencyPerUnit: Float!
@@ -266,6 +266,34 @@ type PointsTransaction @aws_cognito_user_pools {
 type PointsHistoryPage @aws_cognito_user_pools {
   items: [PointsTransaction!]!
   nextToken: String
+}
+
+# Inventory warehouses (ADR-0052 §2). Management pool only — StockKeeper or Admin, enforced in every
+# resolver (§3).
+type Warehouse @aws_cognito_user_pools {
+  id: ID!
+  # Human label (ALPHA, SP-01): unique, uppercase, immutable after creation.
+  code: String!
+  name: String!
+  address: WarehouseAddress!
+  # Lower serves a sale first; ties broken by code (ADR-0052 §2).
+  priority: Int!
+  # Deactivated, never deleted, so the stock history keeps every reference valid.
+  active: Boolean!
+  createdAt: AWSDateTime!
+  updatedAt: AWSDateTime!
+}
+
+type WarehouseAddress @aws_cognito_user_pools {
+  street: String!
+  number: String!
+  complement: String
+  district: String!
+  city: String!
+  # UF, e.g. SP
+  state: String!
+  # CEP, 8 digits, no hyphen
+  zipCode: String!
 }
 
 type Category @aws_api_key @aws_cognito_user_pools {
@@ -489,6 +517,32 @@ input CreateReviewInput {
   comment: String!
 }
 
+input WarehouseAddressInput {
+  street: String!
+  number: String!
+  complement: String
+  district: String!
+  city: String!
+  state: String!
+  # Accepts 00000-000 or 00000000; stored without the hyphen.
+  zipCode: String!
+}
+
+input CreateWarehouseInput {
+  code: String!
+  name: String!
+  address: WarehouseAddressInput!
+  priority: Int!
+}
+
+# No code: it is immutable (ADR-0052 §2).
+input UpdateWarehouseInput {
+  id: ID!
+  name: String!
+  address: WarehouseAddressInput!
+  priority: Int!
+}
+
 input UpdateProfileInput {
   name: String!
   phone: String
@@ -585,6 +639,14 @@ type Query {
   # NONE (local) resolver — Cognito required; values baked in at deploy time, not read from
   # Pricing's runtime config (ADR-0048 §3).
   rewardConversion: RewardConversion!
+
+  # Direct DynamoDB resolver — Cognito required; StockKeeper or Admin only. Type-filtered Scan
+  # (the table also holds CODE# guards), sorted by priority then code (ADR-0052 §4).
+  warehouses: [Warehouse!]! @aws_cognito_user_pools
+
+  # Direct DynamoDB resolver — Cognito required; StockKeeper or Admin only. GetItem; null for an
+  # unknown id or a code guard.
+  warehouse(id: ID!): Warehouse @aws_cognito_user_pools
 }
 
 type Mutation {
@@ -673,4 +735,17 @@ type Mutation {
   # on the PUBLIC item only, so the new value applies to future answers; past attempts and the
   # points ledger are untouched (ADR-0009, ADR-0045 §2).
   updateChallengePoints(id: ID!, points: Int!): Challenge! @aws_cognito_user_pools
+
+  # Direct DynamoDB resolver — Cognito required; StockKeeper or Admin only. TransactWriteItems of
+  # the warehouse and its CODE#<code> guard, both attribute_not_exists, so a taken code fails as
+  # WarehouseCodeTaken without a read-before-write (ADR-0009, ADR-0052 §2/§4).
+  createWarehouse(input: CreateWarehouseInput!): Warehouse! @aws_cognito_user_pools
+
+  # Direct DynamoDB resolver — Cognito required; StockKeeper or Admin only. UpdateItem of name,
+  # address and priority; NotFound for an unknown id (ADR-0052 §4).
+  updateWarehouse(input: UpdateWarehouseInput!): Warehouse! @aws_cognito_user_pools
+
+  # Direct DynamoDB resolver — Cognito required; StockKeeper or Admin only. Deactivation instead of
+  # delete (ADR-0052 §2).
+  setWarehouseActive(id: ID!, active: Boolean!): Warehouse! @aws_cognito_user_pools
 }

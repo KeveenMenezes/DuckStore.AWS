@@ -1,0 +1,70 @@
+@page "/warehouses/new"
+@attribute [Authorize]
+@inject WarehouseAdminService Warehouses
+@inject NavigationManager Navigation
+
+<PageTitle>New warehouse — DuckStore Management</PageTitle>
+
+<h1>New warehouse</h1>
+
+@if (!canManage)
+{
+    <p class="muted">Only the StockKeeper and Admin groups can manage warehouses.</p>
+}
+else
+{
+    @if (error is not null)
+    {
+        <div class="banner banner-error">@error</div>
+    }
+
+    <WarehouseForm Model="model" IsNew="true" OnValidSubmit="CreateAsync" SubmitLabel="Create" Busy="busy"
+                   ServerError="serverError" />
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    private readonly WarehouseFormModel model = new();
+    private bool canManage;
+    private bool busy;
+    private string? error;
+    private (string Field, string Message)? serverError;
+
+    protected override async Task OnInitializedAsync() =>
+        canManage = CognitoGroups.CanManageStock((await AuthenticationState).User);
+
+    private async Task CreateAsync()
+    {
+        busy = true;
+        error = null;
+        serverError = null;
+        try
+        {
+            // TransactionConflict means another create of the same code raced this one; the retry
+            // then sees the guard and fails as WarehouseCodeTaken, or succeeds (ADR-0052 §2).
+            Warehouse created;
+            try
+            {
+                created = await Warehouses.CreateWarehouseAsync(model);
+            }
+            catch (GraphQLException ex) when (ex.ErrorType == "TransactionConflict")
+            {
+                created = await Warehouses.CreateWarehouseAsync(model);
+            }
+            Navigation.NavigateTo($"warehouses?saved={Uri.EscapeDataString(created.Code)}");
+        }
+        catch (GraphQLException ex) when (ex.ErrorField is not null)
+        {
+            // BadRequest or WarehouseCodeTaken: shown next to the field the resolver named.
+            serverError = (ex.ErrorField, ex.Message);
+            busy = false;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to create warehouse: {ex.Message}";
+            busy = false;
+        }
+    }
+}

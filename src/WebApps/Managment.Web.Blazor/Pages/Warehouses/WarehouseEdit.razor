@@ -1,0 +1,95 @@
+@page "/warehouses/{Id}/edit"
+@attribute [Authorize]
+@inject WarehouseAdminService Warehouses
+@inject NavigationManager Navigation
+
+<PageTitle>Edit warehouse — DuckStore Management</PageTitle>
+
+<h1>Edit warehouse</h1>
+
+@if (!canManage)
+{
+    <p class="muted">Only the StockKeeper and Admin groups can manage warehouses.</p>
+}
+else
+{
+    @if (error is not null)
+    {
+        <div class="banner banner-error">@error</div>
+    }
+
+    @if (notFound)
+    {
+        <p class="muted">Warehouse not found.</p>
+    }
+    else if (model is null)
+    {
+        <p class="muted">Loading warehouse...</p>
+    }
+    else
+    {
+        <WarehouseForm Model="model" OnValidSubmit="UpdateAsync" SubmitLabel="Save changes" Busy="busy"
+                       ServerError="serverError" />
+    }
+}
+
+@code {
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    private WarehouseFormModel? model;
+    private bool canManage;
+    private bool busy;
+    private bool notFound;
+    private string? error;
+    private (string Field, string Message)? serverError;
+
+    protected override async Task OnInitializedAsync()
+    {
+        canManage = CognitoGroups.CanManageStock((await AuthenticationState).User);
+        if (!canManage)
+            return;
+
+        try
+        {
+            var warehouse = await Warehouses.GetWarehouseAsync(Id);
+            if (warehouse is null)
+                notFound = true;
+            else
+                model = WarehouseFormModel.From(warehouse);
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load warehouse: {ex.Message}";
+        }
+    }
+
+    private async Task UpdateAsync()
+    {
+        busy = true;
+        error = null;
+        serverError = null;
+        try
+        {
+            var updated = await Warehouses.UpdateWarehouseAsync(Id, model!);
+            Navigation.NavigateTo($"warehouses?saved={Uri.EscapeDataString(updated.Code)}");
+        }
+        catch (GraphQLException ex) when (ex.ErrorField is not null)
+        {
+            serverError = (ex.ErrorField, ex.Message);
+            busy = false;
+        }
+        catch (GraphQLException ex) when (ex.ErrorType == "NotFound")
+        {
+            notFound = true;
+            busy = false;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to update warehouse: {ex.Message}";
+            busy = false;
+        }
+    }
+}

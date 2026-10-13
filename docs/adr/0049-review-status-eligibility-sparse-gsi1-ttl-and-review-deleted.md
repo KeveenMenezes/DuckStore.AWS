@@ -22,8 +22,6 @@ Amends:
   `INSERT`/`MODIFY`. Adds `ReviewDeletedEvent`. §7 (ISR revalidation) also subscribes the
   revalidator to `ReviewDeletedEvent` (§8 below).
 
-Specified by [SPEC-review-eligibility.md](../../SPEC-review-eligibility.md).
-
 ---
 
 ## Context
@@ -277,4 +275,3 @@ until the next unrelated revalidation. The TTL `REMOVE` publishes nothing, so it
 - [ADR-0040: CatalogView Consumers Consolidated by Producer — Strategy Dispatch](./0040-catalogview-consumers-consolidated-by-producer-strategy-dispatch.md)
 - [ADR-0045: Challenges Bounded Context — Server-Side Grading and Answer-Key Isolation](./0045-challenges-bounded-context-server-side-grading.md)
 - [ADR-0048: Points Transactions Ledger and In-Cart Points Redemption](./0048-points-transactions-ledger-and-in-cart-redemption.md)
-- [SPEC-review-eligibility.md](../../SPEC-review-eligibility.md)

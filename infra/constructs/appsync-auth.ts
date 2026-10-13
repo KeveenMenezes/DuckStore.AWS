@@ -200,9 +200,9 @@ exports.handler = async (event) => {
 
     this.shoppingHostedUiUrl = `https://${shoppingDomain.domainName}.auth.${cdk.Stack.of(this).region}.amazoncognito.com`;
 
-    // Management pool — staff (Admin/Seller), Blazor WASM app. Login-only: no
+    // Management pool — staff (Admin/Seller/StockKeeper), Blazor WASM app. Login-only: no
     // self-signup, no social federation. Accounts are provisioned manually via the
-    // AWS Console/CLI (AdminCreateUser) — group membership (Admin/Seller) is what
+    // AWS Console/CLI (AdminCreateUser) — group membership (Admin/Seller/StockKeeper) is what
     // actually authorizes operations, enforced in the AppSync resolvers, not here.
     this.managementUserPool = new cognito.UserPool(this, 'ManagementUserPool', {
       userPoolName: 'duckstore-management-users',
@@ -225,6 +225,12 @@ exports.handler = async (event) => {
       userPoolId: this.managementUserPool.userPoolId,
       groupName: 'Admin',
       description: 'Admins with full access to orders and management',
+    });
+    // Warehouses and stock (ADR-0052 §3). Admin can do everything a StockKeeper can; Seller can't.
+    new cognito.CfnUserPoolGroup(this, 'StockKeeperGroup', {
+      userPoolId: this.managementUserPool.userPoolId,
+      groupName: 'StockKeeper',
+      description: 'Stock keepers who manage warehouses and stock',
     });
 
     const managementDomain = this.managementUserPool.addDomain('ManagementDomain', {

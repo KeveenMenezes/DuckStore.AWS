@@ -68,6 +68,10 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
+      # lib/**/*.test.ts — pins local.ts copies of server-side rules (ADR-0050 §3, ADR-0052 §4).
+      - name: Test
+        run: pnpm test
+
   infra:
     name: infra
     runs-on: ubuntu-latest

@@ -14,8 +14,7 @@ using Pricing.Function.Shared.Exceptions;
 
 namespace Pricing.UnitTests.Application.Queries;
 
-// Points redemption in the cart quote and the server-side charged total (SPEC-cart-points-redemption
-// §1, ADR-0048 §3): 100 points = R$1, capped at 20% of the post-campaign cart price, and the
+// Points redemption in the cart quote and the server-side charged total (ADR-0048 §3): 100 points = R$1, capped at 20% of the post-campaign cart price, and the
 // checkout's total is the one Pricing computes for the chosen payment method, never the client's.
 public class GetBasketInstallmentPlanPointsTests
 {

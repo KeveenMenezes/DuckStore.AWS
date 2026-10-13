@@ -33,6 +33,7 @@
     <ProjectReference Include="..\Services\Review\Review.DevelopmentDataSeeder\Review.DevelopmentDataSeeder.csproj" />
     <ProjectReference Include="..\Services\Challenges\Challenges.Function\Challenges.Function.csproj" />
     <ProjectReference Include="..\Services\Challenges\Challenges.DevelopmentDataSeeder\Challenges.DevelopmentDataSeeder.csproj" />
+    <ProjectReference Include="..\Services\Inventory\Inventory.DevelopmentDataSeeder\Inventory.DevelopmentDataSeeder.csproj" />
     <!-- IsAspireProjectResource=false: User.Function hosts no [LambdaFunction] and is a class
          library, so Aspire must not treat it as a runnable resource (ADR-0009/ADR-0042). -->
     <ProjectReference Include="..\Services\User\User.Function\User.Function.csproj" IsAspireProjectResource="false" />

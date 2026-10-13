@@ -22,7 +22,12 @@ public sealed class GraphQLClient(HttpClient http)
             ?? throw new GraphQLException(["Empty GraphQL response."]);
 
         if (payload.Errors is { Count: > 0 } errors)
-            throw new GraphQLException(errors.Select(e => e.Message).ToList());
+            throw new GraphQLException(errors.Select(e => e.Message).ToList())
+            {
+                ErrorType = errors[0].ErrorType ?? StringAt(errors[0].Extensions, "errorType"),
+                ErrorField = StringAt(errors[0].ErrorInfo, "field")
+                    ?? StringAt(PropertyAt(errors[0].Extensions, "errorInfo"), "field"),
+            };
 
         return payload.Data ?? throw new GraphQLException(["GraphQL response contained no data."]);
     }
@@ -31,11 +36,29 @@ public sealed class GraphQLClient(HttpClient http)
         [property: JsonPropertyName("data")] T? Data,
         [property: JsonPropertyName("errors")] List<GraphQLError>? Errors);
 
-    private sealed record GraphQLError([property: JsonPropertyName("message")] string Message);
+    // AppSync puts errorType/errorInfo on the error itself; the local graphql-yoga backend puts them
+    // under extensions. Both are read so pages branch on the type the same way in either.
+    private sealed record GraphQLError(
+        [property: JsonPropertyName("message")] string Message,
+        [property: JsonPropertyName("errorType")] string? ErrorType,
+        [property: JsonPropertyName("errorInfo")] JsonElement? ErrorInfo,
+        [property: JsonPropertyName("extensions")] JsonElement? Extensions);
+
+    private static JsonElement? PropertyAt(JsonElement? element, string property) =>
+        element is { ValueKind: JsonValueKind.Object } e && e.TryGetProperty(property, out var value) ? value : null;
+
+    private static string? StringAt(JsonElement? element, string property) =>
+        PropertyAt(element, property) is { ValueKind: JsonValueKind.String } value ? value.GetString() : null;
 }
 
 public sealed class GraphQLException(IReadOnlyList<string> messages)
     : Exception(string.Join("; ", messages))
 {
     public IReadOnlyList<string> Messages { get; } = messages;
+
+    // The first error's typed errorType (BadRequest, WarehouseCodeTaken, NotFound...), if any.
+    public string? ErrorType { get; init; }
+
+    // The input field the first error points at (errorInfo.field, e.g. "address.zipCode"), if any.
+    public string? ErrorField { get; init; }
 }

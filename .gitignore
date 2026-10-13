@@ -511,3 +511,7 @@ docs/guias-pessoais/
 # draw.io editor lock files (.$diagram.drawio.bkp)
 .$*.drawio.bkp
 .$*.drawio.dtmp
+
+# Specs and task plans are local working notes; the ADRs under docs/adr/ are the versioned record.
+/SPEC*.md
+/tasks/

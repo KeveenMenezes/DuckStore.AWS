@@ -156,7 +156,7 @@ public class DynamoQuestionRepositoryTests
     [Fact]
     public async Task GetForGradingAsync_ShouldGradeWithThePointsCurrentlyStoredOnThePublicItem()
     {
-        // challenge-points-admin: an admin edit (updateChallengePoints) rewrites Points on the
+        // An admin edit (updateChallengePoints) rewrites Points on the
         // PUBLIC item only. Grading reads it fresh on every answer, so the new value applies from
         // the next answer on, with no recalculation of earlier attempts.
         var edited = PublicItem();

@@ -6,7 +6,7 @@ public sealed record CreditReviewCommand(OwnerId OwnerId, Guid ProductId);
 public sealed class ReviewCreatedHandler(IPlayerProgressRepository repository)
 {
     // Returns false when this product was already credited to the player — a redelivered event,
-    // or a review deleted and published again (SPEC-review-points). The review's Status is never
+    // or a review deleted and published again. The review's Status is never
     // the lock: it can go back and forth, or disappear by TTL.
     public Task<bool> HandleAsync(CreditReviewCommand command, CancellationToken cancellationToken = default)
     {

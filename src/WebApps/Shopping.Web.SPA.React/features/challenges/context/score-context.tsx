@@ -43,8 +43,8 @@ interface ScoreContextType {
   hydrate: (progress: ChallengeProgress) => void
   /**
    * Re-reads `myChallengeProgress` for a balance that changed outside a challenge answer — e.g.
-   * the review credit, which Challenges applies asynchronously off `ReviewCreatedEvent`
-   * (SPEC-review-points). A no-op for a signed-out visitor.
+   * the review credit, which Challenges applies asynchronously off `ReviewCreatedEvent`.
+   * A no-op for a signed-out visitor.
    */
   refresh: () => Promise<void>
 }
