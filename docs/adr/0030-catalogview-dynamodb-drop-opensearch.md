@@ -9,6 +9,10 @@ tags:
 ## Status
 **Accepted** — July 2026
 
+**Note** — October 2026 (proposed): `Stock` on `catalogview-products` will come from Inventory's
+`ProductStockChangedEvent`, no longer from Catalog's `ProductSyncedEvent`
+([ADR-0052](./0052-inventory-bounded-context-warehouses.md) §8).
+
 Supersedes [ADR-0027](./0027-catalogview-opensearch-product-search-and-rating-sync.md) in full —
 CatalogView keeps its role (product read/search + rating aggregation), but its datastore and the
 `products`/`product` AppSync resolver classification both change. ADR-0027 §1–4/§7 (the

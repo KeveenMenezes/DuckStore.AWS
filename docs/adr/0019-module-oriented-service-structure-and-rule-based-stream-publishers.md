@@ -9,6 +9,12 @@ tags:
 ## Status
 **Accepted** — July 2026
 
+**Amended** — October 2026 (proposed): [ADR-0052](./0052-inventory-bounded-context-warehouses.md) §8 adds
+`IStreamFanOutRule<TImage>`, a rule that returns a list of `PublishInstruction` for a change that publishes
+one event per affected entity (deactivating a warehouse republishes every product it holds). The
+dispatcher runs both kinds of rule and publishes everything in one batch; rules still never reference
+EventBridge types.
+
 ---
 
 ## Context

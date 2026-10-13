@@ -11,6 +11,11 @@ tags:
 ## Status
 **Accepted** — July 2026
 
+**Amended** — October 2026 (proposed): [ADR-0052](./0052-inventory-bounded-context-warehouses.md) §8
+amends §4 and §6. The saga input and the product PutItem task no longer carry `stock`, and neither
+does the `local.ts` simulation. Stock belongs to Inventory, and a new product starts at 0. Everything
+else here stands.
+
 ---
 
 ## Context

@@ -16,6 +16,11 @@ is decided in detail.
 **Amended** — October 2026: §7 decides the stock balances and the movements ledger (receipts,
 adjustments, transfers).
 
+**Amended** — October 2026 (proposed): §8 makes Inventory the source of the storefront's stock and
+takes `stock` out of Catalog. It amends [ADR-0032](./0032-create-product-with-price-step-functions-express-saga.md)
+§4/§6 and [ADR-0019](./0019-module-oriented-service-structure-and-rule-based-stream-publishers.md)
+(fan-out rules).
+
 ADR-0051 is reserved for the order orchestration, which is why this one is 0052.
 
 ---
@@ -141,12 +146,7 @@ against DynamoDB Local for the Blazor app, with the same validation and errors a
 Recorded here so later work starts from it, not decided in detail:
 
 - **Balances and ledger**: decided in §7.
-- **Storefront total**: Inventory publishes the available total by CDC.
-  CatalogView consumes it ([ADR-0040](./0040-catalogview-consumers-consolidated-by-producer-strategy-dispatch.md)):
-  a plain 1:1 handler while Inventory has a single event, and its own dispatcher plus
-  `IInventorySyncStrategy` once a second one exists (e.g. a warehouse deactivation). Catalog drops
-  `Stock`, which amends [ADR-0032](./0032-create-product-with-price-step-functions-express-saga.md)
-  (the `createProductWithPrice` saga input and task mapping carry `stock`).
+- **Storefront total**: decided in §8.
 - **Sales**: reservation is a state of `checkout-saga`, as the Future
   Constraints of [ADR-0050](./0050-checkout-step-functions-express-saga.md) (Proposed) require:
   `OutOfStock` is reported through its §8 error contract, `ReleaseStock` compensates only typed
@@ -277,6 +277,100 @@ product and invokes the real Lambdas through the Aspire Lambda emulator, as the 
 instead of copying the rules; the author is `local-dev`. The queries are emulated against DynamoDB
 Local.
 
+### 8. The storefront total
+
+**Inventory is the only source of the storefront's stock.** The number the storefront shows is
+`Available` summed over the product's balances in **active** warehouses; stock in an inactive
+warehouse never counts. Catalog no longer has `stock`: it leaves the `Product` entity, its table,
+`ProductSyncedEvent`, the `createProduct`/`updateProduct`/`createProductWithPrice` inputs, the
+`product-create-saga` (amending ADR-0032 §4 and §6) and the Blazor product form. The GraphQL
+`Product` type keeps `stock`, read from CatalogView as before; a product with no total yet reads 0.
+
+**The event.** `ProductStockChangedEvent { ProductId, Available, Version }` (ADR-0031: named after the
+occurrence). Its `detail` is `{"ProductId":"<guid>","Available":70,"Version":12}` plus the
+`IntegrationEvent` envelope (`Id`, `OccurredOn`, `EventType`).
+`Version` orders totals without a clock:
+
+- every `inventory-stock` write does `ADD Version :one` on its row, and `setWarehouseActive` does
+  the same on the warehouse (other warehouse edits cannot change a total and leave it alone);
+- a total's `Version` is the sum of the counters of the product's balance rows and of their
+  warehouses, inactive ones included. A row or warehouse without the attribute counts 0;
+- every change that can move the total adds one to a counter in that sum and none is ever
+  decremented, so a newer state always has a greater `Version`. Two reads of the same state agree
+  on both numbers.
+- the publishers read the balances and then the warehouses, so one read is not a single snapshot.
+  If a movement and a toggle land between the two reads, a total can be briefly wrong. It corrects
+  itself: the publisher triggered by the last write reads the final state, at the greatest
+  `Version`.
+
+Timestamps were rejected for this: two writes in the same millisecond, or AppSync's and the Lambdas'
+clocks a little apart, would leave an older total looking newer.
+
+**Two publishers, both CDC (ADR-0005), both `Inventory.Function`, both through
+`StreamRuleDispatcher` (ADR-0019):**
+
+| Lambda | Source | Rule |
+|---|---|---|
+| `inventory-stock-stream-publisher` | `inventory-stock` stream (`NEW_AND_OLD_IMAGES`), `INSERT`/`MODIFY` | `ProductStockChangedRule`: the product's total. A product repeated in a batch yields identical events, which the consumer drops |
+| `inventory-warehouses-stream-publisher` | `inventory-warehouses` stream (`NEW_AND_OLD_IMAGES`), `MODIFY` of a `Type = Warehouse` item whose `Active` changed; guards, new warehouses and other edits match nothing | `WarehouseActivationRule`: one total per product in that warehouse (GSI1 of `inventory-stock`, paginated) |
+
+One record becoming N events is new to the dispatcher, so `BuildingBlocks.Messaging` gains
+`IStreamFanOutRule<TImage>` (`Match` + `BuildAllAsync`, returning a list of `PublishInstruction`),
+dispatched next to the `IStreamRule`s and published in the same `PublishManyAsync` call. This
+amends ADR-0019's "a rule MUST return a `PublishInstruction`".
+
+Both rules compute the total with one domain service (`StorefrontStock`), from consistent reads of
+`inventory-stock` and `inventory-warehouses`. A failing batch is bisected and retried 3 times, then
+lands in the `inventory` context DLQ with its alarm on `duckstore-alerts` (ADR-0015).
+
+**The consumer.** `catalogview-inventory-sync-consumer`, a 1:1 handler: Inventory has a single event,
+the case [ADR-0040](./0040-catalogview-consumers-consolidated-by-producer-strategy-dispatch.md)
+allows without a dispatcher. `IProductSearchIndex.ApplyStockAsync` writes:
+
+```text
+UpdateItem catalogview-products  SET Stock = :available, StockVersion = :version
+Condition: attribute_not_exists(StockVersion) OR StockVersion < :version
+```
+
+- A condition failure means the stored total is at least as new: the event is late or repeated and
+  is dropped without an error, since retrying would never succeed.
+- There is no `attribute_exists(Id)`. A total that reaches CatalogView before the product's
+  `ProductSynced` is kept on a stock-only item, as `ApplyPricingAsync` already does with a price. The
+  product sync then completes the item: it writes `Stock = if_not_exists(Stock, 0)`, and the backfill
+  seeder writes no `Stock` at all. The backfill rewrites whole items, so it is meant for an empty
+  table. Re-running it after the rollout resets every product to 0, and removes `StockVersion`,
+  until that product's next movement or warehouse toggle.
+- A product deleted from Catalog may still move stock out (§7), and a warehouse toggle reaches it.
+  Its totals land on a stock-only item. Nothing retries, and nothing reaches the DLQ for it.
+- An item without a `Name` is not a product. `product(id)` returns `null` for it, and `products`
+  leaves it out (it has no `GSI1PK`, and the search filter needs a `Name`). `stock` reads
+  `Stock ?? 0`.
+
+Other failures follow CatalogView's consumers: 2 async-invoke retries, then the `catalogview` context
+DLQ. EventBridge delivery failures go to the same queue. The existing `CatalogViewProductSyncedEvent`,
+published on any write to the item (ADR-0035), already revalidates the product pages. A stock-only
+item triggers it too, which is harmless.
+
+**Rollout order (binding).**
+
+1. CatalogView stops writing `Stock` from `ProductSyncedEvent` and starts consuming
+   `ProductStockChangedEvent`.
+2. Inventory publishes.
+3. The dev showcase is seeded.
+4. Catalog stops sending `Stock`, and the inputs lose it together with the Blazor form.
+
+Until a product's first total arrives, CatalogView still holds the last value Catalog sent. The
+rollout is therefore complete only when every product either has a `StockVersion` or shows 0. On
+dev, the showcase seeds an Inventory receipt for every product above 0, and the seeding script
+checks that nothing else is left.
+
+**Local development.** EventBridge is best-effort locally, so `local.ts` applies the same total (a
+tested copy of `StorefrontStock`) to `catalogview-products` with the same condition. It does so after
+each movement and, for every product of the warehouse, after `setWarehouseActive`, as it already
+simulates the review credit. The Inventory seeder records the Catalog seed products' former stock as
+receipts into ALPHA, through the receipt handler (so with ledger rows), and applies their totals the
+same way, after CatalogView's backfill.
+
 ---
 
 ## Consequences
@@ -291,6 +385,14 @@ Local.
 
 ### Negative / Costs
 
+- The storefront's stock is eventually consistent with Inventory (seconds, through EventBridge).
+- Deactivating a warehouse publishes one event per product it holds, and reads every one of their
+  totals.
+- A balance created in a warehouse at the same moment that warehouse is toggled may be missed by the
+  fan-out, because GSI1 is eventually consistent. The total stays wrong until that product's next
+  movement.
+- Totals of deleted products and early totals leave stock-only items in `catalogview-products`,
+  which nothing reads.
 - Movements need Lambdas (§7): Inventory's first Native AOT package and a linux-arm64 publish in its
   workflow.
 - The history shows who made a movement as a Cognito `sub`, not a name or e-mail.
@@ -310,6 +412,9 @@ Local.
   real APPSYNC_JS runtime (`aws appsync evaluate-code`) and the `local.ts` copy (unit tests).
 - E2E warehouses carry an `E2E-` code prefix and are deactivated at the end of each test; E2E stock
   movements happen only in those warehouses, so the dev history of real warehouses stays clean.
+- The fan-out's GSI race needs a balance write and a toggle of its warehouse within the index's
+  propagation delay (well under a second). The stock-stream publisher reads the base table
+  consistently, so it covers every case except the one where the toggle lands after its read.
 
 ### Future Constraints
 
@@ -320,10 +425,14 @@ Local.
 - Ledger rows MUST NOT be updated or deleted, and every on-hand change MUST write its ledger row in
   the same transaction (the ADR-0048 rule for points). The seeder MUST NOT seed balances without
   ledger rows.
-- Inventory's Lambdas MUST NOT get a Function URL or any entry point other than AppSync (and the
-  local `local.ts` emulation).
+- Inventory's Lambdas MUST NOT get a Function URL or any entry point other than AppSync, their own
+  tables' DynamoDB Streams (§8) and the local `local.ts` emulation.
 - A warehouse's `Code` MUST NOT become editable without replacing the guard in the same transaction
   (delete the old guard, put the new one).
+- The storefront's stock MUST come only from Inventory through `ProductStockChangedEvent`; Catalog
+  MUST NOT regain `stock`, and CatalogView MUST NOT read Inventory's tables. A total is applied only
+  under the `Version` condition, and every Inventory write that can change a total MUST add one to
+  the `Version` of its balance row or warehouse.
 - Allocation MUST stay behind a policy (`StockAllocationPolicy`) so "priority" can be replaced by
   "nearest warehouse" without touching balances or the sagas.
 
@@ -355,17 +464,25 @@ Local.
 - `src/Services/Inventory/Inventory.DevelopmentDataSeeder`, `src/Services/Inventory/Inventory.Function`, `src/AppHost/{InventoryExtensions,Program}.cs`, `DuckStore.slnx`
 - `infra/constructs/inventory-lambdas.ts`, `tests/Services/Inventory/Inventory.UnitTests`
 - `src/WebApps/Managment.Web.Blazor` (Warehouses and Stock pages, `CognitoGroups`)
-- `src/WebApps/Shopping.Web.SPA.React/app/api/graphql/local.ts`, `lib/warehouse-validation.ts`
+- `src/WebApps/Shopping.Web.SPA.React/app/api/graphql/local.ts`, `lib/warehouse-validation.ts`, `lib/storefront-stock.ts`
 - `tests/E2E/Inventory`
+- Storefront total (§8): `src/BuildingBlocks/BuildingBlocks.Messaging` (`ProductStockChangedEvent`, `IStreamFanOutRule`),
+  `src/Services/CatalogView` (`InventorySync` consumer, `DynamoProductIndex`, the backfill seeder),
+  `infra/constructs/catalogview-lambdas.ts`, `src/AppHost/CatalogViewExtensions.cs`,
+  `graphql/resolvers/products/**`, `infra/constructs/product-create-saga.ts`, `src/Services/Catalog`,
+  `src/WebApps/Managment.Web.Blazor` (product form), `scripts/inventory/seed-dev-showcase.mjs`
 
 ## References
 
 - [ADR-0009: AppSync Resolver Selection](./0009-appsync-resolver-selection-direct-first-lambda-for-complex-logic.md) — direct warehouses and queries; Lambda movements (§7)
-- [ADR-0019: Module-Oriented Service Structure](./0019-module-oriented-service-structure-and-rule-based-stream-publishers.md) — the structure Inventory follows
+- [ADR-0019: Module-Oriented Service Structure](./0019-module-oriented-service-structure-and-rule-based-stream-publishers.md) — the structure Inventory follows; amended by §8 with fan-out rules
 - [ADR-0040: CatalogView Consumers by Producer](./0040-catalogview-consumers-consolidated-by-producer-strategy-dispatch.md) — the shape of the storefront-total consumer
 - [ADR-0045: Challenges Bounded Context](./0045-challenges-bounded-context-server-side-grading.md) — precedent for a direct, Admin-gated management resolver (`updateChallengePoints`)
-- [ADR-0032: Product Creation With Price as a Step Functions Express Saga](./0032-create-product-with-price-step-functions-express-saga.md) — loses `stock` with the storefront total (§6)
+- [ADR-0032: Product Creation With Price as a Step Functions Express Saga](./0032-create-product-with-price-step-functions-express-saga.md) — loses `stock` with the storefront total (§8)
 - [ADR-0050: Checkout as a Step Functions Express Saga](./0050-checkout-step-functions-express-saga.md) — where the stock reservation will live; the idempotency-key and refusal contracts §7 follows
 - [ADR-0048: Points Transactions Ledger](./0048-points-transactions-ledger-and-in-cart-redemption.md) — the ledger precedent (same-transaction balance change, conditional ids)
 - [ADR-0042: Native AOT ZIPs](./0042-lambda-native-aot-zip-provided-al2023.md) — how `Inventory.Function` is packaged
 - [ADR-0029: Review Upsert](./0029-review-upsert-composite-key-and-rating-delta.md) — the direct pipeline precedent
+- [ADR-0030: CatalogView Goes DynamoDB-Backed](./0030-catalogview-dynamodb-drop-opensearch.md) — the table the storefront total is written to
+- [ADR-0035: CatalogView-Owned CDC Events](./0035-catalogview-owned-cdc-events-drive-spa-revalidation.md) — revalidates the product pages when the total changes
+- [ADR-0015: SQS DLQs for CDC Publishers and Consumers](./0015-sqs-dlq-for-cdc-publishers-and-eventbridge-consumers.md) — the failure path of both publishers and the consumer

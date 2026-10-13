@@ -26,7 +26,7 @@ decision without opening every file.
 | [0016](./0016-guest-basket-owner-id-identity-api-key-and-ttl.md) | Guest Shopping Carts — Unified `ownerId` Identity, API_KEY, and TTL | Accepted (amended by [0041](./0041-bff-opaque-server-side-session-centralized-cognito-refresh.md); amendment proposed by [0050](./0050-checkout-step-functions-express-saga.md)) |
 | [0017](./0017-user-bounded-context-cognito-idp-only-lazy-provisioning.md) | User Bounded Context — Cognito as IdP-Only, Lazy Provisioning | Accepted |
 | [0018](./0018-product-images-dedicated-s3-bucket-cloudfront-bypass-optimizer.md) | Product Catalog Images — Dedicated S3 Bucket via CloudFront | Superseded → [0034](./0034-product-image-pipeline-presigned-post-sqs-sharp-cloudfront.md) |
-| [0019](./0019-module-oriented-service-structure-and-rule-based-stream-publishers.md) | Module-Oriented Service Structure and Rule-Based Stream Publishers | Accepted |
+| [0019](./0019-module-oriented-service-structure-and-rule-based-stream-publishers.md) | Module-Oriented Service Structure and Rule-Based Stream Publishers | Accepted (fan-out rules proposed by [0052](./0052-inventory-bounded-context-warehouses.md) §8) |
 | [0020](./0020-migrate-spa-deploy-to-sst.md) | Migrate the SPA Deploy Layer from Hand-Rolled CDK to SST | Accepted (supersedes 0014) |
 | [0021](./0021-fail-fast-eventbridge-publishing-on-aws.md) | Fail-Fast EventBridge Publishing on AWS — Best-Effort Only Locally | Accepted |
 | [0022](./0022-lambda-production-observability.md) | Production Observability for Lambda Functions | Accepted |
@@ -39,7 +39,7 @@ decision without opening every file.
 | [0029](./0029-review-upsert-composite-key-and-rating-delta.md) | Review Upsert — Composite Key and Rating-Delta Aggregation | Accepted (amended by [0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md)) |
 | [0030](./0030-catalogview-dynamodb-drop-opensearch.md) | CatalogView Goes DynamoDB-Backed — Drop OpenSearch | Accepted (supersedes 0027) |
 | [0031](./0031-cdc-events-named-after-domain-occurrence-no-changetype-discriminator.md) | CDC Events Named After the Domain Occurrence, Never a ChangeType Discriminator | Accepted |
-| [0032](./0032-create-product-with-price-step-functions-express-saga.md) | Product Creation With Price as a Step Functions Express Saga | Accepted |
+| [0032](./0032-create-product-with-price-step-functions-express-saga.md) | Product Creation With Price as a Step Functions Express Saga | Accepted (§4/§6 amendment proposed by [0052](./0052-inventory-bounded-context-warehouses.md) §8) |
 | [0033](./0033-graphql-contract-owned-at-monorepo-root.md) | GraphQL Contract and Resolvers Owned at the Monorepo Root | Accepted |
 | [0034](./0034-product-image-pipeline-presigned-post-sqs-sharp-cloudfront.md) | Product Image Pipeline — Presigned POST, S3→SQS, CloudFront | Accepted (supersedes 0018) |
 | [0035](./0035-catalogview-owned-cdc-events-drive-spa-revalidation.md) | CatalogView-Owned CDC Events Drive SPA Cache Revalidation | Accepted |
@@ -59,7 +59,7 @@ decision without opening every file.
 | [0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md) | Review Status — Purchase Eligibility, Sparse GSI1, TTL on Delete and `ReviewDeleted` | Accepted |
 | [0050](./0050-checkout-step-functions-express-saga.md) | Checkout as a Step Functions Express Saga | Proposed |
 | 0051 | *Reserved* — order orchestration | — |
-| [0052](./0052-inventory-bounded-context-warehouses.md) | Inventory Bounded Context — Stock per Warehouse, Owned by the StockKeeper | Accepted (amended §7: stock and the movements ledger) |
+| [0052](./0052-inventory-bounded-context-warehouses.md) | Inventory Bounded Context — Stock per Warehouse, Owned by the StockKeeper | Accepted (amended §7: stock and the movements ledger; §8 storefront total proposed) |
 
 ## Superseded chains
 
