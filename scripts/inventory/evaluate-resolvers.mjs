@@ -179,6 +179,88 @@ const cancelled = (reasons) => ({ identity: admin, arguments: {}, stash: { item:
   check('warehouse: maps the item', found, found.result?.code === 'BETA')
 }
 
+// 7. stock (ADR-0052 §7)
+const S = (kind, name) => R(kind, name)
+const sub = { sub: 'keeper-sub', groups: ['StockKeeper'] }
+const receiptInput = { idempotencyKey: 'k1', productId: 'p1', warehouseId: 'w1', quantity: 5, invoiceNumber: 'NF-1' }
+const stockGated = [
+  ['recordStockReceipt', S('mutations', 'Mutation.recordStockReceipt.js'), { input: receiptInput }],
+  ['recordStockAdjustment', S('mutations', 'Mutation.recordStockAdjustment.js'), { input: { ...receiptInput, direction: 'Decrease', reason: 'Count' } }],
+  ['transferStock', S('mutations', 'Mutation.transferStock.js'), { input: { idempotencyKey: 'k1', productId: 'p1', fromWarehouseId: 'w1', toWarehouseId: 'w2', quantity: 1 } }],
+  ['stockByProduct', S('queries', 'Query.stockByProduct.js'), { productId: 'p1' }],
+  ['stockMovementsByProduct', S('queries', 'Query.stockMovementsByProduct.js'), { productId: 'p1' }],
+  ['stockByWarehouse', S('queries', 'Query.stockByWarehouse.js'), { warehouseId: 'w1' }],
+  ['stockMovementsByWarehouse', S('queries', 'Query.stockMovementsByWarehouse.js'), { warehouseId: 'w1' }],
+]
+for (const [field, code, args] of stockGated) {
+  for (const [who, identity] of Object.entries(identities)) {
+    const r = evaluate(code, 'request', { identity, arguments: args })
+    check(`${field}: ${who} -> Unauthorized`, r, r.error === 'Unauthorized')
+  }
+  const ok = evaluate(code, 'request', { identity: admin, arguments: args })
+  check(`${field}: Admin allowed`, ok, !ok.error)
+}
+{
+  const CHECK = S('mutations', 'Mutation.stock.checkProduct.js')
+  const receipt = evaluate(CHECK, 'request', { identity: sub, arguments: { input: receiptInput } })
+  check('checkProduct: GetItem on the product id', receipt, receipt.result?.operation === 'GetItem' && receipt.result?.key?.Id?.S === 'p1')
+  const decrease = evaluate(CHECK, 'request', { identity: sub, arguments: { input: { ...receiptInput, direction: 'Decrease' } } })
+  check('checkProduct: skipped for a decrease', decrease, !decrease.error && decrease.result?.operation === undefined)
+  const missing = evaluate(CHECK, 'response', { identity: sub, arguments: { input: receiptInput }, result: null })
+  check('checkProduct: missing product -> ProductNotFound', missing, missing.error === 'Product not found')
+  const found = evaluate(CHECK, 'response', { identity: sub, arguments: { input: receiptInput }, result: { Id: 'p1' } })
+  check('checkProduct: existing product passes', found, !found.error)
+
+  const RECORD = S('mutations', 'Mutation.recordStockReceipt.record.js')
+  const invoke = evaluate(RECORD, 'request', { identity: sub, arguments: { input: { ...receiptInput, createdBy: 'forged' } } })
+  check('receipt record: Invoke with Actor from the token, nothing else about the author', invoke,
+    invoke.result?.operation === 'Invoke' && invoke.result.payload.Actor === 'keeper-sub' && !('CreatedBy' in invoke.result.payload)
+    && invoke.result.payload.Supplier === null && invoke.result.payload.InvoiceNumber === 'NF-1')
+  const refused = evaluate(RECORD, 'response', { identity: sub, arguments: {}, result: { Refusal: { ErrorType: 'InsufficientStock', Message: 'Only 3 available', Field: 'quantity', Available: 3 } } })
+  check('record: a refusal becomes a typed error', refused, refused.error === 'Only 3 available')
+  const thrown = evaluate(RECORD, 'response', { identity: sub, arguments: {}, error: { type: 'Lambda:Unhandled', message: 'NullReferenceException at ...' } })
+  check('record: an unhandled Lambda error is InternalError with no detail', thrown, thrown.error === 'The stock movement could not be recorded')
+  const ok = evaluate(RECORD, 'response', { identity: sub, arguments: {}, result: { Movements: [{ Id: 'k1', ProductId: 'p1', Type: 'Receipt', Quantity: 5, BalanceAfter: 5, WarehouseId: 'w1', WarehouseCode: 'ALPHA', InvoiceNumber: 'NF-1', Supplier: null, Reason: null, Note: null, TransferId: null, CounterpartWarehouseId: null, CreatedAt: '2026-10-13T12:00:00.000Z', CreatedBy: 'keeper-sub' }] } })
+  check('record: movements mapped to the GraphQL shape', ok, ok.result?.movements?.[0]?.id === 'k1' && ok.result.movements[0].balanceAfter === 5 && ok.result.movements[0].createdBy === 'keeper-sub')
+
+  const ADJ = S('mutations', 'Mutation.recordStockAdjustment.record.js')
+  const adj = evaluate(ADJ, 'request', { identity: sub, arguments: { input: { ...receiptInput, direction: 'Decrease', reason: 'Other', note: 'x' } } })
+  check('adjustment record: direction and reason passed as enum names', adj, adj.result?.payload?.Direction === 'Decrease' && adj.result.payload.Reason === 'Other')
+  const TR = S('mutations', 'Mutation.transferStock.js')
+  const tr = evaluate(TR, 'request', { identity: sub, arguments: { input: { idempotencyKey: 'k1', productId: 'p1', fromWarehouseId: 'w1', toWarehouseId: 'w2', quantity: 1 } } })
+  check('transfer: Invoke with both warehouses and the Actor', tr, tr.result?.payload?.FromWarehouseId === 'w1' && tr.result.payload.ToWarehouseId === 'w2' && tr.result.payload.Actor === 'keeper-sub')
+}
+{
+  const BYP = S('queries', 'Query.stockByProduct.js')
+  const q = evaluate(BYP, 'response', { identity: sub, arguments: { productId: 'p1' }, result: { items: [
+    { ProductId: 'p1', WarehouseId: 'w1', WarehouseCode: 'ALPHA', Available: 20, Reserved: 0 },
+    { ProductId: 'p1', WarehouseId: 'w2', WarehouseCode: 'BETA', Available: 50 }] } })
+  check('stockByProduct: total over every warehouse', q, q.result?.totalAvailable === 70 && q.result.warehouses.length === 2 && q.result.warehouses[1].reserved === 0)
+  const MBP = S('queries', 'Query.stockMovementsByProduct.js')
+  const req = evaluate(MBP, 'request', { identity: sub, arguments: { productId: 'p1', pageSize: 5, nextToken: 't' } })
+  check('stockMovementsByProduct: LSI1, newest first, paged', req, req.result?.index === 'LSI1' && req.result.scanIndexForward === false && req.result.limit === 5 && req.result.nextToken === 't')
+  for (const size of [0, 101, 1.5]) {
+    const bad = evaluate(MBP, 'request', { identity: sub, arguments: { productId: 'p1', pageSize: size } })
+    check(`stockMovementsByProduct: pageSize ${size} -> BadRequest`, bad, bad.error?.startsWith('pageSize must'))
+    const badW = evaluate(S('queries', 'Query.stockByWarehouse.js'), 'request', { identity: sub, arguments: { warehouseId: 'w1', pageSize: size } })
+    check(`stockByWarehouse: pageSize ${size} -> BadRequest`, badW, badW.error?.startsWith('pageSize must'))
+  }
+  const MBW = S('queries', 'Query.stockMovementsByWarehouse.movements.js')
+  const w = evaluate(MBW, 'request', { identity: sub, arguments: { warehouseId: 'w1' } })
+  check('stockMovementsByWarehouse: GSI1 by warehouse, newest first, default 20', w, w.result?.index === 'GSI1' && w.result.scanIndexForward === false && w.result.limit === 20)
+
+  const NAMES = S('queries', 'Query.stock.productNames.js')
+  const page = { items: [{ productId: 'p1', available: 1 }, { productId: 'p2', available: 2 }, { productId: 'p1', available: 3 }], nextToken: 'n' }
+  const batch = evaluate(NAMES, 'request', { identity: sub, arguments: {}, prev: { result: page } })
+  check('productNames: BatchGetItem with de-duplicated keys', batch,
+    batch.result?.operation === 'BatchGetItem' && batch.result.tables.products.keys.length === 2)
+  const empty = evaluate(NAMES, 'request', { identity: sub, arguments: {}, prev: { result: { items: [], nextToken: null } } })
+  check('productNames: an empty page skips the call', empty, !empty.error && empty.result?.operation === undefined)
+  const named = evaluate(NAMES, 'response', { identity: sub, arguments: {}, prev: { result: page }, result: { data: { products: [{ Id: 'p1', Name: 'Pato' }, null] } } })
+  check('productNames: names mapped, a missing product is null, nextToken kept', named,
+    named.result?.items?.[0]?.productName === 'Pato' && named.result.items[1].productName === null && named.result.items[2].productName === 'Pato' && named.result.nextToken === 'n')
+}
+
 const failed = results.filter((r) => !r.ok)
 console.log(`\n${results.length - failed.length}/${results.length} passed`)
 process.exit(failed.length ? 1 : 0)

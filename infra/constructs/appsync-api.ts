@@ -215,6 +215,16 @@ export class AppSyncApi extends Construct {
 
     // Inventory warehouses (ADR-0052) — warehouses and their CODE#<code> guards; no index.
     const warehousesTable = dynamodb.Table.fromTableName(this, 'WarehousesTable', 'inventory-warehouses');
+    // Inventory stock and ledger (ADR-0052 §7) — read here only; Inventory.Function writes them.
+    // grantIndexPermissions so the reads cover GSI1/LSI1.
+    const stockTable = dynamodb.Table.fromTableAttributes(this, 'InventoryStockTable', {
+      tableName: 'inventory-stock',
+      grantIndexPermissions: true,
+    });
+    const movementsTable = dynamodb.Table.fromTableAttributes(this, 'InventoryMovementsTable', {
+      tableName: 'inventory-movements',
+      grantIndexPermissions: true,
+    });
 
     const productsDs = this.dynamoDbDataSource('ProductsDS', productsTable);
     const categoriesDs = this.dynamoDbDataSource('CategoriesDS', categoriesTable);
@@ -237,6 +247,8 @@ export class AppSyncApi extends Construct {
     const challengeProgressDs = this.dynamoDbDataSource('ChallengeProgressDS', challengeProgressTable);
     const pointsTransactionsDs = this.dynamoDbDataSource('PointsTransactionsDS', pointsTransactionsTable);
     const warehousesDs = this.dynamoDbDataSource('WarehousesDS', warehousesTable);
+    const inventoryStockDs = this.dynamoDbDataSource('InventoryStockDS', stockTable);
+    const inventoryMovementsDs = this.dynamoDbDataSource('InventoryMovementsDS', movementsTable);
     // NONE (local) data source — rewardConversion has no backend call, values are baked in below.
     const rewardConversionDs = api.addNoneDataSource('RewardConversionDS');
 
@@ -265,6 +277,9 @@ export class AppSyncApi extends Construct {
     // (ADR-0052 §4). Nothing wider: no DeleteItem, warehouses are never deleted.
     warehousesTable.grantReadData(warehousesDs);
     warehousesTable.grant(warehousesDs, 'dynamodb:PutItem', 'dynamodb:UpdateItem');
+    // Read only: every stock and ledger write goes through Inventory.Function (ADR-0052 §7).
+    stockTable.grantReadData(inventoryStockDs);
+    movementsTable.grantReadData(inventoryMovementsDs);
 
     // Lambda data sources — imported by function name (no CF coupling)
     const mergeBasketFn = lambda.Function.fromFunctionName(this, 'MergeBasketFn', 'basket-merge-basket');
@@ -307,6 +322,20 @@ export class AppSyncApi extends Construct {
     const revealChallengeHintDs = api.addLambdaDataSource(
       'RevealChallengeHintDS',
       revealChallengeHintFn,
+    );
+
+    // Inventory stock movements (ADR-0052 §7) — one Lambda per mutation, imported by function name.
+    const recordStockReceiptDs = api.addLambdaDataSource(
+      'RecordStockReceiptDS',
+      lambda.Function.fromFunctionName(this, 'RecordStockReceiptFn', 'inventory-record-stock-receipt'),
+    );
+    const recordStockAdjustmentDs = api.addLambdaDataSource(
+      'RecordStockAdjustmentDS',
+      lambda.Function.fromFunctionName(this, 'RecordStockAdjustmentFn', 'inventory-record-stock-adjustment'),
+    );
+    const transferStockDs = api.addLambdaDataSource(
+      'TransferStockDS',
+      lambda.Function.fromFunctionName(this, 'TransferStockFn', 'inventory-transfer-stock'),
     );
 
     // HTTP data source — Step Functions StartSyncExecution (ADR-0032)
@@ -445,6 +474,35 @@ export class AppSyncApi extends Construct {
     this.resolver(warehousesDs, 'CreateWarehouseResolver', 'Mutation', 'createWarehouse', 'inventory');
     this.resolver(warehousesDs, 'UpdateWarehouseResolver', 'Mutation', 'updateWarehouse', 'inventory');
     this.resolver(warehousesDs, 'SetWarehouseActiveResolver', 'Mutation', 'setWarehouseActive', 'inventory');
+
+    // Stock (ADR-0052 §7). Queries are direct; the warehouse views add a BatchGetItem step on Catalog's
+    // products for the names. Receipt and adjustment check the product exists (productsDs, read only
+    // here) before invoking their Lambda; the transfer is the Lambda alone.
+    this.resolver(inventoryStockDs, 'StockByProductResolver', 'Query', 'stockByProduct', 'inventory');
+    this.resolver(
+      inventoryMovementsDs, 'StockMovementsByProductResolver', 'Query', 'stockMovementsByProduct', 'inventory',
+    );
+    this.pipelineResolver(undefined, 'StockByWarehouseResolver', 'Query', 'stockByWarehouse', 'inventory', [
+      { file: 'Query.stockByWarehouse.balances.js', dataSource: inventoryStockDs },
+      { file: 'Query.stock.productNames.js', dataSource: productsDs },
+    ]);
+    this.pipelineResolver(
+      undefined, 'StockMovementsByWarehouseResolver', 'Query', 'stockMovementsByWarehouse', 'inventory', [
+        { file: 'Query.stockMovementsByWarehouse.movements.js', dataSource: inventoryMovementsDs },
+        { file: 'Query.stock.productNames.js', dataSource: productsDs },
+      ],
+    );
+    this.pipelineResolver(undefined, 'RecordStockReceiptResolver', 'Mutation', 'recordStockReceipt', 'inventory', [
+      { file: 'Mutation.stock.checkProduct.js', dataSource: productsDs },
+      { file: 'Mutation.recordStockReceipt.record.js', dataSource: recordStockReceiptDs },
+    ]);
+    this.pipelineResolver(
+      undefined, 'RecordStockAdjustmentResolver', 'Mutation', 'recordStockAdjustment', 'inventory', [
+        { file: 'Mutation.stock.checkProduct.js', dataSource: productsDs },
+        { file: 'Mutation.recordStockAdjustment.record.js', dataSource: recordStockAdjustmentDs },
+      ],
+    );
+    this.resolver(transferStockDs, 'TransferStockResolver', 'Mutation', 'transferStock', 'inventory');
   }
 
   // addDynamoDbDataSource always grants full read/write on the table — it doesn't expose
