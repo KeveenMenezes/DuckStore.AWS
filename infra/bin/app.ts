@@ -130,7 +130,7 @@ new ChallengesStack(app, 'DuckStoreChallengesStack', {
 new InventoryStack(app, 'DuckStoreInventoryStack', {
   env,
   description:
-    'DuckStore Inventory service — DynamoDB table (inventory-warehouses) for warehouses and stock (ADR-0052)',
+    'DuckStore Inventory service — warehouses, stock balances and the movements ledger (DynamoDB) and the movement Lambdas (ADR-0052)',
 });
 
 // The processor/presign Lambdas are Docker-bundled NodejsFunctions (sharp has no esbuild-safe
