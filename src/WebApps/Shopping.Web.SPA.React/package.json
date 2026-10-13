@@ -12,12 +12,12 @@
     "test": "node --test --experimental-strip-types 'lib/**/*.test.ts'"
   },
   "dependencies": {
-    "@aws-sdk/client-cloudfront": "^3.600.0",
-    "@aws-sdk/client-dynamodb": "^3.600.0",
-    "@aws-sdk/client-lambda": "^3.1075.0",
-    "@aws-sdk/client-s3": "^3.1085.0",
-    "@aws-sdk/s3-presigned-post": "^3.1085.0",
-    "@aws-sdk/util-dynamodb": "^3.600.0",
+    "@aws-sdk/client-cloudfront": "^3.1149.0",
+    "@aws-sdk/client-dynamodb": "^3.1149.0",
+    "@aws-sdk/client-lambda": "^3.1149.0",
+    "@aws-sdk/client-s3": "^3.1149.0",
+    "@aws-sdk/s3-presigned-post": "^3.1149.0",
+    "@aws-sdk/util-dynamodb": "^3.996.9",
     "@hookform/resolvers": "^3.9.1",
     "@next/env": "16.4.0",
     "@radix-ui/react-accordion": "1.2.21",
@@ -75,7 +75,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
-    "@opennextjs/aws": "^4.0.3",
+    "@opennextjs/aws": "^4.1.9",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^22",
     "@types/react": "19.3.0",
