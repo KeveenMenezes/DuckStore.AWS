@@ -1,4 +1,7 @@
+using Inventory.Function.Modules.Stock.EventsIntegration.Publishers;
+using Inventory.Function.Modules.Stock.EventsIntegration.Publishers.Rules;
 using Inventory.Function.Modules.Stock.Features;
+using Inventory.Function.Modules.Warehouses.EventsIntegration.Publishers;
 
 namespace Inventory.Function.Shared.Configuration;
 
@@ -22,6 +25,13 @@ public static class ServiceRegistration
         services.AddScoped<IWarehouseReader, DynamoWarehouseReader>();
         services.AddScoped<IStockRepository, DynamoStockRepository>();
         services.AddScoped<MovementRecorder>();
+
+        // The storefront total's CDC publishers (ADR-0052 §8).
+        services.AddEventBridgeMessaging(configuration);
+        services.AddScoped<IStorefrontStockReader, DynamoStorefrontStockReader>();
+        services.AddScoped<IStreamRule<StockStreamImage>, ProductStockChangedRule>();
+        services.AddScoped<StreamRuleDispatcher<StockStreamImage>>();
+        services.AddScoped<WarehouseActivationPublisher>();
 
         return services;
     }
