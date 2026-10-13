@@ -87,7 +87,9 @@ public sealed class DynamoStockRepository(IAmazonDynamoDB dynamoDb, TimeProvider
             TableName = StockSchema.TableName,
             Key = BalanceKey(balance.ProductId, balance.Warehouse.Id),
             UpdateExpression =
-                "SET Available = :available, Reserved = if_not_exists(Reserved, :zero), WarehouseCode = :code, UpdatedAt = :now",
+                "SET Available = :available, Reserved = if_not_exists(Reserved, :zero), WarehouseCode = :code, UpdatedAt = :now " +
+                // Every balance write bumps the counter the storefront total is ordered by (ADR-0052 §8).
+                "ADD Version :one",
             // Written against the value read: a concurrent movement makes this one retry (ADR-0052 §7).
             // Reserved too: a reservation settling concurrently (ADR-0052 §6) changes what is on hand.
             ConditionExpression = balance.ReadAvailable is null
@@ -97,6 +99,7 @@ public sealed class DynamoStockRepository(IAmazonDynamoDB dynamoDb, TimeProvider
             {
                 [":available"] = Number(balance.Available),
                 [":zero"] = Number(0),
+                [":one"] = Number(1),
                 [":code"] = new AttributeValue { S = balance.Warehouse.Code },
                 [":now"] = new AttributeValue { S = now },
             }

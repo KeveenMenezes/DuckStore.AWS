@@ -15,4 +15,7 @@ public static class StockSchema
     public const string ReservedAttribute = "Reserved";
     public const string WarehouseCodeAttribute = "WarehouseCode";
     public const string UpdatedAtAttribute = "UpdatedAt";
+
+    // Counts the row's writes; the storefront total's Version is built from it (ADR-0052 §8).
+    public const string VersionAttribute = "Version";
 }

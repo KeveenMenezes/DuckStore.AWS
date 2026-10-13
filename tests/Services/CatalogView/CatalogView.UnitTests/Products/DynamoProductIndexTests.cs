@@ -59,7 +59,7 @@ public class DynamoProductIndexTests
     }
 
     [Fact]
-    public async Task ApplyStockAsync_WritesOnlyANewerTotal_OnAnExistingDocument()
+    public async Task ApplyStockAsync_WritesOnlyAGreaterVersion_EvenBeforeTheProductIsSynced()
     {
         UpdateItemRequest? captured = null;
         _dynamoDb
@@ -67,25 +67,23 @@ public class DynamoProductIndexTests
             .Callback<UpdateItemRequest, CancellationToken>((r, _) => captured = r)
             .ReturnsAsync(new UpdateItemResponse());
 
-        var outcome = await _index.ApplyStockAsync("product-1", 70, "2026-10-13T12:00:00.000Z");
+        Assert.True(await _index.ApplyStockAsync("product-1", 70, 12));
 
-        Assert.Equal(StockApplyOutcome.Applied, outcome);
-        Assert.Equal("SET Stock = :available, StockAsOf = :asOf", captured!.UpdateExpression);
-        Assert.Equal("attribute_exists(Id) AND (attribute_not_exists(StockAsOf) OR StockAsOf < :asOf)", captured.ConditionExpression);
+        Assert.Equal("SET Stock = :available, StockVersion = :version", captured!.UpdateExpression);
+        // No attribute_exists(Id): a total that beats ProductSynced waits on a stock-only item.
+        Assert.Equal("attribute_not_exists(StockVersion) OR StockVersion < :version", captured.ConditionExpression);
         Assert.Equal("70", captured.ExpressionAttributeValues[":available"].N);
-        Assert.Equal(ReturnValuesOnConditionCheckFailure.ALL_OLD, captured.ReturnValuesOnConditionCheckFailure);
+        Assert.Equal("12", captured.ExpressionAttributeValues[":version"].N);
     }
 
     [Fact]
-    public async Task ApplyStockAsync_TellsAMissingProduct_FromANewerStoredTotal()
+    public async Task ApplyStockAsync_ReturnsFalse_ForALateOrRepeatedTotal()
     {
         _dynamoDb
-            .SetupSequence(d => d.UpdateItemAsync(It.IsAny<UpdateItemRequest>(), It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new ConditionalCheckFailedException("no item"))
-            .ThrowsAsync(new ConditionalCheckFailedException("newer") { Item = new() { ["Id"] = new("product-1") } });
+            .Setup(d => d.UpdateItemAsync(It.IsAny<UpdateItemRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConditionalCheckFailedException("not newer"));
 
-        Assert.Equal(StockApplyOutcome.ProductMissing, await _index.ApplyStockAsync("product-1", 1, "a"));
-        Assert.Equal(StockApplyOutcome.Stale, await _index.ApplyStockAsync("product-1", 1, "a"));
+        Assert.False(await _index.ApplyStockAsync("product-1", 1, 3));
     }
 
     [Fact]

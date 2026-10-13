@@ -39,11 +39,12 @@ public interface IProductSearchIndex
         decimal maxInstallmentValue,
         CancellationToken cancellationToken = default);
 
-    // Sets the storefront stock from Inventory's ProductStockChangedEvent (ADR-0052 §8), only when asOf
-    // is newer than the StockAsOf already stored and only on an existing document — never creating a
-    // nameless one. The outcome says which, so the caller can retry a product not synced yet.
-    Task<StockApplyOutcome> ApplyStockAsync(
-        string productId, int available, string asOf, CancellationToken cancellationToken = default);
+    // Sets the storefront stock from Inventory's ProductStockChangedEvent (ADR-0052 §8), only when
+    // version is greater than the StockVersion already stored. Like ApplyPricingAsync, it upserts: a
+    // total that arrives before the product's ProductSynced waits on a stock-only item, which the
+    // product sync completes without touching Stock. Returns false for a late or repeated total.
+    Task<bool> ApplyStockAsync(
+        string productId, int available, long version, CancellationToken cancellationToken = default);
 
     Task<SearchDocument?> GetAsync(string productId, CancellationToken cancellationToken = default);
 
@@ -52,13 +53,4 @@ public interface IProductSearchIndex
     // write is safe here because it runs once, before any steady-state traffic (ADR-0027 §"Historical
     // backfill", ADR-0030).
     Task BulkIndexAsync(IEnumerable<SearchDocument> documents, CancellationToken cancellationToken = default);
-}
-
-public enum StockApplyOutcome
-{
-    Applied,
-    // The document holds a total at least as recent: a late or repeated event.
-    Stale,
-    // The product's ProductSynced has not reached CatalogView yet.
-    ProductMissing,
 }

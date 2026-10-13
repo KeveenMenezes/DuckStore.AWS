@@ -5,12 +5,12 @@ namespace Inventory.Function;
 public partial class Functions
 {
     // Triggered by the inventory-warehouses DynamoDB Stream (inventory-warehouses-stream-publisher).
-    // Republishes the storefront total of every product in a warehouse whose Active flag changed
-    // (ADR-0052 §8).
+    // Dispatches each record to the registered rules (ADR-0019): WarehouseActivationRule republishes
+    // the storefront total of every product in a warehouse whose Active flag changed (ADR-0052 §8).
     [LambdaFunction]
     public async Task InventoryWarehousesStreamPublisher(
         DynamoDBEvent dynamoEvent,
-        [FromServices] WarehouseActivationPublisher publisher)
+        [FromServices] StreamRuleDispatcher<WarehouseStreamImage> dispatcher)
     {
         var contexts = dynamoEvent.Records
             .Select(record => new StreamContext<WarehouseStreamImage>(
@@ -19,6 +19,6 @@ public partial class Functions
                 WarehouseStreamImage.From(record.Dynamodb.NewImage)))
             .ToList();
 
-        await publisher.PublishAsync(contexts, CancellationToken.None);
+        await dispatcher.DispatchAsync(contexts);
     }
 }

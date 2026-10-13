@@ -103,6 +103,57 @@ public class StreamRuleDispatcherTests
             Times.Never);
     }
 
+    // A fan-out rule turns one record into several events; they join the same single publish call.
+    [Fact]
+    public async Task DispatchAsync_PublishesEveryInstructionOfAMatchingFanOutRule_AlongsideTheRules()
+    {
+        var publisher = new Mock<IEventPublisher>();
+        var rule = RuleReturning(match: true, new PublishInstruction("single", new object()));
+        var fanOut = FanOutRuleReturning(match: true,
+            new PublishInstruction("many", new object()), new PublishInstruction("many", new object()));
+        var skipped = FanOutRuleReturning(match: false, new PublishInstruction("skipped", new object()));
+
+        var dispatcher = new StreamRuleDispatcher<AnyImage>([rule.Object], publisher.Object, [fanOut.Object, skipped.Object]);
+
+        await dispatcher.DispatchAsync([AnyContext("a"), AnyContext("b")]);
+
+        publisher.Verify(
+            p => p.PublishManyAsync(
+                It.Is<IReadOnlyList<PublishInstruction>>(instructions =>
+                    instructions.Count(i => i.DetailType == "single") == 2
+                    && instructions.Count(i => i.DetailType == "many") == 4
+                    && instructions.All(i => i.DetailType != "skipped")),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        skipped.Verify(
+            r => r.BuildAllAsync(It.IsAny<StreamContext<AnyImage>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task DispatchAsync_PublishesNothing_WhenAFanOutRuleMatchesButAffectsNothing()
+    {
+        var publisher = new Mock<IEventPublisher>();
+        var fanOut = FanOutRuleReturning(match: true);
+
+        var dispatcher = new StreamRuleDispatcher<AnyImage>([], publisher.Object, [fanOut.Object]);
+
+        await dispatcher.DispatchAsync(AnyContext());
+
+        publisher.Verify(
+            p => p.PublishManyAsync(It.IsAny<IReadOnlyList<PublishInstruction>>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    private static Mock<IStreamFanOutRule<AnyImage>> FanOutRuleReturning(bool match, params PublishInstruction[] instructions)
+    {
+        var rule = new Mock<IStreamFanOutRule<AnyImage>>();
+        rule.Setup(r => r.Match(It.IsAny<StreamContext<AnyImage>>())).Returns(match);
+        rule.Setup(r => r.BuildAllAsync(It.IsAny<StreamContext<AnyImage>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(instructions);
+        return rule;
+    }
+
     private static Mock<IStreamRule<AnyImage>> RuleReturning(bool match, PublishInstruction instruction)
     {
         var rule = new Mock<IStreamRule<AnyImage>>();

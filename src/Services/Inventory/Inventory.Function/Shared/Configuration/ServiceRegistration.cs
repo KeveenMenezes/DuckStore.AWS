@@ -2,6 +2,7 @@ using Inventory.Function.Modules.Stock.EventsIntegration.Publishers;
 using Inventory.Function.Modules.Stock.EventsIntegration.Publishers.Rules;
 using Inventory.Function.Modules.Stock.Features;
 using Inventory.Function.Modules.Warehouses.EventsIntegration.Publishers;
+using Inventory.Function.Modules.Warehouses.EventsIntegration.Publishers.Rules;
 
 namespace Inventory.Function.Shared.Configuration;
 
@@ -31,7 +32,8 @@ public static class ServiceRegistration
         services.AddScoped<IStorefrontStockReader, DynamoStorefrontStockReader>();
         services.AddScoped<IStreamRule<StockStreamImage>, ProductStockChangedRule>();
         services.AddScoped<StreamRuleDispatcher<StockStreamImage>>();
-        services.AddScoped<WarehouseActivationPublisher>();
+        services.AddScoped<IStreamFanOutRule<WarehouseStreamImage>, WarehouseActivationRule>();
+        services.AddScoped<StreamRuleDispatcher<WarehouseStreamImage>>();
 
         return services;
     }

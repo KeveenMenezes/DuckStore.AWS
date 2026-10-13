@@ -8,38 +8,31 @@ namespace CatalogView.UnitTests.Products;
 public class InventorySyncHandlerTests
 {
     private readonly Mock<IProductSearchIndex> _index = new();
-    private static readonly ProductStockChangedEvent Event =
-        new() { ProductId = "product-1", Available = 70, AsOf = "2026-10-13T12:00:00.000Z" };
+    private static readonly ProductStockChangedEvent Event = new() { ProductId = "product-1", Available = 70, Version = 12 };
 
     private InventorySyncHandler Handler => new(_index.Object, NullLogger<InventorySyncHandler>.Instance);
 
-    private void Outcome(StockApplyOutcome outcome) =>
-        _index.Setup(i => i.ApplyStockAsync("product-1", 70, "2026-10-13T12:00:00.000Z", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(outcome);
+    private void Applied(bool applied) =>
+        _index.Setup(i => i.ApplyStockAsync("product-1", 70, 12, It.IsAny<CancellationToken>())).ReturnsAsync(applied);
 
     [Fact]
-    public async Task ATotal_IsAppliedWithItsAsOf()
+    public async Task ATotal_IsAppliedWithItsVersion()
     {
-        Outcome(StockApplyOutcome.Applied);
+        Applied(true);
 
         await Handler.HandleAsync(Event);
 
         _index.VerifyAll();
     }
 
+    // Retrying would never help: the stored total is already newer.
     [Fact]
     public async Task ALateOrRepeatedEvent_IsDroppedWithoutError()
     {
-        Outcome(StockApplyOutcome.Stale);
+        Applied(false);
 
         await Handler.HandleAsync(Event);
-    }
 
-    [Fact]
-    public async Task AProductNotSyncedYet_Throws_SoEventBridgeRetries()
-    {
-        Outcome(StockApplyOutcome.ProductMissing);
-
-        await Assert.ThrowsAsync<InvalidOperationException>(() => Handler.HandleAsync(Event));
+        _index.VerifyAll();
     }
 }

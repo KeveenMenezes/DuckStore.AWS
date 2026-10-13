@@ -6,17 +6,15 @@ public class StorefrontStockTests
 {
     private static readonly IReadOnlyDictionary<string, WarehouseState> Warehouses = new Dictionary<string, WarehouseState>
     {
-        ["alpha"] = new("alpha", Active: true, "2026-10-13T10:00:00.000Z"),
-        ["beta"] = new("beta", Active: true, "2026-10-13T09:00:00.000Z"),
-        ["closed"] = new("closed", Active: false, "2026-10-13T11:00:00.000Z"),
+        ["alpha"] = new("alpha", Active: true, Version: 2),
+        ["beta"] = new("beta", Active: true, Version: 0),
+        ["closed"] = new("closed", Active: false, Version: 1),
     };
 
     [Fact]
     public void TheTotal_SumsOnlyActiveWarehouses()
     {
-        var total = StorefrontStock.TotalOf(
-            [new("alpha", 20, "2026-10-13T12:00:00.000Z"), new("beta", 50, "2026-10-13T12:01:00.000Z"), new("closed", 7, "2026-10-13T12:02:00.000Z")],
-            Warehouses);
+        var total = StorefrontStock.TotalOf([new("alpha", 20, 3), new("beta", 50, 1), new("closed", 7, 4)], Warehouses);
 
         Assert.Equal(70, total.Available);
     }
@@ -24,52 +22,43 @@ public class StorefrontStockTests
     [Fact]
     public void AWarehouseThatCannotBeFound_CountsAsInactive()
     {
-        var total = StorefrontStock.TotalOf([new("gone", 5, "2026-10-13T12:00:00.000Z")], Warehouses);
+        var total = StorefrontStock.TotalOf([new("gone", 5, 1)], Warehouses);
 
         Assert.Equal(0, total.Available);
     }
 
     [Fact]
-    public void AsOf_IsTheLatestUpdate_AmongTheBalancesAndTheirWarehouses_InactiveOnesIncluded()
+    public void Version_SumsTheCountersOfTheBalancesAndTheirWarehouses_InactiveOnesIncluded()
     {
-        // Deactivating a warehouse is a change of the total, so its time counts too.
-        var total = StorefrontStock.TotalOf(
-            [new("alpha", 1, "2026-10-13T08:00:00.000Z"), new("closed", 1, "2026-10-13T08:30:00.000Z")], Warehouses);
+        // Deactivating a warehouse is a change of the total, so its counter counts too.
+        var total = StorefrontStock.TotalOf([new("alpha", 1, 3), new("closed", 1, 4)], Warehouses);
 
-        Assert.Equal("2026-10-13T11:00:00.000Z", total.AsOf);
+        Assert.Equal(3 + 2 + 4 + 1, total.Version);
+    }
+
+    public static TheoryData<string, IReadOnlyList<BalanceRow>, IReadOnlyDictionary<string, WarehouseState>> NewerStates => new()
+    {
+        { "a balance moves", [new("alpha", 25, 4)], Warehouses },
+        { "a balance appears in another warehouse", [new("alpha", 20, 3), new("beta", 5, 1)], Warehouses },
+        { "its warehouse is deactivated", [new("alpha", 20, 3)], new Dictionary<string, WarehouseState>(Warehouses) { ["alpha"] = new("alpha", false, 3) } },
+    };
+
+    [Theory]
+    [MemberData(nameof(NewerStates))]
+    public void ANewerState_AlwaysHasAGreaterVersion(string change, IReadOnlyList<BalanceRow> balances, IReadOnlyDictionary<string, WarehouseState> warehouses)
+    {
+        var before = StorefrontStock.TotalOf([new("alpha", 20, 3)], Warehouses);
+
+        var after = StorefrontStock.TotalOf(balances, warehouses);
+
+        Assert.True(after.Version > before.Version, change);
     }
 
     [Fact]
-    public void AsOf_ComparesInstants_NotTheTextOfDifferentFormats()
-    {
-        // The seeder writes seven fractional digits, AppSync and the Lambdas three.
-        var total = StorefrontStock.TotalOf(
-            [new("alpha", 1, "2026-10-13T12:00:00.9990000Z"), new("beta", 1, "2026-10-13T12:00:01.000Z")], Warehouses);
-
-        Assert.Equal("2026-10-13T12:00:01.000Z", total.AsOf);
-    }
-
-    [Fact]
-    public void ANewerState_NeverProducesAnEarlierAsOf()
-    {
-        var before = StorefrontStock.TotalOf([new("alpha", 20, "2026-10-13T12:00:00.000Z")], Warehouses);
-        var deactivated = new Dictionary<string, WarehouseState>(Warehouses)
-        {
-            ["alpha"] = new("alpha", Active: false, "2026-10-13T12:00:05.000Z"),
-        };
-
-        var after = StorefrontStock.TotalOf([new("alpha", 20, "2026-10-13T12:00:00.000Z")], deactivated);
-
-        Assert.Equal(0, after.Available);
-        Assert.True(string.CompareOrdinal(after.AsOf, before.AsOf) > 0);
-    }
-
-    [Fact]
-    public void NoBalanceAtAll_IsZero_WithAnEmptyAsOf()
+    public void NoBalanceAtAll_IsZero_AtVersionZero()
     {
         var total = StorefrontStock.TotalOf([], Warehouses);
 
-        Assert.Equal(0, total.Available);
-        Assert.Equal(string.Empty, total.AsOf);
+        Assert.Equal(new StorefrontTotal(0, 0), total);
     }
 }

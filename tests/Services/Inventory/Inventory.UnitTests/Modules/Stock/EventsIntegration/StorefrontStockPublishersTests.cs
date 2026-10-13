@@ -6,6 +6,7 @@ using Inventory.Function.Modules.Stock.Domain;
 using Inventory.Function.Modules.Stock.EventsIntegration.Publishers;
 using Inventory.Function.Modules.Stock.EventsIntegration.Publishers.Rules;
 using Inventory.Function.Modules.Warehouses.EventsIntegration.Publishers;
+using Inventory.Function.Modules.Warehouses.EventsIntegration.Publishers.Rules;
 
 namespace Inventory.UnitTests.Modules.Stock.EventsIntegration;
 
@@ -18,7 +19,7 @@ public class StorefrontStockPublishersTests
     public StorefrontStockPublishersTests()
     {
         _reader.Setup(r => r.TotalForAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((string productId, CancellationToken _) => new StorefrontTotal(productId.Length, "2026-10-13T12:00:00.000Z"));
+            .ReturnsAsync((string productId, CancellationToken _) => new StorefrontTotal(productId.Length, productId.Length * 10));
         _publisher.Setup(p => p.PublishManyAsync(It.IsAny<IReadOnlyList<PublishInstruction>>(), It.IsAny<CancellationToken>()))
             .Callback<IReadOnlyList<PublishInstruction>, CancellationToken>((instructions, _) => _published = instructions)
             .Returns(Task.CompletedTask);
@@ -39,15 +40,18 @@ public class StorefrontStockPublishersTests
     [Fact]
     public async Task TheStockRule_PublishesTheRecomputedTotal()
     {
-        _reader.Setup(r => r.TotalForAsync("p-1", It.IsAny<CancellationToken>())).ReturnsAsync(new StorefrontTotal(70, "2026-10-13T12:00:00.000Z"));
+        _reader.Setup(r => r.TotalForAsync("p-1", It.IsAny<CancellationToken>())).ReturnsAsync(new StorefrontTotal(70, 12));
         var rule = new ProductStockChangedRule(_reader.Object);
 
         var instruction = await rule.BuildAsync(new StreamContext<StockStreamImage>("MODIFY", null, new StockStreamImage("p-1", "w-1")));
 
         Assert.Equal(nameof(ProductStockChangedEvent), instruction.DetailType);
         var payload = Assert.IsType<ProductStockChangedEvent>(instruction.Payload);
-        Assert.Equal(("p-1", 70, "2026-10-13T12:00:00.000Z"), (payload.ProductId, payload.Available, payload.AsOf));
+        Assert.Equal(("p-1", 70, 12L), (payload.ProductId, payload.Available, payload.Version));
     }
+
+    private StreamRuleDispatcher<WarehouseStreamImage> WarehouseDispatcher() =>
+        new([], _publisher.Object, [new WarehouseActivationRule(_reader.Object)]);
 
     private static StreamContext<WarehouseStreamImage> Warehouse(string eventName, bool? wasActive, bool isActive, string type = "Warehouse") =>
         new(eventName,
@@ -58,12 +62,11 @@ public class StorefrontStockPublishersTests
     public async Task Deactivating_PublishesOneEventPerProductInTheWarehouse_InOneBatchCall()
     {
         _reader.Setup(r => r.ProductsInWarehouseAsync("w-1", It.IsAny<CancellationToken>())).ReturnsAsync(["p-1", "p-22", "p-333"]);
-        var handler = new WarehouseActivationPublisher(_reader.Object, _publisher.Object);
-
-        await handler.PublishAsync([Warehouse("MODIFY", wasActive: true, isActive: false)], default);
+        await WarehouseDispatcher().DispatchAsync([Warehouse("MODIFY", wasActive: true, isActive: false)]);
 
         Assert.Equal(["p-1", "p-22", "p-333"], _published!.Select(i => ((ProductStockChangedEvent)i.Payload).ProductId));
         Assert.All(_published, i => Assert.Equal(nameof(ProductStockChangedEvent), i.DetailType));
+        Assert.Equal([30L, 40L, 50L], _published.Select(i => ((ProductStockChangedEvent)i.Payload).Version));
         _publisher.Verify(p => p.PublishManyAsync(It.IsAny<IReadOnlyList<PublishInstruction>>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -73,9 +76,7 @@ public class StorefrontStockPublishersTests
     [InlineData("MODIFY", true, false, "CodeGuard")]     // never a guard
     public async Task OnlyAChangeOfActive_OnAWarehouse_PublishesAnything(string eventName, bool? wasActive, bool isActive, string type)
     {
-        var handler = new WarehouseActivationPublisher(_reader.Object, _publisher.Object);
-
-        await handler.PublishAsync([Warehouse(eventName, wasActive, isActive, type)], default);
+        await WarehouseDispatcher().DispatchAsync([Warehouse(eventName, wasActive, isActive, type)]);
 
         _reader.Verify(r => r.ProductsInWarehouseAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _publisher.Verify(p => p.PublishManyAsync(It.IsAny<IReadOnlyList<PublishInstruction>>(), It.IsAny<CancellationToken>()), Times.Never);
@@ -85,9 +86,7 @@ public class StorefrontStockPublishersTests
     public async Task AWarehouseWithNoStock_PublishesNothing()
     {
         _reader.Setup(r => r.ProductsInWarehouseAsync("w-1", It.IsAny<CancellationToken>())).ReturnsAsync([]);
-        var handler = new WarehouseActivationPublisher(_reader.Object, _publisher.Object);
-
-        await handler.PublishAsync([Warehouse("MODIFY", wasActive: false, isActive: true)], default);
+        await WarehouseDispatcher().DispatchAsync([Warehouse("MODIFY", wasActive: false, isActive: true)]);
 
         _publisher.Verify(p => p.PublishManyAsync(It.IsAny<IReadOnlyList<PublishInstruction>>(), It.IsAny<CancellationToken>()), Times.Never);
     }

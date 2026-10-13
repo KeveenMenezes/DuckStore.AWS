@@ -3,11 +3,13 @@
 namespace BuildingBlocks.Messaging.Streams;
 
 // Runs every registered rule against one stream context and publishes the instruction of each
-// rule whose Match returns true. This is the single place where stream rules meet the publisher,
-// keeping the rules themselves free of any EventBridge knowledge.
+// rule whose Match returns true (all the instructions of a matching fan-out rule). This is the single
+// place where stream rules meet the publisher, keeping the rules themselves free of any EventBridge
+// knowledge.
 public sealed class StreamRuleDispatcher<TImage>(
     IEnumerable<IStreamRule<TImage>> rules,
-    IEventPublisher publisher)
+    IEventPublisher publisher,
+    IEnumerable<IStreamFanOutRule<TImage>>? fanOutRules = null)
 {
     public Task DispatchAsync(
         StreamContext<TImage> context, CancellationToken cancellationToken = default) =>
@@ -30,6 +32,14 @@ public sealed class StreamRuleDispatcher<TImage>(
                     continue;
 
                 instructions.Add(await rule.BuildAsync(context, cancellationToken));
+            }
+
+            foreach (var rule in fanOutRules ?? [])
+            {
+                if (!rule.Match(context))
+                    continue;
+
+                instructions.AddRange(await rule.BuildAllAsync(context, cancellationToken));
             }
         }
 

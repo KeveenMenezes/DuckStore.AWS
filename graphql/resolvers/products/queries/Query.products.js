@@ -64,7 +64,7 @@ export function response(ctx) {
       isMain: img.IsMain,
       order: img.Order,
     })),
-    stock: item.Stock,
+    stock: item.Stock ?? 0,
     categoryIds: item.CategoryIds ?? [],
     averageRating: item.AverageRating ?? 0,
     ratingCount: item.RatingCount ?? 0,

@@ -227,8 +227,9 @@ export class CatalogViewLambdas extends Construct {
     // 3b. catalogview-inventory-sync-consumer
     //    Trigger: ProductStockChangedEvent — Inventory's storefront total (ADR-0052 §8). Inventory has
     //    a single occurrence, so this is a plain 1:1 consumer (ADR-0040). The write is conditional on
-    //    the event's AsOf being newer and the document existing: a late event is dropped, a product
-    //    not synced yet throws and EventBridge retries (then the context DLQ).
+    //    the event's Version being greater than the stored one: a late or repeated event is dropped,
+    //    and a product not synced yet keeps the total on a stock-only item. Failures go to the context
+    //    DLQ like every other consumer here.
     this.inventorySyncConsumer = new lambda.Function(this, 'InventorySyncConsumer', {
       functionName: 'catalogview-inventory-sync-consumer',
       tracing: lambda.Tracing.ACTIVE,

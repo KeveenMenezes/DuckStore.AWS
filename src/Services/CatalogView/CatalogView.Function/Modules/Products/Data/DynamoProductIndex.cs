@@ -77,8 +77,8 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
         return dynamoDb.UpdateItemAsync(request, cancellationToken);
     }
 
-    public async Task<StockApplyOutcome> ApplyStockAsync(
-        string productId, int available, string asOf, CancellationToken cancellationToken = default)
+    public async Task<bool> ApplyStockAsync(
+        string productId, int available, long version, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -86,21 +86,19 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             {
                 TableName = TableName,
                 Key = new Dictionary<string, AttributeValue> { ["Id"] = new(productId) },
-                UpdateExpression = "SET Stock = :available, StockAsOf = :asOf",
-                ConditionExpression = "attribute_exists(Id) AND (attribute_not_exists(StockAsOf) OR StockAsOf < :asOf)",
+                UpdateExpression = "SET Stock = :available, StockVersion = :version",
+                ConditionExpression = "attribute_not_exists(StockVersion) OR StockVersion < :version",
                 ExpressionAttributeValues = new Dictionary<string, AttributeValue>
                 {
                     [":available"] = new AttributeValue { N = available.ToString(CultureInfo.InvariantCulture) },
-                    [":asOf"] = new(asOf),
+                    [":version"] = new AttributeValue { N = version.ToString(CultureInfo.InvariantCulture) },
                 },
-                // Tells a missing document apart from a newer total without a second read.
-                ReturnValuesOnConditionCheckFailure = ReturnValuesOnConditionCheckFailure.ALL_OLD,
             }, cancellationToken);
-            return StockApplyOutcome.Applied;
+            return true;
         }
-        catch (ConditionalCheckFailedException ex)
+        catch (ConditionalCheckFailedException)
         {
-            return ex.Item is { Count: > 0 } ? StockApplyOutcome.Stale : StockApplyOutcome.ProductMissing;
+            return false;
         }
     }
 
@@ -471,7 +469,8 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             ]
         };
 
-    // Full-document write, used only by BulkIndexAsync (the one-time seeder backfill).
+    // Full-document write, used only by BulkIndexAsync (the one-time seeder backfill). No Stock: it
+    // comes from Inventory only (ADR-0052 §8), and a missing one reads as 0.
     private static Dictionary<string, AttributeValue> ToItem(SearchDocument document)
     {
         var item = new Dictionary<string, AttributeValue>
@@ -481,7 +480,6 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             ["Description"] = new(document.Description),
             ["Images"] = ToImageList(document.Images),
             ["OriginalPrice"] = new AttributeValue { N = document.OriginalPrice.ToString(CultureInfo.InvariantCulture) },
-            ["Stock"] = new AttributeValue { N = document.Stock.ToString(CultureInfo.InvariantCulture) },
             ["CategoryIds"] = ToStringList(document.CategoryIds),
             ["Categories"] = ToCategoryList(document.Categories),
             ["AverageRating"] = new AttributeValue { N = document.AverageRating.ToString(CultureInfo.InvariantCulture) },

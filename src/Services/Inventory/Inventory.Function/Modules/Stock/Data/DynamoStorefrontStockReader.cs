@@ -19,7 +19,7 @@ public sealed class DynamoStorefrontStockReader(IAmazonDynamoDB dynamoDb) : ISto
             balances.AddRange(page.Items.Select(item => new BalanceRow(
                 item[StockSchema.SortKey].S,
                 int.Parse(item[StockSchema.AvailableAttribute].N, CultureInfo.InvariantCulture),
-                item.TryGetValue(StockSchema.UpdatedAtAttribute, out var updatedAt) ? updatedAt.S : string.Empty)));
+                VersionOf(item, StockSchema.VersionAttribute))));
             startKey = page.LastEvaluatedKey is { Count: > 0 } next ? next : null;
         }
         while (startKey is not null);
@@ -76,7 +76,7 @@ public sealed class DynamoStorefrontStockReader(IAmazonDynamoDB dynamoDb) : ISto
                     states[id] = new WarehouseState(
                         id,
                         item.TryGetValue(WarehousesSchema.ActiveAttribute, out var active) && active.BOOL == true,
-                        item.TryGetValue("UpdatedAt", out var updatedAt) ? updatedAt.S : string.Empty);
+                        VersionOf(item, WarehousesSchema.VersionAttribute));
                 }
             }
 
@@ -87,4 +87,10 @@ public sealed class DynamoStorefrontStockReader(IAmazonDynamoDB dynamoDb) : ISto
 
         return states;
     }
+
+    // Rows written before the counter existed have none: they count as 0, and their next write makes it 1.
+    private static long VersionOf(Dictionary<string, AttributeValue> item, string attribute) =>
+        item.TryGetValue(attribute, out var version) && version.N is { } n
+            ? long.Parse(n, CultureInfo.InvariantCulture)
+            : 0;
 }

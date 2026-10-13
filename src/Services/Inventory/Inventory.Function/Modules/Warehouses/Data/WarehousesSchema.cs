@@ -11,6 +11,9 @@ public static class WarehousesSchema
     public const string CodeAttribute = "Code";
     public const string ActiveAttribute = "Active";
 
+    // Counts the activation changes, written by setWarehouseActive (ADR-0052 §8).
+    public const string VersionAttribute = "Version";
+
     public const string WarehouseType = "Warehouse";
     public const string CodeGuardType = "CodeGuard";
 

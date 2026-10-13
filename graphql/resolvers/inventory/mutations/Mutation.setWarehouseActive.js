@@ -11,9 +11,11 @@ export function request(ctx) {
     operation: 'UpdateItem',
     key: util.dynamodb.toMapValues({ WarehouseId: ctx.args.id }),
     update: {
-      expression: 'SET Active = :active, UpdatedAt = :now, UpdatedBy = :by',
+      // Version counts the activation changes: the storefront total is ordered by it (ADR-0052 §8).
+      expression: 'SET Active = :active, UpdatedAt = :now, UpdatedBy = :by ADD Version :one',
       expressionValues: util.dynamodb.toMapValues({
         ':active': ctx.args.active,
+        ':one': 1,
         ':now': util.time.nowISO8601(),
         ':by': ctx.identity.sub,
       }),
