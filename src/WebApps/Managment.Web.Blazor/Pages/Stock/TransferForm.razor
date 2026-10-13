@@ -1,0 +1,80 @@
+@inherits StockMovementFormBase<StockTransferFormModel>
+
+<h2>Transfer stock</h2>
+
+@if (Error is not null)
+{
+    <div class="banner banner-error">@Error</div>
+}
+
+<EditForm Model="Model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+
+    <div class="form-field">
+        <label for="transfer-from">From</label>
+        <InputSelect id="transfer-from" @bind-Value="Model.FromWarehouseId">
+            <option value="">Select...</option>
+            @foreach (var (id, label) in WarehousesHoldingStock)
+            {
+                <option value="@id">@label</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => Model.FromWarehouseId" />
+        @ServerMessage("fromWarehouseId")
+    </div>
+
+    <div class="form-field">
+        <label for="transfer-to">To</label>
+        <InputSelect id="transfer-to" @bind-Value="Model.ToWarehouseId">
+            <option value="">Select...</option>
+            @* The destination must be active; the origin may be inactive (ADR-0052 §7). *@
+            @foreach (var warehouse in ActiveWarehouses.Where(w => w.Id != Model.FromWarehouseId))
+            {
+                <option value="@warehouse.Id">@LabelOf(warehouse)</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => Model.ToWarehouseId" />
+        @ServerMessage("toWarehouseId")
+    </div>
+
+    <div class="form-field">
+        <label for="transfer-quantity">Quantity</label>
+        <InputNumber id="transfer-quantity" @bind-Value="Model.Quantity" min="1" max="@StockMovementFormModel.MaxQuantity" />
+        <ValidationMessage For="() => Model.Quantity" />
+        @ServerMessage("quantity")
+    </div>
+
+    <div class="form-field">
+        <label for="transfer-note">Note (optional)</label>
+        <InputTextArea id="transfer-note" @bind-Value="Model.Note" rows="2" />
+        <ValidationMessage For="() => Model.Note" />
+        @ServerMessage("note")
+    </div>
+
+    <div class="form-actions">
+        <button class="btn btn-secondary" type="button" @onclick="OnCancel">Cancel</button>
+        <button class="btn btn-primary" type="submit" disabled="@Busy">
+            @(Busy ? "Saving..." : "Transfer")
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    private static readonly HashSet<string> FieldNames =
+        ["fromWarehouseId", "toWarehouseId", "quantity", "note"];
+
+    protected override IReadOnlySet<string> Fields => FieldNames;
+
+    protected override string ActionName => "transfer the stock";
+
+    protected override Task<StockMovementResult> SendAsync() => Stock.TransferAsync(ProductId, Model);
+
+    protected override string Describe(StockMovementResult result)
+    {
+        var outgoing = result.Movements.FirstOrDefault(m => m.Type == "TransferOut");
+        var incoming = result.Movements.FirstOrDefault(m => m.Type == "TransferIn");
+        return outgoing is not null && incoming is not null
+            ? $"Transferred {incoming.Quantity} from {outgoing.WarehouseCode} to {incoming.WarehouseCode}."
+            : "Transfer recorded.";
+    }
+}

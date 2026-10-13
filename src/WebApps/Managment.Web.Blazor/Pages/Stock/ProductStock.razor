@@ -1,0 +1,224 @@
+@page "/stock/products/{Id}"
+@attribute [Authorize]
+@inject ProductAdminService Products
+@inject StockAdminService Stock
+@inject WarehouseAdminService WarehouseService
+
+<PageTitle>Product stock — DuckStore Management</PageTitle>
+
+<div class="page-header">
+    <h1>Stock — @(productName ?? "...")</h1>
+    <a class="btn btn-secondary" href="stock">Back to search</a>
+</div>
+
+@if (!canManage)
+{
+    <p class="muted">Only the StockKeeper and Admin groups can manage stock.</p>
+}
+else
+{
+    @if (success is not null)
+    {
+        <div class="banner banner-success">@success</div>
+    }
+    @if (error is not null)
+    {
+        <div class="banner banner-error">@error</div>
+    }
+
+    @if (stock is null)
+    {
+        <p class="muted">Loading stock...</p>
+    }
+    else
+    {
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Code</th>
+                    <th>Warehouse</th>
+                    <th>Status</th>
+                    <th>Available</th>
+                    <th>Reserved</th>
+                </tr>
+            </thead>
+            <tbody>
+                @if (balances.Count == 0)
+                {
+                    <tr>
+                        <td colspan="5" class="muted">No stock in any warehouse yet.</td>
+                    </tr>
+                }
+                @foreach (var (balance, warehouse) in balances)
+                {
+                    <tr data-warehouse-code="@balance.WarehouseCode">
+                        <td>@balance.WarehouseCode</td>
+                        <td>
+                            @if (warehouse is not null)
+                            {
+                                <a href="warehouses/@warehouse.Id/stock">@warehouse.Name</a>
+                            }
+                        </td>
+                        <td>@(warehouse is null ? "" : warehouse.Active ? "Active" : "Inactive")</td>
+                        <td class="stock-available">@balance.Available</td>
+                        <td class="stock-reserved">@balance.Reserved</td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3"><strong>Total available</strong></td>
+                    <td><strong id="stock-total">@stock.TotalAvailable</strong></td>
+                    <td></td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="row-actions stock-actions">
+            <button class="btn @(openForm == MovementForm.Receipt ? "btn-primary" : "btn-secondary")"
+                    @onclick="() => Open(MovementForm.Receipt)">Receive</button>
+            <button class="btn @(openForm == MovementForm.Adjustment ? "btn-primary" : "btn-secondary")"
+                    @onclick="() => Open(MovementForm.Adjustment)">Adjust</button>
+            <button class="btn @(openForm == MovementForm.Transfer ? "btn-primary" : "btn-secondary")"
+                    @onclick="() => Open(MovementForm.Transfer)">Transfer</button>
+        </div>
+
+        @if (openForm is not null)
+        {
+            <section class="stock-form-panel">
+                @switch (openForm)
+                {
+                    case MovementForm.Receipt:
+                        <ReceiptForm ProductId="@Id" Warehouses="warehouses" Balances="stock.Warehouses"
+                                     OnRecorded="RecordedAsync" OnPossiblyRecorded="RefreshAsync" OnCancel="Close" />
+                        break;
+                    case MovementForm.Adjustment:
+                        <AdjustmentForm ProductId="@Id" Warehouses="warehouses" Balances="stock.Warehouses"
+                                        OnRecorded="RecordedAsync" OnPossiblyRecorded="RefreshAsync" OnCancel="Close" />
+                        break;
+                    case MovementForm.Transfer:
+                        <TransferForm ProductId="@Id" Warehouses="warehouses" Balances="stock.Warehouses"
+                                      OnRecorded="RecordedAsync" OnPossiblyRecorded="RefreshAsync" OnCancel="Close" />
+                        break;
+                }
+            </section>
+        }
+
+        <h2>History</h2>
+        @if (movements is null)
+        {
+            <p class="muted">Loading history...</p>
+        }
+        else
+        {
+            <StockMovementTable Movements="movements" Warehouses="warehouses" NextToken="@movementsToken"
+                                LoadingMore="loadingMore" OnLoadMore="LoadMoreMovementsAsync" />
+        }
+    }
+}
+
+@code {
+    private enum MovementForm { Receipt, Adjustment, Transfer }
+
+    [Parameter] public string Id { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    private bool canManage;
+    private string? productName;
+    private List<Warehouse> warehouses = [];
+    private ProductStockInfo? stock;
+    private List<(WarehouseStockInfo Balance, Warehouse? Warehouse)> balances = [];
+    private List<StockMovement>? movements;
+    private string? movementsToken;
+    private bool loadingMore;
+    private MovementForm? openForm;
+    private string? success;
+    private string? error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        canManage = CognitoGroups.CanManageStock((await AuthenticationState).User);
+        if (!canManage)
+            return;
+
+        try
+        {
+            var product = Products.GetProductAsync(Id);
+            var allWarehouses = WarehouseService.GetWarehousesAsync();
+            await Task.WhenAll(product, allWarehouses);
+            // A product deleted from Catalog keeps its stock, which can still be moved out (ADR-0052 §7).
+            productName = (await product)?.Name ?? $"Unknown product ({Id})";
+            warehouses = await allWarehouses;
+            await RefreshAsync();
+        }
+        catch (Exception ex)
+        {
+            productName ??= Id;
+            error = $"Failed to load stock: {ex.Message}";
+        }
+    }
+
+    private async Task RefreshAsync()
+    {
+        try
+        {
+            var stockTask = Stock.GetStockByProductAsync(Id);
+            var movementsTask = Stock.GetMovementsByProductAsync(Id);
+            await Task.WhenAll(stockTask, movementsTask);
+
+            stock = await stockTask;
+            // Warehouse order (priority, then code); a balance whose warehouse is unknown goes last.
+            balances = stock.Warehouses
+                .Select(b => (b, warehouses.FirstOrDefault(w => w.Id == b.WarehouseId)))
+                .OrderBy(pair => pair.Item2 is null ? int.MaxValue : warehouses.IndexOf(pair.Item2))
+                .ThenBy(pair => pair.b.WarehouseCode, StringComparer.Ordinal)
+                .ToList();
+
+            var page = await movementsTask;
+            movements = page.Items;
+            movementsToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load stock: {ex.Message}";
+        }
+    }
+
+    private void Open(MovementForm form)
+    {
+        success = null;
+        error = null;
+        openForm = form;
+    }
+
+    private void Close() => openForm = null;
+
+    private async Task RecordedAsync(string message)
+    {
+        openForm = null;
+        error = null;
+        success = message;
+        await RefreshAsync();
+    }
+
+    private async Task LoadMoreMovementsAsync()
+    {
+        loadingMore = true;
+        try
+        {
+            var page = await Stock.GetMovementsByProductAsync(Id, nextToken: movementsToken);
+            movements!.AddRange(page.Items);
+            movementsToken = page.NextToken;
+        }
+        catch (Exception ex)
+        {
+            error = $"Failed to load more history: {ex.Message}";
+        }
+        finally
+        {
+            loadingMore = false;
+        }
+    }
+}

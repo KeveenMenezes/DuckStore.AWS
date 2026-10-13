@@ -74,6 +74,65 @@ const nf = await gql(`mutation($input: UpdateWarehouseInput!) { updateWarehouse(
   { input: { id: 'CODE#ALPHA', name: 'x', address, priority: 1 } })
 check('updateWarehouse CODE#ALPHA -> NotFound', nf, err(nf).errorType === 'NotFound')
 
+// stock movements and views (ADR-0052 §7), on a real local product and two fresh warehouses
+const M = 'id type quantity balanceAfter warehouseId warehouseCode invoiceNumber supplier reason note transferId createdBy'
+const products = await gql('{ products(pageSize: 1) { items { id name } } }')
+const productId = products.data?.products?.items?.[0]?.id
+const productName = products.data?.products?.items?.[0]?.name
+check('a local product to stock', products, Boolean(productId))
+const wa = (await create({ code: `SA${suffix}`, name: 'Stock A', address, priority: 1 })).data.createWarehouse
+const wb = (await create({ code: `SB${suffix}`, name: 'Stock B', address, priority: 2 })).data.createWarehouse
+const key = () => crypto.randomUUID()
+const receive = (input) => gql(`mutation($input: RecordStockReceiptInput!) { recordStockReceipt(input: $input) { movements { ${M} } } }`, { input })
+const adjust = (input) => gql(`mutation($input: RecordStockAdjustmentInput!) { recordStockAdjustment(input: $input) { movements { ${M} } } }`, { input })
+const move = (input) => gql(`mutation($input: TransferStockInput!) { transferStock(input: $input) { movements { ${M} } } }`, { input })
+const stockOf = async () => (await gql(`{ stockByProduct(productId: "${productId}") { totalAvailable warehouses { warehouseId warehouseCode available } } }`)).data.stockByProduct
+const at = (stock, id) => stock.warehouses.find((w) => w.warehouseId === id)?.available
+
+const rKey = key()
+const r1 = await receive({ idempotencyKey: rKey, productId, warehouseId: wa.id, quantity: 20, invoiceNumber: '12345', supplier: 'ACME' })
+check('receipt 20 with NF -> balance 20, author local-dev', r1, r1.data?.recordStockReceipt?.movements?.[0]?.balanceAfter === 20 && r1.data.recordStockReceipt.movements[0].createdBy === 'local-dev')
+const noNf = await receive({ idempotencyKey: key(), productId, warehouseId: wa.id, quantity: 1, invoiceNumber: '' })
+check('receipt without NF -> BadRequest invoiceNumber', noNf, err(noNf).errorType === 'BadRequest' && err(noNf).errorInfo?.field === 'invoiceNumber')
+await receive({ idempotencyKey: key(), productId, warehouseId: wb.id, quantity: 50, invoiceNumber: 'NF-2' })
+let stock = await stockOf()
+check('stockByProduct: 20 + 50 = 70', stock, at(stock, wa.id) === 20 && at(stock, wb.id) === 50)
+const dmg = await adjust({ idempotencyKey: key(), productId, warehouseId: wa.id, direction: 'Decrease', quantity: 2, reason: 'Damage' })
+check('adjust -2 Damage -> 18', dmg, dmg.data?.recordStockAdjustment?.movements?.[0]?.quantity === -2 && dmg.data.recordStockAdjustment.movements[0].reason === 'Damage')
+const other = await adjust({ idempotencyKey: key(), productId, warehouseId: wa.id, direction: 'Increase', quantity: 1, reason: 'Other' })
+check('Other without note -> BadRequest note', other, err(other).errorInfo?.field === 'note')
+const short = await adjust({ idempotencyKey: key(), productId, warehouseId: wa.id, direction: 'Decrease', quantity: 30, reason: 'Count' })
+check('adjust -30 -> InsufficientStock, available 18', short, err(short).errorType === 'InsufficientStock' && err(short).errorInfo?.available === 18)
+const tr = await move({ idempotencyKey: key(), productId, fromWarehouseId: wb.id, toWarehouseId: wa.id, quantity: 10 })
+stock = await stockOf()
+check('transfer 10 B -> A: 28 / 40, two rows', tr, tr.data?.transferStock?.movements?.length === 2 && at(stock, wa.id) === 28 && at(stock, wb.id) === 40)
+const same = await move({ idempotencyKey: key(), productId, fromWarehouseId: wa.id, toWarehouseId: wa.id, quantity: 1 })
+check('transfer to itself -> BadRequest toWarehouseId', same, err(same).errorInfo?.field === 'toWarehouseId')
+await gql(`mutation { setWarehouseActive(id: "${wb.id}", active: false) { id } }`)
+const inB = await receive({ idempotencyKey: key(), productId, warehouseId: wb.id, quantity: 1, invoiceNumber: 'NF-3' })
+check('receipt into inactive -> WarehouseInactive', inB, err(inB).errorType === 'WarehouseInactive')
+const outB = await adjust({ idempotencyKey: key(), productId, warehouseId: wb.id, direction: 'Decrease', quantity: 1, reason: 'Count' })
+check('decrease on inactive is allowed', outB, !outB.errors)
+await gql(`mutation { setWarehouseActive(id: "${wb.id}", active: true) { id } }`)
+const ghost = await receive({ idempotencyKey: key(), productId: 'no-such-product', warehouseId: wa.id, quantity: 1, invoiceNumber: 'NF' })
+check('unknown product -> ProductNotFound', ghost, err(ghost).errorType === 'ProductNotFound')
+const replay = await receive({ idempotencyKey: rKey, productId, warehouseId: wa.id, quantity: 20, invoiceNumber: '12345', supplier: 'ACME' })
+stock = await stockOf()
+check('replay returns the first receipt, nothing added', replay, replay.data?.recordStockReceipt?.movements?.[0]?.id === rKey && at(stock, wa.id) === 28)
+const reused = await receive({ idempotencyKey: rKey, productId, warehouseId: wa.id, quantity: 21, invoiceNumber: '12345' })
+check('same key, different request -> IdempotencyKeyReused', reused, err(reused).errorType === 'IdempotencyKeyReused')
+const histP = await gql(`{ stockMovementsByProduct(productId: "${productId}", pageSize: 3) { items { id type createdBy } nextToken } }`)
+check('product history: newest first, paged', histP, histP.data?.stockMovementsByProduct?.items?.length === 3 && histP.data.stockMovementsByProduct.nextToken)
+const byW = await gql(`{ stockByWarehouse(warehouseId: "${wa.id}") { items { productId productName available } } }`)
+check('warehouse balances with the product name', byW, byW.data?.stockByWarehouse?.items?.[0]?.productName === productName && byW.data.stockByWarehouse.items[0].available === 28)
+const histW = await gql(`{ stockMovementsByWarehouse(warehouseId: "${wa.id}") { items { id productName quantity } } }`)
+check('warehouse history with names; adds up to the balance', histW,
+  histW.data?.stockMovementsByWarehouse?.items?.every((i) => i.productName === productName)
+  && histW.data.stockMovementsByWarehouse.items.reduce((sum, i) => sum + i.quantity, 0) === 28)
+const badPage = await gql(`{ stockMovementsByWarehouse(warehouseId: "${wa.id}", pageSize: 101) { items { id } } }`)
+check('pageSize 101 -> BadRequest', badPage, err(badPage).errorType === 'BadRequest')
+for (const w of [wa, wb]) await gql(`mutation { setWarehouseActive(id: "${w.id}", active: false) { id } }`)
+
 // leave the test warehouse inactive, like the E2E suite does
 await gql(`mutation { setWarehouseActive(id: "${g.id}", active: false) { id } }`)
 console.log(`\n${results.filter(Boolean).length}/${results.length} passed`)

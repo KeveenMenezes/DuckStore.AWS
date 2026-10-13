@@ -1,0 +1,77 @@
+@inherits StockMovementFormBase<StockReceiptFormModel>
+
+<h2>Receive stock</h2>
+
+@if (Error is not null)
+{
+    <div class="banner banner-error">@Error</div>
+}
+
+<EditForm Model="Model" OnValidSubmit="SubmitAsync">
+    <DataAnnotationsValidator />
+
+    <div class="form-field">
+        <label for="receipt-warehouse">Warehouse</label>
+        <InputSelect id="receipt-warehouse" @bind-Value="Model.WarehouseId">
+            <option value="">Select...</option>
+            @* Only an active warehouse can receive stock (ADR-0052 §7). *@
+            @foreach (var warehouse in ActiveWarehouses)
+            {
+                <option value="@warehouse.Id">@LabelOf(warehouse)</option>
+            }
+        </InputSelect>
+        <ValidationMessage For="() => Model.WarehouseId" />
+        @ServerMessage("warehouseId")
+    </div>
+
+    <div class="form-field">
+        <label for="receipt-quantity">Quantity</label>
+        <InputNumber id="receipt-quantity" @bind-Value="Model.Quantity" min="1" max="@StockMovementFormModel.MaxQuantity" />
+        <ValidationMessage For="() => Model.Quantity" />
+        @ServerMessage("quantity")
+    </div>
+
+    <div class="form-field">
+        <label for="receipt-invoice">Invoice number</label>
+        <InputText id="receipt-invoice" @bind-Value="Model.InvoiceNumber" />
+        <ValidationMessage For="() => Model.InvoiceNumber" />
+        @ServerMessage("invoiceNumber")
+    </div>
+
+    <div class="form-field">
+        <label for="receipt-supplier">Supplier (optional)</label>
+        <InputText id="receipt-supplier" @bind-Value="Model.Supplier" />
+        <ValidationMessage For="() => Model.Supplier" />
+        @ServerMessage("supplier")
+    </div>
+
+    <div class="form-field">
+        <label for="receipt-note">Note (optional)</label>
+        <InputTextArea id="receipt-note" @bind-Value="Model.Note" rows="2" />
+        <ValidationMessage For="() => Model.Note" />
+        @ServerMessage("note")
+    </div>
+
+    <div class="form-actions">
+        <button class="btn btn-secondary" type="button" @onclick="OnCancel">Cancel</button>
+        <button class="btn btn-primary" type="submit" disabled="@Busy">
+            @(Busy ? "Saving..." : "Record receipt")
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    private static readonly HashSet<string> FieldNames =
+        ["warehouseId", "quantity", "invoiceNumber", "supplier", "note"];
+
+    protected override IReadOnlySet<string> Fields => FieldNames;
+
+    protected override string ActionName => "record the receipt";
+
+    protected override Task<StockMovementResult> SendAsync() => Stock.RecordReceiptAsync(ProductId, Model);
+
+    protected override string Describe(StockMovementResult result) =>
+        result.Movements.FirstOrDefault() is { } movement
+            ? $"Received {movement.Quantity} at {movement.WarehouseCode}; {movement.BalanceAfter} on hand there now."
+            : "Receipt recorded.";
+}

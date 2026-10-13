@@ -1,0 +1,13 @@
+global using System.Globalization;
+global using Amazon.DynamoDBv2;
+global using Amazon.DynamoDBv2.Model;
+global using Amazon.Lambda.Annotations;
+global using BuildingBlocks.ServiceDefaults.Lambda.Behaviors;
+global using Inventory.Function.Modules.Stock.Data;
+global using Inventory.Function.Modules.Stock.Domain;
+global using Inventory.Function.Modules.Stock.Domain.Enums;
+global using Inventory.Function.Modules.Warehouses.Data;
+global using Inventory.Function.Modules.Warehouses.Domain;
+global using Mediator;
+global using Microsoft.Extensions.Configuration;
+global using Microsoft.Extensions.DependencyInjection;

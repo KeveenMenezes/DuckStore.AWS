@@ -6,6 +6,7 @@ on:
     paths:
       - 'infra/**'
       - 'src/Services/Inventory/**'
+      - 'src/BuildingBlocks/**'
   workflow_dispatch:
 
 permissions:
@@ -19,14 +20,19 @@ env:
 jobs:
   deploy:
     name: Deploy CDK
-    # Tables only (ADR-0052): no Lambda artifact to publish, so no .NET/arm64 toolchain. A stack
-    # with Lambdas needs the .NET setup and the arm64 runner of deploy-challenges-cdk.yml (ADR-0042 §8).
-    runs-on: ubuntu-latest
+    # Native AOT links a native binary and cannot cross-compile from x64;
+    # the Lambda artifact must be built on arm64 (ADR-0042 §8).
+    runs-on: ubuntu-24.04-arm
     environment: development
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: '10.0.x'
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -48,7 +54,8 @@ jobs:
       - name: Deploy Inventory CDK stack
         working-directory: infra
         run: |
-          # --exclusively keeps the other stacks' assets from bundling (see deploy-challenges-cdk.yml).
+          # --exclusively narrows the bundling to this stack: only Inventory.Function is compiled
+          # (ADR-0042 §8). Safe because the stacks share nothing through CloudFormation.
           npx cdk deploy DuckStoreInventoryStack \
             --exclusively \
             --require-approval never

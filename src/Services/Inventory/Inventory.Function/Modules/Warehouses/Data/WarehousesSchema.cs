@@ -1,11 +1,15 @@
-namespace Inventory.DevelopmentDataSeeder;
+namespace Inventory.Function.Modules.Warehouses.Data;
 
-// Inventory has no Function project, so the seeder owns the table's names and keys. Mirrors
-// infra/constructs/inventory-dynamodb.ts and the graphql/resolvers/inventory resolvers (ADR-0052 §2).
+// Mirrors infra/constructs/inventory-dynamodb.ts and the graphql/resolvers/inventory resolvers
+// (ADR-0052 §2).
 public static class WarehousesSchema
 {
     public const string TableName = "inventory-warehouses";
     public const string PartitionKey = "WarehouseId";
+
+    public const string TypeAttribute = "Type";
+    public const string CodeAttribute = "Code";
+    public const string ActiveAttribute = "Active";
 
     public const string WarehouseType = "Warehouse";
     public const string CodeGuardType = "CodeGuard";

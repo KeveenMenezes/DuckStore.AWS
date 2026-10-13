@@ -48,17 +48,18 @@ builder.AddCatalogViewLambdas(dynamoDb, catalogSeeder, reviewSeeder, pricingSeed
 
 builder.AddChallengesServices(dynamoDb);
 
-var inventorySeeder = builder.AddInventoryServices(dynamoDb);
+var inventoryResources = builder.AddInventoryServices(dynamoDb);
 
 // Apps
-builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")
+var spa = builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")
     .WithExternalHttpEndpoints()
     .WaitFor(dynamoDb)
     .WaitFor(basketResources.CheckoutBasket)
     .WaitFor(basketResources.MergeBasket)
     .WaitFor(userResources)
-    // local.ts serves the warehouse fields straight from inventory-warehouses (ADR-0052 §5).
-    .WaitForCompletion(inventorySeeder)
+    // local.ts serves the warehouse fields straight from DynamoDB Local and the stock movements
+    // through the Inventory Lambdas (ADR-0052 §5, §7).
+    .WaitForCompletion(inventoryResources.Seeder)
     .WithReference(dynamoDb)
     .WithEnvironment(ctx =>
     {
@@ -73,6 +74,9 @@ builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React",
 // Blazor WASM can't read env vars at runtime — its GraphQL endpoint comes from the
 // checked-in wwwroot/appsettings.Development.json, pointing at the React SPA's local
 // GraphQL BFF (start the SPA first). Deployed as a static site to S3/CloudFront.
+foreach (var movementLambda in inventoryResources.MovementLambdas)
+    spa.WaitFor(movementLambda);
+
 builder.AddProject<Projects.Managment_Web_Blazor>("managment-web-blazor")
     .WithExternalHttpEndpoints()
     .WithExplicitStart();

@@ -357,3 +357,20 @@ h1 {
     border-radius: 6px;
     font: inherit;
 }
+
+.stock-actions {
+    margin-bottom: 1rem;
+}
+
+.stock-form-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.5rem;
+}
+
+.stock-form-panel h2 {
+    font-size: 1.1rem;
+    margin: 0 0 1rem;
+}

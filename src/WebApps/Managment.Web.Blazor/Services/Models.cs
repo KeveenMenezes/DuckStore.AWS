@@ -232,3 +232,106 @@ public sealed class WarehouseFormModel
         Priority = warehouse.Priority,
     };
 }
+
+// Read models — mirror the stock types in graphql/schema.graphql (ADR-0052 §7). Type, Reason and
+// Direction are the GraphQL enum names (Receipt, TransferOut, Count...). Quantity is signed and
+// BalanceAfter is the stock on hand in that warehouse right after the movement.
+public sealed record StockMovement(
+    string Id,
+    string ProductId,
+    string? ProductName,
+    string Type,
+    int Quantity,
+    int BalanceAfter,
+    string WarehouseId,
+    string WarehouseCode,
+    string? InvoiceNumber,
+    string? Supplier,
+    string? Reason,
+    string? Note,
+    string? TransferId,
+    string? CounterpartWarehouseId,
+    string CreatedAt,
+    string CreatedBy);
+
+public sealed record StockMovementPage(List<StockMovement> Items, string? NextToken);
+
+public sealed record StockMovementResult(List<StockMovement> Movements);
+
+// The schema's WarehouseStock and ProductStock, renamed so they don't clash with the pages of the
+// same name.
+public sealed record WarehouseStockInfo(string WarehouseId, string WarehouseCode, int Available, int Reserved);
+
+public sealed record ProductStockInfo(string ProductId, int TotalAvailable, List<WarehouseStockInfo> Warehouses);
+
+public sealed record WarehouseProductStock(string ProductId, string? ProductName, int Available, int Reserved);
+
+public sealed record WarehouseProductStockPage(List<WarehouseProductStock> Items, string? NextToken);
+
+// Form models for the three stock movements. The rules mirror StockBalance in Inventory.Function,
+// which stays the authority; these only spare a round trip. Change them together.
+public abstract class StockMovementFormModel
+{
+    public const int MaxQuantity = 100_000;
+
+    // Minted when the form opens and kept across retries, so a retry after a timeout finds the
+    // movement it may already have recorded instead of recording it twice (ADR-0052 §7).
+    public string IdempotencyKey { get; private set; } = Guid.NewGuid().ToString();
+
+    [Required(ErrorMessage = "Enter a quantity.")]
+    [Range(1, MaxQuantity, ErrorMessage = "Quantity must be a whole number from 1 to 100000.")]
+    public int? Quantity { get; set; }
+
+    [StringLength(500)]
+    public string? Note { get; set; }
+
+    public void RenewIdempotencyKey() => IdempotencyKey = Guid.NewGuid().ToString();
+}
+
+public sealed class StockReceiptFormModel : StockMovementFormModel
+{
+    [Required(ErrorMessage = "Select a warehouse.")]
+    public string WarehouseId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Enter the invoice number."), StringLength(60)]
+    public string InvoiceNumber { get; set; } = string.Empty;
+
+    [StringLength(120)]
+    public string? Supplier { get; set; }
+}
+
+public sealed class StockAdjustmentFormModel : StockMovementFormModel, IValidatableObject
+{
+    public static readonly string[] Directions = ["Increase", "Decrease"];
+    public static readonly string[] Reasons = ["Count", "Loss", "Damage", "Return", "Other"];
+
+    [Required(ErrorMessage = "Select a warehouse.")]
+    public string WarehouseId { get; set; } = string.Empty;
+
+    [Required]
+    public string Direction { get; set; } = "Increase";
+
+    [Required(ErrorMessage = "Select a reason.")]
+    public string Reason { get; set; } = string.Empty;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Reason == "Other" && string.IsNullOrWhiteSpace(Note))
+            yield return new ValidationResult("A note is required when the reason is Other.", [nameof(Note)]);
+    }
+}
+
+public sealed class StockTransferFormModel : StockMovementFormModel, IValidatableObject
+{
+    [Required(ErrorMessage = "Select the origin warehouse.")]
+    public string FromWarehouseId { get; set; } = string.Empty;
+
+    [Required(ErrorMessage = "Select the destination warehouse.")]
+    public string ToWarehouseId { get; set; } = string.Empty;
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (FromWarehouseId.Length > 0 && FromWarehouseId == ToWarehouseId)
+            yield return new ValidationResult("The destination must differ from the origin.", [nameof(ToWarehouseId)]);
+    }
+}

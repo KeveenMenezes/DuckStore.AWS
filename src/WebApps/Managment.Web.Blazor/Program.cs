@@ -54,6 +54,7 @@ builder.Services.AddScoped<ProductAdminService>();
 builder.Services.AddScoped<CampaignAdminService>();
 builder.Services.AddScoped<ChallengeAdminService>();
 builder.Services.AddScoped<WarehouseAdminService>();
+builder.Services.AddScoped<StockAdminService>();
 // Image CDN base for building product image URLs from imageIds (ADR-0034).
 builder.Services.AddSingleton(new ImageCdn(builder.Configuration["ImageCdn:BaseUrl"] ?? string.Empty));
 
