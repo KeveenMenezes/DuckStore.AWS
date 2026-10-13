@@ -269,6 +269,99 @@ function warehouseNotFound() {
 // Locally there is no Cognito identity to record, so UpdatedBy is a fixed marker.
 const LOCAL_WAREHOUSE_AUTHOR = 'local-dev'
 
+// Inventory stock (ADR-0052 §7). The movements run in the real Inventory Lambdas through the Aspire
+// emulator, like the checkout; only the product check (an AppSync pipeline step on AWS) and the
+// queries are emulated here.
+type StockMovementBody = {
+  Id: string; ProductId: string; Type: string; Quantity: number; BalanceAfter: number; WarehouseId: string
+  WarehouseCode: string; InvoiceNumber: string | null; Supplier: string | null; Reason: string | null
+  Note: string | null; TransferId: string | null; CounterpartWarehouseId: string | null; CreatedAt: string; CreatedBy: string
+}
+type StockMovementResponseBody = {
+  Movements: StockMovementBody[] | null
+  Refusal: { ErrorType: string; Message: string; Field: string | null; Available: number | null } | null
+}
+
+function stockPageSize(pageSize: number | null | undefined): number {
+  const size = pageSize ?? 20
+  if (!Number.isInteger(size) || size < 1 || size > 100) {
+    throw createGraphQLError('pageSize must be an integer between 1 and 100', {
+      extensions: { errorType: 'BadRequest', errorInfo: { field: 'pageSize' } },
+    })
+  }
+  return size
+}
+
+const encodeToken = (key: Record<string, AttributeValue> | undefined) =>
+  key ? Buffer.from(JSON.stringify(key)).toString('base64') : null
+const decodeToken = (token: string | null | undefined) =>
+  token ? (JSON.parse(Buffer.from(token, 'base64').toString()) as Record<string, AttributeValue>) : undefined
+
+// Mirrors Mutation.stock.checkProduct.js: only movements that bring stock in need the product.
+async function requireProduct(productId: string) {
+  const result = await dynamoDb.send(
+    new GetItemCommand({ TableName: 'products', Key: { Id: { S: productId } }, ProjectionExpression: 'Id' }),
+  )
+  if (!result.Item) {
+    throw createGraphQLError('Product not found', {
+      extensions: { errorType: 'ProductNotFound', errorInfo: { field: 'productId' } },
+    })
+  }
+}
+
+// Mirrors the *.record.js response: a refusal is a typed error, a Lambda failure is InternalError.
+async function recordStockMovement(functionName: string, payload: Record<string, unknown>) {
+  let body: StockMovementResponseBody
+  try {
+    body = await invokeLambda<StockMovementResponseBody>(functionName, { ...payload, Actor: LOCAL_WAREHOUSE_AUTHOR })
+  } catch {
+    throw createGraphQLError('The stock movement could not be recorded', { extensions: { errorType: 'InternalError' } })
+  }
+  if (body.Refusal) {
+    const errorInfo: Record<string, unknown> = {}
+    if (body.Refusal.Field) errorInfo.field = body.Refusal.Field
+    if (body.Refusal.Available !== null && body.Refusal.Available !== undefined) errorInfo.available = body.Refusal.Available
+    throw createGraphQLError(body.Refusal.Message, { extensions: { errorType: body.Refusal.ErrorType, errorInfo } })
+  }
+  return {
+    movements: (body.Movements ?? []).map(m => ({
+      id: m.Id, productId: m.ProductId, productName: null, type: m.Type, quantity: m.Quantity,
+      balanceAfter: m.BalanceAfter, warehouseId: m.WarehouseId, warehouseCode: m.WarehouseCode,
+      invoiceNumber: m.InvoiceNumber, supplier: m.Supplier, reason: m.Reason, note: m.Note,
+      transferId: m.TransferId, counterpartWarehouseId: m.CounterpartWarehouseId,
+      createdAt: m.CreatedAt, createdBy: m.CreatedBy,
+    })),
+  }
+}
+
+function mapStockMovement(item: Record<string, unknown>) {
+  return {
+    id: item.MovementId, productId: item.ProductId, productName: null, type: item.Type,
+    quantity: Number(item.Quantity), balanceAfter: Number(item.BalanceAfter),
+    warehouseId: item.WarehouseId, warehouseCode: item.WarehouseCode,
+    invoiceNumber: item.InvoiceNumber ?? null, supplier: item.Supplier ?? null, reason: item.Reason ?? null,
+    note: item.Note ?? null, transferId: item.TransferId ?? null,
+    counterpartWarehouseId: item.CounterpartWarehouseId ?? null,
+    createdAt: item.CreatedAt, createdBy: item.CreatedBy,
+  }
+}
+
+// Mirrors Query.stock.productNames.js.
+async function withProductNames<T extends { productId: unknown }>(items: T[]) {
+  const ids = [...new Set(items.map(item => String(item.productId)))]
+  const names: Record<string, string> = {}
+  if (ids.length > 0) {
+    const result = await dynamoDb.send(
+      new BatchGetItemCommand({ RequestItems: { products: { Keys: ids.map(id => ({ Id: { S: id } })) } } }),
+    )
+    for (const product of result.Responses?.products ?? []) {
+      const p = unmarshall(product)
+      names[String(p.Id)] = String(p.Name)
+    }
+  }
+  return items.map(item => ({ ...item, productName: names[String(item.productId)] ?? null }))
+}
+
 // The saved cart's lines as Pricing quotes them — the checkout pipeline's loadCart step (Data is
 // the .NET-serialized PascalCase JSON).
 // A typed checkout refusal, shaped like the AppSync resolver's (ADR-0050 §8): the SPA branches on
@@ -1036,6 +1129,91 @@ const resolvers = {
     // (infra/constructs/reward-config.ts) and the Pricing Lambdas' Rewards__* env vars
     // (PricingExtensions.cs) — kept in sync by hand, since local dev has no CDK synth step
     // to read them from (ADR-0048 §3).
+    // Mirrors Query.stockByProduct.js.
+    async stockByProduct(_: unknown, { productId }: { productId: string }) {
+      const result = await dynamoDb.send(
+        new QueryCommand({
+          TableName: 'inventory-stock',
+          KeyConditionExpression: 'ProductId = :p',
+          ExpressionAttributeValues: { ':p': { S: productId } },
+        }),
+      )
+      const warehouses = (result.Items ?? []).map(raw => {
+        const item = unmarshall(raw)
+        return {
+          warehouseId: item.WarehouseId,
+          warehouseCode: item.WarehouseCode,
+          available: Number(item.Available),
+          reserved: Number(item.Reserved ?? 0),
+        }
+      })
+      return { productId, totalAvailable: warehouses.reduce((sum, w) => sum + w.available, 0), warehouses }
+    },
+
+    // Mirrors Query.stockMovementsByProduct.js.
+    async stockMovementsByProduct(
+      _: unknown,
+      { productId, pageSize, nextToken }: { productId: string; pageSize?: number; nextToken?: string },
+    ) {
+      const result = await dynamoDb.send(
+        new QueryCommand({
+          TableName: 'inventory-movements',
+          IndexName: 'LSI1',
+          KeyConditionExpression: 'ProductId = :p',
+          ExpressionAttributeValues: { ':p': { S: productId } },
+          ScanIndexForward: false,
+          Limit: stockPageSize(pageSize),
+          ExclusiveStartKey: decodeToken(nextToken),
+        }),
+      )
+      return {
+        items: (result.Items ?? []).map(item => mapStockMovement(unmarshall(item))),
+        nextToken: encodeToken(result.LastEvaluatedKey),
+      }
+    },
+
+    // Mirrors Query.stockByWarehouse.js (balances + product names).
+    async stockByWarehouse(
+      _: unknown,
+      { warehouseId, pageSize, nextToken }: { warehouseId: string; pageSize?: number; nextToken?: string },
+    ) {
+      const result = await dynamoDb.send(
+        new QueryCommand({
+          TableName: 'inventory-stock',
+          IndexName: 'GSI1',
+          KeyConditionExpression: 'WarehouseId = :w',
+          ExpressionAttributeValues: { ':w': { S: warehouseId } },
+          Limit: stockPageSize(pageSize),
+          ExclusiveStartKey: decodeToken(nextToken),
+        }),
+      )
+      const items = (result.Items ?? []).map(raw => {
+        const item = unmarshall(raw)
+        return { productId: item.ProductId, available: Number(item.Available), reserved: Number(item.Reserved ?? 0) }
+      })
+      return { items: await withProductNames(items), nextToken: encodeToken(result.LastEvaluatedKey) }
+    },
+
+    // Mirrors Query.stockMovementsByWarehouse.js (history + product names).
+    async stockMovementsByWarehouse(
+      _: unknown,
+      { warehouseId, pageSize, nextToken }: { warehouseId: string; pageSize?: number; nextToken?: string },
+    ) {
+      const result = await dynamoDb.send(
+        new QueryCommand({
+          TableName: 'inventory-movements',
+          IndexName: 'GSI1',
+          KeyConditionExpression: 'WarehouseId = :w',
+          ExpressionAttributeValues: { ':w': { S: warehouseId } },
+          ScanIndexForward: false,
+          Limit: stockPageSize(pageSize),
+          ExclusiveStartKey: decodeToken(nextToken),
+        }),
+      )
+      const items = (result.Items ?? []).map(item => mapStockMovement(unmarshall(item)))
+      return { items: await withProductNames(items), nextToken: encodeToken(result.LastEvaluatedKey) }
+    },
+
     async rewardConversion() {
       return { pointsPerUnit: 100, currencyPerUnit: 1 }
     },
@@ -1640,6 +1818,33 @@ const resolvers = {
         if (err instanceof ConditionalCheckFailedException) throw warehouseNotFound()
         throw err
       }
+    },
+
+    // Mirrors the recordStockReceipt pipeline: product check, then the Lambda (ADR-0052 §7).
+    async recordStockReceipt(_: unknown, { input }: { input: Record<string, unknown> }) {
+      await requireProduct(String(input.productId))
+      return recordStockMovement('inventory-record-stock-receipt', {
+        IdempotencyKey: input.idempotencyKey, ProductId: input.productId, WarehouseId: input.warehouseId,
+        Quantity: input.quantity, InvoiceNumber: input.invoiceNumber, Supplier: input.supplier ?? null,
+        Note: input.note ?? null,
+      })
+    },
+
+    // Mirrors the recordStockAdjustment pipeline: the product check only for an increase.
+    async recordStockAdjustment(_: unknown, { input }: { input: Record<string, unknown> }) {
+      if (input.direction !== 'Decrease') await requireProduct(String(input.productId))
+      return recordStockMovement('inventory-record-stock-adjustment', {
+        IdempotencyKey: input.idempotencyKey, ProductId: input.productId, WarehouseId: input.warehouseId,
+        Direction: input.direction, Quantity: input.quantity, Reason: input.reason, Note: input.note ?? null,
+      })
+    },
+
+    // Mirrors Mutation.transferStock.js: the Lambda alone.
+    async transferStock(_: unknown, { input }: { input: Record<string, unknown> }) {
+      return recordStockMovement('inventory-transfer-stock', {
+        IdempotencyKey: input.idempotencyKey, ProductId: input.productId, FromWarehouseId: input.fromWarehouseId,
+        ToWarehouseId: input.toWarehouseId, Quantity: input.quantity, Note: input.note ?? null,
+      })
     },
 
     async setNominalPrice(
