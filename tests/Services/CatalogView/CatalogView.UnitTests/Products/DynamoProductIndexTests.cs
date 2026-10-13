@@ -42,7 +42,9 @@ public class DynamoProductIndexTests
         Assert.Equal(DynamoProductIndex.TableName, captured!.TableName);
         Assert.Contains("#Name", captured.UpdateExpression);
         Assert.Contains("#Description", captured.UpdateExpression);
-        Assert.Contains("Stock", captured.UpdateExpression);
+        // Stock is Inventory's (ADR-0052 §8): only defaulted on insert, never overwritten by a product edit.
+        Assert.Contains("Stock = if_not_exists(Stock, :zero)", captured.UpdateExpression);
+        Assert.False(captured.ExpressionAttributeValues.ContainsKey(":stock"));
         Assert.Contains("CategoryIds", captured.UpdateExpression);
         Assert.Contains("Categories", captured.UpdateExpression);
 
@@ -54,6 +56,36 @@ public class DynamoProductIndexTests
         Assert.DoesNotContain("RatingCount", captured.UpdateExpression);
         Assert.DoesNotContain("AverageRating", captured.UpdateExpression);
         Assert.DoesNotContain("LastRatingEventId", captured.UpdateExpression);
+    }
+
+    [Fact]
+    public async Task ApplyStockAsync_WritesOnlyANewerTotal_OnAnExistingDocument()
+    {
+        UpdateItemRequest? captured = null;
+        _dynamoDb
+            .Setup(d => d.UpdateItemAsync(It.IsAny<UpdateItemRequest>(), It.IsAny<CancellationToken>()))
+            .Callback<UpdateItemRequest, CancellationToken>((r, _) => captured = r)
+            .ReturnsAsync(new UpdateItemResponse());
+
+        var outcome = await _index.ApplyStockAsync("product-1", 70, "2026-10-13T12:00:00.000Z");
+
+        Assert.Equal(StockApplyOutcome.Applied, outcome);
+        Assert.Equal("SET Stock = :available, StockAsOf = :asOf", captured!.UpdateExpression);
+        Assert.Equal("attribute_exists(Id) AND (attribute_not_exists(StockAsOf) OR StockAsOf < :asOf)", captured.ConditionExpression);
+        Assert.Equal("70", captured.ExpressionAttributeValues[":available"].N);
+        Assert.Equal(ReturnValuesOnConditionCheckFailure.ALL_OLD, captured.ReturnValuesOnConditionCheckFailure);
+    }
+
+    [Fact]
+    public async Task ApplyStockAsync_TellsAMissingProduct_FromANewerStoredTotal()
+    {
+        _dynamoDb
+            .SetupSequence(d => d.UpdateItemAsync(It.IsAny<UpdateItemRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new ConditionalCheckFailedException("no item"))
+            .ThrowsAsync(new ConditionalCheckFailedException("newer") { Item = new() { ["Id"] = new("product-1") } });
+
+        Assert.Equal(StockApplyOutcome.ProductMissing, await _index.ApplyStockAsync("product-1", 1, "a"));
+        Assert.Equal(StockApplyOutcome.Stale, await _index.ApplyStockAsync("product-1", 1, "a"));
     }
 
     [Fact]

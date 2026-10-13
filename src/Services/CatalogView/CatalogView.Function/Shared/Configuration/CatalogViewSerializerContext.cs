@@ -16,6 +16,7 @@ namespace CatalogView.Function.Shared.Configuration;
 [JsonSerializable(typeof(DynamoDBEvent))]
 [JsonSerializable(typeof(EventBridgeEvent<JsonElement>))]
 [JsonSerializable(typeof(EventBridgeEvent<PriceChangedEvent>))]
+[JsonSerializable(typeof(EventBridgeEvent<ProductStockChangedEvent>))]
 public partial class CatalogViewSerializerContext : JsonSerializerContext
 {
 }

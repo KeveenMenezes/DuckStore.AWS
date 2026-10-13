@@ -45,7 +45,8 @@ public class ProductSyncStrategyTests
                     d.Images.Count == 1 &&
                     d.Images[0].ImageId == evt.Images[0].ImageId &&
                     d.Images[0].IsMain &&
-                    d.Stock == evt.Stock &&
+                    // Stock is Inventory's (ADR-0052 §8): never taken from Catalog.
+                    d.Stock == 0 &&
                     d.CategoryIds.SequenceEqual(evt.CategoryIds) &&
                     d.Categories.Count == 1 &&
                     d.Categories[0].Id == "cat-1" &&

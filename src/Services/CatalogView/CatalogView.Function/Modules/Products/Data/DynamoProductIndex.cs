@@ -40,7 +40,8 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             Key = new Dictionary<string, AttributeValue> { ["Id"] = new(document.Id) },
             UpdateExpression =
                 $"SET {NameAlias} = :name, {DescriptionAlias} = :description, Images = :images, " +
-                "Stock = :stock, CategoryIds = :categoryIds, Categories = :categories, " +
+                // Stock belongs to Inventory (ADR-0052 §8): a product edit only defaults it on insert.
+                "Stock = if_not_exists(Stock, :zero), CategoryIds = :categoryIds, Categories = :categories, " +
                 "GSI1PK = :gsi1pk, GSI1SK = if_not_exists(GSI1SK, :zero)," +
                 "RatingDistribution = if_not_exists(RatingDistribution, :ratingDistribution)",
             ExpressionAttributeNames = new Dictionary<string, string>
@@ -53,7 +54,6 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
                 [":name"] = new(document.Name),
                 [":description"] = new(document.Description),
                 [":images"] = ToImageList(document.Images),
-                [":stock"] = new AttributeValue { N = document.Stock.ToString(CultureInfo.InvariantCulture) },
                 [":categoryIds"] = ToStringList(document.CategoryIds),
                 [":categories"] = ToCategoryList(document.Categories),
                 [":gsi1pk"] = new(Gsi1PartitionValue),
@@ -75,6 +75,33 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
         };
 
         return dynamoDb.UpdateItemAsync(request, cancellationToken);
+    }
+
+    public async Task<StockApplyOutcome> ApplyStockAsync(
+        string productId, int available, string asOf, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await dynamoDb.UpdateItemAsync(new UpdateItemRequest
+            {
+                TableName = TableName,
+                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(productId) },
+                UpdateExpression = "SET Stock = :available, StockAsOf = :asOf",
+                ConditionExpression = "attribute_exists(Id) AND (attribute_not_exists(StockAsOf) OR StockAsOf < :asOf)",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":available"] = new AttributeValue { N = available.ToString(CultureInfo.InvariantCulture) },
+                    [":asOf"] = new(asOf),
+                },
+                // Tells a missing document apart from a newer total without a second read.
+                ReturnValuesOnConditionCheckFailure = ReturnValuesOnConditionCheckFailure.ALL_OLD,
+            }, cancellationToken);
+            return StockApplyOutcome.Applied;
+        }
+        catch (ConditionalCheckFailedException ex)
+        {
+            return ex.Item is { Count: > 0 } ? StockApplyOutcome.Stale : StockApplyOutcome.ProductMissing;
+        }
     }
 
     public Task DeleteAsync(string productId, CancellationToken cancellationToken = default) =>
