@@ -9,11 +9,12 @@ tags:
 # ADR-0052: Inventory Bounded Context — Stock per Warehouse, Owned by the StockKeeper
 
 ## Status
-**Accepted** — October 2026. The warehouses (§2–§5) are implemented; §6 records the direction for
-the storefront total and sales, and is amended as each is decided in detail.
+**Accepted** — October 2026. The warehouses (§2–§5) and the stock balances and movements ledger (§7)
+are implemented; §6 records the direction for the storefront total and sales, and is amended as each
+is decided in detail.
 
-**Amended** — October 2026 (proposed): §7 decides the stock balances and the movements ledger
-(receipts, adjustments, transfers).
+**Amended** — October 2026: §7 decides the stock balances and the movements ledger (receipts,
+adjustments, transfers).
 
 ADR-0051 is reserved for the order orchestration, which is why this one is 0052.
 
@@ -330,9 +331,14 @@ Local.
 
 ## As Built
 
-- Verified on the real APPSYNC_JS runtime with `aws appsync evaluate-code` (88 cases,
-  `scripts/inventory/evaluate-resolvers.mjs`), against the local BFF (`scripts/inventory/local-api-checks.mjs`)
-  and on dev by `tests/E2E/Inventory/Inventory.E2ETests` (12 tests: StockKeeper, Admin, Seller, customer).
+- Verified on the real APPSYNC_JS runtime with `aws appsync evaluate-code` (138 cases over the 12
+  Inventory resolvers, `scripts/inventory/evaluate-resolvers.mjs`), against the Lambdas in the Aspire
+  emulator (`scripts/inventory/local-lambda-checks.mjs`, concurrent movements included) and the local
+  BFF (`scripts/inventory/local-api-checks.mjs`), by `Inventory.UnitTests` (domain, repository,
+  recorder), and on dev by `tests/E2E/Inventory/Inventory.E2ETests` (24 tests: StockKeeper, Admin,
+  Seller, customer — the ledger checked against the balance after every flow).
+- The Lambdas' JSON omits null fields (`Refusal` on success, `Movements` on a refusal, `Available` on
+  most refusals); the resolvers treat absent and null alike.
 - `Array.prototype.sort` takes no comparator in APPSYNC_JS: an inline one fails the runtime's
   `no-function-passing` lint, and a named one was silently ignored during evaluation (callbacks to
   `map`/`some` are fine). `warehouses` therefore sorts on a string key (zero-padded priority, then
