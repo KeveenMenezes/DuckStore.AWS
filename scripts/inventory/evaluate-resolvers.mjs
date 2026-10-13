@@ -262,7 +262,7 @@ for (const [field, code, args] of stockGated) {
     named.result?.items?.[0]?.productName === 'Pato' && named.result.items[1].productName === null && named.result.items[2].productName === 'Pato' && named.result.nextToken === 'n')
 }
 
-// 3. The storefront reads of the stock (ADR-0052 §8)
+// 3. The storefront's stock: read from CatalogView, never written by the product mutations (ADR-0052 §8)
 {
   const P = (name) => join(root, 'graphql/resolvers/products/queries', name)
   const shopper = { sub: 'c', groups: ['Customer'] }
@@ -273,6 +273,18 @@ for (const [field, code, args] of stockGated) {
   check('product: no total yet reads as stock 0', noStock, noStock.result?.stock === 0)
   const listed = evaluate(P('Query.products.js'), 'response', { identity: shopper, arguments: {}, result: { items: [{ Id: 'p1', Name: 'Pato', Description: 'd' }] } })
   check('products: no total yet reads as stock 0', listed, listed.result?.items?.[0]?.stock === 0)
+
+  // The product writes carry no stock: Inventory owns it.
+  const W = (name) => join(root, 'graphql/resolvers/products/mutations', name)
+  const seller = { sub: 's', groups: ['Seller'] }
+  const input = { name: 'Pato', description: 'd', images: [{ imageId: '01HZXW5N8T2J3K4M5P6Q7R8S9A', isMain: true, order: 0 }], categoryIds: ['c1'] }
+  const created = evaluate(W('Mutation.createProduct.js'), 'request', { identity: seller, arguments: { input } })
+  check('createProduct: PutItem without Stock', created, created.result?.operation === 'PutItem' && !('Stock' in created.result.attributeValues))
+  const updated = evaluate(W('Mutation.updateProduct.js'), 'request', { identity: seller, arguments: { input: { id: 'p1', ...input } } })
+  check('updateProduct: no Stock in the update', updated, !updated.result?.update?.expression.includes('Stock'))
+  const saga = evaluate(W('Mutation.createProductWithPrice.js'), 'request', { identity: seller, arguments: { input: { ...input, price: 10, cost: 4 } } })
+  const sagaInput = JSON.parse(JSON.parse(saga.result?.params?.body ?? '{}').input ?? '{}')
+  check('createProductWithPrice: saga input without stock', sagaInput, !('stock' in sagaInput) && sagaInput.price === '10')
 }
 
 const failed = results.filter((r) => !r.ok)

@@ -11,8 +11,8 @@ import { Construct } from 'constructs';
 // bounded contexts (ADR-0026), so a compensating delete — not TransactWriteItems —
 // undoes the product when the price write fails.
 //
-// Input contract: { id, name, description, images, stock, categoryIds, price, cost },
-// where stock/price/cost arrive as strings — DynamoDB's wire format requires N values
+// Input contract: { id, name, description, images, categoryIds, price, cost }, with no stock
+// (Inventory owns it, ADR-0052 §8), where price/cost arrive as strings — DynamoDB's wire format requires N values
 // to be JSON strings, so the resolver stringifies them and the tasks map them with
 // numberFromString. `images` arrives already in DynamoDB attribute-value JSON
 // ([{ M: { ImageId: { S }, IsMain: { BOOL }, Order: { N } } }]) because
@@ -36,7 +36,6 @@ export class ProductCreateSaga extends Construct {
         Name: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.name')),
         Description: tasks.DynamoAttributeValue.fromString(sfn.JsonPath.stringAt('$.description')),
         Images: tasks.DynamoAttributeValue.listFromJsonPath(sfn.JsonPath.stringAt('$.images')),
-        Stock: tasks.DynamoAttributeValue.numberFromString(sfn.JsonPath.stringAt('$.stock')),
         CategoryIds: tasks.DynamoAttributeValue.fromStringSet(sfn.JsonPath.listAt('$.categoryIds')),
       },
       resultPath: sfn.JsonPath.DISCARD,

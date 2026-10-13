@@ -19,14 +19,15 @@ export function request(ctx) {
   const groups = ctx.identity?.groups ?? []
   if (!groups.includes('Admin') && !groups.includes('Seller')) util.unauthorized()
 
-  const { id, name, description, images, stock, categoryIds } = ctx.args.input
+  const { id, name, description, images, categoryIds } = ctx.args.input
   validateImages(images)
-  // Price is updated separately via Pricing's setNominalPrice mutation (ADR-0026).
+  // Price is updated separately via Pricing's setNominalPrice mutation (ADR-0026); stock is
+  // Inventory's (ADR-0052 §8).
   return {
     operation: 'UpdateItem',
     key: { Id: util.dynamodb.toDynamoDB(id) },
     update: {
-      expression: 'SET #Name = :name, Description = :desc, Images = :imgs, Stock = :stock, CategoryIds = :cats',
+      expression: 'SET #Name = :name, Description = :desc, Images = :imgs, CategoryIds = :cats',
       expressionNames: { '#Name': 'Name' },
       expressionValues: {
         ':name': util.dynamodb.toDynamoDB(name),
@@ -34,7 +35,6 @@ export function request(ctx) {
         ':imgs': util.dynamodb.toDynamoDB(
           images.map(i => ({ ImageId: i.imageId, IsMain: i.isMain, Order: i.order })),
         ),
-        ':stock': util.dynamodb.toDynamoDB(stock),
         ':cats': util.dynamodb.toStringSet(categoryIds),
       },
     },

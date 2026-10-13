@@ -24,7 +24,7 @@ export function request(ctx) {
   const groups = ctx.identity?.groups ?? []
   if (!groups.includes('Admin') && !groups.includes('Seller')) util.unauthorized()
 
-  const { name, description, images, stock, categoryIds, price, cost } = ctx.args.input
+  const { name, description, images, categoryIds, price, cost } = ctx.args.input
   validateImages(images)
   const id = util.autoId()
   // Saga input contract: N-typed values travel as strings — the state machine maps
@@ -39,7 +39,6 @@ export function request(ctx) {
       M: { ImageId: { S: i.imageId }, IsMain: { BOOL: i.isMain }, Order: { N: `${i.order}` } },
     })),
     categoryIds,
-    stock: `${stock}`,
     price: `${price}`,
     cost: `${cost}`,
   }

@@ -19,12 +19,13 @@ export function request(ctx) {
   const groups = ctx.identity?.groups ?? []
   if (!groups.includes('Admin') && !groups.includes('Seller')) util.unauthorized()
 
-  const { name, description, images, stock, categoryIds } = ctx.args.input
+  const { name, description, images, categoryIds } = ctx.args.input
   validateImages(images)
   const id = util.autoId()
   ctx.stash.id = id
   // Price is set separately via Pricing's setNominalPrice mutation (ADR-0026) — Catalog no
-  // longer stores it. Images are metadata only (ADR-0034) — keys, never URLs.
+  // longer stores it. Nor stock: Inventory owns it (ADR-0052 §8). Images are metadata only
+  // (ADR-0034) — keys, never URLs.
   return {
     operation: 'PutItem',
     key: { Id: util.dynamodb.toDynamoDB(id) },
@@ -34,7 +35,6 @@ export function request(ctx) {
       Images: util.dynamodb.toDynamoDB(
         images.map(i => ({ ImageId: i.imageId, IsMain: i.isMain, Order: i.order })),
       ),
-      Stock: util.dynamodb.toDynamoDB(stock),
       CategoryIds: util.dynamodb.toStringSet(categoryIds),
     },
   }
