@@ -58,12 +58,6 @@
     </div>
 
     <div class="form-field">
-        <label for="stock">Stock</label>
-        <InputNumber id="stock" @bind-Value="Model.Stock" />
-        <ValidationMessage For="() => Model.Stock" />
-    </div>
-
-    <div class="form-field">
         <label for="price">Price</label>
         <InputNumber id="price" step="0.01" @bind-Value="Model.Price" />
         <ValidationMessage For="() => Model.Price" />
