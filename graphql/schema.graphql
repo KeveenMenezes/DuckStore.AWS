@@ -120,7 +120,7 @@ type CampaignPage @aws_cognito_user_pools {
 
 # The current points -> currency rate, so the SPA can show "500 points = R$5" before the customer
 # uses them (ADR-0046 §1, ADR-0048 §3). A fixed v1 constant, not a tier catalogue. Points
-# never expire (SPEC.md), so there is no expiry here.
+# never expire, so there is no expiry here.
 type RewardConversion @aws_cognito_user_pools {
   pointsPerUnit: Int!
   currencyPerUnit: Float!
@@ -276,7 +276,7 @@ type Warehouse @aws_cognito_user_pools {
   code: String!
   name: String!
   address: WarehouseAddress!
-  # Lower serves a sale first; ties broken by code (SPEC-inventory.md, module 4).
+  # Lower serves a sale first; ties broken by code (ADR-0052 §2).
   priority: Int!
   # Deactivated, never deleted, so the stock history keeps every reference valid.
   active: Boolean!

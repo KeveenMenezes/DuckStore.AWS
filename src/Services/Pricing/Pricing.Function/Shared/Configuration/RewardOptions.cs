@@ -2,7 +2,7 @@ namespace Pricing.Function.Shared.Configuration;
 
 // Points-to-currency conversion and the redemption cap — Pricing's alone: Challenges sends a raw
 // point quantity and never learns the rate (ADR-0046 §1, ADR-0048 §3). Business rules: 100 points
-// = R$1, at most 20% of the post-campaign cart price (SPEC.md). Read from the Rewards:* keys, set
+// = R$1, at most 20% of the post-campaign cart price. Read from the Rewards:* keys, set
 // via the Rewards__* env vars (reward-config.ts on AWS, PricingExtensions.cs locally).
 public class RewardOptions
 {

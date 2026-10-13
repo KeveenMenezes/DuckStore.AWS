@@ -1,7 +1,7 @@
 namespace Inventory.E2ETests;
 
 // The warehouse resolvers' contract (ADR-0052 §4), called on the deployed AppSync with a StockKeeper's
-// own access token (SPEC-inventory-warehouses criteria 3, 4, 5, 7).
+// own access token.
 public sealed class StockKeeperApiTests(StockKeeperSession session) : IClassFixture<StockKeeperSession>
 {
     private readonly WarehouseApi _api = new(session);
@@ -19,7 +19,7 @@ public sealed class StockKeeperApiTests(StockKeeperSession session) : IClassFixt
             Assert.Equal("01310100", (string?)warehouse["address"]!["zipCode"]);
             Assert.True((bool)warehouse["active"]!);
 
-            // Lowercase is the same code once normalized (criterion 3).
+            // Lowercase is the same code once normalized.
             var again = await _api.CreateAsync(WarehouseApi.Input(code.ToLowerInvariant(), priority: 7));
             // Should the guard ever fail, don't leave a second active warehouse behind.
             if (again.Data?["createWarehouse"]?["id"] is { } duplicateId)
@@ -116,7 +116,7 @@ public sealed class StockKeeperApiTests(StockKeeperSession session) : IClassFixt
     }
 }
 
-// Criterion 8: a Seller's token is refused by every warehouse operation, reads included.
+// A Seller's token is refused by every warehouse operation, reads included.
 public sealed class SellerApiTests(SellerSession session) : IClassFixture<SellerSession>
 {
     private readonly WarehouseApi _api = new(session);
@@ -138,7 +138,7 @@ public sealed class SellerApiTests(SellerSession session) : IClassFixture<Seller
     }
 }
 
-// Criterion 8: a storefront customer (shopping pool, group Customer) is refused too, through the SPA's BFF.
+// A storefront customer (shopping pool, group Customer) is refused too, through the SPA's BFF.
 public sealed class CustomerApiTests(StorefrontSession session) : IClassFixture<StorefrontSession>
 {
     [ManagementE2EFact(requiresStorefront: true)]

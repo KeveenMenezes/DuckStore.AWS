@@ -4,9 +4,7 @@ using Challenges.Function.Modules.Questions.Domain.ValueObjects;
 
 namespace Challenges.DevelopmentDataSeeder;
 
-// Ports the question bank out of the SPA bundle (ADR-0045 §10): every entry here is a 1:1 copy of
-// src/WebApps/Shopping.Web.SPA.React/features/challenges/data/challenges.data.ts, which is deleted
-// once the SPA reads through GraphQL instead (CH-10, not this task).
+// The question bank, ported out of the SPA bundle (ADR-0045 §10); the SPA reads it through GraphQL.
 public static class ChallengesInitialData
 {
     public static IEnumerable<Question> Questions =>

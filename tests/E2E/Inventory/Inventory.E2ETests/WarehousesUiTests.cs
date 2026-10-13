@@ -3,7 +3,7 @@ using static Microsoft.Playwright.Assertions;
 
 namespace Inventory.E2ETests;
 
-// The Warehouses pages as a StockKeeper uses them (SPEC-inventory-warehouses criteria 1, 2, 4, 5, 6).
+// The Warehouses pages as a StockKeeper uses them.
 public sealed class StockKeeperUiTests(StockKeeperSession session) : IClassFixture<StockKeeperSession>
 {
     private readonly WarehouseApi _api = new(session);
@@ -37,7 +37,7 @@ public sealed class StockKeeperUiTests(StockKeeperSession session) : IClassFixtu
             await session.CaptureAsync("warehouse-form");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
 
-            // Back on the list, normalized and active (criterion 2).
+            // Back on the list, normalized and active.
             var row = Page.Locator($"tr[data-code='{code}']");
             await Expect(row).ToBeVisibleAsync();
             await Expect(row.Locator(".warehouse-status")).ToHaveTextAsync("Active");
@@ -46,14 +46,14 @@ public sealed class StockKeeperUiTests(StockKeeperSession session) : IClassFixtu
                 .Single(w => (string?)w!["code"] == code)!["id"];
             await session.CaptureAsync("warehouse-created");
 
-            // Edit: the code is read-only, the priority changes (criterion 5).
+            // Edit: the code is read-only, the priority changes.
             await row.GetByRole(AriaRole.Link, new() { Name = "Edit" }).ClickAsync();
             await Expect(Page.Locator("#code")).ToBeDisabledAsync();
             await Page.Locator("#priority").FillAsync("650");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Save changes" }).ClickAsync();
             await Expect(row.Locator("td").Nth(3)).ToHaveTextAsync("650");
 
-            // Deactivate and reactivate; it stays listed (criterion 6).
+            // Deactivate and reactivate; it stays listed.
             await row.GetByRole(AriaRole.Button, new() { Name = "Deactivate" }).ClickAsync();
             await Expect(row.Locator(".warehouse-status")).ToHaveTextAsync("Inactive");
             await session.CaptureAsync("warehouse-inactive");
@@ -85,7 +85,7 @@ public sealed class StockKeeperUiTests(StockKeeperSession session) : IClassFixtu
             await Page.Locator("#zipCode").FillAsync("50000000");
             await Page.GetByRole(AriaRole.Button, new() { Name = "Create" }).ClickAsync();
 
-            // The resolver's WarehouseCodeTaken, rendered at errorInfo.field (criterion 3/4).
+            // The resolver's WarehouseCodeTaken, rendered at errorInfo.field.
             await Expect(Page.Locator(".server-error[data-field='code']")).ToContainTextAsync("already taken");
             await session.CaptureAsync("warehouse-code-taken");
         }
@@ -108,7 +108,7 @@ public sealed class StockKeeperUiTests(StockKeeperSession session) : IClassFixtu
     }
 }
 
-// Criterion 1: Admin sees and uses the Warehouses pages like a StockKeeper.
+// Admin sees and uses the Warehouses pages like a StockKeeper.
 public sealed class AdminUiTests(AdminSession session) : IClassFixture<AdminSession>
 {
     [ManagementE2EFact]
@@ -123,7 +123,7 @@ public sealed class AdminUiTests(AdminSession session) : IClassFixture<AdminSess
     }
 }
 
-// Criterion 1: a Seller has no Warehouses menu, and the page itself refuses.
+// A Seller has no Warehouses menu, and the page itself refuses.
 public sealed class SellerUiTests(SellerSession session) : IClassFixture<SellerSession>
 {
     [ManagementE2EFact]

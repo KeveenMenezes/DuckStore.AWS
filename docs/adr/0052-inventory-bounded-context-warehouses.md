@@ -9,12 +9,10 @@ tags:
 # ADR-0052: Inventory Bounded Context — Stock per Warehouse, Owned by the StockKeeper
 
 ## Status
-**Accepted** — October 2026 (PR to `development`, branch `feat/inventory-warehouses`). Implemented in module 1 (`inventory-warehouses`).
+**Accepted** — October 2026. The warehouses (§2–§5) are implemented; §6 records the direction for
+stock balances, the storefront total and sales, and is amended as each is decided in detail.
 
-Specified by [SPEC-inventory-warehouses.md](../../SPEC-inventory-warehouses.md), module 1 of
-[SPEC-inventory.md](../../SPEC-inventory.md). The later modules of that map amend this record
-(§6). ADR-0051 is reserved for the order orchestration ([SPEC-checkout.md](../../SPEC-checkout.md) §5),
-which is why this one is 0052.
+ADR-0051 is reserved for the order orchestration, which is why this one is 0052.
 
 ---
 
@@ -42,14 +40,13 @@ operators and its own events. That makes it a bounded context, not a field on th
 
 A new **Inventory** bounded context owns how many units of each product exist in each warehouse.
 Catalog stops owning stock: `Product.Stock` and the `stock` inputs leave Catalog when the storefront
-starts reading Inventory's total (module `catalog-stock-handoff`, §6). Until then, the two coexist
-and nothing reads Inventory from the storefront.
+starts reading Inventory's total (§6). Until then, the two coexist and nothing reads Inventory from
+the storefront.
 
 Inventory follows the reference structure ([ADR-0019](./0019-module-oriented-service-structure-and-rule-based-stream-publishers.md)):
 its own DynamoDB tables, CDK stack (`DuckStoreInventoryStack`) and `src/Services/Inventory/`. Its
-`.NET Inventory.Function` project is created only when the first Lambda appears (module
-`inventory-movements`), with one module per aggregate: `Modules/Warehouses` and `Modules/Stock`.
-Module 1 is entirely direct resolvers.
+`.NET Inventory.Function` project is created only when the first Lambda appears, with one module per
+aggregate: `Modules/Warehouses` and `Modules/Stock`. The warehouses are entirely direct resolvers.
 
 ### 2. The warehouse
 
@@ -83,7 +80,7 @@ table MUST filter on `Type = Warehouse`, or it would return guards as warehouses
 A new Cognito group, **`StockKeeper`**, in the management pool (`duckstore-management-users`),
 provisioned like the other staff groups (`CfnUserPoolGroup`, users added with AdminCreateUser).
 
-| Group | Warehouses (read) | Warehouses (write) | Stock movements (module 2) | Stock total (module 3) |
+| Group | Warehouses (read) | Warehouses (write) | Stock movements | Stock total |
 |---|---|---|---|---|
 | `StockKeeper` | Yes | Yes | Yes | Yes |
 | `Admin` | Yes | Yes | Yes | Yes |
@@ -135,26 +132,25 @@ Blazor form, as `MAX_POINTS` is.
 against DynamoDB Local for the Blazor app, with the same validation and errors and, like the rest of
 `local.ts`, no group check.
 
-### 6. Direction for the next modules (amended as each is specified)
+### 6. Direction for stock, the storefront total and sales
 
 Recorded here so later work starts from it, not decided in detail:
 
-- **Balances and ledger** (`inventory-movements`): balance per product × warehouse with `Available`
+- **Balances and ledger**: balance per product × warehouse with `Available`
   and `Reserved`, never negative; every movement (receipt, adjustment, transfer) writes its ledger
   row in the same transaction that moves the balance.
-- **Storefront handoff** (`catalog-stock-handoff`): Inventory publishes the available total by CDC.
+- **Storefront total**: Inventory publishes the available total by CDC.
   CatalogView consumes it ([ADR-0040](./0040-catalogview-consumers-consolidated-by-producer-strategy-dispatch.md)):
   a plain 1:1 handler while Inventory has a single event, and its own dispatcher plus
   `IInventorySyncStrategy` once a second one exists (e.g. a warehouse deactivation). Catalog drops
   `Stock`, which amends [ADR-0032](./0032-create-product-with-price-step-functions-express-saga.md)
   (the `createProductWithPrice` saga input and task mapping carry `stock`).
-- **Sales** (`checkout-stock-reservation`): reservation is a state of `checkout-saga`, as the Future
+- **Sales**: reservation is a state of `checkout-saga`, as the Future
   Constraints of [ADR-0050](./0050-checkout-step-functions-express-saga.md) (Proposed) require:
   `OutOfStock` is reported through its §8 error contract, `ReleaseStock` compensates only typed
   refusals, and reservations orphaned by ambiguous failures are swept by the order-saga reconciler.
-  Commit and release are steps of the order saga (ADR-0051, reserved and not yet written — see
-  [SPEC-order-saga.md](../../SPEC-order-saga.md)), keyed by `OrderId`, and the allocation follows
-  `Priority`.
+  Commit and release are steps of the order saga (ADR-0051, reserved), keyed by `OrderId`, and the
+  allocation follows `Priority`.
 
 ---
 
@@ -163,9 +159,9 @@ Recorded here so later work starts from it, not decided in detail:
 ### Positive
 
 - The person who handles the goods owns the number, and the Seller no longer guesses it.
-- Stock gets a location, and from module 2 on, a history.
+- Stock gets a location and, with the ledger (§6), a history.
 - A code can never be taken twice, without a read-before-write or a Lambda.
-- Module 1 adds no compute: one table, five direct resolvers and one group.
+- The warehouses add no compute: one table, five direct resolvers and one group.
 
 ### Negative / Costs
 
@@ -185,10 +181,9 @@ Recorded here so later work starts from it, not decided in detail:
 
 ### Future Constraints
 
-- Inventory's write path is `graphql/resolvers/inventory/**`, its seeder and (from module 2)
+- Inventory's write path is `graphql/resolvers/inventory/**`, its seeder and, once it exists,
   `Inventory.Function`. No other context's resolver, Lambda or saga task MAY write its tables. Other
-  contexts read the total through CatalogView (module 3) or call Inventory's Lambdas from a saga
-  (module 4).
+  contexts read the total through CatalogView or call Inventory's Lambdas from a saga (§6).
 - A warehouse's `Code` MUST NOT become editable without replacing the guard in the same transaction
   (delete the old guard, put the new one).
 - Allocation MUST stay behind a policy (`StockAllocationPolicy`) so "priority" can be replaced by
@@ -196,7 +191,7 @@ Recorded here so later work starts from it, not decided in detail:
 
 ---
 
-## As Built (module 1)
+## As Built
 
 - Verified on the real APPSYNC_JS runtime with `aws appsync evaluate-code` (88 cases,
   `scripts/inventory/evaluate-resolvers.mjs`), against the local BFF (`scripts/inventory/local-api-checks.mjs`)
@@ -223,8 +218,7 @@ Recorded here so later work starts from it, not decided in detail:
 
 - [ADR-0009: AppSync Resolver Selection](./0009-appsync-resolver-selection-direct-first-lambda-for-complex-logic.md) — why every field here is direct
 - [ADR-0019: Module-Oriented Service Structure](./0019-module-oriented-service-structure-and-rule-based-stream-publishers.md) — the structure Inventory follows
-- [ADR-0040: CatalogView Consumers by Producer](./0040-catalogview-consumers-consolidated-by-producer-strategy-dispatch.md) — the shape of the module 3 consumer
+- [ADR-0040: CatalogView Consumers by Producer](./0040-catalogview-consumers-consolidated-by-producer-strategy-dispatch.md) — the shape of the storefront-total consumer
 - [ADR-0045: Challenges Bounded Context](./0045-challenges-bounded-context-server-side-grading.md) — precedent for a direct, Admin-gated management resolver (`updateChallengePoints`)
-- [ADR-0032: Product Creation With Price as a Step Functions Express Saga](./0032-create-product-with-price-step-functions-express-saga.md) — loses `stock` in module 3
+- [ADR-0032: Product Creation With Price as a Step Functions Express Saga](./0032-create-product-with-price-step-functions-express-saga.md) — loses `stock` with the storefront total (§6)
 - [ADR-0050: Checkout as a Step Functions Express Saga](./0050-checkout-step-functions-express-saga.md) — where the stock reservation will live
-- [SPEC-inventory.md](../../SPEC-inventory.md), [SPEC-inventory-warehouses.md](../../SPEC-inventory-warehouses.md)

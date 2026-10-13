@@ -1,8 +1,7 @@
 namespace Inventory.DevelopmentDataSeeder;
 
-// Lives here until Inventory.Function exists (SPEC-inventory.md, module 2), then moves there and the
-// seeder references it, like Challenges. Mirrors infra/constructs/inventory-dynamodb.ts and the
-// graphql/resolvers/inventory resolvers (ADR-0052 §2).
+// Inventory has no Function project, so the seeder owns the table's names and keys. Mirrors
+// infra/constructs/inventory-dynamodb.ts and the graphql/resolvers/inventory resolvers (ADR-0052 §2).
 public static class WarehousesSchema
 {
     public const string TableName = "inventory-warehouses";

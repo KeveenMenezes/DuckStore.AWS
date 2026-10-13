@@ -23,11 +23,6 @@ Amends:
 | [ADR-0026](./0026-pricing-bounded-context-price-and-campaign-ownership.md) | §3's second sentence: the `checkoutBasket` **mutation** now depends synchronously on a Pricing **read**, orchestrated by AppSync (§4 here) | Basket's Lambdas never call Pricing; Basket has zero discount responsibility |
 | [ADR-0025](./0025-payment-bounded-context-simulated-gateway-cdc.md) | §1/§3: Payment also publishes `PaymentDeclinedEvent`, for `InsufficientPoints` only, and `PaymentRequestedRule` also matches MODIFY `AwaitingPoints → Pending` (§6 here) | PaymentGateway decides every card authorization/decline |
 
-Specs (committed with the implementing PR): [SPEC.md](../../SPEC.md),
-[SPEC-points-ledger.md](../../SPEC-points-ledger.md),
-[SPEC-review-points.md](../../SPEC-review-points.md),
-[SPEC-cart-points-redemption.md](../../SPEC-cart-points-redemption.md).
-
 ---
 
 ## Context
@@ -252,7 +247,7 @@ write only to Challenges' own tables.
 | `challenges-basket-checkout-consumer` | `BasketCheckoutEvent` | Basket |
 | `challenges-payment-authorized-consumer` | `PaymentAuthorizedEvent` | PaymentGateway |
 | `challenges-order-cancelled-consumer` | `OrderCancelledEvent` | Ordering |
-| `challenges-review-created-consumer` | `ReviewCreatedEvent` | Review (credit rules in SPEC-review-points) |
+| `challenges-review-created-consumer` | `ReviewCreatedEvent` | Review (15 points, once per product — §1) |
 
 New publishers and their sources:
 

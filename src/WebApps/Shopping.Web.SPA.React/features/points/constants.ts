@@ -1,5 +1,5 @@
 /**
- * Mirrors `PointsPolicy.ReviewCredit` in Challenges (SPEC-review-points). Display only: the
+ * Mirrors `PointsPolicy.ReviewCredit` in Challenges. Display only: the
  * server decides and applies the credit; the SPA just tells the reviewer it is coming.
  */
 export const REVIEW_CREDIT_POINTS = 15

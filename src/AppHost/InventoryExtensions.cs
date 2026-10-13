@@ -5,7 +5,7 @@ namespace AppHost.Inventory;
 
 public static class InventoryExtensions
 {
-    // Module 1 of SPEC-inventory.md has no Lambda: the warehouse fields are direct resolvers
+    // Inventory has no Lambda: the warehouse fields are direct resolvers
     // (ADR-0052 §4), served locally by the SPA's local.ts. Only the table and its seed run here.
     public static IResourceBuilder<ProjectResource> AddInventoryServices(
         this IDistributedApplicationBuilder builder,

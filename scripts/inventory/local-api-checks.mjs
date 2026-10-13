@@ -1,4 +1,4 @@
-// SPEC-inventory-warehouses criteria 2-7 and 9 against the local BFF (local.ts + DynamoDB Local).
+// Warehouse operations (ADR-0052) checked against the local BFF (local.ts + DynamoDB Local).
 // Usage: node scripts/inventory/local-api-checks.mjs [http://localhost:3000/api/graphql]
 const URL = process.argv[2] ?? 'http://localhost:3000/api/graphql'
 const W = 'id code name priority active address { street number complement district city state zipCode } createdAt updatedAt'
@@ -19,7 +19,7 @@ const code = `GAMMA${suffix}`
 const address = { street: 'Rua do Sol', number: '10', district: 'Boa Vista', city: 'Recife', state: 'pe', zipCode: '50050-000' }
 const create = (input) => gql(`mutation($input: CreateWarehouseInput!) { createWarehouse(input: $input) { ${W} } }`, { input })
 
-// 2. seeded ALPHA/BETA listed, active, sorted
+// seeded ALPHA/BETA listed, active, sorted
 const list0 = await gql(`{ warehouses { ${W} } }`)
 const codes0 = list0.data?.warehouses?.map((w) => w.code) ?? []
 check('seeded ALPHA and BETA listed first, active', list0, codes0[0] === 'ALPHA' && codes0[1] === 'BETA' && list0.data.warehouses.slice(0, 2).every((w) => w.active))
@@ -28,11 +28,11 @@ const created = await create({ code: ` ${code.toLowerCase()} `, name: 'Polo Gamm
 const g = created.data?.createWarehouse
 check('create normalizes code, UF, CEP and starts active', created, g?.code === code && g.address.state === 'PE' && g.address.zipCode === '50050000' && g.active === true && g.address.complement === null)
 
-// 3. taken code
+// taken code
 const taken = await create({ code: code.toLowerCase(), name: 'Outro', address, priority: 4 })
 check('same code (lowercase) -> WarehouseCodeTaken, field code', taken, err(taken).errorType === 'WarehouseCodeTaken' && err(taken).errorInfo?.field === 'code')
 
-// 4. invalid input
+// invalid input
 for (const [label, input, field] of [
   ['CEP with 7 digits', { code: `X${suffix}`, name: 'x', address: { ...address, zipCode: '5005000' }, priority: 1 }, 'address.zipCode'],
   ['unknown UF', { code: `X${suffix}`, name: 'x', address: { ...address, state: 'XX' }, priority: 1 }, 'address.state'],
@@ -46,7 +46,7 @@ for (const [label, input, field] of [
 const after = await gql(`{ warehouses { code } }`)
 check('nothing written by the rejected creates', after, !after.data.warehouses.some((w) => w.code === `X${suffix}`))
 
-// 5. update name/address/priority; code untouched
+// update name/address/priority; code untouched
 const upd = await gql(`mutation($input: UpdateWarehouseInput!) { updateWarehouse(input: $input) { ${W} } }`,
   { input: { id: g.id, name: 'Polo Gamma Norte', address: { ...address, complement: 'Galpão 2' }, priority: 1 } })
 const u = upd.data?.updateWarehouse
@@ -55,7 +55,7 @@ const sorted = await gql(`{ warehouses { code priority } }`)
 const order = sorted.data.warehouses.filter((w) => w.priority === 1).map((w) => w.code)
 check('sorted by priority then code', sorted, JSON.stringify(order) === JSON.stringify([...order].sort()))
 
-// 6. deactivate / reactivate
+// deactivate / reactivate
 const off = await gql(`mutation { setWarehouseActive(id: "${g.id}", active: false) { active } }`)
 check('deactivate', off, off.data?.setWarehouseActive?.active === false)
 const listed = await gql(`{ warehouse(id: "${g.id}") { active } }`)
@@ -63,7 +63,7 @@ check('still readable, inactive', listed, listed.data?.warehouse?.active === fal
 const on = await gql(`mutation { setWarehouseActive(id: "${g.id}", active: true) { active } }`)
 check('reactivate', on, on.data?.setWarehouseActive?.active === true)
 
-// 7. NotFound, guards are not warehouses
+// NotFound, guards are not warehouses
 for (const id of ['00000000-0000-0000-0000-000000000000', 'CODE#ALPHA']) {
   const r = await gql(`mutation { setWarehouseActive(id: "${id}", active: false) { id } }`)
   check(`setWarehouseActive ${id} -> NotFound`, r, err(r).errorType === 'NotFound')

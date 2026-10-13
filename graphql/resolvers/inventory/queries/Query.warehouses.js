@@ -3,7 +3,7 @@ import { util } from '@aws-appsync/utils'
 // StockKeeper or Admin (ADR-0052 §3). Direct Scan resolver (ADR-0009 — same shape as `orders`): the
 // table also holds CODE#<code> guards, so the Type filter is mandatory, never optional. Tens of
 // warehouses, so one page is the whole table; sorted here by priority, then code — the order a sale
-// is allocated in (SPEC-inventory.md, module 4).
+// is allocated in (ADR-0052 §2).
 export function request(ctx) {
   const groups = ctx.identity?.groups ?? []
   if (!groups.includes('StockKeeper') && !groups.includes('Admin')) util.unauthorized()

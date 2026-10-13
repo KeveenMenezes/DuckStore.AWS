@@ -19,9 +19,8 @@ env:
 jobs:
   deploy:
     name: Deploy CDK
-    # Tables only for now (ADR-0052): no Lambda artifact to publish, so no .NET/arm64 toolchain.
-    # When Inventory.Function arrives (SPEC-inventory.md, module 2), copy the .NET setup and the
-    # arm64 runner from deploy-challenges-cdk.yml (ADR-0042 §8).
+    # Tables only (ADR-0052): no Lambda artifact to publish, so no .NET/arm64 toolchain. A stack
+    # with Lambdas needs the .NET setup and the arm64 runner of deploy-challenges-cdk.yml (ADR-0042 §8).
     runs-on: ubuntu-latest
     environment: development
 

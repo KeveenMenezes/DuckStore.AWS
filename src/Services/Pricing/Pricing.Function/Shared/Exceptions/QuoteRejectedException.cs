@@ -10,7 +10,7 @@ public abstract class QuoteRejectedException(string errorType, string message) :
 }
 
 // More points than the 20% cap allows. Rejected, never trimmed: silently using fewer points than
-// the customer asked for would charge a total they didn't see (SPEC-cart-points-redemption §1).
+// the customer asked for would charge a total they didn't see.
 public sealed class PointsAboveCapException(int pointsToUse, int maxRedeemablePoints)
     : QuoteRejectedException(
         "PointsAboveCap",
@@ -21,7 +21,7 @@ public sealed class PointsAboveCapException(int pointsToUse, int maxRedeemablePo
 
 // The total the customer confirmed is not the one Pricing computes now — a price or campaign
 // changed, or the client was tampered with. The checkout is refused rather than charging a total
-// the customer didn't see (SPEC-cart-points-redemption §2).
+// the customer didn't see.
 public sealed class PriceChangedException(decimal serverTotal)
     : QuoteRejectedException(
         "PriceChanged",

@@ -416,7 +416,7 @@ function mapBasketQuote(body: BasketQuote) {
   }
 }
 
-// Same value as PointsPolicy.ReviewCredit in Challenges.Function (SPEC-review-points).
+// Same value as PointsPolicy.ReviewCredit in Challenges.Function.
 const REVIEW_CREDIT_POINTS = 15
 
 // Local stand-in for challenges-review-created-consumer (same reason as createEligibleReviews):
@@ -1826,7 +1826,7 @@ const resolvers = {
       // On AWS the transition to Published emits ReviewCreatedEvent and
       // challenges-review-created-consumer credits the points; locally EventBridge is best-effort,
       // so the credit is simulated here, with the same transaction and the same once-per-product
-      // REVIEW#<productId> lock (SPEC-review-points). Legacy rows without Status already count as
+      // REVIEW#<productId> lock (ADR-0048). Legacy rows without Status already count as
       // Published, so they never credit.
       const wasPublished = previous.Status === undefined || previous.Status === 'Published'
       if (!wasPublished) await creditReviewPoints(context.owner.ownerId, input.productId)

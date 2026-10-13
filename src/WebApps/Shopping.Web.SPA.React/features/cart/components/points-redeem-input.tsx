@@ -19,7 +19,7 @@ interface PointsRedeemInputProps {
 }
 
 /**
- * "Use points" field for a signed-in customer (SPEC-cart-points-redemption §7). It only collects
+ * "Use points" field for a signed-in customer (ADR-0048 §3). It only collects
  * a number within [0, max]; the conversion shown here is a preview — the discount applied is the
  * quote's, and the server rejects anything above the cap rather than trimming it.
  */

@@ -33,7 +33,7 @@ public class RewardOptionsTests
 
         var options = RewardOptions.FromConfiguration(configuration);
 
-        // 100 points = R$1, at most 20% of the order (SPEC.md).
+        // 100 points = R$1, at most 20% of the order (ADR-0048 §3).
         Assert.Equal(100, options.PointsPerUnit);
         Assert.Equal(1m, options.CurrencyPerUnit);
         Assert.Equal(20m, options.MaxDiscountPercent);

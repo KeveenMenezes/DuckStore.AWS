@@ -5,8 +5,7 @@
 public interface IReviewEligibilityRepository
 {
     // Creates the Eligible row for (productId, customerId) only if no row exists yet. Returns false
-    // when a row already exists — Eligible, Published or Deleted — which is left untouched
-    // (SPEC-review-eligibility, criterion 8).
+    // when a row already exists — Eligible, Published or Deleted — which is left untouched.
     Task<bool> TryCreateEligibleAsync(
         Guid productId, Guid customerId, DateTime createdAtUtc, CancellationToken cancellationToken = default);
 }

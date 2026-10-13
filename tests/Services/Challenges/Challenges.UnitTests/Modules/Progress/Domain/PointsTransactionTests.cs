@@ -53,7 +53,7 @@ public class PointsTransactionTests
 
         var credit = PointsTransaction.ReviewCredit(Owner, productId, At.ToLocalTime());
 
-        // REVIEW#<productId> is the "once per product" lock (SPEC-review-points): it holds even
+        // REVIEW#<productId> is the "once per product" lock (ADR-0048): it holds even
         // after the review is deleted, expires by TTL and is published again.
         Assert.Equal($"REVIEW#{productId}", credit.Id);
         Assert.Equal(Owner, credit.OwnerId);
@@ -184,10 +184,9 @@ public class PointsTransactionTests
     }
 
     [Fact]
-    public void Statuses_ShouldDeclareTheWholeRedemptionLifecycle_EvenThoughOnlyCreditsExistYet()
+    public void Statuses_ShouldDeclareTheWholeRedemptionLifecycle()
     {
-        // ADR-0048 §5: the redemption states ship in the enum now so the persisted/GraphQL
-        // vocabulary never has to change when cart-points-redemption lands.
+        // ADR-0048 §5: the whole redemption state machine is in the persisted/GraphQL vocabulary.
         var names = Enum.GetNames<PointsTransactionStatus>();
 
         Assert.Equal(

@@ -2,8 +2,7 @@ import { util } from '@aws-appsync/utils'
 
 // StockKeeper or Admin (ADR-0052 §3). Direct UpdateItem resolver (ADR-0009). Warehouses are
 // deactivated instead of deleted, so balances and the stock history keep pointing at a real item
-// (ADR-0052 §2). What "inactive" stops (receipts, the storefront total, sales) arrives with
-// SPEC-inventory.md modules 2-4; here it is only the flag.
+// (ADR-0052 §2).
 export function request(ctx) {
   const groups = ctx.identity?.groups ?? []
   if (!groups.includes('StockKeeper') && !groups.includes('Admin')) util.unauthorized()

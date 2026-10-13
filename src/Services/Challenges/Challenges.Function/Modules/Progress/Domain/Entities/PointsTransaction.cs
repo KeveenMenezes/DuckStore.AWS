@@ -71,7 +71,7 @@ public class PointsTransaction : Entity<string>
     };
 
     // Every redemption transition is from one exact status; anything else is a no-op, so a
-    // duplicated or out-of-order event never debits or refunds twice (SPEC-cart-points-redemption §4).
+    // duplicated or out-of-order event never debits or refunds twice (ADR-0048 §5).
     private bool Transition(PointsTransactionStatus from, PointsTransactionStatus to, DateTime at)
     {
         if (Type != PointsTransactionType.Redemption || Status != from)
@@ -153,7 +153,7 @@ public class PointsTransaction : Entity<string>
 
     // Keyed by product, not by review: the review row can go Published -> Deleted -> Published,
     // or expire by TTL and be bought and written again, and none of that may credit twice
-    // (SPEC-review-points). The amount is the fixed PointsPolicy.ReviewCredit.
+    // (ADR-0048). The amount is the fixed PointsPolicy.ReviewCredit.
     public static PointsTransaction ReviewCredit(OwnerId ownerId, Guid productId, DateTime at)
     {
         if (productId == Guid.Empty)

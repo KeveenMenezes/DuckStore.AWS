@@ -1,6 +1,6 @@
 # Inventory
 
-Owns where stock is: the warehouses ("polos") today, the stock of each product in each warehouse next.
+Owns where stock is kept: the warehouses ("polos").
 It is not a field on the product: the person who receives the goods (the **StockKeeper**) owns the
 numbers, not the Seller who lists the product.
 
@@ -20,14 +20,12 @@ item in one `TransactWriteItems`, both `attribute_not_exists`, so a taken code c
 write (`WarehouseCodeTaken`). Codes are uppercase and immutable. Warehouses are deactivated, never
 deleted, so balances and history can always point at them and guards are never removed.
 
-**Priority is the allocation order.** Lower serves a sale first, ties broken by code. Today it only
-orders the list. A sale uses it from module 4 of [SPEC-inventory.md](../../../SPEC-inventory.md), and
-it is the extension point for a future "nearest warehouse" policy.
+**Priority is the allocation order.** Lower serves a sale first, ties broken by code, and it is the
+extension point for a "nearest warehouse" policy. Today it orders the list.
 
-**What it does not do yet** (each is a later module of [SPEC-inventory.md](../../../SPEC-inventory.md)):
-no stock balances or movements (module 2), the storefront still reads Catalog's `Product.stock`
-(module 3), and no sale reserves stock (module 4). There is no `Inventory.Function` project: every
-field is a direct resolver, so the first Lambda arrives with module 2.
+**What it does not do.** It holds no stock balances or movements, the storefront still reads Catalog's
+`Product.stock`, and no sale reserves stock — the direction for each is in ADR-0052 §6. There is no
+`Inventory.Function` project: every field is a direct resolver.
 
 ## Data
 
@@ -58,11 +56,11 @@ StockKeeper and Admin.
 
 ## Integration events
 
-None yet. Module 3 publishes the storefront's available total by CDC.
+None.
 
 ## Failure handling
 
-No Lambda, stream or consumer, so there is no DLQ or alarm yet. A resolver failure is returned to the
+No Lambda, stream or consumer, so there is no DLQ or alarm. A resolver failure is returned to the
 caller as a GraphQL error.
 
 ## Local development

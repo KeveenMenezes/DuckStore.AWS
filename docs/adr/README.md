@@ -58,7 +58,7 @@ decision without opening every file.
 | [0048](./0048-points-transactions-ledger-and-in-cart-redemption.md) | Points Transactions Ledger and In-Cart Points Redemption | Accepted (amendment proposed by [0050](./0050-checkout-step-functions-express-saga.md)) |
 | [0049](./0049-review-status-eligibility-sparse-gsi1-ttl-and-review-deleted.md) | Review Status — Purchase Eligibility, Sparse GSI1, TTL on Delete and `ReviewDeleted` | Accepted |
 | [0050](./0050-checkout-step-functions-express-saga.md) | Checkout as a Step Functions Express Saga | Proposed |
-| 0051 | *Reserved* — order orchestration ([SPEC-order-saga.md](../../SPEC-order-saga.md), [SPEC-checkout.md](../../SPEC-checkout.md) §5) | — |
+| 0051 | *Reserved* — order orchestration | — |
 | [0052](./0052-inventory-bounded-context-warehouses.md) | Inventory Bounded Context — Stock per Warehouse, Owned by the StockKeeper | Accepted |
 
 ## Superseded chains
