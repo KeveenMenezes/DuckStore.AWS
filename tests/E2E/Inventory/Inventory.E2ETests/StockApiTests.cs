@@ -15,6 +15,9 @@ public sealed class StockApiTests(StockKeeperSession session) : IClassFixture<St
         return ((string)a["id"]!, (string)b["id"]!);
     }
 
+    private async Task<string> OneWarehouseAsync() =>
+        (string)(await _warehouses.CreateValidAsync(WarehouseApi.NewCode(), priority: 900))["id"]!;
+
     private Task DeactivateAsync(params string[] ids) => Task.WhenAll(ids.Select(id => _warehouses.SetActiveAsync(id, false)));
 
     [ManagementE2EFact]
@@ -122,7 +125,7 @@ public sealed class StockApiTests(StockKeeperSession session) : IClassFixture<St
     public async Task ARetryWithTheSameKey_IsRecordedOnce_EvenWhenConcurrent()
     {
         var (productId, _) = await _stock.AnyProductAsync();
-        var (a, _) = await TwoWarehousesAsync();
+        var a = await OneWarehouseAsync();
         try
         {
             var key = Guid.NewGuid().ToString();
@@ -156,7 +159,7 @@ public sealed class StockApiTests(StockKeeperSession session) : IClassFixture<St
     public async Task TheWarehouseViews_ListItsBalances_AndHistory_WithTheProductName()
     {
         var (productId, productName) = await _stock.AnyProductAsync();
-        var (a, _) = await TwoWarehousesAsync();
+        var a = await OneWarehouseAsync();
         try
         {
             await _stock.ReceiveAsync(productId, a, 7);
