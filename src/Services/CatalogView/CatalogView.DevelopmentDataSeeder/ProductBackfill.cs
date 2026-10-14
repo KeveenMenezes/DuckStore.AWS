@@ -15,7 +15,9 @@ namespace CatalogView.DevelopmentDataSeeder;
 // `product-discounts` table for any active campaign discount, then bulk-writes complete
 // SearchDocuments into `catalogview-products` before any steady-state CDC traffic flows. This is
 // an explicit, scoped exception to "no cross-context table reads" — a migration tool, not a
-// runtime coupling. Never runs again after the initial rollout (§8 of the plan).
+// runtime coupling. Never runs again after the initial rollout. It writes no
+// Stock: Inventory owns it (ADR-0052 §8), so a re-run on a populated table resets every product to 0
+// until its next stock movement.
 public sealed class ProductBackfill(IAmazonDynamoDB dynamoDb, IProductSearchIndex index, IConfiguration configuration)
 {
     private const string ProductsTableName = "products";
@@ -271,7 +273,6 @@ public sealed class ProductBackfill(IAmazonDynamoDB dynamoDb, IProductSearchInde
                         : 0))]
                 : [],
             OriginalPrice = originalPrice,
-            Stock = int.Parse(item["Stock"].N, CultureInfo.InvariantCulture),
             CategoryIds = item.TryGetValue("CategoryIds", out var categoryIds) && categoryIds.SS is not null
                 ? [.. categoryIds.SS]
                 : [],

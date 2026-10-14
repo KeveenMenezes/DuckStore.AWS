@@ -40,7 +40,8 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             Key = new Dictionary<string, AttributeValue> { ["Id"] = new(document.Id) },
             UpdateExpression =
                 $"SET {NameAlias} = :name, {DescriptionAlias} = :description, Images = :images, " +
-                "Stock = :stock, CategoryIds = :categoryIds, Categories = :categories, " +
+                // Stock belongs to Inventory (ADR-0052 §8): a product edit only defaults it on insert.
+                "Stock = if_not_exists(Stock, :zero), CategoryIds = :categoryIds, Categories = :categories, " +
                 "GSI1PK = :gsi1pk, GSI1SK = if_not_exists(GSI1SK, :zero)," +
                 "RatingDistribution = if_not_exists(RatingDistribution, :ratingDistribution)",
             ExpressionAttributeNames = new Dictionary<string, string>
@@ -53,7 +54,6 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
                 [":name"] = new(document.Name),
                 [":description"] = new(document.Description),
                 [":images"] = ToImageList(document.Images),
-                [":stock"] = new AttributeValue { N = document.Stock.ToString(CultureInfo.InvariantCulture) },
                 [":categoryIds"] = ToStringList(document.CategoryIds),
                 [":categories"] = ToCategoryList(document.Categories),
                 [":gsi1pk"] = new(Gsi1PartitionValue),
@@ -75,6 +75,31 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
         };
 
         return dynamoDb.UpdateItemAsync(request, cancellationToken);
+    }
+
+    public async Task<bool> ApplyStockAsync(
+        string productId, int available, long version, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await dynamoDb.UpdateItemAsync(new UpdateItemRequest
+            {
+                TableName = TableName,
+                Key = new Dictionary<string, AttributeValue> { ["Id"] = new(productId) },
+                UpdateExpression = "SET Stock = :available, StockVersion = :version",
+                ConditionExpression = "attribute_not_exists(StockVersion) OR StockVersion < :version",
+                ExpressionAttributeValues = new Dictionary<string, AttributeValue>
+                {
+                    [":available"] = new AttributeValue { N = available.ToString(CultureInfo.InvariantCulture) },
+                    [":version"] = new AttributeValue { N = version.ToString(CultureInfo.InvariantCulture) },
+                },
+            }, cancellationToken);
+            return true;
+        }
+        catch (ConditionalCheckFailedException)
+        {
+            return false;
+        }
     }
 
     public Task DeleteAsync(string productId, CancellationToken cancellationToken = default) =>
@@ -444,7 +469,8 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             ]
         };
 
-    // Full-document write, used only by BulkIndexAsync (the one-time seeder backfill).
+    // Full-document write, used only by BulkIndexAsync (the one-time seeder backfill). No Stock: it
+    // comes from Inventory only (ADR-0052 §8), and a missing one reads as 0.
     private static Dictionary<string, AttributeValue> ToItem(SearchDocument document)
     {
         var item = new Dictionary<string, AttributeValue>
@@ -454,7 +480,6 @@ public sealed class DynamoProductIndex(IAmazonDynamoDB dynamoDb) : IProductSearc
             ["Description"] = new(document.Description),
             ["Images"] = ToImageList(document.Images),
             ["OriginalPrice"] = new AttributeValue { N = document.OriginalPrice.ToString(CultureInfo.InvariantCulture) },
-            ["Stock"] = new AttributeValue { N = document.Stock.ToString(CultureInfo.InvariantCulture) },
             ["CategoryIds"] = ToStringList(document.CategoryIds),
             ["Categories"] = ToCategoryList(document.Categories),
             ["AverageRating"] = new AttributeValue { N = document.AverageRating.ToString(CultureInfo.InvariantCulture) },

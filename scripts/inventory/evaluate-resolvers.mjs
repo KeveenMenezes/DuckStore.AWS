@@ -141,8 +141,9 @@ const cancelled = (reasons) => ({ identity: admin, arguments: {}, stash: { item:
   const noComplement = evaluate(UPDATE, 'request', { identity: keeper, arguments: { input: { id: 'w1', ...validFields } } })
   check('updateWarehouse: empty complement is removed', noComplement, noComplement.result.update.expression.endsWith('REMOVE Complement'))
   const a = evaluate(ACTIVE, 'request', { identity: keeper, arguments: { id: 'w1', active: false } })
-  check('setWarehouseActive: sets Active, UpdatedAt, UpdatedBy with the same condition', a,
-    a.result.update.expression === 'SET Active = :active, UpdatedAt = :now, UpdatedBy = :by'
+  check('setWarehouseActive: sets Active, UpdatedAt, UpdatedBy and bumps Version, with the same condition', a,
+    a.result.update.expression === 'SET Active = :active, UpdatedAt = :now, UpdatedBy = :by ADD Version :one'
+    && a.result.update.expressionValues[':one']?.N === 1
     && a.result.condition.expression === 'attribute_exists(WarehouseId) AND #type = :warehouse')
   for (const [field, code] of [['updateWarehouse', UPDATE], ['setWarehouseActive', ACTIVE]]) {
     const nf = evaluate(code, 'response', { identity: admin, arguments: {}, error: { type: 'DynamoDB:ConditionalCheckFailedException', message: 'cond' } })
@@ -259,6 +260,31 @@ for (const [field, code, args] of stockGated) {
   const named = evaluate(NAMES, 'response', { identity: sub, arguments: {}, prev: { result: page }, result: { data: { products: [{ Id: 'p1', Name: 'Pato' }, null] } } })
   check('productNames: names mapped, a missing product is null, nextToken kept', named,
     named.result?.items?.[0]?.productName === 'Pato' && named.result.items[1].productName === null && named.result.items[2].productName === 'Pato' && named.result.nextToken === 'n')
+}
+
+// 3. The storefront's stock: read from CatalogView, never written by the product mutations (ADR-0052 §8)
+{
+  const P = (name) => join(root, 'graphql/resolvers/products/queries', name)
+  const shopper = { sub: 'c', groups: ['Customer'] }
+  const product = (item) => evaluate(P('Query.product.js'), 'response', { identity: shopper, arguments: { id: 'p1' }, result: item })
+  const stockOnly = product({ Id: 'p1', Stock: 5, StockVersion: 3 })
+  check('product: a stock-only item is not a product yet', stockOnly, !stockOnly.error && stockOnly.result === null)
+  const noStock = product({ Id: 'p1', Name: 'Pato', Description: 'd' })
+  check('product: no total yet reads as stock 0', noStock, noStock.result?.stock === 0)
+  const listed = evaluate(P('Query.products.js'), 'response', { identity: shopper, arguments: {}, result: { items: [{ Id: 'p1', Name: 'Pato', Description: 'd' }] } })
+  check('products: no total yet reads as stock 0', listed, listed.result?.items?.[0]?.stock === 0)
+
+  // The product writes carry no stock: Inventory owns it.
+  const W = (name) => join(root, 'graphql/resolvers/products/mutations', name)
+  const seller = { sub: 's', groups: ['Seller'] }
+  const input = { name: 'Pato', description: 'd', images: [{ imageId: '01HZXW5N8T2J3K4M5P6Q7R8S9A', isMain: true, order: 0 }], categoryIds: ['c1'] }
+  const created = evaluate(W('Mutation.createProduct.js'), 'request', { identity: seller, arguments: { input } })
+  check('createProduct: PutItem without Stock', created, created.result?.operation === 'PutItem' && !('Stock' in created.result.attributeValues))
+  const updated = evaluate(W('Mutation.updateProduct.js'), 'request', { identity: seller, arguments: { input: { id: 'p1', ...input } } })
+  check('updateProduct: no Stock in the update', updated, !updated.result?.update?.expression.includes('Stock'))
+  const saga = evaluate(W('Mutation.createProductWithPrice.js'), 'request', { identity: seller, arguments: { input: { ...input, price: 10, cost: 4 } } })
+  const sagaInput = JSON.parse(JSON.parse(saga.result?.params?.body ?? '{}').input ?? '{}')
+  check('createProductWithPrice: saga input without stock', sagaInput, !('stock' in sagaInput) && sagaInput.price === '10')
 }
 
 const failed = results.filter((r) => !r.ok)

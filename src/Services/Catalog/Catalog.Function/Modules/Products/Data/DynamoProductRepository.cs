@@ -45,7 +45,6 @@ public class DynamoProductRepository(IAmazonDynamoDB dynamoDb) : IProductReposit
                 })],
                 IsLSet = true
             },
-            ["Stock"] = new AttributeValue { N = product.Stock.ToString(CultureInfo.InvariantCulture) },
             ["CategoryIds"] = new AttributeValue
             {
                 SS = [.. product.CategoryIds.Select(c => c.Value.ToString())]

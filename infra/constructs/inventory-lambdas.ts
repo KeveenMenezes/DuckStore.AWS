@@ -1,7 +1,10 @@
 import * as cdk from 'aws-cdk-lib';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
+import * as events from 'aws-cdk-lib/aws-events';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
+import * as lambdaEventSources from 'aws-cdk-lib/aws-lambda-event-sources';
 import { Construct } from 'constructs';
+import { ContextDlq } from './context-dlq';
 import {
   DOTNET_ARCH,
   DOTNET_MEMORY_MB,
@@ -15,13 +18,15 @@ export interface InventoryLambdasProps {
   readonly movementsTable: dynamodb.Table;
 }
 
-// The three stock movements (ADR-0052 §7). Each is invoked only by its AppSync mutation — no Function
-// URL, no event source, so no DLQ: a failure is returned to the caller. Each reads the warehouse and
-// the balance(s), then writes balance + ledger row + warehouse check in one TransactWriteItems.
+// The three stock movements (ADR-0052 §7) are invoked only by their AppSync mutations — no Function
+// URL, no event source, so no DLQ: a failure is returned to the caller. The two storefront-total
+// publishers (§8) are CDC: DynamoDB Streams in, EventBridge out, with the context DLQ.
 export class InventoryLambdas extends Construct {
   public readonly recordStockReceipt: lambda.Function;
   public readonly recordStockAdjustment: lambda.Function;
   public readonly transferStock: lambda.Function;
+  public readonly stockStreamPublisher: lambda.Function;
+  public readonly warehousesStreamPublisher: lambda.Function;
 
   constructor(scope: Construct, id: string, props: InventoryLambdasProps) {
     super(scope, id);
@@ -73,5 +78,55 @@ export class InventoryLambdas extends Construct {
     this.transferStock = movementFunction(
       'TransferStock', 'inventory-transfer-stock', 'TransferStock',
       'Moves stock between two warehouses: both balances and both ledger rows in one transaction');
+
+    // EventBridge bus — created by FoundationStack; imported here by name (ADR-0004).
+    const eventBus = events.EventBus.fromEventBusName(this, 'EventBus', 'duckstore-event-bus');
+    // Shared dead-letter queue for Inventory's async processing; a non-empty queue trips the
+    // inventory-dlq-not-empty alarm → duckstore-alerts.
+    const dlq = new ContextDlq(this, 'Dlq', { contextName: 'inventory' });
+
+    const streamPublisher = (
+      constructId: string, functionName: string, handler: string, description: string, table: dynamodb.Table,
+    ) => {
+      const fn = new lambda.Function(this, constructId, {
+        functionName,
+        tracing: lambda.Tracing.ACTIVE,
+        architecture: DOTNET_ARCH,
+        runtime: DOTNET_RUNTIME,
+        handler: 'bootstrap',
+        code: inventoryCode,
+        // A warehouse deactivation recomputes and publishes every product it holds.
+        timeout: cdk.Duration.seconds(60),
+        memorySize: DOTNET_MEMORY_MB,
+        description,
+        environment: { ANNOTATIONS_HANDLER: handler, EventBridge__BusName: eventBus.eventBusName },
+      });
+      fn.addEventSource(new lambdaEventSources.DynamoEventSource(table, {
+        startingPosition: lambda.StartingPosition.TRIM_HORIZON,
+        batchSize: 10,
+        bisectBatchOnError: true,
+        retryAttempts: 3,
+        // Records exhausted after bisect+retries land here (shard/sequence metadata, not the
+        // payload — redrive by re-reading the stream).
+        onFailure: new lambdaEventSources.SqsDlq(dlq.queue),
+      }));
+      // Reads only: the total is recomputed from the balances and their warehouses.
+      stockTable.grantReadData(fn);
+      warehousesTable.grantReadData(fn);
+      eventBus.grantPutEventsTo(fn);
+      return fn;
+    };
+
+    // 4. inventory-stock-stream-publisher  (inventory-stock stream → ProductStockChangedEvent)
+    this.stockStreamPublisher = streamPublisher(
+      'StockStreamPublisher', 'inventory-stock-stream-publisher', 'InventoryStockStreamPublisher',
+      'CDC: republishes a product\'s storefront total (active warehouses) on every balance change',
+      stockTable);
+
+    // 5. inventory-warehouses-stream-publisher  (inventory-warehouses stream → one event per product)
+    this.warehousesStreamPublisher = streamPublisher(
+      'WarehousesStreamPublisher', 'inventory-warehouses-stream-publisher', 'InventoryWarehousesStreamPublisher',
+      'CDC: republishes the storefront total of every product in a warehouse whose Active flag changed',
+      warehousesTable);
   }
 }

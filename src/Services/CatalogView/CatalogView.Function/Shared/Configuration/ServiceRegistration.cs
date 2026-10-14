@@ -34,6 +34,8 @@ public static class ServiceRegistration
         services.AddScoped<IPricingSyncStrategy, ProductDiscountChangedStrategy>();
         services.AddScoped<PricingSyncDispatcher>();
 
+        services.AddScoped<InventorySyncHandler>();
+
         // Stream publisher (ADR-0035) — emits CatalogViewProductSyncedEvent/
         // CatalogViewProductDeletedEvent off catalogview-products writes.
         services.AddScoped<IStreamRule<CatalogViewProductStreamImage>, CatalogViewProductSyncedRule>();

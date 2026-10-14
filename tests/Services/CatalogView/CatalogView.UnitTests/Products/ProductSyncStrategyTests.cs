@@ -29,7 +29,6 @@ public class ProductSyncStrategyTests
             Name = "Debug Duck",
             Description = "A duck",
             Images = [new ProductImageData("01HZXW5N8T2J3K4M5P6Q7R8S9A", true, 0)],
-            Stock = 10,
             CategoryIds = ["cat-1"],
             CategoryNames = ["Languages"]
         };
@@ -45,7 +44,8 @@ public class ProductSyncStrategyTests
                     d.Images.Count == 1 &&
                     d.Images[0].ImageId == evt.Images[0].ImageId &&
                     d.Images[0].IsMain &&
-                    d.Stock == evt.Stock &&
+                    // Stock is Inventory's (ADR-0052 §8): the event carries none, and the index keeps its own.
+                    d.Stock == 0 &&
                     d.CategoryIds.SequenceEqual(evt.CategoryIds) &&
                     d.Categories.Count == 1 &&
                     d.Categories[0].Id == "cat-1" &&

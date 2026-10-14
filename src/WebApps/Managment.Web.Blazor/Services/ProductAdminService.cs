@@ -228,7 +228,6 @@ public sealed class ProductAdminService(GraphQLClient gql)
             name = model.Name,
             description = model.Description,
             images = ToImagesInput(model),
-            stock = model.Stock,
             categoryIds = model.CategoryIds,
             price = model.Price,
             cost = model.Cost,
@@ -248,7 +247,6 @@ public sealed class ProductAdminService(GraphQLClient gql)
             name = model.Name,
             description = model.Description,
             images = ToImagesInput(model),
-            stock = model.Stock,
             categoryIds = model.CategoryIds,
         };
         var data = await gql.SendAsync<UpdateProductData>(UpdateProductMutation, new { input });

@@ -44,7 +44,8 @@ public sealed record UpdateProductResult(string Id);
 
 public sealed record DeleteProductResult(bool IsSuccess);
 
-// Form model — exactly the writable fields of CreateProductInput/UpdateProductInput.
+// Form model — exactly the writable fields of CreateProductInput/UpdateProductInput. No stock:
+// Inventory owns it, and Stock on Product is its storefront total (ADR-0052 §8).
 public sealed class ProductFormModel
 {
     [Required, StringLength(200)]
@@ -57,9 +58,6 @@ public sealed class ProductFormModel
     // admin. Invariants (≤12, exactly one main) are kept by the form and re-enforced by
     // the resolvers.
     public List<ProductImageFormModel> Images { get; set; } = [];
-
-    [Range(0, int.MaxValue)]
-    public int Stock { get; set; }
 
     [Range(0.01, double.MaxValue, ErrorMessage = "Price must be greater than zero.")]
     public double Price { get; set; }

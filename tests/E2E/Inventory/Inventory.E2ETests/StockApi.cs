@@ -75,6 +75,24 @@ public sealed class StockApi(ManagementSession session)
         return sum;
     }
 
+    // What the storefront shows for the product: CatalogView's copy of Inventory's total (ADR-0052 §8).
+    public async Task<int> ShownStockAsync(string productId)
+    {
+        var response = await session.GraphQLAsync("query($id: ID!) { product(id: $id) { stock } }", new { id = productId });
+        return (int?)response.Data?["product"]?["stock"] ?? throw new InvalidOperationException(response.ToString());
+    }
+
+    // The total travels through a DynamoDB stream and EventBridge: poll until it shows, or give up and
+    // return what the storefront last showed.
+    public async Task<int> WaitForShownStockAsync(string productId, int expected, int timeoutSeconds = 30)
+    {
+        var deadline = DateTime.UtcNow.AddSeconds(timeoutSeconds);
+        int shown;
+        while ((shown = await ShownStockAsync(productId)) != expected && DateTime.UtcNow < deadline)
+            await Task.Delay(TimeSpan.FromSeconds(1));
+        return shown;
+    }
+
     public static JsonArray MovementsOf(GraphQLResponse response, string field) =>
         response.Data?[field]?["movements"]?.AsArray() ?? throw new InvalidOperationException(response.ToString());
 }

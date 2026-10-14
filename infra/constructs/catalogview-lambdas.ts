@@ -29,6 +29,7 @@ export class CatalogViewLambdas extends Construct {
   public readonly catalogSyncConsumer: lambda.Function;
   public readonly reviewSyncConsumer: lambda.Function;
   public readonly pricingSyncConsumer: lambda.Function;
+  public readonly inventorySyncConsumer: lambda.Function;
   public readonly productStreamPublisher: lambda.Function;
 
   constructor(scope: Construct, id: string, props: CatalogViewLambdasProps) {
@@ -221,6 +222,38 @@ export class CatalogViewLambdas extends Construct {
       'catalogview-product-discount-changed-rule',
       'ProductDiscountChangedEvent',
       'Routes ProductDiscountChangedEvent (source=duckstore) to catalogview-pricing-sync-consumer',
+    );
+
+    // 3b. catalogview-inventory-sync-consumer
+    //    Trigger: ProductStockChangedEvent — Inventory's storefront total (ADR-0052 §8). Inventory has
+    //    a single occurrence, so this is a plain 1:1 consumer (ADR-0040). The write is conditional on
+    //    the event's Version being greater than the stored one: a late or repeated event is dropped,
+    //    and a product not synced yet keeps the total on a stock-only item. Failures go to the context
+    //    DLQ like every other consumer here.
+    this.inventorySyncConsumer = new lambda.Function(this, 'InventorySyncConsumer', {
+      functionName: 'catalogview-inventory-sync-consumer',
+      tracing: lambda.Tracing.ACTIVE,
+      architecture: DOTNET_ARCH,
+      runtime: DOTNET_RUNTIME,
+      // provided.al2023 runs the file named `bootstrap`; this value is inert.
+      handler: 'bootstrap',
+      code: catalogViewCode,
+      timeout: cdk.Duration.seconds(30),
+      memorySize: DOTNET_MEMORY_MB,
+      description: 'Consumes ProductStockChangedEvent and sets the storefront stock in catalogview-products',
+      environment: {
+        ANNOTATIONS_HANDLER: 'InventorySyncConsumer',
+        EventBridge__BusName: eventBus.eventBusName,
+      },
+    });
+    // UpdateItem only: the write is one conditional update, with no read before it.
+    catalogViewProductsTable.grant(this.inventorySyncConsumer, 'dynamodb:UpdateItem');
+    ruleFor(
+      'ProductStockChanged',
+      this.inventorySyncConsumer,
+      'catalogview-product-stock-changed-rule',
+      'ProductStockChangedEvent',
+      'Routes ProductStockChangedEvent (source=duckstore) to catalogview-inventory-sync-consumer',
     );
 
     // 4. catalogview-products-stream-publisher (ADR-0035)

@@ -13,11 +13,15 @@ public static class InventoryExtensions
 {
     public static InventoryResources AddInventoryServices(
         this IDistributedApplicationBuilder builder,
-        IResourceBuilder<DynamoDBLocalResource> dynamoDb)
+        IResourceBuilder<DynamoDBLocalResource> dynamoDb,
+        IResourceBuilder<ProjectResource> catalogViewSeeder)
     {
-        // Creates inventory-warehouses, inventory-stock and inventory-movements and seeds ALPHA/BETA.
+        // Creates inventory-warehouses, inventory-stock and inventory-movements, seeds ALPHA/BETA and
+        // receives the Catalog seed products' stock into ALPHA. It writes their storefront totals to
+        // catalogview-products, so it runs after CatalogView's backfill.
         var seeder = builder.AddProject<Projects.Inventory_DevelopmentDataSeeder>("inventory-data-seeder")
             .WaitFor(dynamoDb)
+            .WaitForCompletion(catalogViewSeeder)
             .WithReference(dynamoDb)
             .WithAwsDevEnvironment();
 
@@ -37,6 +41,24 @@ public static class InventoryExtensions
                 .WithReference(dynamoDb)
                 .WithAwsDevEnvironment())
             .ToList();
+
+        // The storefront total's CDC publishers (ADR-0052 §8): DynamoDB Streams in, EventBridge out
+        // (best-effort locally, so local.ts applies the total to catalogview-products itself).
+        foreach (var (name, handler, table) in new[]
+                 {
+                     ("inventory-stock-stream-publisher", "InventoryStockStreamPublisher", "inventory-stock"),
+                     ("inventory-warehouses-stream-publisher", "InventoryWarehousesStreamPublisher", "inventory-warehouses"),
+                 })
+        {
+            builder.AddAWSLambdaFunction<Projects.Inventory_Function>(
+                    name,
+                    lambdaHandler: LambdaHandler("Inventory.Function", handler))
+                .WaitForCompletion(seeder)
+                .WithReference(dynamoDb)
+                .WithDynamoDBStreamsEventSource(table)
+                .WithAwsDevEnvironment()
+                .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
+        }
 
         return new InventoryResources(seeder, movementLambdas);
     }

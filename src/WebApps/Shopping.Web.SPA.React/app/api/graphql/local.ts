@@ -21,6 +21,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { prepareBasketRequest, guestCookieHeader } from '@/lib/basket-bff'
 import { checkoutOrderId } from '@/lib/checkout-order-id'
+import { storefrontTotal, type WarehouseState } from '@/lib/storefront-stock'
 import {
   normalizeWarehouseCode,
   normalizeWarehouseFields,
@@ -309,6 +310,61 @@ async function requireProduct(productId: string) {
   }
 }
 
+// Stands in for the storefront-total publishers and catalogview-inventory-sync-consumer, since
+// EventBridge is best-effort locally (ADR-0052 §8): recompute the product's total and apply it to
+// catalogview-products under the same Version condition.
+async function applyStorefrontStock(productId: string) {
+  const balances = (await dynamoDb.send(new QueryCommand({
+    TableName: 'inventory-stock',
+    KeyConditionExpression: 'ProductId = :p',
+    ExpressionAttributeValues: { ':p': { S: productId } },
+    ConsistentRead: true,
+  }))).Items?.map(item => unmarshall(item)) ?? []
+  const warehouses = new Map<string, WarehouseState>()
+  const ids = [...new Set(balances.map(b => String(b.WarehouseId)))]
+  if (ids.length > 0) {
+    const found = await dynamoDb.send(new BatchGetItemCommand({
+      RequestItems: { [WAREHOUSES_TABLE]: { Keys: ids.map(id => ({ WarehouseId: { S: id } })), ConsistentRead: true } },
+    }))
+    for (const raw of found.Responses?.[WAREHOUSES_TABLE] ?? []) {
+      const w = unmarshall(raw)
+      if (w.Type === 'Warehouse') warehouses.set(String(w.WarehouseId), { id: String(w.WarehouseId), active: Boolean(w.Active), version: Number(w.Version ?? 0) })
+    }
+  }
+  const total = storefrontTotal(
+    balances.map(b => ({ warehouseId: String(b.WarehouseId), available: Number(b.Available), version: Number(b.Version ?? 0) })),
+    warehouses,
+  )
+  try {
+    await dynamoDb.send(new UpdateItemCommand({
+      TableName: 'catalogview-products',
+      Key: { Id: { S: productId } },
+      UpdateExpression: 'SET Stock = :available, StockVersion = :version',
+      ConditionExpression: 'attribute_not_exists(StockVersion) OR StockVersion < :version',
+      ExpressionAttributeValues: { ':available': { N: String(total.available) }, ':version': { N: String(total.version) } },
+    }))
+  } catch (err) {
+    if (!(err instanceof ConditionalCheckFailedException)) throw err
+  }
+}
+
+// Mirrors inventory-warehouses-stream-publisher: activating or deactivating a warehouse changes the
+// total of every product in it.
+async function applyStorefrontStockForWarehouse(warehouseId: string) {
+  let startKey: Record<string, AttributeValue> | undefined
+  do {
+    const page = await dynamoDb.send(new QueryCommand({
+      TableName: 'inventory-stock',
+      IndexName: 'GSI1',
+      KeyConditionExpression: 'WarehouseId = :w',
+      ExpressionAttributeValues: { ':w': { S: warehouseId } },
+      ExclusiveStartKey: startKey,
+    }))
+    for (const item of page.Items ?? []) await applyStorefrontStock(String(unmarshall(item).ProductId))
+    startKey = page.LastEvaluatedKey
+  } while (startKey)
+}
+
 // Mirrors the *.record.js response: a refusal is a typed error, a Lambda failure is InternalError.
 async function recordStockMovement(functionName: string, payload: Record<string, unknown>) {
   let body: StockMovementResponseBody
@@ -323,6 +379,7 @@ async function recordStockMovement(functionName: string, payload: Record<string,
     if (body.Refusal.Available !== null && body.Refusal.Available !== undefined) errorInfo.available = body.Refusal.Available
     throw createGraphQLError(body.Refusal.Message, { extensions: { errorType: body.Refusal.ErrorType, errorInfo } })
   }
+  await applyStorefrontStock(String(payload.ProductId))
   return {
     movements: (body.Movements ?? []).map(m => ({
       id: m.Id, productId: m.ProductId, productName: null, type: m.Type, quantity: m.Quantity,
@@ -576,12 +633,13 @@ const resolvers = {
         nextToken?: string
       },
     ) {
-      const expressionNames: Record<string, string> = {}
+      // A stock-only item (a total that arrived before its ProductSynced, ADR-0052 §8) has no Name and
+      // is not a product yet; in AWS the GSI1 query and the search filter leave it out the same way.
+      const expressionNames: Record<string, string> = { '#Name': 'Name' }
       const expressionValues: Record<string, AttributeValue> = {}
-      const clauses: string[] = []
+      const clauses: string[] = ['attribute_exists(#Name)']
 
       if (args.query) {
-        expressionNames['#Name'] = 'Name'
         expressionNames['#Description'] = 'Description'
         expressionValues[':q'] = { S: args.query }
         clauses.push('(contains(#Name, :q) OR contains(#Description, :q))')
@@ -598,13 +656,9 @@ const resolvers = {
         new ScanCommand({
           TableName: 'catalogview-products',
           Limit: args.pageSize ?? 20,
-          ...(clauses.length > 0
-            ? {
-                FilterExpression: clauses.join(' AND '),
-                ExpressionAttributeNames: expressionNames,
-                ExpressionAttributeValues: expressionValues,
-              }
-            : {}),
+          FilterExpression: clauses.join(' AND '),
+          ExpressionAttributeNames: expressionNames,
+          ...(Object.keys(expressionValues).length > 0 ? { ExpressionAttributeValues: expressionValues } : {}),
           ...(args.nextToken
             ? { ExclusiveStartKey: JSON.parse(Buffer.from(args.nextToken, 'base64').toString()) }
             : {}),
@@ -649,7 +703,8 @@ const resolvers = {
       const result = await dynamoDb.send(
         new GetItemCommand({ TableName: 'catalogview-products', Key: { Id: { S: id } } }),
       )
-      if (!result.Item) return null
+      // Mirrors Query.product.js: a stock-only item is not a product yet.
+      if (!result.Item?.Name) return null
       const item = unmarshall(result.Item)
 
       return {
@@ -1581,7 +1636,6 @@ const resolvers = {
             Name: { S: input.name as string },
             Description: { S: input.description as string },
             Images: marshalImages(input.images as ProductImageInput[]),
-            Stock: { N: String(input.stock) },
             CategoryIds: { SS: input.categoryIds as string[] },
           },
         }),
@@ -1604,7 +1658,6 @@ const resolvers = {
             Name: { S: input.name as string },
             Description: { S: input.description as string },
             Images: marshalImages(input.images as ProductImageInput[]),
-            Stock: { N: String(input.stock) },
             CategoryIds: { SS: input.categoryIds as string[] },
           },
         }),
@@ -1643,13 +1696,12 @@ const resolvers = {
             TableName: 'products',
             Key: { Id: { S: input.id as string } },
             UpdateExpression:
-              'SET #Name = :name, Description = :desc, Images = :imgs, Stock = :stock, CategoryIds = :cats',
+              'SET #Name = :name, Description = :desc, Images = :imgs, CategoryIds = :cats',
             ExpressionAttributeNames: { '#Name': 'Name' },
             ExpressionAttributeValues: {
               ':name': { S: input.name as string },
               ':desc': { S: input.description as string },
               ':imgs': marshalImages(input.images as ProductImageInput[]),
-              ':stock': { N: String(input.stock) },
               ':cats': { SS: input.categoryIds as string[] },
             },
             ConditionExpression: 'attribute_exists(Id)',
@@ -1801,11 +1853,12 @@ const resolvers = {
           new UpdateItemCommand({
             TableName: WAREHOUSES_TABLE,
             Key: { WarehouseId: { S: id } },
-            UpdateExpression: 'SET Active = :active, UpdatedAt = :now, UpdatedBy = :by',
+            UpdateExpression: 'SET Active = :active, UpdatedAt = :now, UpdatedBy = :by ADD Version :one',
             ConditionExpression: 'attribute_exists(WarehouseId) AND #type = :warehouse',
             ExpressionAttributeNames: { '#type': 'Type' },
             ExpressionAttributeValues: {
               ':active': { BOOL: active },
+              ':one': { N: '1' },
               ':now': { S: new Date().toISOString() },
               ':by': { S: LOCAL_WAREHOUSE_AUTHOR },
               ':warehouse': { S: 'Warehouse' },
@@ -1813,6 +1866,7 @@ const resolvers = {
             ReturnValues: 'ALL_NEW',
           }),
         )
+        await applyStorefrontStockForWarehouse(id)
         return mapWarehouse(unmarshall(result.Attributes ?? {}))
       } catch (err) {
         if (err instanceof ConditionalCheckFailedException) throw warehouseNotFound()

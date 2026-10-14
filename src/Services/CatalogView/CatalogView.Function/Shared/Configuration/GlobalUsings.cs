@@ -9,6 +9,7 @@ global using CatalogView.Function.Modules.Products.Data;
 global using CatalogView.Function.Modules.Products.Domain;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CatalogSync;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.CatalogSync.Strategies;
+global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.InventorySync;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.PricingSync;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.PricingSync.Strategies;
 global using CatalogView.Function.Modules.Products.EventsIntegration.Consumers.ReviewSync;

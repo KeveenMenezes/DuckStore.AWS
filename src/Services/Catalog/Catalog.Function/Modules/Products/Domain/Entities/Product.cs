@@ -7,7 +7,6 @@ public class Product : Aggregate<ProductId>
     string name,
     string description,
     List<ProductImage> images,
-    int stock,
     List<CategoryId> categoryIds)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -24,7 +23,6 @@ public class Product : Aggregate<ProductId>
             Name = name,
             Description = description,
             Images = images,
-            Stock = stock,
             CategoryIds = categoryIds
         };
 
@@ -35,7 +33,6 @@ public class Product : Aggregate<ProductId>
         string name,
         string description,
         List<ProductImage> images,
-        int stock,
         List<CategoryId> categoryIds)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
@@ -51,8 +48,6 @@ public class Product : Aggregate<ProductId>
         Name = name;
         Description = description;
         Images = images;
-        Stock = stock;
-
         CategoryIds = categoryIds;
     }
 
@@ -69,18 +64,17 @@ public class Product : Aggregate<ProductId>
     public string Name { get; private set; } = default!;
     public string Description { get; private set; } = default!;
     public List<ProductImage> Images { get; private set; } = [];
-    public int Stock { get; private set; } = default!;
     public List<CategoryId> CategoryIds { get; private set; } = default!;
 
     // Rating aggregation (AverageRating/RatingCount) moved to the CatalogView service — it is no
     // longer materialized on the product item (ADR-0027, supersedes ADR-0011 §4; ADR-0030).
-    // Catalog now owns only the product's own write-side fields.
+    // Catalog now owns only the product's own write-side fields. Stock is not one of them: Inventory
+    // owns it per warehouse (ADR-0052 §8).
     internal static Product Load(
         Guid id,
         string name,
         string description,
         List<ProductImage> images,
-        int stock,
         List<CategoryId> categoryIds) =>
         new()
         {
@@ -88,7 +82,6 @@ public class Product : Aggregate<ProductId>
             Name = name,
             Description = description,
             Images = images,
-            Stock = stock,
             CategoryIds = categoryIds
         };
 }

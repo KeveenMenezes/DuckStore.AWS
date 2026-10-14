@@ -566,11 +566,11 @@ input BasketInstallmentItemInput {
   quantity: Int!
 }
 
+# No stock on the product inputs: Inventory owns it, and the storefront shows its total (ADR-0052 §8).
 input CreateProductInput {
   name: String!
   description: String!
   images: [ProductImageInput!]!
-  stock: Int!
   categoryIds: [ID!]!
 }
 
@@ -578,7 +578,6 @@ input CreateProductWithPriceInput {
   name: String!
   description: String!
   images: [ProductImageInput!]!
-  stock: Int!
   categoryIds: [ID!]!
   price: Float!
   cost: Float!
@@ -589,7 +588,6 @@ input UpdateProductInput {
   name: String!
   description: String!
   images: [ProductImageInput!]!
-  stock: Int!
   categoryIds: [ID!]!
 }
 

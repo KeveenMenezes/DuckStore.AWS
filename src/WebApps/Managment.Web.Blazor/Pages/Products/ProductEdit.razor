@@ -58,7 +58,6 @@ else
                 Images = [.. product.Images
                     .OrderBy(i => i.Order)
                     .Select(i => new ProductImageFormModel { ImageId = i.ImageId, IsMain = i.IsMain })],
-                Stock = product.Stock,
                 CategoryIds = [.. product.CategoryIds],
                 Price = price?.NominalPrice ?? product.Price,
                 Cost = price?.Cost ?? 0,

@@ -5,14 +5,14 @@
 // create/update only (ADR-0031) — deletes are handled separately via the shared
 // ProductDeletedEvent, since a delete needs no payload. Rating fields are deliberately absent:
 // CatalogView owns them exclusively. Price is also absent: Pricing owns it (ADR-0026) and syncs
-// it separately via PriceChangedEvent.
+// it separately via PriceChangedEvent. Stock is absent too: Inventory owns it and syncs the storefront
+// total via ProductStockChangedEvent (ADR-0052 §8).
 public record ProductSyncedEvent : IntegrationEvent
 {
     public string ProductId { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string Description { get; init; } = string.Empty;
     public List<ProductImageData> Images { get; init; } = [];
-    public int Stock { get; init; }
     public List<string> CategoryIds { get; init; } = [];
 
     public List<string> CategoryNames { get; init; } = [];

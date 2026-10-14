@@ -44,11 +44,11 @@ var reviewSeeder = builder.AddReviewServices(dynamoDb);
 
 var catalogSeeder = builder.AddCatalogLambdas(dynamoDb);
 
-builder.AddCatalogViewLambdas(dynamoDb, catalogSeeder, reviewSeeder, pricingSeeder);
+var catalogViewSeeder = builder.AddCatalogViewLambdas(dynamoDb, catalogSeeder, reviewSeeder, pricingSeeder);
 
 builder.AddChallengesServices(dynamoDb);
 
-var inventoryResources = builder.AddInventoryServices(dynamoDb);
+var inventoryResources = builder.AddInventoryServices(dynamoDb, catalogViewSeeder);
 
 // Apps
 var spa = builder.AddNpmApp("shopping-web-spa-react", "../WebApps/Shopping.Web.SPA.React", "dev")

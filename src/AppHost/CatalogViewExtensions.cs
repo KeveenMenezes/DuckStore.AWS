@@ -6,7 +6,8 @@ namespace AppHost.CatalogView;
 
 public static class CatalogViewExtensions
 {
-    public static IDistributedApplicationBuilder AddCatalogViewLambdas(
+    // Returns the seeder: Inventory's seeder applies its totals after the backfill (ADR-0052 §8).
+    public static IResourceBuilder<ProjectResource> AddCatalogViewLambdas(
         this IDistributedApplicationBuilder builder,
         IResourceBuilder<DynamoDBLocalResource> dynamoDb,
         IResourceBuilder<ProjectResource> catalogSeeder,
@@ -57,6 +58,16 @@ public static class CatalogViewExtensions
             .WithAwsDevEnvironment()
             .WithEnvironment("EventBridge__BusName", "duckstore-event-bus");
 
-        return builder;
+        // Inventory's storefront total (ADR-0052 §8). EventBridge is best-effort locally, so local.ts
+        // applies the same total itself; the Lambda is here to be invoked through the emulator.
+        builder.AddAWSLambdaFunction<Projects.CatalogView_Function>(
+                "catalogview-inventory-sync-consumer",
+                lambdaHandler:
+                LambdaHandler("CatalogView.Function", "InventorySyncConsumer"))
+            .WaitForCompletion(catalogViewSeeder)
+            .WithReference(dynamoDb)
+            .WithAwsDevEnvironment();
+
+        return catalogViewSeeder;
     }
 }

@@ -39,6 +39,13 @@ public interface IProductSearchIndex
         decimal maxInstallmentValue,
         CancellationToken cancellationToken = default);
 
+    // Sets the storefront stock from Inventory's ProductStockChangedEvent (ADR-0052 §8), only when
+    // version is greater than the StockVersion already stored. Like ApplyPricingAsync, it upserts: a
+    // total that arrives before the product's ProductSynced waits on a stock-only item, which the
+    // product sync completes without touching Stock. Returns false for a late or repeated total.
+    Task<bool> ApplyStockAsync(
+        string productId, int available, long version, CancellationToken cancellationToken = default);
+
     Task<SearchDocument?> GetAsync(string productId, CancellationToken cancellationToken = default);
 
     // Seeder-only operation (CatalogView.DevelopmentDataSeeder): bulk-writes the historical

@@ -12,7 +12,9 @@ export function request(ctx) {
 
 export function response(ctx) {
   if (ctx.error) util.error(ctx.error.message, ctx.error.type)
-  if (!ctx.result) return null
+  // An item without a Name is not a product yet: Inventory's total (ADR-0052 §8) or a price reached
+  // CatalogView before the product's ProductSynced.
+  if (!ctx.result || !ctx.result.Name) return null
 
   const item = ctx.result
   return {
@@ -25,7 +27,8 @@ export function response(ctx) {
       isMain: img.IsMain,
       order: img.Order,
     })),
-    stock: item.Stock,
+    // From Inventory only (ADR-0052 §8): 0 until the product's first total arrives.
+    stock: item.Stock ?? 0,
     categoryIds: item.CategoryIds ?? [],
     averageRating: item.AverageRating ?? 0,
     ratingCount: item.RatingCount ?? 0,

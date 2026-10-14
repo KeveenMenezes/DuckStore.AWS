@@ -38,7 +38,6 @@ public sealed class ProductSyncedRule(ICategoryRepository categoryRepository) : 
                 Name = image.Name,
                 Description = image.Description,
                 Images = image.Images,
-                Stock = image.Stock,
                 CategoryIds = image.CategoryIds,
                 CategoryNames = categoryNames
             });
