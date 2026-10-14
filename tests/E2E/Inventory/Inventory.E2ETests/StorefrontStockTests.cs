@@ -12,13 +12,27 @@ public sealed class StorefrontStockTests(StockKeeperSession session) : IClassFix
     private readonly WarehouseApi _warehouses = new(session);
     private readonly StockApi _stock = new(session);
 
+    // The tests before this one move the same product and deactivate their warehouses at the end; their
+    // last totals may still be on their way. Start from the storefront once it shows Inventory's own
+    // total over active warehouses.
+    private async Task<int> SettledStorefrontStockAsync(string productId)
+    {
+        var active = (await _warehouses.ListAsync()).Data!["warehouses"]!.AsArray()
+            .Where(w => (bool)w!["active"]!).Select(w => (string)w!["id"]!).ToHashSet();
+        var expected = (await _stock.StockByProductAsync(productId)).Data!["stockByProduct"]!["warehouses"]!.AsArray()
+            .Where(row => active.Contains((string)row!["warehouseId"]!)).Sum(row => (int)row!["available"]!);
+        var shown = await _stock.WaitForShownStockAsync(productId, expected);
+        Assert.Equal(expected, shown);
+        return shown;
+    }
+
     [ManagementE2EFact]
     public async Task TheStorefront_FollowsTheTotalOverActiveWarehouses()
     {
         var (productId, _) = await _stock.AnyProductAsync();
         var a = (string)(await _warehouses.CreateValidAsync(WarehouseApi.NewCode(), priority: 900))["id"]!;
         var b = (string)(await _warehouses.CreateValidAsync(WarehouseApi.NewCode(), priority: 901))["id"]!;
-        var shown = await _stock.ShownStockAsync(productId);
+        var shown = await SettledStorefrontStockAsync(productId);
         try
         {
             Assert.False((await _stock.ReceiveAsync(productId, a, 5)).HasErrors);

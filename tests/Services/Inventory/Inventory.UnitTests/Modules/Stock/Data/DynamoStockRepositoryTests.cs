@@ -43,6 +43,10 @@ public class DynamoStockRepositoryTests
                 Assert.Equal("attribute_not_exists(ProductId)", update.Update.ConditionExpression);
                 Assert.Equal("20", update.Update.ExpressionAttributeValues[":available"].N);
                 Assert.Equal("ALPHA", update.Update.ExpressionAttributeValues[":code"].S);
+                // Every balance write bumps the counter the storefront total is ordered by (ADR-0052 §8):
+                // without it a newer total would look as old as the last one and be dropped.
+                Assert.EndsWith("ADD Version :one", update.Update.UpdateExpression);
+                Assert.Equal("1", update.Update.ExpressionAttributeValues[":one"].N);
                 Assert.False(update.Update.ExpressionAttributeValues.ContainsKey(":read"));
                 Assert.False(update.Update.ExpressionAttributeValues.ContainsKey(":reserved"));
             },

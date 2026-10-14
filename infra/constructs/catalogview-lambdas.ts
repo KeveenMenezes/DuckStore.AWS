@@ -246,7 +246,7 @@ export class CatalogViewLambdas extends Construct {
         EventBridge__BusName: eventBus.eventBusName,
       },
     });
-    // UpdateItem only (the conditional write returns the old item on failure, no separate read).
+    // UpdateItem only: the write is one conditional update, with no read before it.
     catalogViewProductsTable.grant(this.inventorySyncConsumer, 'dynamodb:UpdateItem');
     ruleFor(
       'ProductStockChanged',

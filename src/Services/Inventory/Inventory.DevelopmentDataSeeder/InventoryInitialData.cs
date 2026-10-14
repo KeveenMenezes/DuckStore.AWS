@@ -6,7 +6,7 @@ public sealed record SeedWarehouse(
     string Id, string Code, string Name, string Street, string Number, string District, string City,
     string State, string ZipCode, int Priority);
 
-// The two warehouses of the spec's example (product A: 20 in Alpha, 50 in Beta). Fixed ids keep
+// Two warehouses, as in ADR-0052's example (product A: 20 in Alpha, 50 in Beta). Fixed ids keep
 // local references stable across restarts.
 public static class InventoryInitialData
 {
