@@ -9,14 +9,14 @@ tags:
 # ADR-0052: Inventory Bounded Context — Stock per Warehouse, Owned by the StockKeeper
 
 ## Status
-**Accepted** — October 2026. The warehouses (§2–§5) and the stock balances and movements ledger (§7)
-are implemented; §6 records the direction for the storefront total and sales, and is amended as each
+**Accepted** — October 2026. The warehouses (§2–§5), the stock balances and movements ledger (§7) and
+the storefront total (§8) are implemented; §6 records the direction for sales, and is amended when it
 is decided in detail.
 
 **Amended** — October 2026: §7 decides the stock balances and the movements ledger (receipts,
 adjustments, transfers).
 
-**Amended** — October 2026 (proposed): §8 makes Inventory the source of the storefront's stock and
+**Amended** — October 2026: §8 makes Inventory the source of the storefront's stock and
 takes `stock` out of Catalog. It amends [ADR-0032](./0032-create-product-with-price-step-functions-express-saga.md)
 §4/§6 and [ADR-0019](./0019-module-oriented-service-structure-and-rule-based-stream-publishers.md)
 (fan-out rules).
@@ -440,14 +440,28 @@ same way, after CatalogView's backfill.
 
 ## As Built
 
-- Verified on the real APPSYNC_JS runtime with `aws appsync evaluate-code` (138 cases over the 12
-  Inventory resolvers, `scripts/inventory/evaluate-resolvers.mjs`), against the Lambdas in the Aspire
+- Verified on the real APPSYNC_JS runtime with `aws appsync evaluate-code` (144 cases over the 12
+  Inventory resolvers and the product reads and writes §8 changes, `scripts/inventory/evaluate-resolvers.mjs`), against the Lambdas in the Aspire
   emulator (`scripts/inventory/local-lambda-checks.mjs`, concurrent movements included) and the local
   BFF (`scripts/inventory/local-api-checks.mjs`), by `Inventory.UnitTests` (domain, repository,
-  recorder), and on dev by `tests/E2E/Inventory/Inventory.E2ETests` (24 tests: StockKeeper, Admin,
-  Seller, customer — the ledger checked against the balance after every flow).
+  recorder), and on dev by `tests/E2E/Inventory/Inventory.E2ETests` (26 tests: StockKeeper, Admin,
+  Seller, customer — the ledger checked against the balance after every flow, and the storefront
+  total of §8).
 - The Lambdas' JSON omits null fields (`Refusal` on success, `Movements` on a refusal, `Available` on
   most refusals); the resolvers treat absent and null alike.
+- Storefront total (§8), verified on AWS dev:
+  - `seed-dev-showcase.mjs` recorded 10 receipts into `DEV-VITRINE`, and the storefront kept every
+    number (snapshot before step 1 and after step 6). The receipts went end to end: stream →
+    publisher → EventBridge → consumer, each product at `Version` 1.
+  - `StorefrontStockTests` follows a real product through receipts, a transfer, a deactivation, a
+    reactivation and two concurrent adjustments.
+  - Locally, `local-api-checks.mjs` checks the same flow through the BFF, and the publishers and the
+    consumer were invoked in the Aspire emulator with real stream records. The emulator's DynamoDB
+    Streams pollers cannot resolve AWS credentials, for every service, so they do not deliver on their
+    own.
+- Product search (`products(query:)`) filters on `AverageRating BETWEEN`, and the product sync never
+  writes `AverageRating`. So a product with no review that reached CatalogView through `ProductSynced`
+  cannot be found by search. This predates §8, and its fix belongs to CatalogView.
 - `Array.prototype.sort` takes no comparator in APPSYNC_JS: an inline one fails the runtime's
   `no-function-passing` lint, and a named one was silently ignored during evaluation (callbacks to
   `map`/`some` are fine). `warehouses` therefore sorts on a string key (zero-padded priority, then

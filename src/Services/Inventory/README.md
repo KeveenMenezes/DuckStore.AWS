@@ -16,6 +16,7 @@ Seller who lists the product.
 - **Warehouses** — code, name, Brazilian address, priority and active flag
   ([ADR-0052](../../../docs/adr/0052-inventory-bounded-context-warehouses.md) §2).
 - **Stock** — the balance of each product × warehouse and the movements ledger (ADR-0052 §7).
+- **The storefront's stock** — the total over active warehouses, published to CatalogView (ADR-0052 §8).
 
 **Codes are unique without a read.** `createWarehouse` writes the warehouse and a `CODE#<code>` guard
 item in one `TransactWriteItems`, both `attribute_not_exists`, so a taken code cancels the whole
@@ -41,8 +42,14 @@ optimistic condition and retried, so each row's `balanceAfter` is exact.
 **Priority is the allocation order.** Lower serves a sale first, ties broken by code, and it is the
 extension point for a "nearest warehouse" policy. Today it orders the lists.
 
-**What it does not do.** The storefront still reads Catalog's `Product.stock`, and no sale reserves
-stock — the direction for both is in ADR-0052 §6. `Reserved` exists on every balance and stays 0.
+**The storefront shows Inventory's total.** A product's storefront stock is `Available` summed over its
+balances in **active** warehouses, so deactivating a warehouse takes its stock off the storefront at
+once. Catalog has no stock field. Totals are ordered by `Version` rather than by time: every balance
+write and every `setWarehouseActive` adds one to a counter, and a total's `Version` is the sum of the
+counters behind it. So CatalogView keeps the newest total whatever order the events arrive in.
+
+**What it does not do.** No sale reserves stock yet — the direction is in ADR-0052 §6. `Reserved`
+exists on every balance and stays 0.
 Inventory never reads Catalog's table itself: the product checks and the product names come from
 AppSync pipeline steps on Catalog's `products`.
 
@@ -50,8 +57,8 @@ AppSync pipeline steps on Catalog's `products`.
 
 | Table | Key | Indexes | Stream | Notes |
 |---|---|---|---|---|
-| `inventory-warehouses` | PK `WarehouseId` | — | none | Two item types: `Type = Warehouse` (`<uuid>`) and `Type = CodeGuard` (`CODE#<code>`, `TargetWarehouseId`). Every read filters on `Type` |
-| `inventory-stock` | PK `ProductId`, SK `WarehouseId` | GSI1 (`WarehouseId`, `ProductId`) | none | `Available`, `Reserved`, `WarehouseCode`, `UpdatedAt`. Written only by `Inventory.Function` |
+| `inventory-warehouses` | PK `WarehouseId` | — | `NEW_AND_OLD_IMAGES` | Two item types: `Type = Warehouse` (`<uuid>`, `Version` counts activation changes) and `Type = CodeGuard` (`CODE#<code>`, `TargetWarehouseId`). Every read filters on `Type` |
+| `inventory-stock` | PK `ProductId`, SK `WarehouseId` | GSI1 (`WarehouseId`, `ProductId`) | `NEW_AND_OLD_IMAGES` | `Available`, `Reserved`, `WarehouseCode`, `UpdatedAt`, `Version` (counts writes). Written only by `Inventory.Function` |
 | `inventory-movements` | PK `ProductId`, SK `MovementId` | LSI1 (`CreatedAt`), GSI1 (`WarehouseId`, `CreatedAt`) | none | The ledger. `MovementId` is the idempotency key (`<key>#OUT`/`#IN` for a transfer). Written only by `Inventory.Function` |
 
 ## API surface (AppSync)
@@ -83,23 +90,40 @@ The Blazor management app's **Warehouses** and **Stock** pages are the only clie
 
 ## Integration events
 
-None.
+**Publishes** `ProductStockChangedEvent { ProductId, Available, Version }` (CDC, ADR-0005), through
+`StreamRuleDispatcher` (ADR-0019):
+
+| Lambda | Source | Rule |
+|---|---|---|
+| `inventory-stock-stream-publisher` | `inventory-stock` stream, `INSERT`/`MODIFY` | `ProductStockChangedRule`: the product's total |
+| `inventory-warehouses-stream-publisher` | `inventory-warehouses` stream, `MODIFY` of a warehouse whose `Active` changed | `WarehouseActivationRule` (a fan-out rule): one total per product in the warehouse |
+
+Consumed by `catalogview-inventory-sync-consumer` (rule `catalogview-product-stock-changed-rule`).
+**Consumes** nothing.
 
 ## Failure handling
 
-The Lambdas are invoked synchronously by AppSync only (no Function URL, no event source), so there is
-no DLQ: a failure is returned to the caller as a GraphQL error.
+The movement Lambdas are invoked synchronously by AppSync only (no Function URL), so a failure is
+returned to the caller as a GraphQL error. The two stream publishers bisect a failing batch and retry
+it 3 times, then send its stream metadata to `inventory-dlq`, whose `inventory-dlq-not-empty` alarm
+notifies `duckstore-alerts` (ADR-0015).
 
 ## Local development
 
 ```bash
-dotnet run --project src/AppHost/AppHost.csproj   # seeder: the three tables and ALPHA/BETA; the three Lambdas in the emulator
+dotnet run --project src/AppHost/AppHost.csproj   # seeder: the tables, ALPHA/BETA and the seed products' stock in ALPHA; the Lambdas in the emulator
 node scripts/inventory/local-lambda-checks.mjs http://localhost:<emulator-port>   # the Lambdas directly
 node scripts/inventory/local-api-checks.mjs       # every field through the SPA's local BFF (local.ts)
 node scripts/inventory/evaluate-resolvers.mjs "$PWD"   # resolvers on the real APPSYNC_JS runtime (needs AWS credentials)
 dotnet test tests/Services/Inventory/Inventory.UnitTests
-cd src/WebApps/Shopping.Web.SPA.React && pnpm test     # lib/warehouse-validation.test.ts
+cd src/WebApps/Shopping.Web.SPA.React && pnpm test     # lib/warehouse-validation.test.ts, lib/storefront-stock.test.ts
 ```
+
+EventBridge is best-effort locally, so `local.ts` applies the storefront total to
+`catalogview-products` itself, after each movement and after `setWarehouseActive`. The seeder does the
+same for the stock it receives into ALPHA. On AWS dev,
+`node scripts/inventory/seed-dev-showcase.mjs [--dry-run]` moved the storefront's numbers from Catalog
+to Inventory: it recorded one receipt per product into the active `DEV-VITRINE` warehouse.
 
 `local.ts` sends the movements to the real Lambdas through the Aspire Lambda emulator. On macOS the
 emulator's generated wrappers only build when the AppHost runs with a non-symlinked `TMPDIR` and
@@ -113,5 +137,6 @@ The deployed flow is covered by the Playwright suite `tests/E2E/Inventory/Invent
 
 - [ADR-0052: Inventory Bounded Context](../../../docs/adr/0052-inventory-bounded-context-warehouses.md)
 - [ADR-0009: AppSync Resolver Selection](../../../docs/adr/0009-appsync-resolver-selection-direct-first-lambda-for-complex-logic.md)
+- [ADR-0019: Module-Oriented Service Structure and Rule-Based Stream Publishers](../../../docs/adr/0019-module-oriented-service-structure-and-rule-based-stream-publishers.md) — the publishers, including the fan-out rule
 - [ADR-0048: Points Transactions Ledger](../../../docs/adr/0048-points-transactions-ledger-and-in-cart-redemption.md) — the ledger precedent
 - [ADR-0050: Checkout as a Step Functions Express Saga](../../../docs/adr/0050-checkout-step-functions-express-saga.md) — the idempotency and refusal contracts, and where the stock reservation will live

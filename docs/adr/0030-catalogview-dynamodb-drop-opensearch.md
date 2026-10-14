@@ -9,7 +9,7 @@ tags:
 ## Status
 **Accepted** — July 2026
 
-**Note** — October 2026 (proposed): `Stock` on `catalogview-products` will come from Inventory's
+**Note** — October 2026: `Stock` on `catalogview-products` comes from Inventory's
 `ProductStockChangedEvent`, no longer from Catalog's `ProductSyncedEvent`
 ([ADR-0052](./0052-inventory-bounded-context-warehouses.md) §8).
 

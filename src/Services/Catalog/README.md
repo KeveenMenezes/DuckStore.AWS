@@ -13,7 +13,9 @@ does not — see [Reads live elsewhere](#reads-live-elsewhere).
 
 - Owns `products` and `categories` as the write model.
 - Publishes catalog changes as integration events through CDC.
-- Does **not** serve catalog reads, aggregate ratings, or own price.
+- Does **not** serve catalog reads, aggregate ratings, own price, or own stock — stock belongs to
+  Inventory, and the product inputs no longer accept it
+  ([ADR-0052 §8](../../../docs/adr/0052-inventory-bounded-context-warehouses.md)).
 
 ### Reads live elsewhere
 
@@ -74,4 +76,5 @@ dotnet test tests/Services/Catalog/Catalog.UnitTests/Catalog.UnitTests.csproj
 [ADR-0011](../../../docs/adr/0011-review-bounded-context-rating-aggregation-via-cdc.md) ·
 [ADR-0031](../../../docs/adr/0031-cdc-events-named-after-domain-occurrence-no-changetype-discriminator.md) ·
 [ADR-0032](../../../docs/adr/0032-create-product-with-price-step-functions-express-saga.md) ·
-[ADR-0042](../../../docs/adr/0042-lambda-native-aot-zip-provided-al2023.md)
+[ADR-0042](../../../docs/adr/0042-lambda-native-aot-zip-provided-al2023.md) ·
+[ADR-0052](../../../docs/adr/0052-inventory-bounded-context-warehouses.md)
