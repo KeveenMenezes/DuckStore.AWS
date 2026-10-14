@@ -320,7 +320,8 @@ dispatched next to the `IStreamRule`s and published in the same `PublishManyAsyn
 amends ADR-0019's "a rule MUST return a `PublishInstruction`".
 
 Both rules compute the total with one domain service (`StorefrontStock`), from consistent reads of
-`inventory-stock` and `inventory-warehouses`. A failing batch is bisected and retried 3 times, then
+`inventory-stock` and `inventory-warehouses`. The fan-out's list of products comes from GSI1, which
+cannot be read consistently (see Negative). A failing batch is bisected and retried 3 times, then
 lands in the `inventory` context DLQ with its alarm on `duckstore-alerts` (ADR-0015).
 
 **The consumer.** `catalogview-inventory-sync-consumer`, a 1:1 handler: Inventory has a single event,
@@ -387,7 +388,9 @@ same way, after CatalogView's backfill.
 
 - The storefront's stock is eventually consistent with Inventory (seconds, through EventBridge).
 - Deactivating a warehouse publishes one event per product it holds, and reads every one of their
-  totals.
+  totals, one after another, within the publisher's 60 s timeout. A warehouse holding a few thousand
+  products would time out and land in the DLQ. That is fine at this scale; beyond it, the fan-out
+  needs bounded parallelism.
 - A balance created in a warehouse at the same moment that warehouse is toggled may be missed by the
   fan-out, because GSI1 is eventually consistent. The total stays wrong until that product's next
   movement.
@@ -419,14 +422,19 @@ same way, after CatalogView's backfill.
 ### Future Constraints
 
 - Inventory's write path is `graphql/resolvers/inventory/**` (warehouses), `Inventory.Function`
-  (`inventory-stock` and `inventory-movements`, nothing else writes them) and its seeder. No other
-  context's resolver, Lambda or saga task MAY write its tables. Other contexts read the total through
+  (`inventory-stock` and `inventory-movements`, nothing else writes them) and its seeder. The one
+  exception is the dev showcase script (`scripts/inventory/seed-dev-showcase.mjs`, §8 rollout
+  step 3). It writes one warehouse and its guard the way `createWarehouse` does, and records receipts
+  only through `inventory-record-stock-receipt`. No other context's resolver, Lambda or saga task MAY
+  write its tables. Other contexts read the total through
   CatalogView or call Inventory's Lambdas from a saga (§6).
 - Ledger rows MUST NOT be updated or deleted, and every on-hand change MUST write its ledger row in
   the same transaction (the ADR-0048 rule for points). The seeder MUST NOT seed balances without
   ledger rows.
 - Inventory's Lambdas MUST NOT get a Function URL or any entry point other than AppSync, their own
-  tables' DynamoDB Streams (§8) and the local `local.ts` emulation.
+  tables' DynamoDB Streams (§8) and the local `local.ts` emulation. An operator's IAM-authorised
+  invoke from the dev showcase script is not an entry point. That invoke skips AppSync's product check,
+  so the script only receives products that CatalogView already holds.
 - A warehouse's `Code` MUST NOT become editable without replacing the guard in the same transaction
   (delete the old guard, put the new one).
 - The storefront's stock MUST come only from Inventory through `ProductStockChangedEvent`; Catalog
@@ -451,7 +459,7 @@ same way, after CatalogView's backfill.
   most refusals); the resolvers treat absent and null alike.
 - Storefront total (§8), verified on AWS dev:
   - `seed-dev-showcase.mjs` recorded 10 receipts into `DEV-VITRINE`, and the storefront kept every
-    number (snapshot before step 1 and after step 6). The receipts went end to end: stream →
+    number (snapshot before rollout step 1 and after step 4). The receipts went end to end: stream →
     publisher → EventBridge → consumer, each product at `Version` 1.
   - `StorefrontStockTests` follows a real product through receipts, a transfer, a deactivation, a
     reactivation and two concurrent adjustments.
